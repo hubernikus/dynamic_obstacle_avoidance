@@ -17,10 +17,10 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 
 ########################################################################
-options = [6]
+options = [7]
 
-N_resol = 100
-saveFigures=False
+N_resol = 10
+saveFigures=True
 ########################################################################
 
 def main(options=[], N_resol=100, saveFigures=False):
@@ -104,7 +104,7 @@ def main(options=[], N_resol=100, saveFigures=False):
             
             obs.append(Polygon(edge_points=edge_points, orientation=0./180*pi, absolut_margin=0.0, is_boundary=False))
             
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_triangle', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
 
         if option==6:
             x_lim = [-4.1,7.1]
@@ -113,11 +113,29 @@ def main(options=[], N_resol=100, saveFigures=False):
             xAttractor=[-3,3]
 
             edge_points = np.array([[1.3, 2.3, 2, 0,-2,-2.3,-1.3, 0],
-                                    [ -2,   0, 2, 1, 2, 0  ,  -2, -2.2 ]])
+                                    [ -2,   0, 4, 1, 4, 0  ,  -2, -2.2 ]])
+
+            n_points = 5
+            points_init = np.vstack((x_lim[1]*np.ones(n_points),
+                                     np.linspace(y_lim[0], y_lim[1], n_points)))
             
             obs.append(Polygon(edge_points=edge_points, orientation=0./180*pi, absolut_margin=0.0, is_boundary=False))
             
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
+            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_polygon_concave', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False, points_init=[])
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_polygon_concave', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init)
+
+        if option==7:
+            x_lim = [-2.7, 3.1]
+            y_lim = [-2.7, 2.4]
+
+            xAttractor=[-1.5,1.5]
+
+            edge_points = np.array([[1.3, 2.3, 2, 0,-2,-2.3,-1.3, 0],
+                                    [ -2,   0, 2, 1, 2, 0  ,  -2, -2.2 ]])
+            
+            obs.append(Polygon(edge_points=edge_points, orientation=0./180*pi, absolut_margin=0.0, is_boundary=True))
+            
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
 
 
 
