@@ -359,7 +359,6 @@ class Obstacle:
         
         if self.is_boundary:
             Gamma = self.get_boundaryGamma(Gamma,Gamma_ref=self.Gamma_ref)
-        # print('Gamma', Gamma)
         return Gamma
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):
@@ -507,11 +506,6 @@ class Obstacle:
         if False:
             self.draw_reference_hull(normal_vector, position)
 
-        # print('angle', angle2referencePlane)
-        # print('weight', weights)
-        # print('normal', normal_vector)
-        # print('\n')
-
         return normal_vector
 
     def draw_reference_hull(self, normal_vector, position):
@@ -579,7 +573,7 @@ class Obstacle:
                         self.th_r = [self.th_r[i]+dt*self.w[i] for i in range(self.d)]  #update orientation/attitude
                     self.compute_R() # Update rotation matrix
                 
-                self.draw_ellipsoid()
+                self.draw_obstacle()
             
 
     def draw_ellipsoid(self, *args, **kwargs):
@@ -711,6 +705,7 @@ class Polygon(Obstacle):
         self.th_r = orientation # TODO remove
 
         self.dim = self.center_position.shape[0] # Dimension of space [TODO make globale]
+        self.d = self.dim
 
         # TODO: REMOVE / RENAME THESE
         self.sigma = sigma
@@ -918,34 +913,37 @@ class Polygon(Obstacle):
                 is_point_inside = is_point_inside & (dist2hull[ii] < mag_position)
             weights = self.get_distance_weight(dist2hull-mag_position)
             
-        if self.is_boundary:
-            edge_point_mag = LA.norm(self.edge_points, axis=0)
+        if self.is_boundary and False:
+            # Reverse system
+            mag_edge_point = LA.norm(self.edge_points, axis=0)
 
-            temp_edge_points = self.edge_points/(edge_point_mag*edge_point_mag)
-            mag_position = LA.norm(position)
+            temp_edge_points = self.edge_points/np.tile(mag_edge_point*mag_edge_point, (2,1))
+            mag_position = LA.norm(pos1ition)
             if mag_position==0: #non-zero
                 return np.ones(self.dim)/self.dim # non-singular value
             
             temp_position = position/(mag_position*mag_position)
             distances2plane = self.get_distance_to_hullEdge(temp_position, temp_edge_points)
-            
         else:
             temp_edge_points = np.copy(self.edge_points)
             temp_position = np.copy(position)
 
             distances2plane = self.get_distance_to_hullEdge(temp_position)
 
+        if self.is_boundary:
+            ind_outside = (distances2plane < 0)
+        else:
+            ind_outside = (distances2plane > 0)
             
-        ind_outside = (distances2plane > 0)
         if True:
-            if not np.sum(ind_outside): # zero value
+            if not np.sum(ind_outside) : # zero value
                 # TODO solver in a more proper way
-                return np.ones(self.dim)/self.dim # Nonsingular value
+                return self.get_reference_direction(position)
 
             # if normal_calulation_type=="distance":
                 # TODO include visibility of each 'surface segment'
 
-            distance2plane = ind_outside*distances2plane
+            distance2plane = ind_outside*np.abs(distances2plane)
             angle2hull = np.ones(ind_outside.shape)*pi
             
             for ii in np.arange(temp_edge_points.shape[1])[ind_outside]:
@@ -954,11 +952,9 @@ class Polygon(Obstacle):
                 # Calculate distance to agent-position
                 dir_tangent = (temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
                 position2edge = temp_position - temp_edge_points[:, ii]
-                
                 if dir_tangent.T.dot(position2edge) < 0:
                     distance2plane[ii] = LA.norm(position2edge)
                 else:
-                    
                     dir_tangent = -(temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
                     position2edge = temp_position - temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]]
                     if dir_tangent.T.dot(position2edge) < 0:
@@ -981,27 +977,27 @@ class Polygon(Obstacle):
                 # warnings.warn("No intersection found.")
                 # normal_vector = np.ones(self.dim)
             distance_weights = self.get_distance_weight(distance2plane)
+            # distance_weights = 1
             angle_weights = self.get_angle_weight(angle2hull)
+            # angle_weights = 1
 
             weights = distance_weights*angle_weights
             weights = weights/np.sum(weights)
 
         normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, obs=self, position=position, normalize_reference=True)
 
-        if self.is_boundary:
-            positionVec = position/mag_position
-            normal_partParallel2positionVec = normal_vector.T.dot(positionVec)
+        if self.is_boundary and False:
+            positionVec = position/mag_position # needed?
+            normal_partParallel2positionVec = normal_vector.T.dot(positionVec)*positionVec
             normal_partPerpendicular2positionVec = normal_vector - normal_partParallel2positionVec
 
-            # Mirror along position vector
+            # Mirror along position vector [back to original frame]
             normal_vector = normal_partPerpendicular2positionVec - normal_partParallel2positionVec
              
         if normalize:
             normal_vector = normal_vector/LA.norm(normal_vector)
 
-        
-        
-        if True:
+        if False:
             # self.draw_reference_hull(normal_vector, position)
             pos_abs = self.transform_relative2global(position)
             norm_abs = self.transform_relative2global_dir(normal_vector)
@@ -1097,7 +1093,7 @@ class Cuboid(Polygon):
         
 
 class StarshapedFlower(Obstacle):
-    def __init__(self,  orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, axes_length=[1,1], a=None, center_position=[0,0],  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
+    def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4, orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, axes_length=[1,1], a=None, center_position=[0,0],  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
     # def __init_pose__():
@@ -1130,36 +1126,13 @@ class StarshapedFlower(Obstacle):
         self.compute_R() # Compute Rotation Matrix
         
         self.resolution = 0 #Resolution of drawing
+        
+        # Object Specific Paramters
+        self.radius_magnitude=radius_magnitude
+        self.radius_mean=radius_mean
 
-        self.edge_points = np.zeros((self.dim, 4))
-        self.edge_points[:,0] = self.axes_length/2.0*np.array([1,1])
-        self.edge_points[:,1] = self.axes_length/2.0*np.array([-1,1])
-        self.edge_points[:,2] = self.axes_length/2.0*np.array([-1,-1])
-        self.edge_points[:,3] = self.axes_length/2.0*np.array([1,-1])
-        
-        self.hull_edge = np.copy(self.edge_points) # TODO: what if point outside?
+        self.number_of_edges=number_of_edges
 
-        self.normal_vector = np.zeros(self.edge_points.shape)
-        self.normalDistance2center = np.zeros(self.edge_points.shape[1])
-        
-        for ii in range(self.normal_vector.shape[1]):
-            self.normal_vector[:, ii] = (self.edge_points[:,(ii+1)%self.normal_vector.shape[1]]
-                                         - self.edge_points[:,ii])
-            if self.dim==2:
-                self.normal_vector[:, ii] = np.array([self.normal_vector[1, ii],
-                                                      -self.normal_vector[0, ii],])
-            else:
-                warnings.warn("Implement for d>2.")
-        
-            self.normalDistance2center[ii] = self.normal_vector[:, ii].T @ self.edge_points[:, ii]
-
-            if self.normalDistance2center[ii] < 0:
-                self.normal_vector[:, ii] = (-1) * self.normal_vector[:, ii]
-                self.normalDistance2center[ii] = (-1)*self.normalDistance2center[ii]
-                
-        # Normalize
-        self.normal_vector /= np.tile(LA.norm(self.normal_vector, axis=0), (self.dim,1))
-        
         # TODO add margin & rename
         # self.x_obs = np.zeros((self.edge_points.shape)).T
         # for ii in range(self.edge_points.shape[1]):
@@ -1201,18 +1174,35 @@ class StarshapedFlower(Obstacle):
     # def draw_obstacle(self, draw_obstacleMargin=True, n_points=4):
         # for ii
 
-        
-    def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None):
-        num_edges = self.edge_points.shape[1]
-        
-        if not type(numPoints)==type(None):
-            n_curve_points = int(np.ceil(numPoints/(num_edges+1)) )
-            # warnings.warn("Remove numPoints from function argument.")
+    def get_radius_of_angle(self, angle):
+        return self.radius_mean+self.radius_magnitude*np.cos((angle)*self.number_of_edges)
 
-        # TODO rename more intuitively
-        self.x_obs = self.bounday_points.T # Surface points
-        self.x_obs_sf = x_obs_sf.T # Margin points
+    def get_radiusDerivative_of_angle(self, angle):
+        return -self.radius_magnitude*self.number_of_edges*np.sin((angle)*self.number_of_edges)
         
+    def draw_obstacle(self, include_margin=False, n_curve_points=100, numPoints=None):
+        # warnings.warn("Remove numPoints from function argument.")
+
+        angular_coordinates = np.linspace(0,2*pi, n_curve_points)
+        radius_angle = self.get_radius_of_angle(angular_coordinates)
+
+        if self.dim==2:
+            direction = np.vstack(( np.cos(angular_coordinates), np.sin(angular_coordinates) ))
+
+        self.x_obs = (radius_angle * direction)
+
+        self.x_obs_sf = (radius_angle * self.sf * direction)
+
+
+        if self.orientation: # nonzero
+            for jj in range(self.x_obs.shape[1]):
+                self.x_obs[:, jj] = self.rotMatrix @ self.x_obs[:, jj] + np.array([self.center_position])
+            for jj in range(self.x_obs_sf.shape[1]):
+                self.x_obs_sf[:,jj] = self.rotMatrix @ self.x_obs_sf[:, jj] + np.array([self.center_position])
+
+        self.x_obs = self.x_obs.T
+        self.x_obs_sf = self.x_obs_sf.T
+
     
     def get_gamma(self, position, in_global_frame=False, norm_order=2):
         if not type(position)==np.ndarray:
@@ -1222,15 +1212,52 @@ class StarshapedFlower(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
+        mag_position = LA.norm(position)
+        if mag_position==0:
+            if self.is_boundary:
+                return sys.float_info.max
+            else:
+                return 0
+
+        direction = np.arctan2(position[1], position[0])
+
+        Gamma = mag_position/self.get_radius_of_angle(direction)
+
         # TODO extend rule to include points with Gamma < 1 for both cases
         if self.is_boundary:
-            pass
-        else:
-            pass
+            Gamma = 1/Gamma
+
         return Gamma
     
 
     def get_normal_direction(self, position, in_global_frame=False, normalize=True):
         if in_global_frame:
             position = self.transform_global2relative(position)
+            
+        mag_position = LA.norm(position)
+        if mag_position==0:
+            return self.ones(self.dim)/self.dim # just return one direction
+        
+        direction = np.arctan2(position[1], position[0])
+        derivative_radius_of_angle = self.get_radiusDerivative_of_angle(direction)
+        
+        radius = self.get_radius_of_angle(direction)
+
+        normal_vector = np.array(([
+            derivative_radius_of_angle*np.sin(direction) + radius*np.cos(direction),
+            - derivative_radius_of_angle*np.cos(direction) + radius*np.sin(direction)]))
+                                   
+        if False:
+            # self.draw_reference_hull(normal_vector, position)
+            pos_abs = self.transform_relative2global(position)
+            norm_abs = self.transform_relative2global_dir(normal_vector)
+            plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color='g')
+            ref_abs = self.get_reference_direction(position)
+            ref_abs = self.transform_relative2global_dir(ref_abs)
+            plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color='k')
+
+            plt.ion()
+            plt.show()
+
+        return normal_vector
 

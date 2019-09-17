@@ -213,16 +213,16 @@ class Animated():
             self.obs[o].update_pos(self.t[self.iSim], self.dt,
                                    self.ax.get_xlim(), self.ax.get_ylim()) # Update obstacles
 
-            self.centers[o].set_xdata(self.obs[o].x0[0])
-            self.centers[o].set_ydata(self.obs[o].x0[1])
+            self.centers[o].set_xdata(self.obs[o].center_position[0])
+            self.centers[o].set_ydata(self.obs[o].center_position[1])
             if self.dim==3:
-                self.centers[o].set_3d_properties(zs=obs[o].x0[2])
+                self.centers[o].set_3d_properties(zs=obs[o].center_position[2])
 
-            if hasattr(self.obs[o], 'center_dyn'):# automatic adaptation of center
-                self.cent_dyns[o].set_xdata(self.obs[o].center_dyn[0])
-                self.cent_dyns[o].set_ydata(self.obs[o].center_dyn[1])
+            if hasattr(self.obs[o], 'reference_point'):# automatic adaptation of center
+                self.cent_dyns[o].set_xdata(self.obs[o].reference_point[0])
+                self.cent_dyns[o].set_ydata(self.obs[o].reference_point[1])
                 if self.dim==3:
-                    self.cent_dyns[o].set_3d_properties(zs=self.obs[o].center_dyn[2])
+                    self.cent_dyns[o].set_3d_properties(zs=self.obs[o].reference_point[2])
 
             if self.obs[o].always_moving or self.obs[o].x_end > self.t[self.iSim] or self.iSim<1: # First two rounds or moving
                 if self.dim ==2: # only show safety-contour in 2d, otherwise not easily understandable
@@ -252,7 +252,7 @@ class Animated():
         
         # Numerical hull of ellipsoid
         for n in range(len(self.obs)):
-            self.obs[n].draw_ellipsoid(numPoints=50) # 50 points resolution
+            self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
 
         for n in range(len(self.obs)):
             if self.dim==2:

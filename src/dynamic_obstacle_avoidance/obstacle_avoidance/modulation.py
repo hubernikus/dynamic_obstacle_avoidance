@@ -45,7 +45,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
 
     # Check if there was correct placement of reference point
     Gamma_referencePoint = obs.get_gamma(obs.reference_point)
-    
+
     if not obs.is_boundary and Gamma_referencePoint >= 1:
         # Check what this does and COMMENT!!!!
         
@@ -73,7 +73,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
 
             # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], color='g')
             # plt.ion()
-            
+
     E_orth = np.zeros((dim, dim))
     
     # Create orthogonal basis matrix        
@@ -98,7 +98,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
     eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma,
                                                                      is_boundary=obs.is_boundary)
     D = np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
-
+    
     return E, D, Gamma, E_orth
 
 
