@@ -202,8 +202,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [2.0, 5.1]
-    pos2 = [3.2, 5.1]
+    pos1 = [-1.516, -1.100]
+    pos2 = [-1.4, -1.1]
 
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -251,7 +251,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         plt.ylim(y_range)
 
     indOfnoCollision = obs_check_collision_2d(obs, XX, YY)
-        
+    
     dx1_noColl = np.squeeze(xd_mod[0,:,:]) * indOfnoCollision
     dx2_noColl = np.squeeze(xd_mod[1,:,:]) * indOfnoCollision
 
@@ -277,7 +277,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
             else:
                 res_ifd = ax_ifd.quiver(XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
-            # res_ifd = ax_ifd.quiver(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[0.8, 0.2, 0.2], zorder=0)
+                # res_ifd = ax_ifd.quiver(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[0.8, 0.2, 0.2], zorder=0)
 
     plt.ion()
     plt.show()

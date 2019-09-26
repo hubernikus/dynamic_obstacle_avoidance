@@ -121,15 +121,14 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     xd_t = np.array([xd_normalized[1], -xd_normalized[0]])
 
     Rf = np.array([xd_normalized, xd_t]).T
-
     
     xd_hat = np.zeros((d, N_obs))
     xd_hat_magnitude = np.zeros((N_obs))
     k_ds = np.zeros((d-1, N_obs))
-        
+    
+    
     for n in range(N_obs):
         # xd_R = LA.pinv(E[:,:,n]) @ R[:,:,n].T @ xd
-        
         M[:,:,n] = R[:,:,n] @ E[:,:,n] @ D[:,:,n] @ LA.pinv(E[:,:,n]) @ R[:,:,n].T
         
         xd_hat[:,n] = M[:,:,n] @ xd # velocity modulation
@@ -141,7 +140,9 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
             repulsive_gamma = (1+repulsive_gammaMargin)
             
             repulsive_velocity =  ((repulsive_gamma/Gamma[n])**repulsive_power-
-                                    repulsive_gamma)*repulsive_factor 
+                                    repulsive_gamma)*repulsive_factor
+            if obs[n].is_boundary:
+                repulsive_velocity *= (-1)
             # print("\n\n Add repulsive vel: {} \n\n".format(repulsive_velocity))
             xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
 
@@ -194,10 +195,14 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     else:
         n_xd = Rf.T @ np.hstack((1, k_d ))
 
+    # import pdb; pdb.set_trace() ## DEBUG ##
     xd = xd_magnitude*n_xd.squeeze()
 
     # transforming back from object frame of reference to inertial frame of reference
     xd = xd + xd_obs
+    
+
+    
 
     return xd
 

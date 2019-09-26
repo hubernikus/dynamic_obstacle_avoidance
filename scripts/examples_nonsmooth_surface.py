@@ -18,9 +18,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation, samplePointsAtBorder
 
 ########################################################################
-options = [7]
+options = [7.0]
 
-N_resol = 100
+N_resol = 10
 
 saveFigures=True
 ########################################################################
@@ -127,11 +127,34 @@ def main(options=[], N_resol=100, saveFigures=False):
             # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_polygon_concave', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init)
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True)
 
-    
+        if option==6.5:
+            x_lim = [-4.7, 5.1]
+            y_lim = [-4.7, 4.4]
+            xAttractor=[-3.5,1.5]
+
+            edge_points = np.array([[1.3, 2.3, 2, 0   ,-2,-2.3,-1, -2.3, 0],  
+                                    [ -2,   0, 2, 0.25, 2, 0  , -.5,  - 2, -2.2 ]])
+
+
+            n_points = 4
+            points_init = np.vstack((np.linspace(-1, 2, n_points),
+                                     np.linspace(-2, 0, n_points)))
+            # points_init = []
+                                     
+            
+            obs.append(Polygon(edge_points=edge_points, orientation=0./180*pi, absolut_margin=0.0, is_boundary=False))
+
+            # run_animation(points_init, obs, x_range=x_lim, y_range=y_lim, dt=0.0001, N_simuMax=600, convergenceMargin=0.3, sleepPeriod=0.01)
+            
+            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False, points_init=[])
+
+            
         if option==7:
             x_lim = [-2.7, 3.1]
             y_lim = [-2.7, 2.4]
-            xAttractor=[-1.5,1.5]
+            
+            xAttractor=[-1.5,1.2]
 
             edge_points = np.array([[1.3, 2.3, 2, 0   ,-2,-2.3,-1, -2.3, 0],  
                                     [ -2,   0, 2, 0.25, 2, 0  , -.5,  - 2, -2.2 ]])
@@ -147,9 +170,11 @@ def main(options=[], N_resol=100, saveFigures=False):
 
             # run_animation(points_init, obs, x_range=x_lim, y_range=y_lim, dt=0.0001, N_simuMax=600, convergenceMargin=0.3, sleepPeriod=0.01)
             
-            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True,points_init=[])
-            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape_streampoints', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True,points_init=points_init)
+            
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False, points_init=[])
+            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init)
+
+            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryPolygon_starshape', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=[])
 
         if option==8:
             x_lim = [-4.1, 4.1]
@@ -185,13 +210,13 @@ def main(options=[], N_resol=100, saveFigures=False):
 
 if (__name__==("__main__")):
     if len(sys.argv) > 1:
-        options = sys.argv[1]
+        N_resol = int(sys.argv[1])
 
     if len(sys.argv) > 2:
-        N_resol = sys.argv[2]
+        options = [float(sys.argv[2])]
 
     if len(sys.argv) > 3:
-        saveFigures = sys.argv[3]
+        saveFigures = bool(sys.argv[3])
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 

@@ -433,15 +433,31 @@ class Obstacle:
         return angle2refencePatch
     
             
-    def get_angle_weight(self, weights, max_weight=pi, min_weight=0, check_range=False):
-        n_weights = np.array(weights).shape[0]
+    def get_angle_weight(self, angles, max_angle=pi, min_angle=0, check_range=False, weight_pow=1):
+        # n_angless = np.array(angles).shape[0]
 
         if check_range:
-            weights = np.min(np.vstack((weights, np.ones(n_weights)*max_weight)) )
-            weights = np.max(np.vstack((weights, np.ones(n_weights)*min_weight)) )
+            ind_low = angles <= min_angle
+            if np.sum(ind_low):
+                return ind_low/np.sum(ind_low)
 
-        weights = (max_weight-weights)/(max_weight-min_weight)
+            import pdb; pdb.set_trace() ## DEBUG ##
+            
+            angles = np.min(np.vstack((angles, np.ones(n_angles)*max_angle)) )
+        
+        # weights = ( (max_angle-angles)/(max_angle-min_angle) )**weight_pow
+
+        # [min, max] -> [0, 1] weights
+        weights = (angles-min_angle)/(max_angle-min_angle)
+
+        # [min, max] -> [infty, 1]
+        weights = 1/weights
+
+        # [min, max] -> [infty, 0]
+        weights = (weights - 1)**weight_pow
+        
         weight_norm = np.sum(weights)
+        
 
         if weight_norm:
             return weights/weight_norm
@@ -819,13 +835,12 @@ class Polygon(Obstacle):
         
     
     def get_gamma(self, position, in_global_frame=False, norm_order=2, gamma_type="proportional"):
-        if not type(position)==np.ndarray:
-            position = np.array(position)
-
-        # Rename
         if in_global_frame:
             position = self.transform_global2relative(position)
-
+            
+        if not type(position)==np.ndarray:
+            position = np.array(position)
+            
         if gamma_type=="proportional" or self.is_boundary:
         # TODO extend rule to include points with Gamma < 1 for both cases
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
@@ -889,14 +904,31 @@ class Polygon(Obstacle):
     def get_normal_direction(self, position, in_global_frame=False, normalize=True, normal_calulation_type="distance"):
         if in_global_frame:
             position = self.transform_global2relative(position)
+
+        mag_position = LA.norm(position)
+        if mag_position==0: # aligned with center, treat sepearately
+            if self.is_boundary:
+                return sys.float_info.max
+            else:
+                return 0 #
+
         
+        if self.is_boundary:
+            Gamma = self.get_gamma(position)
+            temp_position = Gamma*Gamma*position
+        else:
+            temp_position = np.copy(position)
+
+        # print('temp pos', temp_position)
+        # print('Gamma', self.get_gamma(position))
+            
         if self.is_boundary and normal_calulation_type=="direct_inverse":
             # TODO remove! // depreciated
             mag_position = LA.norm(position)
             if mag_position==0: # aligned with center, treat sepearately
                 return np.hstack((1, np.zeros(self.dim-1)))
                 # return None
-                
+            
             reference_dir = position / mag_position
 
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
@@ -926,11 +958,11 @@ class Polygon(Obstacle):
             distances2plane = self.get_distance_to_hullEdge(temp_position, temp_edge_points)
         else:
             temp_edge_points = np.copy(self.edge_points)
-            temp_position = np.copy(position)
+            temp_position = np.copy(temp_position)
 
             distances2plane = self.get_distance_to_hullEdge(temp_position)
 
-        if self.is_boundary:
+        if self.is_boundary and False:
             ind_outside = (distances2plane < 0)
         else:
             ind_outside = (distances2plane > 0)
@@ -976,8 +1008,8 @@ class Polygon(Obstacle):
             # if not np.sum(ind_intersect): # nonzero
                 # warnings.warn("No intersection found.")
                 # normal_vector = np.ones(self.dim)
-            distance_weights = self.get_distance_weight(distance2plane)
-            # distance_weights = 1
+            # distance_weights = self.get_distance_weight(distance2plane)
+            distance_weights = 1
             angle_weights = self.get_angle_weight(angle2hull)
             # angle_weights = 1
 
@@ -997,11 +1029,15 @@ class Polygon(Obstacle):
         if normalize:
             normal_vector = normal_vector/LA.norm(normal_vector)
 
+        # import pdb; pdb.set_trace() ## DEBUG ##
+            
         if False:
             # self.draw_reference_hull(normal_vector, position)
             pos_abs = self.transform_relative2global(position)
+            pos_abs_temp = self.transform_relative2global(temp_position)
             norm_abs = self.transform_relative2global_dir(normal_vector)
             plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color='g')
+            plt.quiver(pos_abs_temp[0], pos_abs_temp[1], norm_abs[0], norm_abs[1], color='m')
             ref_abs = self.get_reference_direction(position)
             ref_abs = self.transform_relative2global_dir(ref_abs)
             plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color='k')

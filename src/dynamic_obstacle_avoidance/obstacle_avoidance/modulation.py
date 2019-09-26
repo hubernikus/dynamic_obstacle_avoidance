@@ -112,7 +112,8 @@ def calculate_eigenvalues(Gamma, rho=1, is_boundary=False):
     # eigenvalue_reference = 0.1
     
     if is_boundary:
-        eigenvalue_tangent = 1
+        # eigenvalue_tangent = 1
+        eigenvalue_tangent = 1 + delta_eigenvalue            
     else:
         eigenvalue_tangent = 1 + delta_eigenvalue            
 
