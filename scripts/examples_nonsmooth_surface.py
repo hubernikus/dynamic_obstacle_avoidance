@@ -125,7 +125,7 @@ def main(options=[], N_resol=100, saveFigures=False):
             
             # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_polygon_concave', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False, points_init=[])
             # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_polygon_concave', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init)
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True)
+            # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid_twoEllipses', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True)
 
         if option==6.5:
             x_lim = [-4.7, 5.1]
@@ -206,7 +206,38 @@ def main(options=[], N_resol=100, saveFigures=False):
                                         number_of_edges=5))
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='flower_shape_boundary', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init)  
 
+        if option==10:
+            x_lim = [-4.1, 25.1]
+            y_lim = [-4.1, 12.1]
+            
+            xAttractor=[-3.0, 0.2]
 
+            points_init = []
+            
+            obs=[]
+            
+            obs.append(Cuboid(axes_length=[7, 5.6], center_position=[12, 2], orientation=20./180*pi, absolut_margin=0.0, is_boundary=False))
+
+            edge_points = np.array([[1, 4, 2],
+                                    [-1, -0.5, 4]])
+            obs.append(Polygon(edge_points=edge_points, orientation=-90./180*pi, absolut_margin=0.0, is_boundary=False))
+            obs[-1].move_obstacle_to_referencePoint(position=np.array([7, 8]) , in_global_frame=True)
+            
+            edge_points = np.array([[1.3, 2.3, 2, 0,-2,-2.3,-1.3, 0],
+                                    [ -2,   0, 4, 1, 4, 0  ,  -2, -2.2 ]])
+            obs.append(Polygon(edge_points=edge_points, orientation=0./180*pi, absolut_margin=0.0, is_boundary=False))
+            obs[-1].move_obstacle_to_referencePoint(position=np.array([2, -1]) , in_global_frame=True)
+
+            edge_points = np.array([[1, 4, 2],
+                                    [-1, -0.5, 4]])
+            obs.append(Polygon(edge_points=edge_points, orientation=180./180*pi, absolut_margin=0.0, is_boundary=False))
+            obs[-1].move_obstacle_to_referencePoint(position=np.array([19, 8]) , in_global_frame=True)
+            obs[-1].set_reference_point(np.array([19, 6.5]), in_global_frame=True)
+
+            obs.append(Ellipse(axes_length=[2, 1.5], center_position=[19, 5], p=[1,1], orientation=-70./180*pi, sf=1, is_boundary=False))
+            obs[-1].set_reference_point(np.array([19, 6.5]), in_global_frame=True)
+            
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='noonsmooth_several_obstacles', noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init, figureSize=(25.,10), showLabel=False)
 
 if (__name__==("__main__")):
     if len(sys.argv) > 1:

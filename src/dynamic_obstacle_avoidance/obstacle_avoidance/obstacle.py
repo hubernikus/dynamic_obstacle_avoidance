@@ -269,6 +269,7 @@ class Obstacle:
 
             
     def set_reference_point(self, position, in_global_frame=False): # Inherit
+        # TODO --- Check if correct
         if in_global_frame:
             position = self.transform_global2relative(position)
         self.reference_point = position
@@ -280,6 +281,14 @@ class Obstacle:
             
         else:
             self.reference_point_is_inside = True
+
+    def move_obstacle_to_referencePoint(self, position, in_global_frame=True):
+        if not in_global_frame:
+            position = self.transform_relative2global(position)
+
+        self.center_position = position
+        # self.reference_point = position
+        # self.center_dyn = self.reference_point
 
     def are_lines_intersecting(self, direction_line, passive_line):
         # solve equation line1['point_start'] + a*line1['direction'] = line2['point_end'] + b*line2['direction']
@@ -441,8 +450,6 @@ class Obstacle:
             if np.sum(ind_low):
                 return ind_low/np.sum(ind_low)
 
-            import pdb; pdb.set_trace() ## DEBUG ##
-            
             angles = np.min(np.vstack((angles, np.ones(n_angles)*max_angle)) )
         
         # weights = ( (max_angle-angles)/(max_angle-min_angle) )**weight_pow
