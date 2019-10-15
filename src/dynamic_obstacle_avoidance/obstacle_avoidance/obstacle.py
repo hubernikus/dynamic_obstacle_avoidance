@@ -14,21 +14,21 @@ visualize_debug = False
 def get_orthogonal_basis(vector, normalize=False):
     if not type(vector) == np.ndarray:
         vector = np.array(vector)
-        
+
     if normalize:
         v_norm = LA.norm(vector)
         if v_norm:
             vector = vector / v_norm
-        
+
     dim = vector.shape[0]
 
     Basis_Matrix = np.zeros((dim, dim))
-    
+
     if dim == 2:
         Basis_Matrix[:, 0] = vector
         Basis_Matrix[:, 1] = np.array([Basis_Matrix[1, 0],
                                        -Basis_Matrix[0, 0]])
-        
+
     if dim > 2:
         warnings.warn("Implement higher dimensionality than d={}".format(dim))
 
@@ -48,14 +48,14 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
     n_directions = weights.shape[0]
     if n_directions<=1:
         return directions[:, 0]
-        
+
     dim = np.array(reference_direction).shape[0]
 
     # Create copy to avoid changing initial values
-    
+
     if visualize_debug and False:
         ref_abs = obs.transform_relative2global_dir(reference_direction)
-        
+
         position = obs.transform_relative2global(reference_direction)
         plt.quiver(position[0], position[1], ref_abs[0], ref_abs[1], color='g', label='Reference')
 
@@ -85,7 +85,7 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
 
     norm_dirSpace = LA.norm(directions_directionSpace, axis=0)
     ind_nonzero = (norm_dirSpace > 0)
-    
+
     directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
 
     # Do not check cosinus, since normalization happened
@@ -96,7 +96,7 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
         cos_directions = np.min(np.vstack((cos_directions, np.ones(n_directions))), axis=0)
         cos_directions = np.max(np.vstack((cos_directions, -np.ones(n_directions))), axis=0)
         warnings.warn("Cosinus value out of bound.")
-        
+
     directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
     direction_dirSpace_weightedSum = np.sum(directions_directionSpace*
                                             np.tile(weights, (dim-1, 1)), axis=1)
@@ -108,17 +108,21 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
                                               np.sin(norm_directionSpace_weightedSum) / norm_directionSpace_weightedSum * direction_dirSpace_weightedSum)) ))
     else:
         direction_weightedSum = OrthogonalBasisMatrix[:,0]
-    
+
     return direction_weightedSum
 
 
-class Obstacle:
+
+class Obstacle(State):
     """ General class of obstacles """
     # TODO create obstacle container/list which can fast iterate through obstacles and perform other calculations
-    def __init__(self,  orientation=0, th_r=None, sf=1, delta_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, a=[1,1], p=[1,1], x0=None, center_position=[0,0],  tail_effect=True, always_moving=True, axes_length=None, is_boundary=False, Gamma_ref=0, hirarchy=0, ind_parent=-1):
+    def __init__(self,  orientation=0, sf=1, delta_margin=0, sigma=1, p=[1,1], center_position=[0,0], tail_effect=True, always_moving=True, axes_length=None,
+                 linear_velocity=[0,0], angular_velocity=0,
+                 func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
+                 Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-        
+
         # Leave at the moment for backwards compatibility
         if type(axes_length) == type(None):
             self.a = a
@@ -130,7 +134,7 @@ class Obstacle:
             self.a = axes_length
 
         self.margin_axes =  self.axes*np.array(sf)+np.array(delta_margin)
-        
+
         self.p = np.array(p) # TODO - rename
         self.sf = sf # TODO - rename
         self.sigma = sigma
@@ -139,22 +143,23 @@ class Obstacle:
         # Obstacle attitude
         if type(x0) != type(None):
             center_position = x0 # TODO remove and rename
-        self.center_position = center_position
+        self.position = center_position
+        self.center_position = self.position
         self.x0 = center_position
 
         if type(th_r)!= type(None):
             orientation = th_r
         self.th_r = orientation # TODO -- remove
         self.orientation = orientation
-        
+
         self.d = len(self.center_position) #Dimension of space # TODO remove
         self.dim = len(self.center_position) #Dimension of space
-        
+
         self.rotMatrix = []
         self.compute_R() # Compute Rotation Matrix
-        
+
         self.resolution = 0 #Resolution of drawing
-        
+
         self.x_obs = [] # Numerical drawing of obstacle boundarywq
         self.x_obs_sf = [] # Obstacle boundary plus margin!
 
@@ -162,10 +167,9 @@ class Obstacle:
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-            
         else:
             self.always_moving = always_moving
-        
+
         if sum(np.abs(xd)) or w or self.timeVariant:
             # Dynamic simulation - assign varibales:
             self.x_start = x_start
@@ -174,9 +178,12 @@ class Obstacle:
         else:
             self.x_start = 0
             self.x_end = 0
-            
-        self.w = w # Rotational velocity
-        self.xd = xd #
+
+        self.angular_velocity = angular_velocity
+        self.w = self.angular_velocity # TOOD - remove
+
+        self.linear_velocity = linear_velocity
+        self.xd = xd # TOOD - remove
 
         # Trees of stars
         self.hirarchy = hirarchy
@@ -194,7 +201,7 @@ class Obstacle:
 
     # def update_reference(self, new_ref):
         # TODo write function
-    
+
     def transform_global2relative(self, position): # Inherit
         if len(position.shape)==1:
             return self.rotMatrix.T.dot(position - np.array(self.center_position))
@@ -206,7 +213,7 @@ class Obstacle:
 
     def transform_relative2global(self, position): # TODO - inherit
         return (self.rotMatrix.dot(position))  + np.array(self.center_position)
-        
+
     def transform_relative2global_dir(self, direction): # TODO - inherit
         return self.rotMatrix.dot(direction)
 
@@ -218,7 +225,7 @@ class Obstacle:
 
         vec_cent2ref = np.array(self.get_reference_point(in_global_frame=False))
         dist_cent2ref = LA.norm(vec_cent2ref)
-        
+
         self.hull_edge = vec_cent2ref*(1 + edge_reference_dist*np.min(self.axes_length)/dist_cent2ref)
         # self.hull_edge =  np.array(self.get_reference_point(in_global_frame=False))
 
@@ -233,7 +240,7 @@ class Obstacle:
 
         m[1] = (-B_ - np.sqrt(D_)) / (2*A_)
         m[0] = (-B_ + np.sqrt(D_)) / (2*A_)
-        
+
         self.tangent_points = np.zeros((self.dim, 2))
         self.normal_vector = np.zeros((self.dim, 2))
         self.tangent_vector = np.zeros((self.dim, 2))
@@ -251,9 +258,9 @@ class Obstacle:
 
             self.tangent_vector[:,ii] = self.tangent_points[:, ii]-self.hull_edge
             self.tangent_vector[:,ii] /= LA.norm(self.tangent_vector[:,ii])
-            
+
             self.normal_vector[:, ii] = np.array([self.tangent_vector[1,ii],
-                                                  -self.tangent_vector[0,ii]]) 
+                                                  -self.tangent_vector[0,ii]])
             # Check direction
             self.normalDistance2center[ii] = self.normal_vector[:, ii].T.dot(self.hull_edge)
 
@@ -267,7 +274,7 @@ class Obstacle:
                 norm_abs = self.transform_relative2global_dir(self.normal_vector[:,ii])
                 plt.quiver(0,0, norm_abs, norm_abs, color='y', label='Normal')
 
-            
+
     def set_reference_point(self, position, in_global_frame=False): # Inherit
         # TODO --- Check if correct
         if in_global_frame:
@@ -278,9 +285,9 @@ class Obstacle:
         if self.get_gamma(self.reference_point)>1:
             self.extend_hull_around_reference()
             self.reference_point_is_inside = False
-            
         else:
             self.reference_point_is_inside = True
+
 
     def move_obstacle_to_referencePoint(self, position, in_global_frame=True):
         if not in_global_frame:
@@ -290,38 +297,62 @@ class Obstacle:
         # self.reference_point = position
         # self.center_dyn = self.reference_point
 
+
+    def update_position_and_orientation(self, position, orientation,
+                                        k_position=0.1, k_linear_velocity=0.1,
+                                        k_orientation=0.1, k_angular_velocity=0.1):
+        # TODO implement Kalman filter
+        time_current = time.time()
+        dt = self.timestamp-time_current
+
+        new_linear_velocity = (self.position-position)/dt
+        new_angular_velocity = (self.orientation-orientation)/dt
+
+        self.linear_velocity = k_linear_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+        self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+
+        self.position = (k_position*(position)
+                         + (1-k_position)*(self.linear_velocity*dt + self.position) )
+        self.orienation = (k_orientation*(orientation)
+                           + (1-k_orienation)*(self.angular_velocity*dt + self.position) )
+
+        self.timestamp = time_current
+
+
+
+
     def are_lines_intersecting(self, direction_line, passive_line):
         # solve equation line1['point_start'] + a*line1['direction'] = line2['point_end'] + b*line2['direction']
-        connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start']) 
-        connection_passive = np.array(passive_line['point_end']) - np.array(passive_line['point_start']) 
+        connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start'])
+        connection_passive = np.array(passive_line['point_end']) - np.array(passive_line['point_start'])
         connection_matrix = np.vstack((connection_direction, -connection_passive)).T
 
         if LA.det(connection_matrix): # nonzero value
             direction_factors = (LA.inv(connection_matrix) @
                                  (np.array(passive_line['point_start'])
                                   - np.array(direction_line['point_start']) ))
-        
+
             # Smooth because it's a tangent
             if direction_factors[0]>=0:
                 if direction_factors[1]>=0 and LA.norm(direction_factors[1]*connection_passive) <= LA.norm(connection_passive):
-                    
+
                     return True, LA.norm(direction_factors[0]*connection_direction)
-        
+
         if False: # show plot
             dir_start = self.transform_relative2global(direction_line['point_start'])
             dir_end = self.transform_relative2global(direction_line['point_end'])
 
             pas_start = self.transform_relative2global(passive_line['point_start'])
             pas_end = self.transform_relative2global(passive_line['point_end'])
-            
+
             plt.ion()
             plt.plot([dir_start[0], dir_end[0]], [dir_start[1], dir_end[1]], 'g--')
             plt.plot([pas_start[0], pas_end[0]], [pas_start[1], pas_end[1]], 'r--')
             plt.show()
             print('done intersections')
-            
+
         return False, -1
-        
+
 
     def get_obstacle_radius(self, position, in_global_frame=False, Gamma=None): # Inherit
         if in_global_frame:
@@ -338,7 +369,7 @@ class Obstacle:
             return self.transform_relative2global(self.reference_point)
         else:
             return self.reference_point
-        
+
     def get_gamma(self, position, in_global_frame=False):
         if not type(position)==np.ndarray:
             position = np.array(position)
@@ -350,11 +381,11 @@ class Obstacle:
         if not self.reference_point_is_inside:
             for ii in np.arange(self.tangent_points.shape[1]):
                 reference_line = {"point_start":[0,0], "point_end":position}
-                
+
                 # TODO - don't use reference point, but little 'offset' to avoid singularity
                 tangent_line = {"point_start":self.hull_edge,
                                 "point_end":self.tangent_points[:, ii]}
-                
+
                 ind_intersect, dist_intersect = self.are_lines_intersecting(reference_line, tangent_line)
                 if ind_intersect:
                     return LA.norm(position)/dist_intersect
@@ -364,8 +395,8 @@ class Obstacle:
 
         if len(Gamma.shape)>1:
             Gamma = (position / np.tile(self.axes_length, (N_points,1)).T )
-            Gamma = np.sum( (1/self.sf * Gamma) ** (2*np.tile(self.p, (N_points,1)).T), axis=0) 
-        
+            Gamma = np.sum( (1/self.sf * Gamma) ** (2*np.tile(self.p, (N_points,1)).T), axis=0)
+
         if self.is_boundary:
             Gamma = self.get_boundaryGamma(Gamma,Gamma_ref=self.Gamma_ref)
         return Gamma
@@ -381,7 +412,7 @@ class Obstacle:
                 return sys.float_info.max
             else:
                 return (1-Gamma_ref)/(Gamma-Gamma_ref)
-        
+
 
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         if type(hull_edge)==type(None):
@@ -400,9 +431,9 @@ class Obstacle:
         if False:
             vec_position2edge = np.tile(position, (n_planes, 1)).T - self.tangent_points
             distance2plane = np.sum((self.normal_vector * vec_position2edge), axis=0)
-                
+
         return distance2plane
-    
+
 
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
@@ -415,8 +446,8 @@ class Obstacle:
                 tangent_dir /= LA.norm(tangent_dir)
                 angle_arccos = np.sum(position_dir * tangent_dir)
         return np.arccos(angle_arccos)
-        
-        
+
+
     def get_angle2referencePatch(self, position, max_angle=pi):
         # angle between 0 and pi
         n_planes = self.normal_vector.shape[1]
@@ -425,7 +456,7 @@ class Obstacle:
         distance2plane = np.sum((self.normal_vector*vec_position2edge), axis=0)
 
         angle2refencePatch = np.ones(n_planes)*max_angle
-        
+
         for ii in range(n_planes):
             if distance2plane[ii]<0:
                 continue
@@ -438,10 +469,10 @@ class Obstacle:
         if False:
             cos_tangs = np.sum(self.tangent_vector[:,0].T @ self.tangent_vector[:,1])
             print('angle', np.arccos(cos_tangs))
-        
+
         return angle2refencePatch
-    
-            
+
+
     def get_angle_weight(self, angles, max_angle=pi, min_angle=0, check_range=False, weight_pow=1):
         # n_angless = np.array(angles).shape[0]
 
@@ -451,7 +482,7 @@ class Obstacle:
                 return ind_low/np.sum(ind_low)
 
             angles = np.min(np.vstack((angles, np.ones(n_angles)*max_angle)) )
-        
+
         # weights = ( (max_angle-angles)/(max_angle-min_angle) )**weight_pow
 
         # [min, max] -> [0, 1] weights
@@ -462,15 +493,15 @@ class Obstacle:
 
         # [min, max] -> [infty, 0]
         weights = (weights - 1)**weight_pow
-        
+
         weight_norm = np.sum(weights)
-        
+
 
         if weight_norm:
             return weights/weight_norm
         return weights
 
-    
+
     def get_distance_weight(self, distance, power=1):
         ind_positiveDistance = (distance>0)
 
@@ -480,49 +511,49 @@ class Obstacle:
         # weights[~ind_positiveDistance] = 0
 
         return weights
-        
+
     def get_normal_direction(self, position, in_global_frame=False, normalize=True):
-        
+
         if in_global_frame:
             position = self.transform_global2relative(position)
-            
+
         if not self.reference_point_is_inside:
             ind_intersect = np.zeros(self.normalDistance2center.shape, dtype=bool)
-            
+
             distances2plane = self.get_distance_to_hullEdge(position)
-            
+
             ind_outside = (distances2plane > 0)
-            
+
             if np.sum(ind_outside)>0:
                 for ii in np.arange(ind_outside.shape[0])[ind_outside]:
-                    
+
                     reference_line = {"point_start":[0,0],
                                       "point_end":position}
                     # TODO - don't use reference point, but little 'offset' to avoid singularity
                     tangent_line = {"point_start":self.hull_edge,
                                     "point_end":self.tangent_points[:, ii]}
-                    
+
                     ind_intersect[ii], dist = self.are_lines_intersecting(reference_line, tangent_line)
-                    
+
                     if ind_intersect[ii]:
                         break
-                
+
                 if np.sum(ind_intersect): # nonzero
                     angle2referencePlane = self.get_angle2referencePatch(position)
                     weights = self.get_angle_weight(angle2referencePlane)
-                    
+
                     try:
                         normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, obs=self, position=position, normalize_reference=True)
-                        
+
                     except:
                         # pass
                         import pdb; pdb.set_trace() ## DEBUG ##
                     # return normal_vector
-        
+
         if self.reference_point_is_inside or np.sum(ind_intersect)==0:
         # Elsee
             normal_vector = (2*self.p/self.margin_axes*(position/self.margin_axes)**(2*self.p - 1))
-        
+
         if normalize:
             normal_vector = normal_vector/LA.norm(normal_vector)
 
@@ -534,15 +565,15 @@ class Obstacle:
     def draw_reference_hull(self, normal_vector, position):
         pos_abs = self.transform_relative2global(position)
         norm_abs = self.transform_relative2global_dir(normal_vector)
-        
+
         plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color='k', label="Normal")
 
         ref_dir = self.transform_relative2global_dir(self.get_reference_direction(position, in_global_frame=False, normalize=True))
-        
+
         plt.quiver(pos_abs[0], pos_abs[1], ref_dir[0], ref_dir[1], color='g', label="Reference")
 
         ref_abs = self.transform_relative2global(self.hull_edge)
-        
+
         for ii in range(2):
             tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
             plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], 'k--')
@@ -554,8 +585,8 @@ class Obstacle:
         # Inherit
         if in_global_frame:
             position = self.transform_global2relative(position)
-            
-        if hasattr(self, 'reference_point') or hasattr(self,'center_dyn'):  # automatic adaptation of center 
+
+        if hasattr(self, 'reference_point') or hasattr(self,'center_dyn'):  # automatic adaptation of center
             reference_direction = - (position-self.reference_point)
         else:
             reference_direction = - position
@@ -577,7 +608,7 @@ class Obstacle:
                 # Check if xd and w are functions
                 if self.timeVariant:
                     # TODO - implement RK4 for movement
-                    
+
                     self.xd = self.func_xd(t)
                     self.w = self.func_w(t)
 
@@ -595,21 +626,21 @@ class Obstacle:
                     else:
                         self.th_r = [self.th_r[i]+dt*self.w[i] for i in range(self.d)]  #update orientation/attitude
                     self.compute_R() # Update rotation matrix
-                
+
                 self.draw_obstacle()
-            
+
 
     def draw_ellipsoid(self, *args, **kwargs):
         # TODO remove
         warnings.warn("<<draw_ellipsoid>> has been renamed <<draw_obstacle>>")
         abort()
         # sys.exit(0)
-        
+
     def draw_obstacle(self, numPoints=20, a_temp = [0,0], draw_sfObs = False):
         if self.d == 2:
             theta = np.linspace(-pi,pi, num=numPoints)
             resolution = numPoints # Resolution of drawing #points
-            
+
         else:
             numPoints = [numPoints, ceil(numPoints/2)]
             theta, phi = np.meshgrid(np.linspace(-pi,pi, num=numPoints[0]),np.linspace(-pi/2,pi/2,num=numPoints[1]) ) #
@@ -617,7 +648,7 @@ class Obstacle:
             resolution = numPoints # Resolution of drawing #points
             theta = theta.T
             phi = phi.T
-        
+
         # For an arbitrary shap, the next two lines are used to find the shape segment
         if hasattr(self,'partition'):
             warnings.warn('Warning - partition no finished implementing')
@@ -631,13 +662,13 @@ class Obstacle:
             a = self.a
         else:
             a = a_temp
-            
+
         p = self.p[:]
 
         R = np.array(self.rotMatrix)
 
         x_obs = np.zeros((self.d, numPoints))
-        
+
         if self.d == 2:
             x_obs[0,:] = a[0]*np.cos(theta)
             x_obs[1,:] = np.copysign(a[1], theta)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))
@@ -645,32 +676,32 @@ class Obstacle:
             x_obs[0,:] = (a[0]*np.cos(phi)*np.cos(theta)).reshape((1,-1))
             x_obs[1,:] = (a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))).reshape((1,-1))
             x_obs[2,:] = (a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) ).reshape((1,-1))
-        
+
         x_obs_sf = np.zeros((self.d,numPoints))
         if not hasattr(self, 'sf'):
             self.sf = 1
-            
+
         if type(self.sf) == int or type(self.sf) == float:
             x_obs_sf = R @ (self.sf*x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
         else:
-            x_obs_sf = R @ (x_obs*np.tile(self.sf,(1,numPoints))) + np.tile(self.center_position, (numPoints,1)).T 
+            x_obs_sf = R @ (x_obs*np.tile(self.sf,(1,numPoints))) + np.tile(self.center_position, (numPoints,1)).T
 
         x_obs = R @ x_obs + np.tile(np.array([self.center_position]).T,(1,numPoints))
-        
+
         if sum(a_temp) == 0:
             self.x_obs = x_obs.T.tolist()
             self.x_obs_sf = x_obs_sf.T.tolist()
         else:
              return x_obs_sf
-         
+
     def compute_R(self):
         # TODO - replace with quaternions
-        
+
         # Compute the rotation matrix in 2D and 3D
         if self.orientation == 0:
             self.rotMatrix = np.eye(self.dim)
             return
-        
+
         # rotating the query point into the obstacle frame of reference
         if self.dim==2:
             self.rotMatrix = np.array([[cos(self.orientation), -sin(self.orientation)],
@@ -692,10 +723,10 @@ class Obstacle:
         else:
             warnings.warn('rotation not yet defined in dimensions d > 3 !')
             self.rotMatrix = np.eye(self.dim)
-    
+
     def obs_check_collision(self, ):
         print('TODO: check class')
-        
+
 
 
 class Ellipse(Obstacle):
@@ -707,9 +738,9 @@ class Polygon(Obstacle):
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
     # def __init_pose__():
     # def __init_obstacle(*args, **kwargs):
-        
+
         # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
-        
+
         # self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
 
@@ -717,7 +748,7 @@ class Polygon(Obstacle):
             self.edge_points = edge_points
         else:
             self.edge_points = np.array(edge_points)
-            
+
         if type(center_position)==type(None):
             self.center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
         else:
@@ -735,16 +766,16 @@ class Polygon(Obstacle):
         self.sf = sf
 
         self.absolut_margin = absolut_margin
-        
+
         self.rotMatrix = []
         self.compute_R() # Compute Rotation Matrix
-        
+
         self.resolution = 0 #Resolution of drawing
-        
+
         self.hull_edge = np.copy(self.edge_points) # TODO: what if point outside?
 
         self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance()
-        
+
         # TODO add margin & rename
         # self.x_obs = np.zeros((self.edge_points.shape)).T
         # for ii in range(self.edge_points.shape[1]):
@@ -761,7 +792,7 @@ class Polygon(Obstacle):
         # Trees of stars
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
-        
+
         if sum(np.abs(xd)) or w or self.timeVariant:
             # Dynamic simulation - assign varibales:
             self.x_start = x_start
@@ -770,7 +801,7 @@ class Polygon(Obstacle):
         else:
             self.x_start = 0
             self.x_end = 0
-            
+
         self.w = w # Rotational velocity
         self.xd = xd #
 
@@ -783,10 +814,10 @@ class Polygon(Obstacle):
     def calculate_normalVectorAndDistance(self, edge_points=None):
         if type(edge_points)==type(None):
             edge_points = self.edge_points
-            
+
         normal_vector = np.zeros(edge_points.shape)
         normalDistance2center = np.zeros(edge_points.shape[1])
-        
+
         for ii in range(normal_vector.shape[1]):
             normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]]
                                          - edge_points[:,ii])
@@ -795,36 +826,36 @@ class Polygon(Obstacle):
                                                       -normal_vector[0, ii],])
             else:
                 warnings.warn("Implement for d>2.")
-        
+
             normalDistance2center[ii] = normal_vector[:, ii].T @ edge_points[:, ii]
 
             if normalDistance2center[ii] < 0:
                 normal_vector[:, ii] = (-1) * normal_vector[:, ii]
                 normalDistance2center[ii] = (-1)*normalDistance2center[ii]
-                
+
         # Normalize
         normal_vector /= np.tile(LA.norm(normal_vector, axis=0), (self.dim,1))
-        
+
         return normal_vector, normalDistance2center
 
 
     def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None):
         num_edges = self.edge_points.shape[1]
-        
+
         if not type(numPoints)==type(None):
             n_curve_points = int(np.ceil(numPoints/(num_edges+1)) )
             # warnings.warn("Remove numPoints from function argument.")
-        
+
         self.bounday_points = np.hstack((self.edge_points,
                                          np.reshape(self.edge_points[:,0],(self.dim,1))))
-        
+
         for pp in range(self.edge_points.shape[1]):
             self.bounday_points[:,pp] = self.rotMatrix @ self.bounday_points[:, pp] + np.array([self.center_position])
-        
+
         self.bounday_points[:, -1]  = self.bounday_points[:, 0]
 
         angles = np.linspace(0, 2*pi, num_edges*n_curve_points+1)
-        
+
         obs_margin_cirlce = self.absolut_margin* np.vstack((np.cos(angles),
                                                             np.sin(angles)))
 
@@ -839,15 +870,15 @@ class Polygon(Obstacle):
         # TODO rename more intuitively
         self.x_obs = self.bounday_points.T # Surface points
         self.x_obs_sf = x_obs_sf.T # Margin points
-        
-    
+
+
     def get_gamma(self, position, in_global_frame=False, norm_order=2, gamma_type="proportional"):
         if in_global_frame:
             position = self.transform_global2relative(position)
-            
+
         if not type(position)==np.ndarray:
             position = np.array(position)
-            
+
         if gamma_type=="proportional" or self.is_boundary:
         # TODO extend rule to include points with Gamma < 1 for both cases
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
@@ -858,7 +889,7 @@ class Polygon(Obstacle):
                 if self.is_boundary:
                     return sys.float_info.max
                 else:
-                    return 0 # 
+                    return 0 #
 
             reference_dir = position / mag_position
 
@@ -875,7 +906,7 @@ class Polygon(Obstacle):
 
             if self.is_boundary:
                 Gamma = 1/Gamma
-                
+
         else:
             distances2plane = self.get_distance_to_hullEdge(position)
 
@@ -887,7 +918,7 @@ class Polygon(Obstacle):
             Gamma = 1 + delta_Gamma / normalization_factor
 
         return Gamma
-        
+
         # for ii in np.arange(self.edge_points.shape[1]):
         #     reference_line = {"point_start":[0,0],
         #                       "point_end":position}
@@ -896,10 +927,10 @@ class Polygon(Obstacle):
         #         ii_end = ii
         #     else:
         #         ii_end = 0
-                
+
         #     tangent_line = {"point_start":self.edge_points[:,ii],
         #                     "point_end":self.edge_points[:,(ii+1)%self.edge_points.shape[1]]}
-            
+
         #     ind_intersect, dist_intersect = self.are_lines_intersecting(reference_line, tangent_line)
         #     if ind_intersect:
         #         return (LA.norm(position))/dist_intersect
@@ -919,7 +950,7 @@ class Polygon(Obstacle):
             else:
                 return 0 #
 
-        
+
         if self.is_boundary:
             Gamma = self.get_gamma(position)
             temp_position = Gamma*Gamma*position
@@ -928,14 +959,14 @@ class Polygon(Obstacle):
 
         # print('temp pos', temp_position)
         # print('Gamma', self.get_gamma(position))
-            
+
         if self.is_boundary and normal_calulation_type=="direct_inverse":
             # TODO remove! // depreciated
             mag_position = LA.norm(position)
             if mag_position==0: # aligned with center, treat sepearately
                 return np.hstack((1, np.zeros(self.dim-1)))
                 # return None
-            
+
             reference_dir = position / mag_position
 
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
@@ -943,7 +974,7 @@ class Polygon(Obstacle):
             for ii in np.range(self.edge_points.shape[1])[ind_outside]:
                 # TODO - try to optimze
                 surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]]
-                               - self.edge_points[:, ii]) 
+                               - self.edge_points[:, ii])
 
                 # vec_tan*a + edge_point = r*b + 0
                 # [position vec_tan] [b -a] = edge_point
@@ -951,7 +982,7 @@ class Polygon(Obstacle):
 
                 is_point_inside = is_point_inside & (dist2hull[ii] < mag_position)
             weights = self.get_distance_weight(dist2hull-mag_position)
-            
+
         if self.is_boundary and False:
             # Reverse system
             mag_edge_point = LA.norm(self.edge_points, axis=0)
@@ -960,7 +991,7 @@ class Polygon(Obstacle):
             mag_position = LA.norm(pos1ition)
             if mag_position==0: #non-zero
                 return np.ones(self.dim)/self.dim # non-singular value
-            
+
             temp_position = position/(mag_position*mag_position)
             distances2plane = self.get_distance_to_hullEdge(temp_position, temp_edge_points)
         else:
@@ -973,7 +1004,7 @@ class Polygon(Obstacle):
             ind_outside = (distances2plane < 0)
         else:
             ind_outside = (distances2plane > 0)
-            
+
         if True:
             if not np.sum(ind_outside) : # zero value
                 # TODO solver in a more proper way
@@ -984,10 +1015,10 @@ class Polygon(Obstacle):
 
             distance2plane = ind_outside*np.abs(distances2plane)
             angle2hull = np.ones(ind_outside.shape)*pi
-            
+
             for ii in np.arange(temp_edge_points.shape[1])[ind_outside]:
                 # TODO - More complex for dimensiosn>2
-                
+
                 # Calculate distance to agent-position
                 dir_tangent = (temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
                 position2edge = temp_position - temp_edge_points[:, ii]
@@ -1032,12 +1063,12 @@ class Polygon(Obstacle):
 
             # Mirror along position vector [back to original frame]
             normal_vector = normal_partPerpendicular2positionVec - normal_partParallel2positionVec
-             
+
         if normalize:
             normal_vector = normal_vector/LA.norm(normal_vector)
 
         # import pdb; pdb.set_trace() ## DEBUG ##
-            
+
         if False:
             # self.draw_reference_hull(normal_vector, position)
             pos_abs = self.transform_relative2global(position)
@@ -1051,7 +1082,7 @@ class Polygon(Obstacle):
 
             plt.ion()
             plt.show()
-            
+
         return normal_vector
 
 
@@ -1063,14 +1094,14 @@ class Cuboid(Polygon):
         self.axes_length = np.array(axes_length)
 
         # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
-        
+
         # self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
 
         # Obstacle attitude
         self.center_position = np.array(center_position) # new name for future version
         self.center_position = center_position # new name for future version
-        
+
         self.orientation = orientation
         self.th_r = orientation
 
@@ -1081,10 +1112,10 @@ class Cuboid(Polygon):
         self.sf = sf
 
         self.absolut_margin = absolut_margin
-        
+
         self.rotMatrix = []
         self.compute_R() # Compute Rotation Matrix
-        
+
         self.resolution = 0 #Resolution of drawing
 
         self.edge_points = np.zeros((self.dim, 4))
@@ -1092,11 +1123,11 @@ class Cuboid(Polygon):
         self.edge_points[:,1] = self.axes_length/2.0*np.array([-1,1])
         self.edge_points[:,2] = self.axes_length/2.0*np.array([-1,-1])
         self.edge_points[:,3] = self.axes_length/2.0*np.array([1,-1])
-        
+
         self.hull_edge = np.copy(self.edge_points) # TODO: what if point outside?
 
         self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance()
-        
+
         # TODO add margin & rename
         # self.x_obs = np.zeros((self.edge_points.shape)).T
         # for ii in range(self.edge_points.shape[1]):
@@ -1107,14 +1138,14 @@ class Cuboid(Polygon):
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-            
+
         else:
             self.always_moving = always_moving
 
         # Trees of stars
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
-        
+
         if sum(np.abs(xd)) or w or self.timeVariant:
             # Dynamic simulation - assign varibales:
             self.x_start = x_start
@@ -1123,7 +1154,7 @@ class Cuboid(Polygon):
         else:
             self.x_start = 0
             self.x_end = 0
-            
+
         self.w = w # Rotational velocity
         self.xd = xd #
 
@@ -1133,7 +1164,7 @@ class Cuboid(Polygon):
         self.reference_point_is_inside = True
 
         self.is_boundary = is_boundary
-        
+
 
 class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4, orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, axes_length=[1,1], a=None, center_position=[0,0],  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
@@ -1141,19 +1172,19 @@ class StarshapedFlower(Obstacle):
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
     # def __init_pose__():
     # def __init_obstacle(*args, **kwargs):
-        
+
         # Leave at the moment for backwards compatibility
         self.axes_length = np.array(axes_length)
 
         # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
-        
+
         # self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
 
         # Obstacle attitude
         self.center_position = np.array(center_position) # new name for future version
         self.center_position = center_position # new name for future version
-        
+
         self.orientation = orientation
         self.th_r = orientation
 
@@ -1164,12 +1195,12 @@ class StarshapedFlower(Obstacle):
         self.sf = sf
 
         self.absolut_margin = absolut_margin
-        
+
         self.rotMatrix = []
         self.compute_R() # Compute Rotation Matrix
-        
+
         self.resolution = 0 #Resolution of drawing
-        
+
         # Object Specific Paramters
         self.radius_magnitude=radius_magnitude
         self.radius_mean=radius_mean
@@ -1186,7 +1217,7 @@ class StarshapedFlower(Obstacle):
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-            
+
         else:
             self.always_moving = always_moving
 
@@ -1194,7 +1225,7 @@ class StarshapedFlower(Obstacle):
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
 
-        
+
         if sum(np.abs(xd)) or w or self.timeVariant:
             # Dynamic simulation - assign varibales:
             self.x_start = x_start
@@ -1203,7 +1234,7 @@ class StarshapedFlower(Obstacle):
         else:
             self.x_start = 0
             self.x_end = 0
-            
+
         self.w = w # Rotational velocity
         self.xd = xd #
 
@@ -1222,7 +1253,7 @@ class StarshapedFlower(Obstacle):
 
     def get_radiusDerivative_of_angle(self, angle):
         return -self.radius_magnitude*self.number_of_edges*np.sin((angle)*self.number_of_edges)
-        
+
     def draw_obstacle(self, include_margin=False, n_curve_points=100, numPoints=None):
         # warnings.warn("Remove numPoints from function argument.")
 
@@ -1246,7 +1277,7 @@ class StarshapedFlower(Obstacle):
         self.x_obs = self.x_obs.T
         self.x_obs_sf = self.x_obs_sf.T
 
-    
+
     def get_gamma(self, position, in_global_frame=False, norm_order=2):
         if not type(position)==np.ndarray:
             position = np.array(position)
@@ -1271,25 +1302,25 @@ class StarshapedFlower(Obstacle):
             Gamma = 1/Gamma
 
         return Gamma
-    
+
 
     def get_normal_direction(self, position, in_global_frame=False, normalize=True):
         if in_global_frame:
             position = self.transform_global2relative(position)
-            
+
         mag_position = LA.norm(position)
         if mag_position==0:
             return self.ones(self.dim)/self.dim # just return one direction
-        
+
         direction = np.arctan2(position[1], position[0])
         derivative_radius_of_angle = self.get_radiusDerivative_of_angle(direction)
-        
+
         radius = self.get_radius_of_angle(direction)
 
         normal_vector = np.array(([
             derivative_radius_of_angle*np.sin(direction) + radius*np.cos(direction),
             - derivative_radius_of_angle*np.cos(direction) + radius*np.sin(direction)]))
-                                   
+
         if False:
             # self.draw_reference_hull(normal_vector, position)
             pos_abs = self.transform_relative2global(position)
@@ -1303,4 +1334,3 @@ class StarshapedFlower(Obstacle):
             plt.show()
 
         return normal_vector
-
