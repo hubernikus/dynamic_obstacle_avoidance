@@ -67,7 +67,6 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     # Rotation matrix
     R = np.zeros((d,d,N_obs))
 
-
     for n in range(N_obs):
         # Move the position into the obstacle frame of reference
         if obs[n].th_r: # Nonzero value
@@ -77,16 +76,17 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
 
         # Move to obstacle centered frame
         x_t = R[:,:,n].T @ (x-obs[n].center_position)
+
         E[:,:,n], D[:,:,n], Gamma[n], E_orth[:,:,n] = compute_modulation_matrix(x_t, obs[n], R[:,:,n])
-        
+
+            
     if N_attr:
         d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
         weight = compute_weights(np.hstack((Gamma, [d_a])), N_obs+N_attr)
-
     else:
         weight = compute_weights(Gamma, N_obs)
+    
     xd_obs = np.zeros((d))
-
     
     for n in range(N_obs):
         if d==2:
@@ -98,7 +98,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
         else:
             warnings.warn('NOT implemented for d={}'.format(d))
 
-        #the exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
+        #The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
         exp_weight = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
         xd_obs_n = exp_weight*(np.array(obs[n].xd) + xd_w)
 
@@ -126,13 +126,12 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     xd_hat_magnitude = np.zeros((N_obs))
     k_ds = np.zeros((d-1, N_obs))
     
-    
     for n in range(N_obs):
         # xd_R = LA.pinv(E[:,:,n]) @ R[:,:,n].T @ xd
         M[:,:,n] = R[:,:,n] @ E[:,:,n] @ D[:,:,n] @ LA.pinv(E[:,:,n]) @ R[:,:,n].T
         
         xd_hat[:,n] = M[:,:,n] @ xd # velocity modulation
-        
+
         # if False:
         if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
             repulsive_power = 5
@@ -143,7 +142,6 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
                                     repulsive_gamma)*repulsive_factor
             if obs[n].is_boundary:
                 repulsive_velocity *= (-1)
-            # print("\n\n Add repulsive vel: {} \n\n".format(repulsive_velocity))
             xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2)) 
@@ -195,15 +193,11 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     else:
         n_xd = Rf.T @ np.hstack((1, k_d ))
 
-    # import pdb; pdb.set_trace() ## DEBUG ##
     xd = xd_magnitude*n_xd.squeeze()
 
     # transforming back from object frame of reference to inertial frame of reference
     xd = xd + xd_obs
     
-
-    
-
     return xd
 
 

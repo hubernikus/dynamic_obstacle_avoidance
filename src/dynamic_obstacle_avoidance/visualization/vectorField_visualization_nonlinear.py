@@ -107,33 +107,35 @@ def VectorFields_nonlinear(x_range=[0,10],y_range=[0,10], point_grid=10, obs=[],
     else:
         xd_mod  = np.zeros((2,N_x,N_y))
 
-    # N_x = N_y = 1
-    # XX = np.zeros((N_x, N_y))
-    # YY = np.zeros((N_x, N_y))
+    if True: # DEBUGGING PARAGRAPH
+        # N_x = N_y = 1
+        # XX = np.zeros((N_x, N_y))
+        # YY = np.zeros((N_x, N_y))
 
-    # it_start = 0
-    # n_samples = 0
+        it_start = 0
+        n_samples = 5
 
-    # pos1 = [4.2522, -3.1422]
-    # pos2 = [4.05996, -3.08263]
+        pos1 = [0.655, 0.2633]
+        pos2 = [1.013, 0.2333]
 
-    # x_sample_range = [pos1[0], pos2[0]]
-    # y_sample_range = [pos1[1], pos2[1]]
+        x_sample_range = [pos1[0], pos2[0]]
+        y_sample_range = [pos1[1], pos2[1]]
 
-    # x_sample = np.linspace(x_sample_range[0], x_sample_range[1], n_samples)
-    # y_sample = np.linspace(y_sample_range[0], y_sample_range[1], n_samples)
+        x_sample = np.linspace(x_sample_range[0], x_sample_range[1], n_samples)
+        y_sample = np.linspace(y_sample_range[0], y_sample_range[1], n_samples)
 
-    # ii = 0
-    # for ii in range(n_samples):
-        # ix = (ii+it_start) % N_x
-        # iy = int((ii+it_start) /N_y)
-        # XX[ix, iy] = x_sample[ii]
-        # YY[ix, iy] = y_sample[ii]
+        ii = 0
+        for ii in range(n_samples):
+            ix = (ii+it_start) % N_x
+            iy = int((ii+it_start) /N_y)
+            XX[ix, iy] = x_sample[ii]
+            YY[ix, iy] = y_sample[ii]
 
     if nonlinear:
         if hirarchy:
             for ix in range(N_x):
                 for iy in range(N_y):
+                    
                     xd_mod[:,ix,iy,:], m_x[:,ix,iy,:] = obs_avoidance_nonlinear_hirarchy(np.array([XX[ix,iy],YY[ix,iy]]), dynamicalSystem, obs, attractor=xAttractor)
         else: # nonlinear, no hirarchy
             for ix in range(N_x):
@@ -279,10 +281,12 @@ def VectorFields_nonlinear(x_range=[0,10],y_range=[0,10], point_grid=10, obs=[],
                     plt.gca().add_patch(boundary_polygon)
                 
                 ax_ifd.plot(obs[n].center_position[0],obs[n].center_position[1],'k.')
-                if hasattr(obs[n], 'reference_point'):# automatic adaptation of center 
-                    ax_ifd.plot(obs[n].reference_point[0],obs[n].reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
-                    dx = 0.1
-                    ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=np.array(obs[n].reference_point)+0.08, textcoords='data', size=16, weight="bold")  #
+                if hasattr(obs[n], 'reference_point'):# automatic adaptation of center
+                    reference_point = obs[n].get_reference_point(in_global_frame=True)
+                    ax_ifd.plot(reference_point[0],
+                                reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
+                    # ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=np.array(obs[n].reference_point)+0.08, textcoords='data', size=16, weight="bold")  #
+                    ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
 
                 if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
                     col=[0.5,0,0.9]

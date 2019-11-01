@@ -2,13 +2,16 @@
 # Library for the Modulation of Linear Systems
 
 @author Lukas Huber
-
 Copyright (c) 2019 under GPU license. 
 
 '''
 
 import numpy as np
 import numpy.linalg as LA
+
+from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
@@ -18,7 +21,7 @@ import copy
 
 import sys
 
-def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limit=1.0, weight_pow=2, repulsive_gammaMargin=0.01):
+def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=True, gamma_limit=1.0, weight_pow=2, repulsive_gammaMargin=0.01):
     # Gamma_limit [float] - defines the minimum gamma, where one function take the whole value
     # TODO -- speed up for multiple obstacles, not everything needs to be safed...
 
@@ -27,8 +30,8 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
     if N_obs ==0:
         return ds_init(x), x
     
-    d = x.shape[0] #TODO remove
-    dim = x.shape[0]
+    d = position_absolut.shape[0] #TODO remove
+    dim = position_absolut.shape[0]
     Gamma = np.zeros((N_obs))
     
     max_hirarchy = 0
@@ -64,13 +67,13 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
     
     reference_points = np.zeros((d, N_obs))
 
-    x_t = np.zeros((d, N_obs))
+    position_relative = np.zeros((d, N_obs))
 
     # Radial displacement position with the first element being the original one
     m_x = np.zeros((d, max_hirarchy+2)) 
-    m_x[:,-1] = x
+    m_x[:,-1] = position_absolut
 
-    # TODO - x_t only be computated later?
+    # TODO - position_relative only be computated later?
     for n in range(N_obs):
         # rotating the query point into the obstacle frame of reference
         if obs[n].th_r: # Greater than 0
@@ -78,19 +81,18 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
         else:
             R[:,:,n] = np.eye(d)
             
-        reference_points[:,n] = np.array(obs[n].reference_point)
+        reference_points[:,n] = np.array(obs[n].get_reference_point(in_global_frame=True))
 
     Gamma_a = []
     for a in range(N_attr):
         # Eucledian distance -- other options possible
-        Gamma_a = LA.norm(x-attractor[:,a])+1
+        Gamma_a = LA.norm(position_absolut-attractor[:,a])+1
         
     weights_hirarchy = np.zeros((N_obs+N_attr, max_hirarchy+1))
     Gammas_hirarchy = np.zeros((N_obs, max_hirarchy+1))
     radius_hirarchy = np.zeros((N_obs, max_hirarchy+1)) # TODO -- remove
 
     for hh in range(max_hirarchy, -1, -1): # backward loop
-        
         ind_hirarchy = (hirarchy_array==hh)
         ind_hirarchy_low = (hirarchy_array<hh)
 
@@ -99,15 +101,15 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
         # Loop to find new DS-evaluation point
         for o in np.arange(N_obs)[ind_hirarchy]:
             # rotating the query point into the obstacle frame of reference
-            x_t[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
+            position_relative[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
 
             # TODO compute weight separately to avoid unnecessary computation
-            E[:,:,o], D[:,:,o], Gamma[o], E_orth[:,:,o] = compute_modulation_matrix(x_t[:,o],obs[o], R[:,:,o])
+            E[:,:,o], D[:,:,o], Gamma[o], E_orth[:,:,o] = compute_modulation_matrix(position_relative[:,o],obs[o], R[:,:,o])
 
         for o in np.arange(N_obs)[ind_hirarchy_low]:
             # TODO only evaluate GAMMA and not matrices
-            x_t[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
-            E_, D_, Gamma[o],E_orth_  = compute_modulation_matrix(x_t[:,o],obs[o], R[:,:,o])
+            position_relative[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
+            E_, D_, Gamma[o],E_orth_  = compute_modulation_matrix(position_relative[:,o],obs[o], R[:,:,o])
 
         Gammas_hirarchy[:,hh] = Gamma
         ind_lowEq = hirarchy_array<=hh
@@ -126,16 +128,80 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
             else:
                 directionX = np.zeros((d))
             
-            dir_p2ref =  (m_x[:,hh+1] - obs[o].reference_point)
-            rad_obs = get_radius(vec_point2ref=dir_p2ref, obs=obs[o]) # with reference point
+            vec_point2ref =  (m_x[:,hh+1] - reference_points[:,o])
+            rad_obs = get_radius(vec_point2ref=vec_point2ref, obs=obs[o]) # with reference point
 
             if obs[o].hirarchy>0:
-                dir_p2ref_parent = (m_x[:,hh+1] - obs[obs[o].ind_parent].reference_point)
-                rad_parent = get_radius(dir_p2ref_parent, obs=obs[obs[o].ind_parent])
-                maximal_displacement = np.max([LA.norm(dir_p2ref_parent)-rad_parent, 0])
+                vec_point2ref_parent = (m_x[:,hh+1] - obs[obs[o].ind_parent].get_reference_point(in_global_frame=True))
+                rad_parent = get_radius(vec_point2ref_parent, obs=obs[obs[o].ind_parent])
+                maximal_displacement = np.max([LA.norm(vec_point2ref_parent)-rad_parent, 0])
             else:
-                maximal_displacement = LA.norm(dir_p2ref)
+                maximal_displacement = LA.norm(vec_point2ref)
 
+            # import pdb; pdb.set_trace() ## DEBUG ##
+
+            # Check intersection with other obstacles!
+            # if ind_hirarchy>=1:
+                # warnings.warn("Implement differently for interconnected obstacles.")
+
+            weight_obs_product = 1
+            # weights_displacement_limit = np.zeros(N_obs)
+            angle2displacement = np.ones(N_obs)*pi
+            radius_displacement = np.ones(N_obs)*(-1)
+            
+            for pp in np.arange(N_obs)[ind_hirarchy]:
+                if pp==o:
+                    continue
+                if not isinstance(obs[pp], Ellipse):
+                    raise TypeError("Not defined (yet) for obstacle not of type Ellipse.")
+
+                # cos_angle2reference = np.arccos(-vec_point2ref, obs[pp].reference_direction-obs[o].reference_direction)
+
+                intersections = get_intersectionWithEllipse(obs[o].reference_point, -vec_point2ref, obs[pp].axes)
+                
+                if not isinstance(intersections, type(None)): # intersection exists
+                    fac_direction = (intersections[:,0]-obs[o].reference_point)/(-vec_point2ref)
+
+                    # TODO test if equal and then remove 
+                    if not fac_direction[0]==fac_direction[1]:
+                        warnings.warn("not equal. TODO - remove after debugging.")
+                        
+                    if fac_direction[0]>0:
+                        angle2displacement[pp] = 0
+                        radius_displacement[pp] = np.min(LA.norm(intersections-np.tile(obs[o].get_reference_point(in_global_frame=True)).T, axis=0))
+                        continue
+                    
+                tangents, tangent_points = get_tangents2ellipse(obs[o].get_reference_point(in_global_frame=True), obs[pp].axes)
+                # sin_tangentAndReference = np.zeros(2)
+                # for ii in range(2):
+                    # sin_tangentAndReference[ii] = np.cross(tangents[:, ii], obs[o].reference_point)
+                
+                cos_tangentAndReference = np.cross(tangents[:, ii], obs[o].get_reference_direction(m_x[:, hh+1], in_global_frame=True))
+                angles = np.arccos(cos_tangentAndReference)
+
+                if np.sum(np.abs(angles)<pi/8): # any true
+                    min_ind = np.argmin(np.abs(angles))
+                    angle2displacement[pp] = angles[min_ind]
+                    radius_displacement[pp] = LA.norm(obs[o].get_reference_point(in_global_frame=True)-tangent_points[pp])
+                else:
+                    min_ind = np.argmin(np.abs(angles))
+                
+                weight_counter_obstacle = 1 - distToRef/radius_displacement[pp]
+                slider_angle = max(0, 1-angle2displacement[pp])
+                weight_sliding = slider_angle*weight_counter_obstacle + (1-slider_angle)*1
+
+                weight_obs_product *= weight_sliding
+            #
+            # TODO REMOVE THIS (START)
+            #
+            # TODO REMOVE THIS AFTER DEBUG
+            #
+            import pdb; pdb.set_trace() ## DEBUG ##
+            
+            # weight_obs_product = 1 
+            # TODO REMOVE THIS (END)
+            
+            
             if Gamma[o] <= 1: # Any point inside the obstacle is mapped to the center
                 warnings.warn("Point inside obstacle")
                 # print("WARNING -- Point inside obstacle")
@@ -144,10 +210,10 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
                 # break
                 
             delta_r = np.min([rad_obs, maximal_displacement])
-            p = 1 # hyperparameter
-            delta_r = delta_r*(1/Gamma[o])**p
-            delta_x = delta_x + weight[o]*delta_r*directionX
-
+            power_factor = 1
+            weight_delta_r = (1/Gamma[o])**power_factor
+            delta_r = delta_r*weight_delta_r
+            delta_x = delta_x + weight[o]*weight_obs_product*delta_r*directionX
             
         m_x[:, hh] = m_x[:,hh+1]+delta_x # For each hirarchy level, there is one mean radial displacement
 
@@ -165,10 +231,10 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
     for n in range(N_obs):
         if d==2:
             xd_w = np.cross(np.hstack(([0,0], obs[n].w)),
-                            np.hstack((x-np.array(obs[n].center_position),0)))
+                            np.hstack((position_absolut-np.array(obs[n].center_position),0)))
             xd_w = xd_w[0:2]
         elif d==3:
-            xd_w = np.cross( obs[n].w, x-obs[n].center_position )
+            xd_w = np.cross( obs[n].w, position_absolut-obs[n].center_position )
         else:
             warnings.warn('NOT implemented for d={}'.format(d))
 
@@ -290,8 +356,8 @@ def obs_avoidance_nonlinear_hirarchy(x, ds_init, obs, attractor=True, gamma_limi
     if N_attr:
         for hh in range(max_hirarchy+1):
             xd = xd_list[:,hh]
-            closestAttr = np.argmin(LA.norm(np.tile(x, (N_attr,1)).T - attractor, axis=0))
-            xd_list[:,hh] = velConst_attr(x, xd, x0=attractor[:,closestAttr], velConst=2.0)
+            closestAttr = np.argmin(LA.norm(np.tile(position_absolut, (N_attr,1)).T - attractor, axis=0))
+            xd_list[:,hh] = velConst_attr(position_absolut, xd, x0=attractor[:,closestAttr], velConst=2.0)
             # print('mag vel', LA.norm(xd))
             # print('mag vel', LA.norm(xd))
 
@@ -332,3 +398,81 @@ def obs_avoidance_rungeKutta(dt, x, obs, obs_avoidance=obs_avoidance_nonlinear_h
     x = x + np.sum(np.tile(rk_fac,(dim,1))*k[:,1:],axis=1) # + O(dt^5)
  
     return x
+
+
+def get_tangents2ellipse(edge_point, axes, dim=2):
+    # TODO cut ellipse along direction
+    if not dim==2:
+        # TODO cut ellipse along direction
+        raise TypeError("Not implemented for higher dimension")
+    
+    # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+    # Solve for determinant D=0 (tangent with only one intersection point)
+    A_ =  edge_point[0]**2 - axes[0]**2
+    B_ = -2*edge_point[0]*edge_point[1]
+    C_ = edge_point[1]**2 - axes[1]**2
+    D_ = B_**2 - 4*A_*C_
+
+    m = np.zeros(2)
+
+    m[1] = (-B_ - np.sqrt(D_)) / (2*A_)
+    m[0] = (-B_ + np.sqrt(D_)) / (2*A_)
+
+    tangent_points = np.zeros((dim, 2))
+    # normal_vectors = np.zeros((dim, 2))
+    tangent_vectors = np.zeros((dim, 2))
+    # normalDistance2center = np.zeros(2)
+
+    for ii in range(2):
+        c = edge_point[1] - m[ii]*edge_point[0]
+
+        A = (axes[0]*m[ii])**2 + axes[1]**2
+        B = 2*axes[0]**2*m[ii]*c
+        # D != 0 so C not interesting
+
+        tangent_points[0, ii] = -B/(2*A)
+        tangent_points[1, ii] = m[ii]*tangent_points[0, ii] + c
+
+        tangent_vectors[:,ii] = tangent_points[:, ii]-edge_point
+        tangent_vectors[:,ii] /= LA.norm(tangent_vectors[:,ii])
+
+        # normal_vectors[:, ii] = np.array([tangent_vectors[1,ii], -tangent_vectors[0,ii]])
+                                              
+        # Check direction
+        # normalDistance2center[ii] = normal_vectors[:, ii].T.dot(edge_point)
+
+        # if (normalDistance2center[ii] < 0):
+            # normal_vectors[:, ii] = normal_vectors[:, ii]*(-1)
+            # normalDistance2center[ii] *= -1
+
+    return tangent_vectors, tangent_points
+
+
+def get_intersectionWithEllipse(edge_point, direction, axes, dim=2):
+    # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+    if direction[0]==0:
+        m = 0
+    else:
+        m = direction[1]/direction[0]
+    c = edge_point[1] - m*edge_point[0]
+
+    A = (axes[0]*m)**2 + axes[1]**2
+    B = 2*axes[0]**2*m*c
+    C = (axes[0]*c)**2 + (axes[0]*axes[1])**2
+    
+    D = B*B - 4*A*C
+
+    if D<0:
+        return None
+    
+    sqrtD = np.sqrt(D)
+
+    intersections = np.zeros((2,2))
+
+    intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
+    intersections[1,:] = intersections[0,:]*m + c
+
+    return intersections
+
+def cut_planeWithEllispoid(reference_position, axes, plane):
+    raise NotImplementedError()

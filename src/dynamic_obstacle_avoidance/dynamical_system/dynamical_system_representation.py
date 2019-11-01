@@ -117,3 +117,25 @@ def linearDS_constVel(x, x_attr=None, const_vel=2.0, A=None, x0=None):
     
     return xd.reshape(x_shape)
 
+    
+def velConst_attr(x, vel, x0=False, velConst=6, distSlow=0.5):
+    # change initial value for n dimensions
+    # TODO -- constant velocity // maximum velocity
+    if type(x0)==bool:
+        dim = np.array(x).shape[0]
+        x0 = np.zeros(dim)
+        
+    delta_x = x0-x
+    dist_mag = np.sqrt(np.sum(delta_x**2))
+    if dist_mag: # nonzero value
+        new_mag = np.min([velConst, dist_mag/distSlow*velConst])
+
+
+    vel_mag = np.sqrt(np.sum(vel**2))
+    if vel_mag:
+        vel = vel/vel_mag*new_mag
+    
+    return vel
+
+
+

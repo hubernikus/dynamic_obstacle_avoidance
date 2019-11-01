@@ -18,9 +18,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 
 ########################################################################
 # Chose the option you want to run as a number in the option list (integer from -2 to 10)
-options = [-4]
+options = [-6]
 
-N_resol = 100
+N_resol = 20
 
 saveFigures=False
 
@@ -29,6 +29,19 @@ saveFigures=False
 def main(options=[0], N_resol=100, saveFigures=False):
     for option in options:
         obs = [] # create empty obstacle list
+        if option==-6:
+            x_lim = [-3,3]
+            y_lim = [-0.1,5]
+            
+            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[0, 1.5], th_r=0, w=10, sf=1, xd=[0,0]))
+            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[1, 1.5], th_r=0, w=10, sf=1, xd=[0,0]))
+            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[-0.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
+            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[1.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
+
+            xAttractor = [0., 0]
+            
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_avoidanceCube', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
+
         if option==-5:
             x_lim = [-3,6.1]
             y_lim = [-5,5]
@@ -501,10 +514,8 @@ def main(options=[0], N_resol=100, saveFigures=False):
             if saveFigures:
                 plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine_pres_colMap' + '.eps', bbox_inches='tight')
 
-
-    
-
-if __name__==("__main__"):
+print('name', __name__)    
+if (str(__name__)=="__main__"):
     if len(sys.argv) > 1:
         options = sys.argv[1]
 

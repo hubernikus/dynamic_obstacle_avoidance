@@ -15,6 +15,112 @@ import warnings
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
+import matplotlib.pyplot as plt
+
+def get_orthogonal_basis(vector, normalize=False):
+    if not type(vector) == np.ndarray:
+        vector = np.array(vector)
+
+    if normalize:
+        v_norm = LA.norm(vector)
+        if v_norm:
+            vector = vector / v_norm
+
+    dim = vector.shape[0]
+
+    Basis_Matrix = np.zeros((dim, dim))
+
+    if dim == 2:
+        Basis_Matrix[:, 0] = vector
+        Basis_Matrix[:, 1] = np.array([Basis_Matrix[1, 0],
+                                       -Basis_Matrix[0, 0]])
+
+    if dim > 2:
+        warnings.warn("Implement higher dimensionality than d={}".format(dim))
+
+    return Basis_Matrix
+
+
+def get_directional_weighted_sum(reference_direction, directions, weights, normalize=True, normalize_reference=True, obs=None, position=[]):
+    # TODO remove obs and position
+    # Move to different file
+    ind_nonzero = (weights>0)
+
+    reference_direction = np.copy(reference_direction)
+    directions = directions[:, ind_nonzero]
+    weights = weights[ind_nonzero]
+
+    # TODO remove obs from arguments after debugging
+    n_directions = weights.shape[0]
+    if n_directions<=1:
+        return directions[:, 0]
+
+    dim = np.array(reference_direction).shape[0]
+
+    # Create copy to avoid changing initial values
+    if False and not isinstance(obs, type(None)):
+        ref_abs = obs.transform_relative2global_dir(reference_direction)
+
+        position = obs.transform_relative2global(reference_direction)
+        plt.quiver(position[0], position[1], ref_abs[0], ref_abs[1], color='g', label='Reference')
+
+        dir_abs = np.zeros((dim, n_directions))
+        for ii in range(n_directions):
+            dir_abs[:, ii] = obs.transform_relative2global_dir(directions[:,ii])
+            plt.quiver(position[0], position[1], dir_abs[0,ii], dir_abs[1,ii], color='b', label='Normal')
+
+    if normalize_reference:
+        norm_refDir = LA.norm(reference_direction)
+        if norm_refDir: # nonzero
+            reference_direction /= norm_refDir
+
+     # TODO - higher dimensions
+    if normalize:
+        norm_dir = LA.norm(directions, axis=0)
+        ind_nonzero = (norm_dir>0)
+        directions[:,ind_nonzero] = directions[:,ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
+
+    OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
+
+    directions_referenceSpace = np.zeros(np.shape(directions))
+    for ii in range(np.array(directions).shape[1]):
+        directions_referenceSpace[:,ii] = OrthogonalBasisMatrix.T.dot( directions[:,ii])
+
+    directions_directionSpace = directions_referenceSpace[1:, :]
+
+    norm_dirSpace = LA.norm(directions_directionSpace, axis=0)
+    ind_nonzero = (norm_dirSpace > 0)
+
+    directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
+
+    # Do not check cosinus, since normalization happened
+    # TODO check why low, and remove
+
+    cos_directions = directions_referenceSpace[0,:]
+    if np.sum(cos_directions > 1) or np.sum(cos_directions < -1):
+        cos_directions = np.min(np.vstack((cos_directions, np.ones(n_directions))), axis=0)
+        cos_directions = np.max(np.vstack((cos_directions, -np.ones(n_directions))), axis=0)
+        warnings.warn("Cosinus value out of bound.")
+
+    directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
+    direction_dirSpace_weightedSum = np.sum(directions_directionSpace*
+                                            np.tile(weights, (dim-1, 1)), axis=1)
+
+    norm_directionSpace_weightedSum = LA.norm(direction_dirSpace_weightedSum)
+    if norm_directionSpace_weightedSum:
+        direction_weightedSum = (OrthogonalBasisMatrix.dot(
+                                  np.hstack((np.cos(norm_directionSpace_weightedSum),
+                                              np.sin(norm_directionSpace_weightedSum) / norm_directionSpace_weightedSum * direction_dirSpace_weightedSum)) ))
+    else:
+        direction_weightedSum = OrthogonalBasisMatrix[:,0]
+
+    if False and not isinstance(obs, type(None)):
+        wei_abs = obs.transform_relative2global_dir(direction_weightedSum)
+        plt.quiver(position[0], position[1], wei_abs[0], wei_abs[1], color='r', label='mean')
+        plt.legend()
+        
+    return direction_weightedSum
+
 
 def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05):
     # The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
@@ -39,7 +145,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
         rho = 1
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
-    
+
     normal_vector = obs.get_normal_direction(x_t, in_global_frame=False)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=False)
 
@@ -470,33 +576,11 @@ def obs_check_collision(points, obs_list=[]):
     return noColl
 
 
-def linearAttractor(x, x0=False, k_factor=1.0):
-    x = np.array(x)
+# def linearAttractor(x, x0=False, k_factor=1.0):
+#     x = np.array(x)
     
-    if type(x0)==bool:
-        x0 = np.zeros(x.shape)
+#     if type(x0)==bool:
+#         x0 = np.zeros(x.shape)
         
-    return (x0-x)*k_factor
+#     return (x0-x)*k_factor
     
-    
-def velConst_attr(x, vel, x0=False, velConst=6, distSlow=0.5):
-    # change initial value for n dimensions
-    # TODO -- constant velocity // maximum velocity
-    if type(x0)==bool:
-        dim = np.array(x).shape[0]
-        x0 = np.zeros(dim)
-        
-    delta_x = x0-x
-    dist_mag = np.sqrt(np.sum(delta_x**2))
-    if dist_mag: # nonzero value
-        new_mag = np.min([velConst, dist_mag/distSlow*velConst])
-
-
-    vel_mag = np.sqrt(np.sum(vel**2))
-    if vel_mag:
-        vel = vel/vel_mag*new_mag
-    
-    return vel
-
-
-
