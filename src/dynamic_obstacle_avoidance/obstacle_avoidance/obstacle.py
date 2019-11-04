@@ -32,9 +32,9 @@ def angle_difference_directional(angle1, angle2):
     Note: angle1-angle2 (non-commutative)
     '''
     angle_diff = (angle1-angle2)
-    if angle_diff > pi:
+    while angle_diff > pi:
         angle_diff = angle_diff-2*pi
-    elif angle_diff <= -pi:
+    while angle_diff <= -pi:
         angle_diff = angle_diff+2*pi
     return angle_diff
 
