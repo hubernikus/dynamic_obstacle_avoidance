@@ -14,6 +14,7 @@ from math import cos, sin
 import warnings
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 import matplotlib.pyplot as plt
 
@@ -583,4 +584,90 @@ def obs_check_collision(points, obs_list=[]):
 #         x0 = np.zeros(x.shape)
         
 #     return (x0-x)*k_factor
+
+
+
+def get_tangents2ellipse(edge_point, axes, dim=2):
+    # TODO cut ellipse along direction
+    if not dim==2:
+        # TODO cut ellipse along direction
+        raise TypeError("Not implemented for higher dimension")
+    
+    # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+    # Solve for determinant D=0 (tangent with only one intersection point)
+    A_ =  edge_point[0]**2 - axes[0]**2
+    B_ = -2*edge_point[0]*edge_point[1]
+    C_ = edge_point[1]**2 - axes[1]**2
+    D_ = B_**2 - 4*A_*C_
+
+    m = np.zeros(2)
+
+    m[1] = (-B_ - np.sqrt(D_)) / (2*A_)
+    m[0] = (-B_ + np.sqrt(D_)) / (2*A_)
+
+    tangent_points = np.zeros((dim, 2))
+    # normal_vectors = np.zeros((dim, 2))
+    tangent_vectors = np.zeros((dim, 2))
+    # normalDistance2center = np.zeros(2)
+    tangent_angles = np.zeros(2)
+
+    for ii in range(2):
+        c = edge_point[1] - m[ii]*edge_point[0]
+
+        A = (axes[0]*m[ii])**2 + axes[1]**2
+        B = 2*axes[0]**2*m[ii]*c
+        # D != 0 so C not interesting
+
+        tangent_points[0, ii] = -B/(2*A)
+        tangent_points[1, ii] = m[ii]*tangent_points[0, ii] + c
+
+        tangent_vectors[:,ii] = tangent_points[:, ii]-edge_point
+        tangent_vectors[:,ii] /= LA.norm(tangent_vectors[:,ii])
+
+        # normal_vectors[:, ii] = np.array([tangent_vectors[1,ii], -tangent_vectors[0,ii]])
+                                              
+        # Check direction
+        # normalDistance2center[ii] = normal_vectors[:, ii].T.dot(edge_point)
+
+        # if (normalDistance2center[ii] < 0):
+            # normal_vectors[:, ii] = normal_vectors[:, ii]*(-1)
+            # normalDistance2center[ii] *= -1
+        tangent_angles[ii] = np.arctan2(tangent_points[1,ii], tangent_points[0,ii])
+
+    if angle_difference_directional(tangent_angles[1], tangent_angles[0]) < 0:
+        tangent_points = np.flip(tangent_points, axis=1)
+        tangent_vectors = np.flip(tangent_vectors, axis=1)
+        
+    return tangent_vectors, tangent_points
+
+
+def get_intersectionWithEllipse(edge_point, direction, axes, dim=2):
+    # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+    if direction[0]==0:
+        m = 0
+    else:
+        m = direction[1]/direction[0]
+    c = edge_point[1] - m*edge_point[0]
+
+    A = (axes[0]*m)**2 + axes[1]**2
+    B = 2*axes[0]**2*m*c
+    C = (axes[0]*c)**2 + (axes[0]*axes[1])**2
+    
+    D = B*B - 4*A*C
+
+    if D<0:
+        return None
+    
+    sqrtD = np.sqrt(D)
+
+    intersections = np.zeros((2,2))
+
+    intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
+    intersections[1,:] = intersections[0,:]*m + c
+
+    return intersections
+
+def cut_planeWithEllispoid(reference_position, axes, plane):
+    raise NotImplementedError()
+
     
