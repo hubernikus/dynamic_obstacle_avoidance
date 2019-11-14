@@ -128,8 +128,10 @@ def dynamic_center_3d(obs, intersection_obs, marg_dynCenter=1.3, N_distStep=3, r
             
             # get corresponding weights
             weights = np.zeros((2,N_closest))
-            weights[0,:] = compute_weights(minDist[0,:], distMeas_min=0)
-            weights[1,:] = compute_weights(minDist[1,:], distMeas_min=0)
+            # weights[0,:] = compute_weights(minDist[0,:], distMeas_min=0)
+            # weights[1,:] = compute_weights(minDist[1,:], distMeas_min=0)
+            weights[0,:] = compute_weights(minDist[0,:], distMeas_lowerLimit=0)
+            weights[1,:] = compute_weights(minDist[1,:], distMeas_lowerLimit=0)
             
             # Desired Gamma in (0,1) to be on obstacle
             #Gamma_dynCenter = max([1-delta_dist/(ref_dist-dist_contact),0])

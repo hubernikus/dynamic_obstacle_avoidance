@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+ #!/usr/bin/python3
 
 '''
 @date 2019-10-15
@@ -13,108 +13,66 @@ import warnings, sys
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 
+
 class Polygon(Obstacle):
-    def __init__(self,  edge_points,
-                 # orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, center_position=None,  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1,
+    '''
+    Star Shaped Polygons
+    '''
+    def __init__(self,  edge_points, ind_tiles=None,
                  *args, **kwargs):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-
-        super().__init__(*args, center_position=self.center_position, **kwargs)
-        
-        # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
-        # self.sigma = sigma
-
-        if isinstance(edge_points, np.ndarray):
-            self.edge_points = edge_points
-        else:
-            self.edge_points = np.array(edge_points)
+        self.edge_points = np.array(edge_points)
 
         if type(center_position)==type(None):
-            self.center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+            center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
         else:
-            self.center_position = np.array(center_position) # new name for future version
+            center_position = np.array(center_position) # new name for future version
 
         self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
 
-        # self.tail_effect = tail_effect # Modulation if moving away behind obstacle
-
-        # self.orientation = orientation
-        # self.th_r = orientation # TODO remove
-
-        # self.dim = self.center_position.shape[0] # Dimension of space [TODO make globale]
-        # self.d = self.dim
-
-        # # TODO: REMOVE / RENAME THESE
-        # self.sigma = sigma
-        # self.sf = sf
-
-        # self.absolut_margin = absolut_margin
-        # self.rotMatrix = []
-        # self.compute_R() # Compute Rotation Matrix
-        # self.resolution = 0 #Resolution of drawing
-        # self.hull_edge = np.copy(self.edge_points) # TODO: what if point outside?
-        # self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance()
-
-        # # TODO add margin & rename
-        # # self.x_obs = np.zeros((self.edge_points.shape)).T
-        # # for ii in range(self.edge_points.shape[1]):
-        #     # self.x_obs[ii, :] = self.rotMatrix @ self.edge_points[:,0] + self.obs
-        # # self.x_obs_sf = self.edge_points.T
-
-        # self.timeVariant = timeVariant
-        # if self.timeVariant:
-        #     self.func_xd = 0
-        #     self.func_w = 0
-        # else:
-        #     self.always_moving = always_moving
-
-        # # Trees of stars
-        # self.hirarchy = hirarchy
-        # self.ind_parent = ind_parent
-
-        # if sum(np.abs(xd)) or w or self.timeVariant:
-        #     # Dynamic simulation - assign varibales:
-        #     self.x_start = x_start
-        #     self.x_end = x_end
-        #     self.always_moving = False
-        # else:
-        #     self.x_start = 0
-        #     self.x_end = 0
-
-        # self.w = w # Rotational velocity
-        # self.xd = xd #
-
-        # # Reference point // Dyanmic center
-        # self.reference_point = np.zeros(self.dim) # At center
-        # self.reference_point_is_inside = True
-
-        # self.is_boundary = is_boundary
+        if self.dim==2:
+            self.n_planes = self.edge_points.shape[1]
+            
+        if self.dim==3:
+            self.ind_tiles = self.ind_tiles
+            self.n_planes = self.ind_tiles.shape[0]
         
-        # # self.special_surface_ind = [] # index with special surfaces
+        super().__init__(*args, center_position=center_position, **kwargs)
 
-        # if self.dim==2:
-        #     self.n_special_surfaces_angles = 2
-        # else:
-        #     raise TypeError("Expand for higher dimensions.")
 
-        
     def calculate_normalVectorAndDistance(self, edge_points=None):
-        if type(edge_points)==type(None):
+        if isinstance(edge_points, type(None)):
             edge_points = self.edge_points
 
         normal_vector = np.zeros(edge_points.shape)
         normalDistance2center = np.zeros(edge_points.shape[1])
-
-        for ii in range(normal_vector.shape[1]):
-            normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]]
+        
+        if self.dim==2:
+            for ii in range(self.n_planes):
+                normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]]
                                          - edge_points[:,ii])
-            if self.dim==2:
                 normal_vector[:, ii] = np.array([normal_vector[1, ii],
                                                       -normal_vector[0, ii],])
-            else:
-                warnings.warn("Implement for d>2.")
+        elif self.dim==3:
+            for ii in range(self.n_planes):
+                tangent_0 = self.edge_points[:, self.ind_tiles[ii,1]] \
+                            - self.edge_points[:, self.ind_tiles[ii,0]]
+                
+                tangent_1 = self.edge_points[:, self.ind_tiles[ii,2]] \
+                            - self.edge_points[:, self.ind_tiles[ii,1]]
 
+                normal_vector[:, ii] = np.cross(tangent_0, tangent_1)
+
+                norm_mag = LA.norm(normal_vector[:, ii])
+                if norm_mag: # nonzero
+                    normal_vector[:, ii]= normal_vector[:, ii]/norm_mag
+                
+            else:
+                raise ValueError("Implement for d>3.")
+
+        
+        for ii in range(self.n_planes):
             normalDistance2center[ii] = normal_vector[:, ii].T @ edge_points[:, ii]
 
             if normalDistance2center[ii] < 0:
@@ -167,7 +125,7 @@ class Polygon(Obstacle):
             position = np.array(position)
         
         if gamma_type=="proportional":
-        # TODO extend rule to include points with Gamma < 1 for both cases
+        # TODO: extend rule to include points with Gamma < 1 for both cases
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
             is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
 
@@ -180,34 +138,39 @@ class Polygon(Obstacle):
                 
             reference_dir = position / mag_position
 
-            dist_tangents = np.zeros(4)
-            for ii in range(self.edge_points.shape[1]):
-                # Use self.are_lines_intersecting() function
-                surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
+            if self.dim==2:
+                for ii in range(self.edge_points.shape[1]):
+                    # Use self.are_lines_intersecting() function
+                    surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
 
-                #
-                matrix_ref_tang = np.vstack((reference_dir, -surface_dir)).T
-                if LA.matrix_rank(matrix_ref_tang)>1:
-                    dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii], rcond=None)[0]
-                else:
-                    dist2hull[ii] = -1
-                    dist_tangent = -1
-                dist_tangent = np.round(dist_tangent, 10)
-                is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
-                dist_tangents[ii] = dist_tangent
+                    matrix_ref_tang = np.vstack((reference_dir, -surface_dir)).T
+                    if LA.matrix_rank(matrix_ref_tang)>1:
+                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii], rcond=None)[0]
+                    else:
+                        dist2hull[ii] = -1
+                        dist_tangent = -1
+                    dist_tangent = np.round(dist_tangent, 10)
+                    is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
 
-                # if np.sum(is_intersectingSurfaceTile)==0:
-                    # SOLVE MORE CLEANLY FOR inside!
-                    # return 0.9 # value below 1
-            try:
                 Gamma = mag_position/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
-            except:
-                print('position', self.transform_relative2global(position))
-                print('dist2hull', dist2hull)
-                print('dist_tangents', dist_tangents)
-                # print('temp_position', self.transform_relative2global(position))
-                import pdb; pdb.set_trace() ## DEBUG ##
+                
+            elif self.dim==3:
+                # for ii in range(self.n_planes):
+                    # n_corners = self.ind_tiles[ii].shape[0]
+                    # for jj in range(n_corners):
+                        # edge_dir = self.edge_points[:, self.ind_tiles[ii, (jj+1)%n_corners]] \
+                                   # - self.edge_points[:, self.ind_tiles[ii,jj]] 
+                        # edge_dir = edge_dir / LA.norm(edge_dir)
+                        # point2corner = position - self.edge_points[:, self.ind_tiles[ii,jj]]
+                        # projection = edge_dir.T.dot(point2corner)
+
+                        # perpendicular_line = point2corner - projection
+                        # dist_edge = 
+                        
                 Gamma = 1
+                
+            else:
+                raise ValueError("Not defined for d=={}".format(self.dim))
                 
             if self.is_boundary:
                 Gamma = 1/Gamma
@@ -224,14 +187,8 @@ class Polygon(Obstacle):
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
 
-        if Gamma<0:
+        if Gamma<0: # DEBUGGING
             import pdb; pdb.set_trace() ## DEBUG ##
-            
-        # print('gamma', Gamma)
-        # print('position', position)
-        # print('dist2hull', dist2hull)
-        # if Gamma<0.7:
-            # import pdb; pdb.set_trace() ## DEBUG ##
             
         return Gamma
 
@@ -261,7 +218,6 @@ class Polygon(Obstacle):
         temp_edge_points = np.copy(self.edge_points)
         temp_position = np.copy(temp_position)
 
-            
         distances2plane = self.get_distance_to_hullEdge(temp_position)
 
         ind_outside = (distances2plane > 0)
@@ -269,7 +225,6 @@ class Polygon(Obstacle):
         if not np.sum(ind_outside) : # zero value
             # TODO solver in a more proper way
             return self.get_reference_direction(position)
-
 
         distance2plane = ind_outside*np.abs(distances2plane)
         angle2hull = np.ones(ind_outside.shape)*pi
@@ -336,84 +291,41 @@ class Polygon(Obstacle):
             plt.show()
 
         return normal_vector
-
-
+    
 
 class Cuboid(Polygon):
-    def __init__(self,  orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, axes_length=[1,1], a=None, center_position=[0,0],  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
-        # This class defines obstacles to modulate the DS around it
-        # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-        # Leave at the moment for backwards compatibility
+    def __init__(self,  axes_length=[1,1], *args, **kwargs):
+        '''
+        This class defines obstacles to modulate the DS around it
+        At current stage the function focuses on Ellipsoids, 
+        but can be extended to more general obstacles
+        '''
         self.axes_length = np.array(axes_length)
+        
+        dim = axes_length.shape[0] # Dimension of space
 
-        # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
+        if not dim==2:
+            raise ValueError("Cuboid not yet defined for dimensions= {}".format(dim))
 
-        # self.sigma = sigma
-        self.tail_effect = tail_effect # Modulation if moving away behind obstacle
+        edge_points = np.zeros((self.dim, 4))
+        edge_points[:,0] = self.axes_length/2.0*np.array([1,1])
+        edge_points[:,1] = self.axes_length/2.0*np.array([-1,1])
+        edge_points[:,2] = self.axes_length/2.0*np.array([-1,-1])
+        edge_points[:,3] = self.axes_length/2.0*np.array([1,-1])
+        
+        super().__init__(*args, edge_points=edge_points, **kwargs)
+        
 
-        # Obstacle attitude
-        self.center_position = np.array(center_position) # new name for future version
-        self.center_position = center_position # new name for future version
 
-        self.orientation = orientation
-        self.th_r = orientation
+class DynamicBoundariesPolygon(Polygon):
+    '''
+    Dynamic Boundary for Application in 3D with surface polygons
+    '''
+    def __init__(self, *args, **kwargs):
+        # define boundary functions
+        super().__init__(*args, **kwargs)
 
-        self.dim = len(center_position) #Dimension of space
+    # @property
+    # def 
 
-        # TODO: REMOVE THEESE
-        self.sigma = sigma
-        self.sf = sf
-
-        self.absolut_margin = absolut_margin
-
-        self.rotMatrix = []
-        self.compute_R() # Compute Rotation Matrix
-
-        self.resolution = 0 #Resolution of drawing
-
-        self.edge_points = np.zeros((self.dim, 4))
-        self.edge_points[:,0] = self.axes_length/2.0*np.array([1,1])
-        self.edge_points[:,1] = self.axes_length/2.0*np.array([-1,1])
-        self.edge_points[:,2] = self.axes_length/2.0*np.array([-1,-1])
-        self.edge_points[:,3] = self.axes_length/2.0*np.array([1,-1])
-
-        self.hull_edge = np.copy(self.edge_points) # TODO: what if point outside?
-
-        self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance()
-
-        # TODO add margin & rename
-        # self.x_obs = np.zeros((self.edge_points.shape)).T
-        # for ii in range(self.edge_points.shape[1]):
-            # self.x_obs[ii, :] = self.rotMatrix @ self.edge_points[:,0] + self.obs
-        # self.x_obs_sf = self.edge_points.T
-
-        self.timeVariant = timeVariant
-        if self.timeVariant:
-            self.func_xd = 0
-            self.func_w = 0
-
-        else:
-            self.always_moving = always_moving
-
-        # Trees of stars
-        self.hirarchy = hirarchy
-        self.ind_parent = ind_parent
-
-        if sum(np.abs(xd)) or w or self.timeVariant:
-            # Dynamic simulation - assign varibales:
-            self.x_start = x_start
-            self.x_end = x_end
-            self.always_moving = False
-        else:
-            self.x_start = 0
-            self.x_end = 0
-
-        self.w = w # Rotational velocity
-        self.xd = xd #
-
-        # Reference point // Dyanmic center
-        self.reference_point = np.zeros(self.dim) # At center
-
-        self.reference_point_is_inside = True
-
-        self.is_boundary = is_boundary
+    # @ 

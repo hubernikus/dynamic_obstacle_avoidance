@@ -1,5 +1,4 @@
 #!/USSR/bin/python3
-
 '''
 Dynamic Simulation - Obstacle Avoidance Algorithm
 
@@ -12,12 +11,16 @@ import matplotlib.pyplot as plt
 plt.ion()
 plt.close('all')
 
-
 import numpy as np
+import numpy.linalg as LA
+import copy
 import warnings
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+
+r_boundary=2
+
 
 def transform_to_directionSpace(reference_direction, directions, normalize=True):
     ind_nonzero = (weights>0)
@@ -58,7 +61,7 @@ def windup_smoothening(angle_windup, angle):
     # Make it a oneliner? lambda-function
     # Correct the integration error
     num_windups = np.round((angle_windup - angle)/(2*pi))
-    # print('num windups', num_windups)
+    
     angle_windup = 2*pi*num_windups + angle
     return angle_windup
 
@@ -88,7 +91,8 @@ def get_local_weight(r, r_ref, r_boundary=2, power_weight=1, delta_weight=0.4):
         return ((r_boundary-delta_r)/r_boundary)**(1/power_weight)
     
 def get_weighted_angular_mean(angle_weights, angle_tangents2init, init_weight=0):
-    angle_init = 0
+    # Compute in a more general manner
+    angle_init = 0 
     if not sum(angle_weights):
         return angle_init
     angle_weights = np.hstack((angle_weights, init_weight))
@@ -101,16 +105,15 @@ def get_weighted_angular_mean(angle_weights, angle_tangents2init, init_weight=0)
     if np.sum(angle_weights)<1:
         angle_weights[-1] = 1 - np.sum(angle_weights[:-1])
         
-    one_ind = (angle_weights==1)
+    one_ind = (angle_weights>=1)
     if np.sum(one_ind):
         return np.ones(np.sum(one_ind))/np.sum(one_ind)*angle_tangent2init[one_ind]
 
+    # angle_weights = angle_weights/np.sum(angle_weights)
+    angle_weights = 1.0/(1-angle_weights) - 1
     angle_weights = angle_weights/np.sum(angle_weights)
-    angle_weights = 1/(1-angle_weights) - 1
-    angle_weights = angle_weights/np.sum(angle_weights)
-    
-    # print('angle weights', angle_weights)
-    # print('angles', angle_tangents2init)
+
+    # print('weight%', angle_weights)
     angle_desired = np.sum(angle_weights*angle_tangents2init)
     
     return angle_desired
@@ -153,28 +156,60 @@ def obs_avoidance_rk4(dt, x, obs):
     return x
 
 # orientation_object=0
+case = 1
+obstacles = ObstacleContainer()
 
-obstacles = []
-obstacles.append(StarshapedFlower(orientation=-2/180*pi,
-                                  center_position=[0.4,3], radius_magnitude=1, radius_mean=2, number_of_edges=4))
-obstacles.append(StarshapedFlower(orientation=1/180*pi, radius_magnitude=1, radius_mean=2, number_of_edges=4))
+if case==0:
+    # Star-shaped obstacles
+    obstacles.append(
+        StarshapedFlower(orientation=-2/180*pi, center_position=[0.4,3],
+                         radius_magnitude=1, radius_mean=2, number_of_edges=4))
+                         
+    obstacles.append(
+        StarshapedFlower(orientation=1/180*pi, radius_magnitude=1,
+                         radius_mean=2, number_of_edges=4))
 
-for oo in range(len(obstacles)):
-    obstacles[oo].draw_obstacle()
+elif case==1:
+    # Couple of pedestrian ellipses
+    obstacles.append(Ellipse(axes_length=[0.3, 0.8]))
+    obstacles[-1].orientation = 0./180*pi
+    obstacles[-1].center_position = [1, 1]
+    
+    obstacles.append(copy.deepcopy(obstacles[0]))
+    obstacles[-1].orientation = 30./180*pi
+    obstacles[-1].center_position = [0, 2]
+
+
+    obstacles.append(copy.deepcopy(obstacles[0]))
+    obstacles[-1].orientation = 40./180*pi
+    obstacles[-1].center_position = [1, -1]
+
+    for ii in range(len(obstacles)):
+        obstacles[ii].tail_effect = True
+
+    obstacles.reset_clusters()
+    # obstacles._index_families = np.arange(1)
+    # obstacles._unique_families = np.arange(1)
 
 dim = 2
 n_steps = 1000
 
-n_points = 10
-x_range = [-2,4]
-y_range = [1.2, 2]
+n_points = 5
+x_range = [-1,4]
+y_range = [1, 4]
+# y_range = [4, 1]
 x_inits = np.vstack(([x_range[1]*np.ones(n_points),
                       np.linspace(y_range[0], y_range[1], n_points)]))
-# x_inits = np.array([[4],[1.4]])
+
+x_inits = np.array([[4],
+                    [1.0]])
 
 dt = 0.1
 
 attractor = np.array([-6.0, -1])
+    
+for oo in range(len(obstacles)):
+    obstacles[oo].draw_obstacle()
 
 fig, ax = plt.subplots()
 
@@ -197,15 +232,20 @@ for it_point in range(x_inits.shape[1]):
     ii = 0
     positions[:, ii] = x_init
 
-    set_vortex_direction = False
-    for obstacle in obstacles:
-        obstacle.properties["vortex_direction"] = 1
-        obstacle.properties["outside_influence_region"]=True
-        obstacle.properties["passed_obstacle"]=False
+    obstacles.reset_rotation_direction()
 
+    # if it_point>0:
+        # import pdb; pdb.set_trace() ## DEBUG ##
+    
+    set_vortex_direction = True
+    for obstacle in obstacles:
+        # obstacle.properties["vortex_direction"] = 0
+        # obstacle.properties["outside_influence_region"]=True
+        obstacle.properties["passed_obstacle"]=False
+        
         # obstacle.properties["vortex_direction"] = 1
         
-        
+    not_converged = True
     for ii in range(n_steps-1):
         vel_init[:, ii] = ds_init(positions[:, ii], attractor=attractor)
         
@@ -216,14 +256,14 @@ for it_point in range(x_inits.shape[1]):
         check_step = 0.1
         n_checks = np.linalg.norm(positions[:,ii]-attractor)/check_step
 
-        try:
-            check_points = np.vstack((np.linspace(positions[0,ii], attractor[0], n_checks),np.linspace(positions[1,ii], attractor[1], n_checks)))
-        except:
-            import pdb; pdb.set_trace() ## DEBUG ##
+        check_points = np.vstack((np.linspace(positions[0,ii], attractor[0], n_checks),np.linspace(positions[1,ii], attractor[1], n_checks)))
             
-
         for oo in range(len(obstacles)):
-            if ii>=1 and angle_tangent2init[ii-1, oo]*obstacles[oo].properties["vortex_direction"]>=0:
+            # if ii>=1 and angle_tangent2init[ii-1, oo]*obstacles[oo].properties["vortex_direction"]>=0:
+            (angle_tangent2init[ii-1, oo]*obstacles.get_rotation_direction(oo)>=0)
+
+                
+            if ii>=1 and angle_tangent2init[ii-1, oo]*obstacles.get_rotation_direction(oo)>=0:
                 # obstacle.properties["passed_obstacle"] = True
                 for jj in range(check_points.shape[1]):
                     
@@ -254,28 +294,36 @@ for it_point in range(x_inits.shape[1]):
             dist2center = np.linalg.norm(positions[:, ii]-obstacles[oo].global_reference_point)
             local_radius = obstacles[oo].get_radius_of_angle(ang, in_global_frame=True)
 
-            weights[oo] = get_local_weight(dist2center, local_radius)
-        
+            weights[oo] = get_local_weight(dist2center, local_radius, r_boundary=r_boundary)
+            # print('weights#{} of dist={} and radius={}: {}'.format(oo, dist2center, local_radius, weights[oo]))
+
         # Local weights calculation
         # for oo in range(len(obstacles)):
             if weights[oo] > 0:
-                if obstacles[oo].properties["outside_influence_region"]:
+                if obstacles.is_outside_influence_region(oo):
+                # if obstacles[oo].properties["outside_influence_region"]:
                     obstacle_dir = obstacles[oo].global_reference_point - attractor
                     point_dir = positions[:, ii] - attractor
 
                     if set_vortex_direction:
                         if np.cross(obstacle_dir, point_dir) > 0:
-                            obstacles[oo].properties["vortex_direction"] = 1
+                            # obstacles[oo].properties["vortex_direction"] = 1
+                            obstacles.set_rotation_direction(index=oo, value=1)
                         else:
-                            obstacles[oo].properties["vortex_direction"] = -1
+                            obstacles.set_rotation_direction(index=oo, value=-1)
+                            # obstacles[oo].properties["vortex_direction"] = -1
                 
-                tangent = tangent*obstacles[oo].properties["vortex_direction"]
+                # tangent = tangent*obstacles[oo].properties["vortex_direction"]
+                tangent = tangent*obstacles.get_rotation_direction(index=oo)
+                
                 angle_tangents_list[ii, oo] = np.arctan2(tangent[1], tangent[0])
                 
                 angle_tangent2init_ref = angle_difference_directional(angle_tangents_list[ii, oo], angle_velInit[ii])
-                angle_tangent2init_ref = angle_modulo(angle_tangent2init_ref)
                 
+                angle_tangent2init_ref = angle_modulo(angle_tangent2init_ref)
 
+                # print('angle_tangent2init_ref', angle_tangent2init_ref)
+                
                 if False:
                     plt.quiver(positions[0, ii], positions[1, ii], np.cos(angle_tangent2init_ref+angle_velInit[ii]), np.sin(angle_tangent2init_ref+angle_velInit[ii]), color='r', scale=15)
 
@@ -283,55 +331,76 @@ for it_point in range(x_inits.shape[1]):
                                np.cos(angle_tangents_list[ii, oo]),
                                np.sin(angle_tangents_list[ii, oo]), color='g', scale=15)
 
-                if obstacles[oo].properties["outside_influence_region"]:
-                    # print('angang',  angle_tangent2init[ii, oo])
-                    obstacles[oo].properties["outside_influence_region"] = False
+                if obstacles.is_outside_influence_region(oo):
+                    obstacles.set_is_outside_influence_region(oo, value=False)
+                    # obstacles[oo].properties["outside_influence_region"] = False
+                # if obstacles[oo].properties["outside_influence_region"]:
+                    # obstacles[oo].properties["outside_influence_region"] = False
 
-                    ind_nonzero = np.array(angle_tangent2init[ii-1,:], dtype=bool)
-                    if not np.sum(ind_nonzero):
-                        ind_nonzero = np.array(angle_tangent2init[ii,:], dtype=bool)
-                    angle_tangent2init[ii, oo] = angle_tangent2init_ref
-
+                    index_siblings = obstacles.get_siblings(oo)
+                    
+                    if index_siblings.shape[0] > 1:
+                        # Get the index of obstacle which have been avoided before
+                        ind_nonzero = np.array(angle_tangent2init[ii-1,index_siblings]) != 0
+                        it_nonzero = ii-1
+                        if not np.sum(ind_nonzero):
+                            ind_nonzero = np.array(angle_tangent2init[ii,index_siblings]) != 0
+                            it_nonzero = ii
+                            angle_tangent2init[ii, oo] = angle_tangent2init_ref
+                    else:
+                        ind_nonzero = []
                     
                     if np.sum(ind_nonzero):
                         # TODO - find direct neighbor ind
                         # TODO - more strategic
-                        first_ind = np.arange(ind_nonzero.shape[0])[ind_nonzero][0] 
+                        first_ind = index_siblings[ind_nonzero]
+                        # first_ind = np.arange(ind_nonzero.shape[0])[ind_nonzero][0]
 
                         referenceDirection_knownObstacle = obstacles[first_ind].get_reference_direction(positions[:,ii], in_global_frame=True)
                         referenceDirection_newObstacle = obstacles[oo].get_reference_direction(positions[:,ii], in_global_frame=True)
 
-                        
                         if np.cross(referenceDirection_newObstacle, referenceDirection_knownObstacle) >= 0:
-                            while(angle_tangent2init[ii, oo] > angle_tangent2init[ii, first_ind]):
+                            while(angle_tangent2init[ii, oo] > angle_tangent2init[it_nonzero, first_ind]):
                                 angle_tangent2init[ii, oo] -= 2*pi
                         else:
-                            while(angle_tangent2init[ii, oo] < angle_tangent2init[ii, first_ind]):
+                            while(angle_tangent2init[ii, oo] < angle_tangent2init[it_nonzero, first_ind]):
                                 angle_tangent2init[ii, oo] += 2*pi
+                                
                     # else:
-                    if False:
-                        dir_ref = obstacles[oo].get_reference_direction(positions[:,ii], in_global_frame=True)
-                        angle_ref = np.arctan2(dir_ref[1], dir_ref[0])
+                    # if False:
+                    #     dir_ref = obstacles[oo].get_reference_direction(positions[:,ii], in_global_frame=True)
+                    #     angle_ref = np.arctan2(dir_ref[1], dir_ref[0])
                         
-                        angle_ref2init = angle_difference_directional(angle_ref, angle_velInit[ii])
-                        angle_ref2init = angle_modulo(angle_ref2init)
+                    #     angle_ref2init = angle_difference_directional(angle_ref, angle_velInit[ii])
+                    #     angle_ref2init = angle_modulo(angle_ref2init)
                         
-                        if obstacles[oo].properties["vortex_direction"] ==1:
-                            while (angle_tangent2init[ii,oo] < angle_ref2init):
-                                angle_tangent2init[ii,oo]+=2*pi
-                        else:
-                            while(angle_tangent2init[ii,oo] > angle_ref2init):                                                            angle_tangent2init[ii,oo]-=2*pi
+                    #     if obstacles[oo].properties["vortex_direction"] == 1:
+                    #         while (angle_tangent2init[ii,oo] < angle_ref2init):
+                    #             angle_tangent2init[ii,oo]+=2*pi
+                    #     else:
+                    #         while(angle_tangent2init[ii,oo] > angle_ref2init):                                                            angle_tangent2init[ii,oo]-=2*pi
                 else:
                     delta_angle_tangent = angle_difference_directional(angle_tangents_list[ii, oo], angle_tangents_list[ii-1, oo])
-                    
+
+                    # print('tang init 0', angle_tangent2init[ii-1, oo])
                     # Continuous Integration
                     angle_tangent2init[ii, oo] =  angle_tangent2init[ii-1, oo] + delta_angle_tangent - delta_velInit 
 
+                    # print('tang init 1', angle_tangent2init[ii, oo])
                     angle_tangent2init[ii, oo] = windup_smoothening(angle_tangent2init[ii, oo], angle_tangent2init_ref)
+                    # print('tang init 2', angle_tangent2init[ii, oo])
+
+                if not obstacles[oo].tail_effect:
+                    # if angle_tangent2init[ii, oo]*obstacles[oo].properties["vortex_direction"]>0:
+                    if angle_tangent2init[ii, oo]*obstacles.get_rotation_direction(oo)>0:
+                        angle_tangent2init[ii, oo] = 0
+                        
             else: # weight <=0
                 obstacles[oo].properties["outside_influence_region"] = True
         
         if np.sum(weights):
+            # print('angle_tangent2init[ii, :]', angle_tangent2init[ii, :])
+            # print('weights', weights)
             # Angle weight
             delt_angle_desired = get_weighted_angular_mean(angle_weights=weights, angle_tangents2init=angle_tangent2init[ii, :])
             angle_desired = delt_angle_desired + angle_velInit[ii]
@@ -346,34 +415,46 @@ for it_point in range(x_inits.shape[1]):
         positions[:, ii+1] = positions[:, ii] + velocities[:, ii]*dt
 
         if False:
-        # if True:
+        # if True and np.sum(weights)>0:
+        # if angle_tangent2init[ii, 1] < -2:
+        # if np.sum(angle_tangent2init[ii, :]!=0)==3:
+            plt.close('all')
+            
+            plt.figure()
             for oo in range(len(obstacles)):
+                plt.plot(obstacles[oo].x_obs[:,0], obstacles[oo].x_obs[:,1], 'k')
+                plt.axis('equal')
                 plt.quiver(positions[0, ii], positions[1, ii],
                            np.cos(angle_tangent2init[ii, oo]+angle_velInit[ii]),
-                           np.sin(angle_tangent2init[ii, oo]+angle_velInit[ii]), color='b')
-            plt.quiver(positions[0, ii], positions[1, ii], np.cos(angle_velInit[ii]), np.sin(angle_velInit[ii]), color='r')
-            plt.quiver(positions[0, ii], positions[1, ii], velocities[0, ii], velocities[1, ii], color='g')
+                           np.sin(angle_tangent2init[ii, oo]+angle_velInit[ii]), color='b',
+                           label='tangent')
+                plt.plot(obstacles[oo].global_reference_point[0], obstacles[oo].global_reference_point[1], 'k+')
+            plt.quiver(positions[0, ii], positions[1, ii], np.cos(angle_velInit[ii]), np.sin(angle_velInit[ii]), color='r', label='initial ds')
+            plt.quiver(positions[0, ii], positions[1, ii], velocities[0, ii], velocities[1, ii], color='g', label='final ds')
+            plt.legend()
             print('angle', angle_tangent2init[ii, :])
+
+            plt.plot(positions[0, :ii+2], positions[1, :ii+2])
+            plt.show()
+            import pdb; pdb.set_trace() ## DEBUG ##
             
         if np.linalg.norm(positions[:,ii+1] - positions[:, ii]) < 1e-4:
             positions = np.delete(positions, np.arange(ii, positions.shape[1]), axis=1)
             print('Converged towards attractor at iteration #{}'.format(ii))
+            not_converged=False
             break
-
+        
         # if np.linalg.norm(positions[:,ii+1] - attractor) < 1e-1 \
            # or np.linalg.norm(positions[:,ii+1] - obstacles[oo].global_reference_point) < 1e-1:
         # print('converged')            
-
-    if False and it_point==0:
-        plt.figure()
-        plt.plot(angle_tangent2init, 'b')
-        plt.figure()
-        
 
     if it_point==0:
         for oo in range(len(obstacles)):
             # plt.figure()
             plt.plot(obstacles[oo].x_obs[:,0], obstacles[oo].x_obs[:,1], 'k')
+            obstacle_boundary = obstacles[oo].draw_obstacle(a_temp=np.array(obstacles[oo].axes_length)+r_boundary)
+            plt.plot(obstacle_boundary[0,:], obstacle_boundary[1,:], 'b--')
+            
             plt.plot(obstacles[oo].global_reference_point[0], obstacles[oo].global_reference_point[1], 'k+')
             plt.axis('equal')
             plt.plot(attractor[0], attractor[1], 'k*')
@@ -382,7 +463,8 @@ for it_point in range(x_inits.shape[1]):
     # plt.plot(positions[0, :], positions[1, :], '.')
     plt.plot(positions[0, :], positions[1, :])
 
-    print('Finished simulation without convergence.')
+    if not_converged:
+        print('Finished simulation without convergence.')
 plt.show()    
 
 save_figure = False

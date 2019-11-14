@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-
+#!/USSR/bin/python3
 '''
 @date 2019-10-15
 @author Lukas Huber 
@@ -17,73 +16,139 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
 import matplotlib.pyplot as plt
 
 visualize_debug = False
 
 
-def transform_polar2cartesian(magnitude, angle, center_position=[0,0], center_point=None):
-    # Only 2D input
-
-    if not isinstance(center_point, type(None)):
-        # TODO remove center_position or center_position
-        center_position = center_point
-    magnitude = np.reshape(magnitude, (-1))
-    angle = np.reshape(angle, (-1))
-    
-    # points = [r, phi]
-    points = (magnitude * np.vstack((np.cos(angle), np.sin(angle)))
-              + np.tile(center_position, (magnitude.shape[0],1)).T )
-    return np.squeeze(points)
-
-
-def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=True):
-    # TODO -- check dim and etc
-    # Don't just squeeze, maybe...
-    
-    # if type(center_position)==type(None):
-        # center_position = np.zeros(self.dim)
-
-    points = np.squeeze(points)
-    if second_axis_is_dim:
-        points = points.T
-    dim = points.shape[0]
-
-    if isinstance(center_position, type(None)):
-        center_position = np.zeros(dim)
-    else:
-        center_position = np.squeeze(center_position)
-    
-    if len(points.shape)==1:
-        points = points - center_position
-                
-        angle = np.arctan2(points[1], points[0])        
-    else:
-        points = points - np.tile(center_position, (points.shape[1], 1)).T
-        angle = np.arctan2(points[1,:], points[0,:])
-        
-    magnitude = LA.norm(points, axis=0)
-
-    # output: [r, phi]
-    return magnitude, angle
-
-
 class ObstacleContainer(State):
-    # Create list-like container to store obstacles with included operations/properties
-    pass
+    # TODO: Update this in a smart way
+    # TODO: how much in obstacle class, how much in container?
+    
+    def __init__(self, obs_list=None):
+        if isinstance(obs_list, list):
+            self._obstacle_list = obs_list
+        else:
+            self._obstacle_list = []
+            
+        self._index_families = None
+        self._unique_families = None
+        self._rotation_direction = None
 
+    def reset_clusters(self):
+        self.find_hirarchy()
+        self.get_sibling_groups()
+        
+    def reset_rotation_direction(self):
+        self._rotation_direction =  np.zeros(self._unique_families.shape)
+        self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+
+    def __repr__(self):
+        return "ObstacleContainer of length #{}".format(len(self))
+        
+    def __len__(self):
+        return len(self._obstacle_list)
+
+    @ property
+    def number(self):
+        return len(self._obstacle_list)
+
+    def __getitem__(self, key):
+        return self._obstacle_list[key]
+
+    def __setitem__(self, key, value):
+        self._obstacle_list[key] = value
+        
+    def __delitem__(self, key):
+        del self._obstacle_list[key]
+
+    def append(self, value):
+        self._obstacle_list.append(value)
+
+    def find_hirarchy(self):
+        intersecting_obs = obs_common_section(self)
+        dynamic_center_3d(self, intersecting_obs)
+
+    @property
+    def list(self):
+        return self._obstacle_list
+
+    @ property
+    def index_families(self):
+        if isinstance(self._index_families, type(None)):
+            self.get_sibling_groups()
+        return self._index_families
+
+    def get_siblings(self, index):
+        if isinstance(self._index_families, type(None)):
+            self.get_sibling_groups()
+
+        index_family_ii = (index==self._index_families)
+        return np.arange(len(self))[index_family_ii]
+    
+    def get_sibling_groups(self):
+        hirarchy_obs = np.array([self._obstacle_list[ii].hirarchy for ii in range(len(self))])
+        index_to_parents = np.array([self._obstacle_list[ii].ind_parent for ii in range(len(self))])
+        
+        ind_roots = (hirarchy_obs==0)
+        num_families = np.sum(ind_roots)
+
+        self._index_families = index_to_parents
+        if not num_families:
+            raise ValueError("No obstacle root detected.")
+            
+        self._index_families[ind_roots] = np.arange(num_families)
+
+        for ii in range(max(hirarchy_obs)-1, 0, -1):
+            self._index_families[hiarchy_obs==ii] = _index_families[_index_families[hiarchy_obs==ii]]
+        self._unique_families = np.unique(self._index_families)
+        
+        return self._index_families
+
+    def get_rotation_direction(self, index):
+        if isinstance(self._rotation_direction, type(None)):
+            self._rotation_direction = np.zeros(self._unique_families.shape)
+        
+        try:
+            value = self._rotation_direction[self._unique_families==self._index_families[index]]
+        except:
+            import pdb; pdb.set_trace() ## DEBUG ##
+            
+        # print('rot dir', value)
+        return value
+
+    # TODO: make getter and setter of sub-list
+    def is_outside_influence_region(self, index):
+        if not hasattr(self, '_outside_influence_region'):
+            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        return self._outside_influence_region[self._unique_families==self._index_families[index]]
+    
+    def set_is_outside_influence_region(self, index, value=None):
+        if not hasattr(self, '_outside_influence_region'):
+            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        self._outside_influence_region[self._unique_families==self._index_families[index]] = value
+            
+    def set_rotation_direction(self, index, value):
+        if not hasattr(self, '_rotation_direction'):
+            self._rotation_direction = np.zeros(self._unique_families.shape)
+            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+            
+        self._rotation_direction[self._unique_families==self._index_families[index]] = value
+        # self._outside_influence_region[self._unique_families==self._index_families[index]] = False
+        
 
 class Obstacle(State):
     """ General class of obstacles """
     # TODO create obstacle container/list which can fast iterate through obstacles and perform other calculations
     def __init__(self, orientation=0, sf=1, delta_margin=0, sigma=1,  center_position=[0,0], tail_effect=True, always_moving=True, 
-                 # axes_length=None, a=None, p=[1,1],
                  x0=None, th_r=None,
                  linear_velocity=[0,0], angular_velocity=0, xd=[0,0], w=0,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
-        # This class defines obstacles to modulate the DS around it
+         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
         self.sf = sf # TODO - rename
@@ -99,9 +164,8 @@ class Obstacle(State):
         self.x0 = center_position
 
         if type(th_r)!= type(None):
-            orientation = th_r
-        self.th_r = orientation # TODO -- remove
-        self.orientation = orientation
+            _orientation = th_r
+        self._orientation = orientation
 
         self.dim = len(self.center_position) #Dimension of space
         self.d = len(self.center_position) #Dimension of space # TODO remove
@@ -154,7 +218,7 @@ class Obstacle(State):
 
         self.is_convex = False # Needed?
 
-        self.properties = {}
+        self.properties = {} # TODO: use kwargs
 
     # def update_reference(self, new_ref):
         # TODo write function
@@ -185,6 +249,57 @@ class Obstacle(State):
             return other
     
         # return (self.rotMatrix.dot(position))  + np.array(self.center_position)
+
+    @property
+    def orientation(self):
+        return self._orientation
+    
+    @orientation.setter
+    def orientation(self, value):
+        self._orientation = value
+        self.compute_R()
+
+    @property
+    def th_r(self):
+        # TODO: remove since redundant
+        return self.orientation
+
+    @th_r.setter
+    def th_r(self, value):
+        # TODO: remove since redundant
+        self.orientation = value
+        
+    def compute_R(self):
+        # TODO - replace with quaternions
+        # Find solution for higher dimensions
+
+        # Compute the rotation matrix in 2D and 3D
+        if self.orientation == 0:
+            self.rotMatrix = np.eye(self.dim)
+            return
+
+        # rotating the query point into the obstacle frame of reference
+        if self.dim==2:
+            self.rotMatrix = np.array([[cos(self.orientation), -sin(self.orientation)],
+                                       [sin(self.orientation),  cos(self.orientation)]])
+        elif self.dim==3:
+            R_x = np.array([[1, 0, 0,],
+                        [0, np.cos(self.orientation[0]), np.sin(self.orientation[0])],
+                        [0, -np.sin(self.orientation[0]), np.cos(self.orientation[0])] ])
+
+            R_y = np.array([[np.cos(self.orientation[1]), 0, -np.sin(self.orientation[1])],
+                        [0, 1, 0],
+                        [np.sin(self.orientation[1]), 0, np.cos(self.orientation[1])] ])
+
+            R_z = np.array([[np.cos(self.orientation[2]), np.sin(self.orientation[2]), 0],
+                        [-np.sin(self.orientation[2]), np.cos(self.orientation[2]), 0],
+                        [ 0, 0, 1] ])
+
+            self.rotMatrix= R_x.dot(R_y).dot(R_z)
+        else:
+            warnings.warn('rotation not yet defined in dimensions d > 3 !')
+            self.rotMatrix = np.eye(self.dim)
+
 
     def transform_relative2global_dir(self, direction): # TODO - inherit
         return self.rotMatrix.dot(direction)
@@ -346,36 +461,6 @@ class Obstacle(State):
         else:
             return self.reference_point
 
-    def get_gamma(self, position, in_global_frame=False):
-        if not type(position)==np.ndarray:
-            position = np.array(position)
-
-        # Rename
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        if not self.reference_point_is_inside:
-            for ii in np.arange(self.tangent_points.shape[1]):
-                reference_line = {"point_start":[0,0], "point_end":position}
-
-                # TODO - don't use reference point, but little 'offset' to avoid singularity
-                tangent_line = {"point_start":self.hull_edge,
-                                "point_end":self.tangent_points[:, ii]}
-
-                ind_intersect, dist_intersect = self.are_lines_intersecting(reference_line, tangent_line)
-                if ind_intersect:
-                    return LA.norm(position)/dist_intersect
-
-        # Original Gamma
-        Gamma = np.sum((position/self.margin_axes)**(2*self.p)) # distance
-
-        if len(Gamma.shape)>1:
-            Gamma = (position / np.tile(self.axes_length, (N_points,1)).T )
-            Gamma = np.sum( (1/self.sf * Gamma) ** (2*np.tile(self.p, (N_points,1)).T), axis=0)
-
-        if self.is_boundary:
-            Gamma = self.get_boundaryGamma(Gamma,Gamma_ref=self.Gamma_ref)
-        return Gamma
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):
         if len(Gamma.shape)>1:
@@ -461,8 +546,6 @@ class Obstacle(State):
                 return ind_low/np.sum(ind_low)
 
             angles = np.min(np.vstack((angles, np.ones(n_angles)*max_angle)) )
-
-        # weights = ( (max_angle-angles)/(max_angle-min_angle) )**weight_pow
 
         # [min, max] -> [0, 1] weights
         weights = (angles-min_angle)/(max_angle-min_angle)
@@ -617,36 +700,6 @@ class Obstacle(State):
                 self.draw_obstacle()
 
                 
-    def compute_R(self):
-        # TODO - replace with quaternions
-
-        # Compute the rotation matrix in 2D and 3D
-        if self.orientation == 0:
-            self.rotMatrix = np.eye(self.dim)
-            return
-
-        # rotating the query point into the obstacle frame of reference
-        if self.dim==2:
-            self.rotMatrix = np.array([[cos(self.orientation), -sin(self.orientation)],
-                                       [sin(self.orientation),  cos(self.orientation)]])
-        elif self.dim==3:
-            R_x = np.array([[1, 0, 0,],
-                        [0, np.cos(self.orientation[0]), np.sin(self.orientation[0])],
-                        [0, -np.sin(self.orientation[0]), np.cos(self.orientation[0])] ])
-
-            R_y = np.array([[np.cos(self.orientation[1]), 0, -np.sin(self.orientation[1])],
-                        [0, 1, 0],
-                        [np.sin(self.orientation[1]), 0, np.cos(self.orientation[1])] ])
-
-            R_z = np.array([[np.cos(self.orientation[2]), np.sin(self.orientation[2]), 0],
-                        [-np.sin(self.orientation[2]), np.cos(self.orientation[2]), 0],
-                        [ 0, 0, 1] ])
-
-            self.rotMatrix= R_x.dot(R_y).dot(R_z)
-        else:
-            warnings.warn('rotation not yet defined in dimensions d > 3 !')
-            self.rotMatrix = np.eye(self.dim)
-
 
     def obs_check_collision(self, ):
         print('TODO: check class')
@@ -660,7 +713,7 @@ class Ellipse(Obstacle):
         # import pdb; pdb.set_trace() ## DEBUG ##
         super().__init__(*args, **kwargs)
 
-        # Leave at the moment for backwards compatibility
+        # TODO: remove redundant Leave at the moment for backwards compatibility
         if type(axes_length) == type(None):
             self.a = a
             self.axes = np.array(a)
@@ -671,16 +724,53 @@ class Ellipse(Obstacle):
             self.a = axes_length
             
         self.margin_axes =  self.axes*np.array(self.sf)+np.array(self.delta_margin)
-        
+
+        # TODO: rename & make p one value (NOT array)
         self.p = np.array(p) # TODO - rename
         
         self.is_convex = True
 
         
+
+    def get_gamma(self, position, in_global_frame=False, gamma_type='proportional'):
+        # if not type(position)==np.ndarray:
+            # position = np.array(position)
+
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        if not self.reference_point_is_inside:
+            for ii in np.arange(self.tangent_points.shape[1]):
+                reference_line = {"point_start":[0,0], "point_end":position}
+
+                # TODO - don't use reference point, but little 'offset' to avoid singularity
+                tangent_line = {"point_start":self.hull_edge,
+                                "point_end":self.tangent_points[:, ii]}
+
+                ind_intersect, dist_intersect = self.are_lines_intersecting(reference_line, tangent_line)
+                if ind_intersect:
+                    return LA.norm(position)/dist_intersect
+
+        # Original Gamma
+        if gamma_type=='proportional':
+            Gamma = np.sum((position / self.margin_axes)**(2*self.p[0]))  # distance
+            Gamma = Gamma**(1/(2*self.p[0]))
+        else:
+            raise NotImplementedError()
+        
+        if len(Gamma.shape)>1:
+            Gamma = (position / np.tile(self.axes_length, (N_points,1)).T )
+            Gamma = np.sum( (1/self.sf * Gamma) ** (2*np.tile(self.p, (N_points,1)).T), axis=0)
+
+        if self.is_boundary:
+            Gamma = self.get_boundaryGamma(Gamma,Gamma_ref=self.Gamma_ref)
+        return Gamma
+
+    
     def draw_ellipsoid(self, *args, **kwargs):
         # TODO remove
         raise NotImplementedError("<<draw_ellipsoid>> has been renamed <<draw_obstacle>>")
-
+    
     
     def draw_obstacle(self, numPoints=20, a_temp = [0,0], draw_sfObs=False):
         if not self.reference_point_is_inside:
@@ -739,103 +829,58 @@ class Ellipse(Obstacle):
 
         x_obs = R @ x_obs + np.tile(np.array([self.center_position]).T,(1,numPoints))
 
-
-
         if sum(a_temp) == 0:
-            self.x_obs = x_obs.T.tolist()
-            self.x_obs_sf = x_obs_sf.T.tolist()
+            # self.x_obs = x_obs.T.tolist()
+            # self.x_obs_sf = x_obs_sf.T.tolist()
+            self.x_obs = x_obs.T
+            self.x_obs_sf = x_obs_sf.T
         else:
              return x_obs_sf
+
+    def get_radius_of_angle(self, angle, in_global_frame=False):
+        if in_global_frame:
+            position =  transform_polar2cartesian(magnitude=10, angle=angle-self.orientation)
+        else:
+            position = transform_polar2cartesian(magnitude=1, angle=angle)
+        
+        gamma = self.get_gamma(position, gamma_type='proportional')
+        return LA.norm(position)/gamma
+
+    
+class HumanEllipse(Ellipse):
+    # Ellipse with proxemics
+    # Intimate-, Personal-, Social-, Public- Spaces
+    
+    # first axis in direction of vision
+    # second axis aligned with shoulders
+    def __init__(self, axis_length=[0.4, 1.1],
+                 public_axis=[16.0, 8.0], public_center=[4.0, 0.0], 
+                 personal_axis=[8, 3.0], personal_center=[2.0, 0.0],
+                 *args, **kwargs):
+        
+        super().__init__(axis_length, *args, **kwargs)
+        
+        self.public_axis = np.array(public_axis)
+        self.public_center = np.array(public_center) # in local frame
+
+        self.personal_axis = np.array(personal_axis)
+        self.personal_center = np.array(personal_center) # in local frame
+        
+    def repulsion_force(self, position):
+        raise NotImplementedError()
 
 
 class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
-                 # orientation=0, sf=1, absolut_margin=0, xd=[0,0], sigma=1,  w=0, x_start=0, x_end=0, timeVariant=False, axes_length=[1,1], a=None, center_position=[0,0],  tail_effect=True, always_moving=True, is_boundary=False, hirarchy=0, ind_parent=-1,
                  *args, **kwargs):
 
         super().__init__(*args, **kwargs)
-
-        # This class defines obstacles to modulate the DS around it
-        # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-    # def __init_pose__():
-    # def __init_obstacle(*args, **kwargs):
-
-        # # Leave at the moment for backwards compatibility
-        # axes_length=[0,0]
-        # self.axes_length = np.array(axes_length)
-
-        # # self.margin_axes =  self.axes_length*np.array(sf)+np.array(delta_margin)
-
-        # # self.sigma = sigma
-        # self.tail_effect = tail_effect # Modulation if moving away behind obstacle
-
-        # # Obstacle attitude
-        # self.center_position = np.array(center_position) # new name for future version
-        # self.center_position = center_position # new name for future version
-
-        # self.orientation = orientation
-        # self.th_r = orientation
-
-        # self.dim = len(center_position) #Dimension of space
-
-        # # TODO: REMOVE THEESE
-        # self.sigma = sigma
-        # self.sf = sf
-
-        # self.absolut_margin = absolut_margin
-
-        # self.rotMatrix = []
-        # self.compute_R() # Compute Rotation Matrix
-
-        # self.resolution = 0 #Resolution of drawing
 
         # Object Specific Paramters
         self.radius_magnitude=radius_magnitude
         self.radius_mean=radius_mean
 
         self.number_of_edges=number_of_edges
-
-        # # TODO add margin & rename
-        # # self.x_obs = np.zeros((self.edge_points.shape)).T
-        # # for ii in range(self.edge_points.shape[1]):
-        #     # self.x_obs[ii, :] = self.rotMatrix @ self.edge_points[:,0] + self.obs
-        # # self.x_obs_sf = self.edge_points.T
-
-        # self.timeVariant = timeVariant
-        # if self.timeVariant:
-        #     self.func_xd = 0
-        #     self.func_w = 0
-
-        # else:
-        #     self.always_moving = always_moving
-
-        # # Trees of stars
-        # self.hirarchy = hirarchy
-        # self.ind_parent = ind_parent
-
-
-        # if sum(np.abs(xd)) or w or self.timeVariant:
-        #     # Dynamic simulation - assign varibales:
-        #     self.x_start = x_start
-        #     self.x_end = x_end
-        #     self.always_moving = False
-        # else:
-        #     self.x_start = 0
-        #     self.x_end = 0
-
-        # self.w = w # Rotational velocity
-        # self.xd = xd #
-
-        # # Reference point // Dyanmic center
-        # self.reference_point = np.zeros(self.dim) # At center
-
-        # self.reference_point_is_inside = True
-
-        # self.is_boundary = is_boundary
-
-    # def draw_obstacle(self, draw_obstacleMargin=True, n_points=4):
-        # for ii
-
 
     def get_radius_of_angle(self, angle, in_global_frame=False):
         if in_global_frame:

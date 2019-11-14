@@ -76,7 +76,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # Adjust dynamic center
     if automatic_reference_point:
         intersection_obs = obs_common_section(obs)
-        dynamic_center_3d(obs, intersection_obs)
+        dynamic_center_3d(obs, intersection_obs)o
 
     if len(figHandle): 
         fig_ifd, ax_ifd = figHandle[0], figHandle[1] 

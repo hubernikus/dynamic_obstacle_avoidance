@@ -110,6 +110,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
 
     xd = xd-xd_obs #computing the relative velocity with respect to the obstacle
 
+
     # Create orthogonal matrix
     xd_norm = LA.norm(xd)
     
@@ -120,11 +121,8 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
 
     xd_t = np.array([xd_normalized[1], -xd_normalized[0]])
 
-    Rf = np.array([xd_normalized, xd_t]).T
-    
     xd_hat = np.zeros((d, N_obs))
     xd_hat_magnitude = np.zeros((N_obs))
-    k_ds = np.zeros((d-1, N_obs))
     
     for n in range(N_obs):
         # xd_R = LA.pinv(E[:,:,n]) @ R[:,:,n].T @ xd
@@ -144,7 +142,13 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
                 repulsive_velocity *= (-1)
             xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
 
-        xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2)) 
+        xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
+        
+    #TODO: replace with angular-weighted-mean function
+    Rf = np.array([xd_normalized, xd_t]).T
+    k_ds = np.zeros((d-1, N_obs))
+        
+    for nn in range(N_obs):
         if xd_hat_magnitude[n]: # Nonzero hat_magnitude
             xd_hat_normalized = xd_hat[:,n]/xd_hat_magnitude[n] # normalized direction
         else:

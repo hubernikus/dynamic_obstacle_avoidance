@@ -41,102 +41,22 @@ def get_orthogonal_basis(vector, normalize=False):
 
     return Basis_Matrix
 
-
-def get_directional_weighted_sum(reference_direction, directions, weights, normalize=True, normalize_reference=True, obs=None, position=[]):
-    # TODO remove obs and position
-    # Move to different file
-    ind_nonzero = (weights>0)
-
-    reference_direction = np.copy(reference_direction)
-    directions = directions[:, ind_nonzero]
-    weights = weights[ind_nonzero]
-
-    # TODO remove obs from arguments after debugging
-    n_directions = weights.shape[0]
-    if n_directions<=1:
-        return directions[:, 0]
-
-    dim = np.array(reference_direction).shape[0]
-
-    # Create copy to avoid changing initial values
-    if False and not isinstance(obs, type(None)):
-        ref_abs = obs.transform_relative2global_dir(reference_direction)
-
-        position = obs.transform_relative2global(reference_direction)
-        plt.quiver(position[0], position[1], ref_abs[0], ref_abs[1], color='g', label='Reference')
-
-        dir_abs = np.zeros((dim, n_directions))
-        for ii in range(n_directions):
-            dir_abs[:, ii] = obs.transform_relative2global_dir(directions[:,ii])
-            plt.quiver(position[0], position[1], dir_abs[0,ii], dir_abs[1,ii], color='b', label='Normal')
-
-    if normalize_reference:
-        norm_refDir = LA.norm(reference_direction)
-        if norm_refDir: # nonzero
-            reference_direction /= norm_refDir
-
-     # TODO - higher dimensions
-    if normalize:
-        norm_dir = LA.norm(directions, axis=0)
-        ind_nonzero = (norm_dir>0)
-        directions[:,ind_nonzero] = directions[:,ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
-
-    OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
-
-    directions_referenceSpace = np.zeros(np.shape(directions))
-    for ii in range(np.array(directions).shape[1]):
-        directions_referenceSpace[:,ii] = OrthogonalBasisMatrix.T.dot( directions[:,ii])
-
-    directions_directionSpace = directions_referenceSpace[1:, :]
-
-    norm_dirSpace = LA.norm(directions_directionSpace, axis=0)
-    ind_nonzero = (norm_dirSpace > 0)
-
-    directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
-
-    # Do not check cosinus, since normalization happened
-    # TODO check why low, and remove
-
-    cos_directions = directions_referenceSpace[0,:]
-    if np.sum(cos_directions > 1) or np.sum(cos_directions < -1):
-        cos_directions = np.min(np.vstack((cos_directions, np.ones(n_directions))), axis=0)
-        cos_directions = np.max(np.vstack((cos_directions, -np.ones(n_directions))), axis=0)
-        warnings.warn("Cosinus value out of bound.")
-
-    directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
-    direction_dirSpace_weightedSum = np.sum(directions_directionSpace*
-                                            np.tile(weights, (dim-1, 1)), axis=1)
-
-    norm_directionSpace_weightedSum = LA.norm(direction_dirSpace_weightedSum)
-    if norm_directionSpace_weightedSum:
-        direction_weightedSum = (OrthogonalBasisMatrix.dot(
-                                  np.hstack((np.cos(norm_directionSpace_weightedSum),
-                                              np.sin(norm_directionSpace_weightedSum) / norm_directionSpace_weightedSum * direction_dirSpace_weightedSum)) ))
-    else:
-        direction_weightedSum = OrthogonalBasisMatrix[:,0]
-
-    if False and not isinstance(obs, type(None)):
-        wei_abs = obs.transform_relative2global_dir(direction_weightedSum)
-        plt.quiver(position[0], position[1], wei_abs[0], wei_abs[1], color='r', label='mean')
-        plt.legend()
-        
-    return direction_weightedSum
-
-
 def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05):
-    # The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
-    # Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
-    # 
-    # Input
-    # x_t [dim]: The position of the robot in the obstacle reference frame
-    # obs [obstacle class]: Description of the obstacle with parameters
-    # R [dim x dim]: Rotation matrix 
-    #
-    # Output
-    # E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles surface
-    # D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
-    # Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
-    # E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
+    '''
+     The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
+    Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
+    
+    Input
+    x_t [dim]: The position of the robot in the obstacle reference frame
+    obs [obstacle class]: Description of the obstacle with parameters
+    R [dim x dim]: Rotation matrix 
+    
+    Output
+    E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles surface
+    D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
+    Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
+    E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
+    '''
 
     dim = obs.dim
     
@@ -230,36 +150,13 @@ def calculate_eigenvalues(Gamma, rho=1, is_boundary=False):
     return eigenvalue_reference, eigenvalue_tangent
 
 
-# def get_gamma(x_t, a, p=1, mode="proportional", Gamma_min=1, dist_ref=0):
-#     # TODO --- Integrate in obstacle
-#     dim = np.array(x_t).shape[0]
-#     # TODO MAYBE use reference point as reference
-#     if mode=="proportional":
-#         return np.sum((x_t/a)**(2*p)) # distance function for ellipsoids
-#     elif mode=="distance":
-#         if not dist_ref:
-#             dist_ref = np.max(a) # other choices possible
-#         return (LA.norm(x_t)-get_radius(x_t, vec_cent2ref=np.zeros(dim), a=a))/dist_ref+Gamma_min
-#     elif mode=="spherical":
-#         rad_directional = get_radius(x_t, vec_cent2ref=np.zeros(dim), a=a)
-        
-#         Gamma_limit = 2 # Multiple of  max(a) (>1)
-#         rad_range = np.max(a)*Gamma_limit - rad_directional
-#         relative_dist = (LA.norm(x_t)-rad_directional)/rad_range
-
-#         if relative_dist < 0:
-#             warnings.warn("Inside the obstacle.")
-        
-#         Gamma = np.sin((relative_dist-0.5)*pi) + Gamm_min
-#         return Gamma
-
-
 def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):
     if relativeDistance:
         return np.sum( (x_t/np.tile(ob.a, (x_t.shape[1],1)).T) **(2*np.tile(ob.p, (x_t.shape[1],1) ).T ), axis=0)
     else:
         return np.sum( (x_t/np.tile(ob.a, (x_t.shape[1],1)).T) **(2*np.tile(ob.p, (x_t.shape[1],1) ).T ), axis=0)
 
+    
 def get_radius_ellipsoid(x_t, a=[], ob=[]):
     # Derivation from  x^2/a^2 + y^2/b^2 = 1
     
@@ -273,6 +170,7 @@ def get_radius_ellipsoid(x_t, a=[], ob=[]):
     else:
         return a[1]
 
+    
 def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
     dim = 2 # TODO higher dimensions
 
@@ -303,7 +201,6 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
  
     else:
         dir_surf_cone[:, 0] = -1*np.array(vec_cent2ref)
-        # import pdb; pdb.set_trace() ## DEBUG ##
         
         rad_surf_cone[0] = (get_radius_ellipsoid(dir_surf_cone[:, 0], a)+LA.norm(vec_cent2ref))
         
@@ -410,7 +307,6 @@ def findRadius(ob, direction, a = [], repetition = 6, steps = 10):
     # TODO check
     if not len(a):
         a = [np.min(ob.a), np.max(ob.a)]
-        # a = obs.a
         
     # repetition
     for ii in range(repetition):
@@ -577,16 +473,6 @@ def obs_check_collision(points, obs_list=[]):
     return noColl
 
 
-# def linearAttractor(x, x0=False, k_factor=1.0):
-#     x = np.array(x)
-    
-#     if type(x0)==bool:
-#         x0 = np.zeros(x.shape)
-        
-#     return (x0-x)*k_factor
-
-
-
 def get_tangents2ellipse(edge_point, axes, dim=2):
     # TODO cut ellipse along direction
     if not dim==2:
@@ -641,8 +527,11 @@ def get_tangents2ellipse(edge_point, axes, dim=2):
     return tangent_vectors, tangent_points
 
 
-def get_intersectionWithEllipse(edge_point, direction, axes, dim=2):
+def get_intersectionWithEllipse(edge_point, direction, axes, only_positive_direction=False):
     # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+    # Dimension
+    dim = 2
+    
     if direction[0]==0:
         m = 0
     else:
@@ -660,14 +549,30 @@ def get_intersectionWithEllipse(edge_point, direction, axes, dim=2):
     
     sqrtD = np.sqrt(D)
 
-    intersections = np.zeros((2,2))
+    if only_positive_direction:
+        intersection = np.zeros(dim)
+        intersection[0] = (-B+sqrtD)/(2*A)
+        intersection[1] = intersection[1,:]*m + c
 
-    intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
-    intersections[1,:] = intersections[0,:]*m + c
+        dist = (intersection - edge_point)/direction
+        
+        if any (dist<0).to_list():
+            # TODO: check if really the positive direction and remove 'if'
+            import pdb; pdb.set_trace() ## DEBUG ##
+        return intersection
+    else:
+        intersections = np.zeros((dim,2))
+        intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
+        intersections[1,:] = intersections[0,:]*m + c
 
-    return intersections
+        return intersections
 
 def cut_planeWithEllispoid(reference_position, axes, plane):
+    # TODO
+    raise NotImplementedError()
+
+
+def cut_lineWithEllipse(line_points, axes):
     raise NotImplementedError()
 
     

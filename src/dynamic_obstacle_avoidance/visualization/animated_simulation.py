@@ -1,8 +1,8 @@
-'''
-Dynamic Simulation - Obstacle Avoidance Algorithm
+'''Dynamic Simulation - Obstacle Avoidance Algorithm
 
 @author LukasHuber
-@date 2018-05-24
+@date 2019-05-24
+
 '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
@@ -58,12 +58,20 @@ def samplePointsAtBorder(number_of_points, x_range, y_range, obs=[]):
         
     return x_init
 
+
 ##### Anmation Function #####
 class Animated():
     """An animated scatter plot using matplotlib.animations.FuncAnimation."""
-    def __init__(self, x0, obs=[], N_simuMax = 600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int = False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5)):
+    def __init__(self, x0=None, obs=[], N_simuMax = 600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimensions=2):
 
-        self.dim = x0.shape[0]
+        if isinstance(x0, type(None)):
+            self.dim = dimensions
+            self.infitineLoop = True
+            
+        else:
+            self.infitineLoop = False
+            self.dim = x0.shape[0]
+        self.print_count = False
 
         # Initialize class variables
         self.obs = obs
@@ -122,6 +130,7 @@ class Animated():
         self.ax.set_ylim(y_range)
         #self.ax.set_xlabel('x1')
         #self.ax.set_ylabel('x2')
+        
         if self.dim==3:
             self.ax.set_zlim(zRange)
             self.ax.set_zlabel('x3')
@@ -155,8 +164,6 @@ class Animated():
         # else:
                 
         # self.ani = FuncAnimation(self.fig, self.update, interval=1, frames=10*self.N_simuMax-2, repeat=False, init_func=self.setup_plot, blit=True, save_count=self.N_simuMax-2)
-        self.infitineLoop = True
-        self.print_count = False
         
         if self.infitineLoop:
             self.ani = FuncAnimation(self.fig, self.update, interval=1, frames=None, repeat=False, init_func=self.setup_plot, blit=True, save_count=self.N_simuMax-2)
@@ -242,9 +249,8 @@ class Animated():
 
         self.t[self.iSim+1] = (self.iSim+1)*self.dt
 
-
-
         return (self.lines + self.obs_polygon + self.contour + self.centers + self.cent_dyns + self.startPoints + self.endPoints + self.attr_pos)
+    
 
     def setup_plot(self):
         # Draw obstacle
@@ -409,12 +415,12 @@ def run_animation(*args, animationName="test", saveFigure=False,
     # animation cannot run properly when getting saved at the same time to file.
     # i.e. choose one or the other for each run
     if saveFigure:
-        try:
+        try: # avoid error warnings 
             anim.ani.save("fig/" + animationName + ".mp4", dpi=100,fps=50)
         except:
             print('\n\nWARNING: saving interrupted.')
+            # raise
 
-        # print('Saving finished.')
         plt.close('all')
         
     elif return_animationObject:
@@ -429,6 +435,7 @@ def run_animation(*args, animationName="test", saveFigure=False,
             print('Finished or converged.')
         except:
             print('\nWARNING: animation was interrupted.')
+            # raise
 
 def test_function():
     t = np.linspace(0,2*np.pi)
@@ -438,7 +445,6 @@ def test_function():
     l, = ax.plot([0,2*np.pi],[-1,1])
 
     animate = lambda i: l.set_data(t[:i], x[:i])
-
     ani = matplotlib.animation.FuncAnimation(fig, animate, frames=len(t))
 
     return ani

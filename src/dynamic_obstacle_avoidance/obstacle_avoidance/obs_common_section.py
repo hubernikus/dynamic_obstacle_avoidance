@@ -20,11 +20,17 @@ class Intersection_matrix():
         self._dim = n_obs-1
 
     def set(self, row, col, value):
-        ind = self.get_index(row,col)
+        self[row, col] = value
+        
+    def __setitem__(self, key, value):
+        ind = self.get_index(key[0],key[1])
         self._intersection_list[ind] = value
 
     def get(self, row, col):
-        ind = self.get_index(row,col)
+        return self[row, col]
+
+    def __getitem__(self, key):
+        ind = self.get_index(key[0],key[1])
         return self._intersection_list[ind]
 
     def get_intersection_matrix(self):
@@ -164,7 +170,7 @@ def obs_common_section(obs):
                     #                 R = compute_R(d,obs[it_obs2].th_r)
                     Gamma_temp = ( rotMat[:,:,it_obs2].T @ (np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
                     Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
-                    intersection_sf_temp = np.hstack((intersection_sf_temp, np.array(obs[it_obs1].x_vobs_sf)[Gamma<1,:].T ) )
+                    intersection_sf_temp = np.hstack((intersection_sf_temp, np.array(obs[it_obs1].x_obs_sf)[Gamma<1,:].T ) )
 
                     if intersection_sf_temp.shape[1] > 0:
                         it_intersect = it_intersect + 1
@@ -189,7 +195,7 @@ def obs_common_section(obs):
                                 N_points_interior = ceil(N_points/Gamma_steps*ii)
                                 
                                 #print('a_temp_outside', np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-                                x_obs_sf_interior= obs[it_obs1_].draw_ellipsoid(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
+                                x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
 
                                 resolution = x_obs_sf_interior.shape[1] # number of points 
 

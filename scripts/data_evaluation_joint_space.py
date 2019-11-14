@@ -71,7 +71,7 @@ def get_boundary_values(file_in_path, file_in_name, plot_raw_data=False, save_da
     xx, yy = np.meshgrid(np.arange(0, 1, 0.01),
                          np.arange(0, 1, 0.01))
 
-o    prediction_svm = cassifier_svm.predict(np.c_[xx.ravel(), yy.ravel()])
+    prediction_svm = cassifier_svm.predict(np.c_[xx.ravel(), yy.ravel()])
     prediction_svm = prediction_svm.reshape(xx.shape)
     predict_score = cassifier_svm.decision_function(np.c_[xx.ravel(), yy.ravel()])
     predict_score = predict_score.reshape(xx.shape)

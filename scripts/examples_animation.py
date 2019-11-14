@@ -22,7 +22,7 @@ from dynamic_obstacle_avoidance.visualization.animated_simulation import run_ani
 print(' ----- Script <<dynamic simulation>> started. ----- ')
 #############################################################
 # Choose a simulation between 0 and 12
-simulationNumber = 4
+simulationNumber = 1
 
 saveFigures = False
 #############################################################
@@ -44,7 +44,7 @@ def main(simulationNumber=0, saveFigures=False):
         w = 0
         x_start = 0
         x_end = 2
-        #obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        #obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
 
         a = [3,2]
         p = [1,1]
@@ -57,7 +57,7 @@ def main(simulationNumber=0, saveFigures=False):
         x_start = 0
         x_end = 10
 
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
         a = [3,2]
         p = [1,1]
         x0 = [7,-6]
@@ -68,9 +68,9 @@ def main(simulationNumber=0, saveFigures=False):
         w = 0
         x_start = 0
         x_end = 0
-        #obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        #obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
 
-        ob2 = Obstacle(
+        ob2 = Ellipse(
             a= [1,1],
             p= [1,1],
             x0= [10,-8],
@@ -83,7 +83,7 @@ def main(simulationNumber=0, saveFigures=False):
         )
         #obs.append(ob2)
 
-        ob3 = Obstacle(
+        ob3 = Ellipse(
             a= [1,1],
             p= [1,1],
             x0= [14,-2],
@@ -99,7 +99,7 @@ def main(simulationNumber=0, saveFigures=False):
         x_range = [ -1,20]
         y_range = [-10,10]
         zRange = [-10,10]
-        #obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        #obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
 
         attractorPos = [0,0]
 
@@ -113,7 +113,7 @@ def main(simulationNumber=0, saveFigures=False):
 
         th_r0 = 38/180*pi
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [4,0.4],
             p = [1,1],
             x0 = [0, 2],
@@ -159,14 +159,14 @@ def main(simulationNumber=0, saveFigures=False):
 
         obs = []
 
-        obs.append(Obstacle(a=[1.1, 1], p=[1,1], x0=[0.5,1.5], th_r=-25*pi/180, sf=1.0 ))
+        obs.append(Ellipse(a=[1.1, 1], p=[1,1], x0=[0.5,1.5], th_r=-25*pi/180, sf=1.0 ))
 
         a = [0.2,5]
         p = [1,1]
         x0 = [0.5, 5]
         th_r = -25/180*pi
         sf = 1.0
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
 
         run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.003, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01)
 
@@ -184,7 +184,7 @@ def main(simulationNumber=0, saveFigures=False):
         xAttractor = np.array([0,0])
 
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [1.1,1.2],
             p = [1,1],
             x0 = [-1, 1.5],
@@ -192,7 +192,7 @@ def main(simulationNumber=0, saveFigures=False):
             sf = 1.0
             ))
 
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [1.8,0.4],
             p = [1,1],
             x0 = [0, 4],
@@ -200,7 +200,7 @@ def main(simulationNumber=0, saveFigures=False):
             sf = 1.0,
             ))
 
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a=[1.2,0.4],
             p=[1,1],
             x0=[3,3],
@@ -234,7 +234,7 @@ def main(simulationNumber=0, saveFigures=False):
         x01 =x0
         x_start = 0
         x_end = 10
-        obs.append(Obstacle(a=a, p=p, x0=x01,th_r=th_r, sf=sf, x_start=x_start, x_end=x_end, timeVariant=True))
+        obs.append(Ellipse(a=a, p=p, x0=x01,th_r=th_r, sf=sf, x_start=x_start, x_end=x_end, timeVariant=True))
 
 
         def func_w1(t):
@@ -271,7 +271,7 @@ def main(simulationNumber=0, saveFigures=False):
 
         x_start = 0
         x_end = 10
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, x_start=x_start, x_end=x_end, timeVariant=True))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, x_start=x_start, x_end=x_end, timeVariant=True))
 
         def func_w2(t):
             t_interval = [0, 2., 6.5, 7, 10]
@@ -317,7 +317,7 @@ def main(simulationNumber=0, saveFigures=False):
         xAttractor = np.array([0,0])
 
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [1.1,1.2],
             p = [1,1],
             x0 = [-1, 1.5],
@@ -325,7 +325,7 @@ def main(simulationNumber=0, saveFigures=False):
             sf = 1
             ))
 
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [1.8,0.4],
             p = [1,1],
             x0 = [0, 4],
@@ -333,7 +333,7 @@ def main(simulationNumber=0, saveFigures=False):
             sf = 1.0,
             ))
 
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a=[1.2,0.4],
             p=[1,1],
             x0=[3,3],
@@ -372,16 +372,16 @@ def main(simulationNumber=0, saveFigures=False):
         x0=[2,0]
         th_r=-50/180*pi
         sf=1
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
 
-        # Obstacle 2
+        # Ellipse 2
         a = [0.4,2.5]
         p = [1,1]
         #x0 = [7,2]
         x0 = [6,0]
         th_r = 50/180*pi
         sf = 1
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf)
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf)
 )
         run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.02, N_simuMax=1000, convergenceMargin=0.3, sleepPeriod=0.001, RK4_int=True)
 
@@ -396,7 +396,7 @@ def main(simulationNumber=0, saveFigures=False):
         th_r0 = 38/180*pi
         rCent=2.4
         for n in range(N):
-            obs.append(Obstacle(
+            obs.append(Ellipse(
                 a = [0.4,3],
                 p = [1,1],
                 x0 = [R*cos(2*pi/N*n), R*sin(2*pi/N*n)],
@@ -421,7 +421,7 @@ def main(simulationNumber=0, saveFigures=False):
         centr = [2, 2.5]
 
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [2,2],
             p = [1,1],
             x0 = [10,-7],
@@ -431,7 +431,7 @@ def main(simulationNumber=0, saveFigures=False):
             x_start=0,
             x_end=10))
 
-        ob = Obstacle(
+        ob = Ellipse(
             a = [0.3,0.4],
             p = [1,1],
             x0 = [9,4],
@@ -455,7 +455,7 @@ def main(simulationNumber=0, saveFigures=False):
         centr = [2, 2.5]
 
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [0.4,3],
             p = [1,1],
             x0 = [2,0],
@@ -479,7 +479,7 @@ def main(simulationNumber=0, saveFigures=False):
         centr = [2, 2.5]
 
         obs = []
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [0.4,3],
             p = [1,1],
             x0 = [2,0],
@@ -489,7 +489,7 @@ def main(simulationNumber=0, saveFigures=False):
             x_start=0,
             x_end=10))
 
-        obs.append(Obstacle(
+        obs.append(Ellipse(
             a = [0.4,0.3],
             p = [1,1],
             x0 = [4,3],
@@ -520,7 +520,7 @@ def main(simulationNumber=0, saveFigures=False):
         x0 = [2., 3.2-dy]
         th_r = -60/180*pi
         sf = 1.2
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
         obs[0].center_dyn = centr
 
         a = [1,0.4]
@@ -528,7 +528,7 @@ def main(simulationNumber=0, saveFigures=False):
         x0 = [1.5, 1.6-dy]
         th_r = +60/180*pi
         sf = 1.2
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
         obs[1].center_dyn = centr
 
         a = [1.2,0.2]
@@ -536,7 +536,7 @@ def main(simulationNumber=0, saveFigures=False):
         x0 = [3.3,2.1-dy]
         th_r = -20/180*pi
         sf = 1.2
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
         obs[1].center_dyn = centr
 
         N = 20
@@ -568,7 +568,7 @@ def main(simulationNumber=0, saveFigures=False):
 
         x_start = 0
         x_end = 2
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
 
         ### Create obstacle
         x0 = [0.5,-0.2,0]
@@ -582,7 +582,7 @@ def main(simulationNumber=0, saveFigures=False):
 
         x_start = 0
         x_end = 2
-        obs.append(Obstacle(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
         x_range = [-0.2,1.8]
         y_range = [-1,1]
         zRange = [-1,1]
@@ -600,4 +600,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         saveFigures = sys.argv[2]
 
-    main(simulationNumber=simulationNumber, saveFigures=saveFigures)
+    try:
+        main(simulationNumber=simulationNumber, saveFigures=saveFigures)
+    except:
+        raise
