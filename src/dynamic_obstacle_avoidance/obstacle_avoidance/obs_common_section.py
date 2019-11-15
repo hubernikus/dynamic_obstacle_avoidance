@@ -79,7 +79,7 @@ class Intersection_matrix():
         return int((row-col-1) + col*((self._dim) + self._dim-(col-1) )*0.5)
 
 
-def obs_common_section(obs):
+def obs_common_section(obs, update_reference_point=True):
     #OBS_COMMON_SECTION finds common section of two ore more obstacles 
     # at the moment only solution in two d is implemented
 
@@ -213,17 +213,15 @@ def obs_common_section(obs):
         return  []
 
     #plt.plot(intersection_sf[0][0,:], intersection_sf[0][1,:], 'r.')
-    
-    for ii in range(len(intersection_obs)):
-    #     plot(intersection_sf[ii](1,:),intersection_sf[ii](2,:),'x')
-        intersection_sf[ii] = np.unique(intersection_sf[ii], axis=1)
+    if update_reference_point:
+        for ii in range(len(intersection_obs)):
+            intersection_sf[ii] = np.unique(intersection_sf[ii], axis=1)
 
-        # Get numerical mean
-        x_center_dyn= np.mean(intersection_sf[ii], axis=1)
-        #plt.plot(x_center_dyn[0], x_center_dyn[1], 'go')
+            # Get numerical mean
+            x_center_dyn= np.mean(intersection_sf[ii], axis=1)
         
-        for it_obs in intersection_obs[ii]:
-            obs[it_obs].reference_point = x_center_dyn
+            for it_obs in intersection_obs[ii]:
+                obs[it_obs].set_reference_point(x_center_dyn, in_global_frame=True)
 
         # sort points according to angle
     #     intersec_sf_cent = intersection_sf - repmat(x_center_dyn,1,size(intersection_sf,2))
@@ -394,7 +392,8 @@ def obs_common_section_hirarchy(obs, hirarchy=True, N_points=30, Gamma_steps=5):
         root_index = np.arange(N_obs)[intersection_clusters[ii]][np.argmin(center_distance)]
                 
         obs[root_index].hirarchy = 0
-        obs[root_index].reference_point = obs[root_index].center_position
+        # obs[root_index].reference_point = obs[root_index].center_position
+        obs[root_index].set_reference_point(np.zeros(self.dim), in_global_frame=False)
 
         obstacle_tree = [root_index]
 
@@ -407,7 +406,9 @@ def obs_common_section_hirarchy(obs, hirarchy=True, N_points=30, Gamma_steps=5):
                     obs[jj].hirarchy = obs[obstacle_tree[0]].hirarchy+1
                     obs[jj].ind_parent = obstacle_tree[0] # TODO use pointer...
                     
-                    obs[jj].reference_point = Intersections.get(jj, obstacle_tree[0])
+                    # obs[jj].reference_point = Intersections.get(jj, obstacle_tree[0])
+                    obs[root_index].set_reference_point(Intersections.get(jj, obstacle_tree[0]), in_global_frame=True)
+                                                        
                     # intersection_relatives[jj, obstacle_tree[0]] = False
                     intersection_relatives[obstacle_tree[0], jj] = False
                     obstacle_tree.append(jj)

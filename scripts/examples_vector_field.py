@@ -35,12 +35,12 @@ def main(options=[0], N_resol=100, saveFigures=False):
             
             obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[0, 1.5], th_r=0, w=10, sf=1, xd=[0,0]))
             obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[1, 1.5], th_r=0, w=10, sf=1, xd=[0,0]))
-            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[-0.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
-            obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[1.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
+        # obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[-0.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
+        # obs.append(Ellipse(a=[0.7, 0.7], p=[1,1], x0=[1.7, 2.2], th_r=0, w=10, sf=1, xd=[0,0]))
 
             xAttractor = [0., 0]
             
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_avoidanceCube', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_avoidanceCube', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=N_resol, show_streamplot=False)
 
         if option==-5:
             x_lim = [-3,6.1]
@@ -515,7 +515,7 @@ def main(options=[0], N_resol=100, saveFigures=False):
                 plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine_pres_colMap' + '.eps', bbox_inches='tight')
 
 print('name', __name__)    
-if (str(__name__)=="__main__"):
+if (str(__name__)==("__main__")):
     if len(sys.argv) > 1:
         options = sys.argv[1]
 

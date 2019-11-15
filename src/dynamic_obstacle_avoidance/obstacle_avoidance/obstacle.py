@@ -23,123 +23,6 @@ import matplotlib.pyplot as plt
 
 visualize_debug = False
 
-
-class ObstacleContainer(State):
-    # TODO: Update this in a smart way
-    # TODO: how much in obstacle class, how much in container?
-    
-    def __init__(self, obs_list=None):
-        if isinstance(obs_list, list):
-            self._obstacle_list = obs_list
-        else:
-            self._obstacle_list = []
-            
-        self._index_families = None
-        self._unique_families = None
-        self._rotation_direction = None
-
-    def reset_clusters(self):
-        self.find_hirarchy()
-        self.get_sibling_groups()
-        
-    def reset_rotation_direction(self):
-        self._rotation_direction =  np.zeros(self._unique_families.shape)
-        self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-
-    def __repr__(self):
-        return "ObstacleContainer of length #{}".format(len(self))
-        
-    def __len__(self):
-        return len(self._obstacle_list)
-
-    @ property
-    def number(self):
-        return len(self._obstacle_list)
-
-    def __getitem__(self, key):
-        return self._obstacle_list[key]
-
-    def __setitem__(self, key, value):
-        self._obstacle_list[key] = value
-        
-    def __delitem__(self, key):
-        del self._obstacle_list[key]
-
-    def append(self, value):
-        self._obstacle_list.append(value)
-
-    def find_hirarchy(self):
-        intersecting_obs = obs_common_section(self)
-        dynamic_center_3d(self, intersecting_obs)
-
-    @property
-    def list(self):
-        return self._obstacle_list
-
-    @ property
-    def index_families(self):
-        if isinstance(self._index_families, type(None)):
-            self.get_sibling_groups()
-        return self._index_families
-
-    def get_siblings(self, index):
-        if isinstance(self._index_families, type(None)):
-            self.get_sibling_groups()
-
-        index_family_ii = (index==self._index_families)
-        return np.arange(len(self))[index_family_ii]
-    
-    def get_sibling_groups(self):
-        hirarchy_obs = np.array([self._obstacle_list[ii].hirarchy for ii in range(len(self))])
-        index_to_parents = np.array([self._obstacle_list[ii].ind_parent for ii in range(len(self))])
-        
-        ind_roots = (hirarchy_obs==0)
-        num_families = np.sum(ind_roots)
-
-        self._index_families = index_to_parents
-        if not num_families:
-            raise ValueError("No obstacle root detected.")
-            
-        self._index_families[ind_roots] = np.arange(num_families)
-
-        for ii in range(max(hirarchy_obs)-1, 0, -1):
-            self._index_families[hiarchy_obs==ii] = _index_families[_index_families[hiarchy_obs==ii]]
-        self._unique_families = np.unique(self._index_families)
-        
-        return self._index_families
-
-    def get_rotation_direction(self, index):
-        if isinstance(self._rotation_direction, type(None)):
-            self._rotation_direction = np.zeros(self._unique_families.shape)
-        
-        try:
-            value = self._rotation_direction[self._unique_families==self._index_families[index]]
-        except:
-            import pdb; pdb.set_trace() ## DEBUG ##
-            
-        # print('rot dir', value)
-        return value
-
-    # TODO: make getter and setter of sub-list
-    def is_outside_influence_region(self, index):
-        if not hasattr(self, '_outside_influence_region'):
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-        return self._outside_influence_region[self._unique_families==self._index_families[index]]
-    
-    def set_is_outside_influence_region(self, index, value=None):
-        if not hasattr(self, '_outside_influence_region'):
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-        self._outside_influence_region[self._unique_families==self._index_families[index]] = value
-            
-    def set_rotation_direction(self, index, value):
-        if not hasattr(self, '_rotation_direction'):
-            self._rotation_direction = np.zeros(self._unique_families.shape)
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-            
-        self._rotation_direction[self._unique_families==self._index_families[index]] = value
-        # self._outside_influence_region[self._unique_families==self._index_families[index]] = False
-        
-
 class Obstacle(State):
     """ General class of obstacles """
     # TODO create obstacle container/list which can fast iterate through obstacles and perform other calculations
@@ -147,7 +30,8 @@ class Obstacle(State):
                  x0=None, th_r=None,
                  linear_velocity=[0,0], angular_velocity=0, xd=[0,0], w=0,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
-                 Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1, *args, **kwargs):
+                 Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
+                 # , *args, **kwargs): # maybe random arguments
          # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
@@ -247,7 +131,6 @@ class Obstacle(State):
             for ii in range(other.shape[1]):
                 other[:, ii] = self.rotMatrix.dot(other[:, ii]) + self.center_position
             return other
-    
         # return (self.rotMatrix.dot(position))  + np.array(self.center_position)
 
     @property
@@ -262,12 +145,12 @@ class Obstacle(State):
     @property
     def th_r(self):
         # TODO: remove since redundant
-        return self.orientation
+        return self.orientation # getter
 
     @th_r.setter
     def th_r(self, value):
         # TODO: remove since redundant
-        self.orientation = value
+        self.orientation = value # setter
         
     def compute_R(self):
         # TODO - replace with quaternions
@@ -474,7 +357,6 @@ class Obstacle(State):
             else:
                 return (1-Gamma_ref)/(Gamma-Gamma_ref)
 
-
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         if type(hull_edge)==type(None):
             hull_edge = self.hull_edge
@@ -574,56 +456,7 @@ class Obstacle(State):
 
         return weights
 
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
-
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        if not self.reference_point_is_inside:
-            ind_intersect = np.zeros(self.normalDistance2center.shape, dtype=bool)
-
-            distances2plane = self.get_distance_to_hullEdge(position)
-
-            ind_outside = (distances2plane > 0)
-
-            if np.sum(ind_outside)>0:
-                for ii in np.arange(ind_outside.shape[0])[ind_outside]:
-
-                    reference_line = {"point_start":[0,0],
-                                      "point_end":position}
-                    # TODO - don't use reference point, but little 'offset' to avoid singularity
-                    tangent_line = {"point_start":self.hull_edge,
-                                    "point_end":self.tangent_points[:, ii]}
-
-                    ind_intersect[ii], dist = self.are_lines_intersecting(reference_line, tangent_line)
-
-                    if ind_intersect[ii]:
-                        break
-
-                if np.sum(ind_intersect): # nonzero
-                    angle2referencePlane = self.get_angle2referencePatch(position)
-                    weights = self.get_angle_weight(angle2referencePlane)
-
-                    try:
-                        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, obs=self, position=position, normalize_reference=True)
-
-                    except:
-                        # pass
-                        import pdb; pdb.set_trace() ## DEBUG ##
-                    # return normal_vector
-
-        if self.reference_point_is_inside or np.sum(ind_intersect)==0:
-        # Elsee
-            normal_vector = (2*self.p/self.margin_axes*(position/self.margin_axes)**(2*self.p - 1))
-
-        if normalize:
-            normal_vector = normal_vector/LA.norm(normal_vector)
-
-        if False:
-            self.draw_reference_hull(normal_vector, position)
-
-        return normal_vector
-
+    
     def draw_reference_hull(self, normal_vector, position):
         pos_abs = self.transform_relative2global(position)
         norm_abs = self.transform_relative2global_dir(normal_vector)
@@ -730,7 +563,55 @@ class Ellipse(Obstacle):
         
         self.is_convex = True
 
-        
+    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        if not self.reference_point_is_inside:
+            ind_intersect = np.zeros(self.normalDistance2center.shape, dtype=bool)
+
+            distances2plane = self.get_distance_to_hullEdge(position)
+
+            ind_outside = (distances2plane > 0)
+
+            if np.sum(ind_outside)>0:
+                for ii in np.arange(ind_outside.shape[0])[ind_outside]:
+
+                    reference_line = {"point_start":[0,0],
+                                      "point_end":position}
+                    # TODO - don't use reference point, but little 'offset' to avoid singularity
+                    tangent_line = {"point_start":self.hull_edge,
+                                    "point_end":self.tangent_points[:, ii]}
+
+                    ind_intersect[ii], dist = self.are_lines_intersecting(reference_line, tangent_line)
+
+                    if ind_intersect[ii]:
+                        break
+
+                if np.sum(ind_intersect): # nonzero
+                    angle2referencePlane = self.get_angle2referencePatch(position)
+                    weights = self.get_angle_weight(angle2referencePlane)
+
+                    try:
+                        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, obs=self, position=position, normalize_reference=True)
+
+                    except:
+                        # pass
+                        import pdb; pdb.set_trace() ## DEBUG ##
+                    # return normal_vector
+
+        if self.reference_point_is_inside or np.sum(ind_intersect)==0:
+            # normal_vector = (2*self.p/self.margin_axes*(position/self.margin_axes)**(2*self.p-1))
+            normal_vector = (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
+
+        if normalize:
+            normal_vector = normal_vector/LA.norm(normal_vector)
+
+        if in_global_frame:
+            normal_vector = self.transform_relative2global_dir(normal_vector) 
+
+        return normal_vector
+
 
     def get_gamma(self, position, in_global_frame=False, gamma_type='proportional'):
         # if not type(position)==np.ndarray:
@@ -754,7 +635,7 @@ class Ellipse(Obstacle):
         # Original Gamma
         if gamma_type=='proportional':
             Gamma = np.sum((position / self.margin_axes)**(2*self.p[0]))  # distance
-            Gamma = Gamma**(1/(2*self.p[0]))
+            Gamma = Gamma**(1./(2*self.p[0]))
         else:
             raise NotImplementedError()
         
@@ -847,33 +728,10 @@ class Ellipse(Obstacle):
         return LA.norm(position)/gamma
 
     
-class HumanEllipse(Ellipse):
-    # Ellipse with proxemics
-    # Intimate-, Personal-, Social-, Public- Spaces
-    
-    # first axis in direction of vision
-    # second axis aligned with shoulders
-    def __init__(self, axis_length=[0.4, 1.1],
-                 public_axis=[16.0, 8.0], public_center=[4.0, 0.0], 
-                 personal_axis=[8, 3.0], personal_center=[2.0, 0.0],
-                 *args, **kwargs):
-        
-        super().__init__(axis_length, *args, **kwargs)
-        
-        self.public_axis = np.array(public_axis)
-        self.public_center = np.array(public_center) # in local frame
-
-        self.personal_axis = np.array(personal_axis)
-        self.personal_center = np.array(personal_center) # in local frame
-        
-    def repulsion_force(self, position):
-        raise NotImplementedError()
-
-
 class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
                  *args, **kwargs):
-
+        
         super().__init__(*args, **kwargs)
 
         # Object Specific Paramters
