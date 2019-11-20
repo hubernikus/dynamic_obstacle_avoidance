@@ -19,7 +19,7 @@ import warnings
 import sys
 
 
-def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01):
+def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True):
     # This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     # 
     # INPUT
@@ -131,16 +131,17 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
         xd_hat[:,n] = M[:,:,n] @ xd # velocity modulation
 
         # if False:
-        if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
-            repulsive_power = 5
-            repulsive_factor = 5
-            repulsive_gamma = (1+repulsive_gammaMargin)
-            
-            repulsive_velocity =  ((repulsive_gamma/Gamma[n])**repulsive_power-
-                                    repulsive_gamma)*repulsive_factor
-            if obs[n].is_boundary:
-                repulsive_velocity *= (-1)
-            xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
+        if repulsive_obstacle:
+            if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
+                repulsive_power = 5
+                repulsive_factor = 5
+                repulsive_gamma = (1+repulsive_gammaMargin)
+                
+                repulsive_velocity =  ((repulsive_gamma/Gamma[n])**repulsive_power-
+                                       repulsive_gamma)*repulsive_factor
+                if obs[n].is_boundary:
+                    repulsive_velocity *= (-1)
+                    xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
         

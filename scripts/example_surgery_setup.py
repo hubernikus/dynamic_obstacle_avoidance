@@ -38,24 +38,31 @@ def main(simulationNumber=0, saveFigures=False):
         a1 = 0.05
         a2 = 0.20
         d_a = (a2-a1)/2
-        l = 0.30
-        points = np.array([[0, 0, 0],
-                           [0, a1, 0,],
-                           [0, a1, a1],
-                           [0, 0, a1],
-                           [l, -d_a, -d_a],
-                           [l, a2-d_a, -d_a],
-                           [l, a2-d_a, a2-d_a],
-                           [0, -d_a, a2-d_a]).T
 
-        ind_tiles = np.array([[0,1,2,3],
-                              [4,5,6,7],
-                              [0,1,4,5],
-                              [1,2,5,6],
-                              [2,3,6,7],
-                              [3,0,7,5]])
-                          
-        obs.append(DynamicBoundariesPolygon(edge_points=points, ind_tiles=ind_tiles, th_r=0))
+        l = 0.30
+        points = np.array([[-a1, -a1, 0],
+                           [a1, -a1,, 0],
+                           [a1, a1, 0],
+                           [-a1, a1, 0],
+                           [-a2, -a2, l],
+                           [a2, -a2, l],
+                           [a2, a2, l],
+                           [-a2, a2, l]]).T
+
+        indices_of_tiles = np.array([
+            # [0,1,2,3], # Bottom Part
+            # [4,5,6,7], # Lid
+            [0,1,4,5],
+            [1,2,5,6],
+            [2,3,6,7],
+            [3,0,7,5]
+        ])
+
+        
+        obs.append(DynamicBoundariesPolygon(edge_points=points,
+                                            indices_of_tiles=indices_of_tiles,
+                                            indices_of_flexibleTiles==indices_of_tiles,
+                                            th_r=0))
 
         x_range = [-l ,l*2]
         y_range = [-a2,a2*2]

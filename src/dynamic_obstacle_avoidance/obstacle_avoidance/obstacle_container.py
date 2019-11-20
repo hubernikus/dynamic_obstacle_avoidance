@@ -7,10 +7,12 @@
 
 import time
 import numpy as np
+import copy
 from math import sin, cos, pi, ceil
 import warnings, sys
 
 import numpy.linalg as LA
+import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
@@ -19,9 +21,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
-import matplotlib.pyplot as plt
-
 visualize_debug = False
+
 
 class ObstacleContainer(State):
     # Contains properties of the obstacle environment. Which require centralized handling
@@ -34,19 +35,23 @@ class ObstacleContainer(State):
         else:
             self._obstacle_list = []
             
-        self._index_families = None
+        self._family_label = None
         self._unique_families = None
         self._rotation_direction = None
 
+        self.intersection_matrix = None
+
+        # The reset clusters has to be called after all obstacles are inserted in order to update the container
+
     def reset_clusters(self):
-        self.find_hirarchy()
+        self.get_sibling_groups()
         # self.get_sibling_groups()
         self.reset_rotation_direction()
         
     def reset_rotation_direction(self):
         self._rotation_direction =  np.zeros(self._unique_families.shape)
         # self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-        self._outside_influence_region = np.ones(self._index_families.shape, dtype=bool)
+        self._outside_influence_region = np.ones(self._family_label.shape, dtype=bool)
 
     def __repr__(self):
         return "ObstacleContainer of length #{}".format(len(self))
@@ -67,93 +72,273 @@ class ObstacleContainer(State):
     def __delitem__(self, key):
         del self._obstacle_list[key]
 
-    def append(self, value):
+    def add_obstacle(self, value):
         self._obstacle_list.append(value)
 
-    def find_hirarchy(self):
-        intersecting_obs = obs_common_section(self, update_reference_point=False)
+    def append(self, value): # compatibility with normal list
+        self._obstacle_list.append(value)
 
-        self._index_families = np.ones(len(self))*(-1)
+    def find_root(self):
+        ind_parents = np.array([self[ii].ind_parent for ii in range(len(self))])
+        hirarchy_max = np.max([self[ii].ind_parent for ii in range(len(self))])
+
+        ind_roots = (ind_parents<0)
+        ind_parents[ind_roots] = (np.arange(np.sum(ind_roots) , dtype=int)+1)*(-1)
         
-        for ii in range(len(intersecting_obs)):
-            self._index_families[intersecting_obs[ii]] = ii
+        for ii in range(hirarchy_max):
+            ind_nonRoot = (ind_parents>=0)
 
-        ind_singles = self._index_families == (-1)
-
-        if np.sum(ind_singles): # nonzero
-            self._index_families[ind_singles] = np.arange(len(intersecting_obs),
-                                                          len(intersecting_obs)+np.sum(ind_singles))
-
-        self._unique_families = np.unique(self.index_families)
+            ind_parents[ind_nonRoot] = ind_parents[ind_parents[ind_nonRoot]]
+            
+        self._family_label = ind_parents*(-1) -1 # Range from 0 to n
         
-        # dynamic_center_3d(self, intersecting_obs)
+
+    def get_sibling_groups(self):
+        intersecting_obs, self.intersection_matrix = obs_common_section_hirarchy(self, update_reference_point=False, get_intersection_matrix=True)
+
+        if True:
+            self._family_label = np.ones(len(self))*(-1)
+
+            it_lablel = 0
+            for ii in range(len(intersecting_obs)):
+                self._family_label[intersecting_obs[ii]] = ii
+
+            ind_singles = self._family_label == (-1)
+
+            if np.sum(ind_singles): # nonzero
+                self._family_label[ind_singles] = np.arange(len(intersecting_obs),
+                                                              len(intersecting_obs)+np.sum(ind_singles))
+
+            self._family_label = self._family_label.astype(int)
+        
+        self.find_root()
+        self._unique_families = np.unique(self._family_label)
+        self._family_centers = np.zeros((self.dim, self._unique_families.shape[0]))
+
+        center_list = np.array([self[jj].center_position for jj in range(len(self))]).T
+        for ii in range(self._family_centers.shape[1]):
+            self._family_centers[:, ii] = np.mean(center_list[:, (self._family_label==ii)], axis=1)
 
     @property
     def dim(self):
+        # Dimension of all obstacles is equal
         return self._obstacle_list[0].dim
     
     @property
     def list(self):
         return self._obstacle_list
 
+    def get_family_index(self, index):
+        # Assumption: _unique_families is sorted
+        return self._family_label[index]
+
+    # @property
+    # def family_center(self, index):
+        # return self._family_centers
+
     @property
-    def index_families(self):
-        if isinstance(self._index_families, type(None)):
-            self.get_sibling_groups()
-        return self._index_families
+    def family_center(self):
+        return self._family_centers
+        
+    def get_family_center(self, index):
+        return self._family_centers[:, self.get_family_index(index)]
 
-    def get_siblings(self, index):
-        if isinstance(self._index_families, type(None)):
-            self.get_sibling_groups()
-
-        index_family_ii = (index==self._index_families)
-        return np.arange(len(self))[index_family_ii]
+    @property
+    def num_families(self):
+        return len(self._family_label)
     
-    def get_sibling_groups(self):
-        # TODO: evaluate what to store in container
-        hirarchy_obs = np.array([self._obstacle_list[ii].hirarchy for ii in range(len(self))])
-        index_to_parents = np.array([self._obstacle_list[ii].ind_parent for ii in range(len(self))])
-
-        import pdb; pdb.set_trace() ## DEBUG ##
+    @property
+    def index_family(self):
+        # TODO: remove since depreciated
+        return self.family_label
         
-        ind_roots = (hirarchy_obs==0)
-        num_families = np.sum(ind_roots)
+    @property
+    def family_label(self):
+        if isinstance(self._family_label, type(None)):
+            self.get_sibling_groups()
+        return self._family_label
+
+    def get_siblings_boolIndex(self, index):
+        # if isinstance(self._family_label, type(None)):
+            # self.get_sibling_groups() 
+        label = self._family_label[index]
+        return (label==self._family_label)
         
-        self._index_families = index_to_parents
-        if not num_families:
-            raise ValueError("No obstacle root detected.")
-            
-        self._index_families[ind_roots] = np.arange(num_families)
-
-        for ii in range(max(hirarchy_obs)-1, 0, -1):
-            self._index_families[hiarchy_obs==ii] = _index_families[_index_families[hiarchy_obs==ii]]
-        self._unique_families = np.unique(self._index_families)
-        self._family_references = np.zeros((self.dim, self._unique_families.shape[0]))
-
-        return self._index_families
-
-    def get_rotation_direction(self, index):
-        if isinstance(self._rotation_direction, type(None)):
-            self._rotation_direction = np.zeros(self._unique_families.shape)
-        value = self._rotation_direction[self._unique_families==self._index_families[index]]
-        return value
-
-    # TODO: make getter and setter of sub-list
+    def get_siblings_number(self, index):
+        # if isinstance(self._family_label, type(None)):
+            # self.get_sibling_groups() 
+        return np.arange(len(self), dtype=int)[self.get_siblings_boolIndex(index)]
+    
     def is_outside_influence_region(self, index):
-        if not hasattr(self, '_outside_influence_region'):
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-        return self._outside_influence_region[self._unique_families==self._index_families[index]]
+        # TODO: make getter and setter of sub-list
+        # if not hasattr(self, '_outside_influence_region'):
+            # self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        return self._outside_influence_region[index]
     
     def set_is_outside_influence_region(self, index, value=None):
-        if not hasattr(self, '_outside_influence_region'):
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
-        # self._outside_influence_region[self._unique_families==self._index_families[index]] = value
+        # if not hasattr(self, '_outside_influence_region'):
+            # self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        # self._outside_influence_region[self._unique_families==self._family_label[index]] = value
         self._outside_influence_region[index] = value
             
     def set_rotation_direction(self, index, value):
-        if not hasattr(self, '_rotation_direction'):
-            self._rotation_direction = np.zeros(self._unique_families.shape)
-            self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        # if not hasattr(self, '_rotation_direction'):
+            # self._rotation_direction = np.zeros(self._unique_families.shape)
+            # self._outside_influence_region = np.ones(self._unique_families.shape, dtype=bool)
+        # self._rotation_direction[self._unique_families==self._family_label[index]] = value
+        
+        self._rotation_direction[self.get_family_index(index)] = value
+        # self._outside_influence_region[self._unique_families==self._family_label[index]] = False
+        
+    def get_rotation_direction(self, index):
+        # if isinstance(self._rotation_direction, type(None)):
+            # self._rotation_direction = np.zeros(self._unique_families.shape)
+        # value = self._rotation_direction[self._unique_families==self._family_label[index]]
+        return self._rotation_direction[self.get_family_index(index)]
+
+    # @property
+    # def intersection_position(self, index):
+        # if index[0] == index[1]
+
+    def get_relative_angle_to_family(self, ind_newObstacle, position):
+        # Angle Windup to Family Member
+        # TODO: Debug and verify
+        ind_family = (self._family_label==self._family_label[ind_newObstacle])
+
+        short_connection = [ind_newObstacle]
+        for ii in range(ind_family.shape[0]):
+            if not self.is_outside_influence_region(ind_family[ii]):
+                ind_short_connection = self.find_shortes_connection(ind_family[ii], ind_newObstacle)
+                break
+
+        angle_space_difference = 0
+        # for ii in range(len(short_connection)-1):
+        # for ii in range(1, len(short_connection)-1)):
+            # Under the assumption that everything is star-shaped
+        
+        basis_direction = np.zeros(self.dim)
+        basis_direction[0] = 1
+        transform_direction = self[ind_short_connection[0]].global_reference_point - position
+        angle_space_difference += get_directional_space(ref_dir, transform_direction)
+
+        for ii in range(0, len(short_connection)-1)):
+            basis_direction = transform_direction
+            transform_direction = self.intesection_points[ind_short_connection[ii+1], ind_short_connection[ii]] - self[ind_short_connection[ii]].global_reference_point
             
-        self._rotation_direction[self._unique_families==self._index_families[index]] = value
-        # self._outside_influence_region[self._unique_families==self._index_families[index]] = False
+            angle_space_difference += get_directional_space(basis_direction, transform_direction)
+
+            basis_direction_= transform_direction
+            transform_dir = self[ind_short_connection[ii]].global_reference_point - self.intersection_points[ind_short_connection[ii+1], ind_short_connection[ii]]
+            angle_space_difference += get_directional_spaceget_directional_space(basis_direction, transform_direction)
+
+        return angle_space_difference
+
+    def find_shortes_connection(self, ind_start, ind_end):
+        # Exploration search
+        # TODO: DEBUG AND VERIFY
+        # CREATE TESTING FUNCTION!!!!
+        it_list = [] # Search it list
+        siblings_list = [get_siblings(ind_start)]
+        flat_list = [siblings_list]
+        
+        path_not_found = True
+        it_list = [0 for ii in range(len(it_list)+1)] # increment of one
+        siblings_list.append(copy.deepcopy(siblings_list[-1]))
+
+        increment_level = -1
+        
+        while(path_not_found):
+            increment_in_process = True
+            # while(increment_in_process):
+            
+            eval_list = siblings_list[-2]
+            # for ii in range(len(it_list)):
+            # Increment get evaluation-list
+            ii=0
+            while(ii < range(len(it_list))):
+                # while len(it_list[ii]): #nonzero
+                    # it_list[ii] += 1
+                if ii==increment_level:
+                    it_list[ii] += 1
+
+                if it_list[ii] > len(eval_list):
+                    it_list[ii] = 0
+                    increment_level = (ii-1)
+                    if increment_level==0: # all siblings found
+                        siblings_list.append(copy.deepcopy(siblings_list[-1]))
+                        it_list.apppend(0)
+                        increment_level = len(it_list)-1
+                        ii = 0
+                        continue
+                    
+                    eval_list = siblings_list[-2]
+                    ii = 0
+                    continue
+                
+                eval_list = eval_list[it_list[ii]]
+                ii+=1
+                
+            increment_level = len(it_list)-1
+
+            fill_list = siblings_list[-1]                        
+            for ii in range(len(it_list)):
+                fill_list = fill_list[it_list[ii]]
+                
+            # Fill the list
+            for ii in range(1, len(it_list)):
+                fill_list = fill_list[it_list[ii]]
+                
+                if ind_end in fill_list[ii]:
+                    it_list.append(np.array(fill_list[ii] == ind_end)[0])
+                # while (ii<len(fill_list[-1])):
+                    # if temp_list[ii]==ind_end:
+                    # it_list[-1] = ii
+                    return it_list
+                    # path_not_found = False
+                    # break
+                
+                # Check for Duplicates
+                jj = 0
+                while (jj<len(fill_list[-1])):
+                    if fill_list[ii] in flat_list:
+                        del fill_list[jj]
+                        continue
+                    jj += 1
+                flat_list.append(fill_list[-1])
+
+
+            # # Increment
+            # increment_level = len(it_list)
+            # while(increment_level>0):
+            #     it_list[increment_level] += 1
+                
+            #     eval_list = siblings_list
+            #     for ii in range(len(it_list)-1):
+            #         eval_list = eval_list[it_list]
+
+            #         if len(eval_list)==0:
+            #             it_list[increment_level] = 0
+            #             increment_level -= 1
+            #             break
+
+            #         if (ii==increment_level and
+            #             it_list[increment_level] > len(eval_list)):
+            #             it_list[increment_level] = 0
+            #             increment_level -= 1
+            #             break
+
+            # siblings_list.append(copy.deepcopy(siblings_list))
+            
+            # if it_list[-1]>=len(eval_list):
+                # it_list[0]
+            
+            # break
+    
+    def get_siblings(self, ind):
+        # TODO: use intersection matrix instead / maybe not
+        if self[ind].parent>=0:
+            return np.array([self[ind].parent] + self.ind_children)
+        else:
+            return np.array(self.ind_children)
+        
+        

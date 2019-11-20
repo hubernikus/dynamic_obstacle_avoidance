@@ -89,6 +89,7 @@ class Obstacle(State):
         # Trees of stars
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
+        self.ind_children = [] 
 
         # Relative Reference point // Dyanmic center
         # self.reference_point = self.center_position # TODO remove and rename
@@ -114,7 +115,7 @@ class Obstacle(State):
             n_points = self.position.shape[1]
             return self.rotMatrix.T.dot(position.T - np.tile(self.center_position, (n_points,1)).T )
         else:
-            warning.warn("Unexpected position-shape")
+            raise ValueError("Unexpected position-shape")
 
     def transform_relative2global(self, other): # TODO - inherit
         if not isinstance(other, (list, np.ndarray)):
@@ -132,6 +133,12 @@ class Obstacle(State):
                 other[:, ii] = self.rotMatrix.dot(other[:, ii]) + self.center_position
             return other
         # return (self.rotMatrix.dot(position))  + np.array(self.center_position)
+        
+    def transform_relative2global_dir(self, direction): # TODO - inherit
+        return self.rotMatrix.dot(direction)
+
+    def transform_global2relative_dir(self, direction): # TODO - inherit
+        return self.rotMatrix.T.dot(direction)
 
     @property
     def orientation(self):
@@ -184,11 +191,6 @@ class Obstacle(State):
             self.rotMatrix = np.eye(self.dim)
 
 
-    def transform_relative2global_dir(self, direction): # TODO - inherit
-        return self.rotMatrix.dot(direction)
-
-    def transform_global2relative_dir(self, direction): # TODO - inherit
-        return self.rotMatrix.T.dot(direction)
 
     @property
     def global_reference_point(self):
@@ -296,6 +298,7 @@ class Obstacle(State):
         self.timestamp = time_current
 
     def are_lines_intersecting(self, direction_line, passive_line):
+        # TODO only return intersection point or None
         # solve equation line1['point_start'] + a*line1['direction'] = line2['point_end'] + b*line2['direction']
         connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start'])
         connection_passive = np.array(passive_line['point_end']) - np.array(passive_line['point_start'])

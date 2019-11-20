@@ -3,8 +3,7 @@
 Dynamic Simulation - Obstacle Avoidance Algorithm
 
 @author LukasHuber
-@date 2018-05-24
-
+@date 2019-11-14
 '''
 
 import matplotlib.pyplot as plt
@@ -22,7 +21,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.human_ellipse import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 
 r_boundary=2
-
 
 def transform_to_directionSpace(reference_direction, directions, normalize=True):
     ind_nonzero = (weights>0)
@@ -78,7 +76,6 @@ def ds_init(x, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
     norm_vel = np.linalg.norm(vel)
     if norm_vel>max_vel:
         vel = vel/norm_vel*max_vel
-        
     return vel
 
 
@@ -95,18 +92,20 @@ def get_local_weight(r, r_ref, r_boundary=2, power_weight=1, delta_weight=0.4):
     
 def get_weighted_angular_mean(angle_weights, angle_tangents2init, init_weight=0):
     # Compute in a more general manner
-    angle_init = 0 
+    # angle_init = 0 
     if not sum(angle_weights):
-        return angle_init
-    angle_weights = np.hstack((angle_weights, init_weight))
-    angle_tangents2init = np.hstack((angle_tangents2init, angle_init))
+        return 0
+    max_weight = np.max(angle_weights)
+    # angle_weights = np.hstack((angle_weights, init_weight))
+    # angle_tangents2init = np.hstack((angle_tangents2init, angle_init))
+    
 
     ind_exceedMax = angle_weights>1
     if np.sum(ind_exceedMax):
         return np.sum(angle_weights[ind_exceedMax]*angle_tangents2init[ind_exceedMax])/np.sum(ind_exceedMax)
     
-    if np.sum(angle_weights)<1:
-        angle_weights[-1] = 1 - np.sum(angle_weights[:-1])
+    # if np.sum(angle_weights)<1:
+        # angle_weights[-1] = 1 - np.sum(angle_weights[:-1])
         
     one_ind = (angle_weights>=1)
     if np.sum(one_ind):
@@ -115,6 +114,7 @@ def get_weighted_angular_mean(angle_weights, angle_tangents2init, init_weight=0)
     # angle_weights = angle_weights/np.sum(angle_weights)
     angle_weights = 1.0/(1-angle_weights) - 1
     angle_weights = angle_weights/np.sum(angle_weights)
+    angle_weights = angle_weights*max_weight
 
     # print('weight angle', angle_weights)
     angle_desired = np.sum(angle_weights*angle_tangents2init)
@@ -177,16 +177,16 @@ elif case==1:
     # Couple of pedestrian ellipses
     # obstacles.append(HumanEllipse(axes_length=[0.3, 0.8]))
     obstacles.append(HumanEllipse())
-    # obstacles[-1].orientation = 30./180*pi
-    # obstacles[-1].center_position = [0, 2.5]
+    obstacles[-1].orientation = 30./180*pi
+    obstacles[-1].center_position = [0.3, 2.0]
 
-    # obstacles.append(copy.deepcopy(obstacles[0]))
+    obstacles.append(copy.deepcopy(obstacles[0]))
     obstacles[-1].orientation = 0./180*pi
     obstacles[-1].center_position = [1, 1]
 
     obstacles.append(copy.deepcopy(obstacles[0]))
     obstacles[-1].orientation = 40./180*pi
-    obstacles[-1].center_position = [1, -0.5]
+    obstacles[-1].center_position = [0.95, -0.5]
 
     for ii in range(len(obstacles)):
         obstacles[ii].tail_effect = False
@@ -196,16 +196,16 @@ elif case==1:
     # obstacles._unique_families = np.arange(1)
 
 dim = 2
-n_steps = 1000
+n_steps = 100
 
-n_points = 20
+n_points = 2
 x_range = [-1,4]
-y_range = [-6, 8]
-# y_range = [4, 1]
+y_range = [0.0, 0.2]
+# y_range = [-3, 4]
 x_inits = np.vstack(([x_range[1]*np.ones(n_points),
                       np.linspace(y_range[0], y_range[1], n_points)]))
 
-x_inits = np.array([[4], [0.75]])
+# x_inits = np.array([[4], [0.65]])
 
 dt = 0.3
 
@@ -239,14 +239,11 @@ for it_point in range(x_inits.shape[1]):
     positions[:, ii] = x_init
 
     obstacles.reset_rotation_direction()
-
-    # if it_point>0:
-        # import pdb; pdb.set_trace() ## DEBUG ##
     
     set_vortex_direction = True
     for obstacle in obstacles:
         # obstacle.properties["vortex_direction"] = 0
-        # obstacle.properties["outside_influence_region"]=True
+        # obstacle.proper ties["outside_influence_region"]=True
         obstacle.properties["passed_obstacle"]=False
         
         # obstacle.properties["vortex_direction"] = 1
@@ -297,21 +294,20 @@ for it_point in range(x_inits.shape[1]):
             
             dist2center = np.linalg.norm(positions[:, ii]-obstacles[oo].global_reference_point)
             local_radius = obstacles[oo].get_radius_of_angle(ang, in_global_frame=True)
-
             weights[oo] = get_local_weight(dist2center, local_radius, r_boundary=r_boundary)
-            # print('weights#{} of dist={} and radius={}: {}'.format(oo, dist2center, local_radius, weights[oo]))
-
+            
         # Local weights calculation
         # for oo in range(len(obstacles)):
             if weights[oo] > 0:
                 if obstacles.is_outside_influence_region(oo):
                 # if obstacles[oo].properties["outside_influence_region"]:
-                    obstacle_dir = obstacles[oo].global_reference_point - attractor
+                    # obstacle_dir = obstacles[oo].global_reference_point - attractor
+                    obstacle_dir = obstacles.get_family_center(oo) - attractor
                     point_dir = positions[:, ii] - attractor
 
                     if set_vortex_direction:
                         if obstacles.get_rotation_direction(index=oo): # already defined
-                          continue  
+                          pass  
                         elif np.cross(obstacle_dir, point_dir) > 0:
                             # obstacles[oo].properties["vortex_direction"] = 1
                             obstacles.set_rotation_direction(index=oo, value=1)
@@ -343,7 +339,7 @@ for it_point in range(x_inits.shape[1]):
                 # if obstacles[oo].properties["outside_influence_region"]:
                     # obstacles[oo].properties["outside_influence_region"] = False
 
-                    index_siblings = obstacles.get_siblings(oo)
+                    index_siblings = obstacles.get_siblings_number(oo)
                     
                     if index_siblings.shape[0] > 1:
                         # Get the index of obstacle which have been avoided before
@@ -359,7 +355,7 @@ for it_point in range(x_inits.shape[1]):
                     if np.sum(ind_nonzero):
                         # TODO - find direct neighbor ind
                         # TODO - more strategic
-                        first_ind = index_siblings[ind_nonzero]
+                        first_ind = index_siblings[ind_nonzero][0]
                         # first_ind = np.arange(ind_nonzero.shape[0])[ind_nonzero][0]
 
                         referenceDirection_knownObstacle = obstacles[first_ind].get_reference_direction(positions[:,ii], in_global_frame=True)
@@ -392,7 +388,8 @@ for it_point in range(x_inits.shape[1]):
                 obstacles[oo].properties["outside_influence_region"] = True
         
         if np.sum(weights):
-            # print('angle_tangent2init[ii, :]', angle_tangent2init[ii, :])
+            print('angle_tangent2init[ii, :]', angle_tangent2init[ii, :])
+            # print('angle_tangents_list[ii, :]', angle_tangents_list[ii, :])
             # print('weights', weights)
             
             # Angle weight
@@ -461,7 +458,14 @@ for it_point in range(x_inits.shape[1]):
             plt.axis('equal')
             plt.plot(attractor[0], attractor[1], 'k*')
             plt.show()
+
+    for ii in range(obstacles.num_families):
+        label = obstacles.family_label[ii]
+        plt.plot(obstacles.family_center[0, label], obstacles.family_center[1, label], 'b.',
+                 markersize='20', linewidth='20')
+                 
         
+    plt.plot(positions[0, :], positions[1, :])
     # plt.plot(positions[0, :], positions[1, :], '.')
     plt.plot(positions[0, :], positions[1, :])
 

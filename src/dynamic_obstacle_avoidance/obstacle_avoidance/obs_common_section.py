@@ -7,7 +7,6 @@ import numpy as np
 from numpy import linalg as LA
 
 from math import ceil, sin, cos, sqrt
-
 import matplotlib.pyplot as plt # for debugging
 
 import warnings
@@ -19,19 +18,19 @@ class Intersection_matrix():
         self._intersection_list = [False for ii in range(int((n_obs-1)*n_obs/2))]
         self._dim = n_obs-1
 
+    def __setitem__(self, key, value):
+        ind = self.get_index(key[0], key[1])
+        self._intersection_list[ind] = value
+        
     def set(self, row, col, value):
         self[row, col] = value
-        
-    def __setitem__(self, key, value):
-        ind = self.get_index(key[0],key[1])
-        self._intersection_list[ind] = value
-
-    def get(self, row, col):
-        return self[row, col]
 
     def __getitem__(self, key):
-        ind = self.get_index(key[0],key[1])
+        ind = self.get_index(key[0], key[1])
         return self._intersection_list[ind]
+    
+    def get(self, row, col):
+        return self[row, col]
 
     def get_intersection_matrix(self):
         # Maybe not necessary function
@@ -39,7 +38,7 @@ class Intersection_matrix():
         matr = np.zeros((space_dim, self._dim+1, self._dim+1))
         for col in range(self._dim+1):
             for row in range(self._dim+1):
-                if col!=row and type(self.get(row,col))!= bool:
+                if col!=row and not isinstance(self.get(row,col), bool):
                     matr[:,col,row] = self.get(row,col)
         return matr
 
@@ -48,7 +47,7 @@ class Intersection_matrix():
 
         for col in range(self._dim+1):
             for row in range(col+1, self._dim+1):
-                if type(self.get(row,col))== bool and (self.get(row,col) == False):
+                if isinstance(self.get(row,col), bool) and (self.get(row,col) == False):
                     continue
                 intersection_exists_matrix[row, col] = True
 
@@ -79,7 +78,7 @@ class Intersection_matrix():
         return int((row-col-1) + col*((self._dim) + self._dim-(col-1) )*0.5)
 
 
-def obs_common_section(obs, update_reference_point=True):
+def obs_common_section(obs):
     #OBS_COMMON_SECTION finds common section of two ore more obstacles 
     # at the moment only solution in two d is implemented
 
@@ -195,7 +194,7 @@ def obs_common_section(obs, update_reference_point=True):
                                 N_points_interior = ceil(N_points/Gamma_steps*ii)
                                 
                                 #print('a_temp_outside', np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-                                x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
+                                x_obs_sf_interior= obs[it_obs1_].draw_ellipsoid(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
 
                                 resolution = x_obs_sf_interior.shape[1] # number of points 
 
@@ -213,15 +212,17 @@ def obs_common_section(obs, update_reference_point=True):
         return  []
 
     #plt.plot(intersection_sf[0][0,:], intersection_sf[0][1,:], 'r.')
-    if update_reference_point:
-        for ii in range(len(intersection_obs)):
-            intersection_sf[ii] = np.unique(intersection_sf[ii], axis=1)
+    
+    for ii in range(len(intersection_obs)):
+    #     plot(intersection_sf[ii](1,:),intersection_sf[ii](2,:),'x')
+        intersection_sf[ii] = np.unique(intersection_sf[ii], axis=1)
 
-            # Get numerical mean
-            x_center_dyn= np.mean(intersection_sf[ii], axis=1)
+        # Get numerical mean
+        x_center_dyn= np.mean(intersection_sf[ii], axis=1)
+        #plt.plot(x_center_dyn[0], x_center_dyn[1], 'go')
         
-            for it_obs in intersection_obs[ii]:
-                obs[it_obs].set_reference_point(x_center_dyn, in_global_frame=True)
+        for it_obs in intersection_obs[ii]:
+            obs[it_obs].reference_point = x_center_dyn
 
         # sort points according to angle
     #     intersec_sf_cent = intersection_sf - repmat(x_center_dyn,1,size(intersection_sf,2))
@@ -238,7 +239,7 @@ def obs_common_section(obs, update_reference_point=True):
     return intersection_obs 
 
 
-def obs_common_section_hirarchy(obs, hirarchy=True, N_points=30, Gamma_steps=5):
+def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5):
     #OBS_COMMON_SECTION finds common section of two ore more obstacles 
     # at the moment only solution in two d is implemented
 
@@ -392,8 +393,7 @@ def obs_common_section_hirarchy(obs, hirarchy=True, N_points=30, Gamma_steps=5):
         root_index = np.arange(N_obs)[intersection_clusters[ii]][np.argmin(center_distance)]
                 
         obs[root_index].hirarchy = 0
-        # obs[root_index].reference_point = obs[root_index].center_position
-        obs[root_index].set_reference_point(np.zeros(self.dim), in_global_frame=False)
+        obs[root_index].reference_point = obs[root_index].center_position
 
         obstacle_tree = [root_index]
 
@@ -406,14 +406,15 @@ def obs_common_section_hirarchy(obs, hirarchy=True, N_points=30, Gamma_steps=5):
                     obs[jj].hirarchy = obs[obstacle_tree[0]].hirarchy+1
                     obs[jj].ind_parent = obstacle_tree[0] # TODO use pointer...
                     
-                    # obs[jj].reference_point = Intersections.get(jj, obstacle_tree[0])
-                    obs[root_index].set_reference_point(Intersections.get(jj, obstacle_tree[0]), in_global_frame=True)
-                                                        
+                    obs[jj].reference_point = Intersections.get(jj, obstacle_tree[0])
                     # intersection_relatives[jj, obstacle_tree[0]] = False
                     intersection_relatives[obstacle_tree[0], jj] = False
                     obstacle_tree.append(jj)
             
             del obstacle_tree[0]
-    
-    return intersection_obs
+
+    if get_intersection_matrix:
+        return intersection_obs, Intersections
+    else:
+        return intersection_obs
 

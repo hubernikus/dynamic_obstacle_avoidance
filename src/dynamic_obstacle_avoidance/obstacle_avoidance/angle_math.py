@@ -14,6 +14,7 @@ def angle_modulo(angle):
     '''
     Get angle in [-pi, pi[ 
     '''
+    
     return ((angle+pi) % (2*pi)) - pi
 
 def angle_difference_directional(angle1, angle2):
@@ -45,7 +46,7 @@ def angle_difference_abs(angle1, angle2):
     Difference between two angles [0,pi[
     (commutative)
     '''
-    angle_diff = np.babs(angle2-angle1)
+    angle_diff = np.abs(angle2-angle1)
     while angle_diff >= pi:
         angle_diff = 2*pi-angle_diff
     return angle_diff
