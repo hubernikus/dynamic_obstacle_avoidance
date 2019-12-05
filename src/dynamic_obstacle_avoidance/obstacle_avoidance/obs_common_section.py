@@ -194,7 +194,7 @@ def obs_common_section(obs):
                                 N_points_interior = ceil(N_points/Gamma_steps*ii)
                                 
                                 #print('a_temp_outside', np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-                                x_obs_sf_interior= obs[it_obs1_].draw_ellipsoid(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
+                                x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
 
                                 resolution = x_obs_sf_interior.shape[1] # number of points 
 
@@ -222,7 +222,7 @@ def obs_common_section(obs):
         #plt.plot(x_center_dyn[0], x_center_dyn[1], 'go')
         
         for it_obs in intersection_obs[ii]:
-            obs[it_obs].reference_point = x_center_dyn
+            obs[it_obs].global_reference_point = x_center_dyn
 
         # sort points according to angle
     #     intersec_sf_cent = intersection_sf - repmat(x_center_dyn,1,size(intersection_sf,2))

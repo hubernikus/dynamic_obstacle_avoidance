@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 '''
 Angle math for python
 
@@ -8,13 +7,13 @@ Angle math for python
 '''
 
 import numpy as np
+import warnings
 from math import pi
 
 def angle_modulo(angle):
     '''
     Get angle in [-pi, pi[ 
     '''
-    
     return ((angle+pi) % (2*pi)) - pi
 
 def angle_difference_directional(angle1, angle2):
@@ -100,9 +99,64 @@ def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=T
     # output: [r, phi]
     return magnitude, angle
 
-def get_directional_weighted_sum(reference_direction, directions, weights, normalize=True, normalize_reference=True, obs=None, position=[]):
+def get_orthogonal_basis(vector, normalize=False):
+    if isinstance(vector, list):
+        vector = np.array(vector)
+    elif not isinstance(vector, np.ndarray):
+        raise TypeError("Wrong input type vector")
+
+    if normalize:
+        v_norm = np.linalg.norm(vector)
+        if v_norm:
+            vector = vector / v_norm
+        else:
+            raise ValueError("Orthogonal basis Matrix not defined for 0-direction vector.")
+
+    dim = vector.shape[0]
+    Basis_Matrix = np.zeros((dim, dim))
+
+    if dim == 2:
+        Basis_Matrix[:, 0] = vector
+        Basis_Matrix[:, 1] = np.array([Basis_Matrix[1, 0],
+                                       -Basis_Matrix[0, 0]])
+    elif dim == 3:
+        Basis_Matrix[:, 0] = vector
+        Basis_Matrix[:, 1] = np.array([-vector[1], vector[0], 0])
+        
+        norm_vec2 = np.linalg.norm(Basis_Matrix[:, 1])
+        if norm_vec2:
+            Basis_Matrix[:, 1] = Basis_Matrix[:, 1] / norm_vec2
+        else:
+            Basis_Matrix[:, 1] = [1, 0, 0]
+            
+        Basis_Matrix[:, 2] = np.cross(Basis_Matrix[:, 0], Basis_Matrix[:, 1])
+        
+        norm_vec = np.linalg.norm(Basis_Matrix[:, 2])
+        if norm_vec:
+            Basis_Matrix[:, 2] = Basis_Matrix[:, 2] / norm_vec
+        
+    elif dim > 3: # TODO: general basis for d>3
+        raise ValueError("Not implemented for d>3")
+        # warnings.warn("Implement higher dimensionality than d={}".format(dim))
+
+    # for ii in range(1,dim):
+        # TODO: higher dimensions
+        # E[:dim-(ii), ii] = normal_vector[:dim-(ii)]*normal_vector[dim-(ii)]
+        # E[dim-(ii), ii] = -np.dot(normal_vector[:dim-(ii)], normal_vector[:dim-(ii)])
+        # E_orth[:, ii] = E_orth[:, ii]/LA.norm(E_orth[:, ii])
+
+    return Basis_Matrix
+
+
+def get_directional_weighted_sum(reference_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
     '''
     Weighted directional mean for inputs vector ]-pi, pi[ with respect to the reference_direction
+    
+    reference_direction: basis direction for the angle-frame
+    directions: the directions which the weighted sum is taken from
+    weights: used for weighted sum
+    total_weight: [<=1] 
+    normalize: 
     '''
     # TODO remove obs and position
     # Move to different file
@@ -112,35 +166,27 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
     directions = directions[:, ind_nonzero]
     weights = weights[ind_nonzero]
 
-    # TODO remove obs from arguments after debugging
+    if total_weight<1:
+        weights = weights/np.sum(weights) * total_weight
+
+        
     n_directions = weights.shape[0]
-    if n_directions<=1:
+    if (n_directions==1) and total_weight>=1:
         return directions[:, 0]
 
     dim = np.array(reference_direction).shape[0]
 
-    # Create copy to avoid changing initial values
-    if False and not isinstance(obs, type(None)):
-        ref_abs = obs.transform_relative2global_dir(reference_direction)
-
-        position = obs.transform_relative2global(reference_direction)
-        plt.quiver(position[0], position[1], ref_abs[0], ref_abs[1], color='g', label='Reference')
-
-        dir_abs = np.zeros((dim, n_directions))
-        for ii in range(n_directions):
-            dir_abs[:, ii] = obs.transform_relative2global_dir(directions[:,ii])
-            plt.quiver(position[0], position[1], dir_abs[0,ii], dir_abs[1,ii], color='b', label='Normal')
-
     if normalize_reference:
-        norm_refDir = LA.norm(reference_direction)
-        if norm_refDir: # nonzero
-            reference_direction /= norm_refDir
+        norm_refDir = np.linalg.norm(reference_direction)
+        if norm_refDir==0: # nonzero
+            raise ValueError("Zero norm direction as input")
+        reference_direction /= norm_refDir
 
      # TODO - higher dimensions
     if normalize:
-        norm_dir = LA.norm(directions, axis=0)
+        norm_dir = np.linalg.norm(directions, axis=0)
         ind_nonzero = (norm_dir>0)
-        directions[:,ind_nonzero] = directions[:,ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
+        directions[:, ind_nonzero] = directions[:, ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
 
     OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
 
@@ -150,7 +196,7 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
 
     directions_directionSpace = directions_referenceSpace[1:, :]
 
-    norm_dirSpace = LA.norm(directions_directionSpace, axis=0)
+    norm_dirSpace = np.linalg.norm(directions_directionSpace, axis=0)
     ind_nonzero = (norm_dirSpace > 0)
 
     directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
@@ -168,7 +214,8 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
     direction_dirSpace_weightedSum = np.sum(directions_directionSpace*
                                             np.tile(weights, (dim-1, 1)), axis=1)
 
-    norm_directionSpace_weightedSum = LA.norm(direction_dirSpace_weightedSum)
+    norm_directionSpace_weightedSum = np.linalg.norm(direction_dirSpace_weightedSum)
+
     if norm_directionSpace_weightedSum:
         direction_weightedSum = (OrthogonalBasisMatrix.dot(
                                   np.hstack((np.cos(norm_directionSpace_weightedSum),
@@ -176,9 +223,4 @@ def get_directional_weighted_sum(reference_direction, directions, weights, norma
     else:
         direction_weightedSum = OrthogonalBasisMatrix[:,0]
 
-    if False and not isinstance(obs, type(None)):
-        wei_abs = obs.transform_relative2global_dir(direction_weightedSum)
-        plt.quiver(position[0], position[1], wei_abs[0], wei_abs[1], color='r', label='mean')
-        plt.legend()
-        
     return direction_weightedSum

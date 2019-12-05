@@ -221,7 +221,7 @@ class ObstacleContainer(State):
         transform_direction = self[ind_short_connection[0]].global_reference_point - position
         angle_space_difference += get_directional_space(ref_dir, transform_direction)
 
-        for ii in range(0, len(short_connection)-1)):
+        for ii in range(0, len(short_connection)-1):
             basis_direction = transform_direction
             transform_direction = self.intesection_points[ind_short_connection[ii+1], ind_short_connection[ii]] - self[ind_short_connection[ii]].global_reference_point
             

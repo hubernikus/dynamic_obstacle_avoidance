@@ -13,16 +13,19 @@ import sys
 import numpy as np
 from numpy import pi
 
-import time
+import datetime
+
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation, samplePointsAtBorder
 
 print(' ----- Script <<dynamic simulation>> started. ----- ')
 #############################################################
 # Choose a simulation between 0 and 12
-simulationNumber = 1
+simulationNumber = 14
 
 saveFigures = False
 #############################################################
@@ -30,9 +33,8 @@ saveFigures = False
 def main(simulationNumber=0, saveFigures=False):
     if simulationNumber==0:
         N = 10
-        x_init = np.vstack((np.ones(N)*20,
-                            np.linspace(-10,10,num=N) ))
-
+        x_init = np.vstack((np.ones(N)*20, np.linspace(-10,10,num=N) ))
+        
         ### Create obstacle 
         obs = []
         a = [5, 2] 
@@ -589,8 +591,48 @@ def main(simulationNumber=0, saveFigures=False):
 
         run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.003, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01)
 
+    if simulationNumber==14:
+        saveFigures=True
+        N = 8
+        x_init = np.vstack(( np.ones(N)*18,
+                             np.linspace(-7, 7,num=N) ))
+        
+        ### Create obstacle 
+        obs = ObstacleContainer()
+        obs.append(Ellipse(axes_length=[3,2], p=[1,1], x0=[7,-6], th_r=-40/180.*pi,
+                           xd=[0.25, 1], x_start=0, x_end=10, w=0))
 
-    print('\n\n---- Script finished ---- \n\n')    
+        # obs.append(Ellipse(a=[1,1], p=[1,1], x0=[14,-2], th_r=-40/180*pi,
+                           # xd=[0, 0], x_start=0, x_end=0, w=0))
+
+        # obs.append(Ellipse(a=[11, 12], p=[1,1], x0=[10, 0], th_r=-40/180*pi,
+                           # xd=[0, 0], x_start=0, x_end=0, w=0, is_boundary=True))
+
+                        
+        edge_points = np.array([[-1,-10],
+                               [-1, 10],
+                               [20, 10],
+                               [20, -10]]).T
+        
+        obs.append(Polygon(edge_points=edge_points, is_boundary=True,
+                           xd=[0, 0], x_start=0, x_end=0, w=0))
+
+        # obs[-1].move_center([7,0])
+        # obs[-1].orientation=30/180.*pi
+
+        x_range, y_range = [-1.5,20.5], [-10.5,10.5]
+        zRange = [-10,10]
+        #obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+
+        attractorPos = [0,0]
+
+        animationName = 'animation_boundary_square.mp4'
+        run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.05, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01,attractorPos=attractorPos, animationName=animationName, saveFigure=saveFigures )
+
+        
+    print('\n\n---- Script finished at {}---- \n\n'.format(datetime.datetime.now()))
+    
+    
 
 
 if __name__ == "__main__":

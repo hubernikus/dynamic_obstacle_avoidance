@@ -18,28 +18,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 import matplotlib.pyplot as plt
 
-def get_orthogonal_basis(vector, normalize=False):
-    if not type(vector) == np.ndarray:
-        vector = np.array(vector)
-
-    if normalize:
-        v_norm = LA.norm(vector)
-        if v_norm:
-            vector = vector / v_norm
-
-    dim = vector.shape[0]
-
-    Basis_Matrix = np.zeros((dim, dim))
-
-    if dim == 2:
-        Basis_Matrix[:, 0] = vector
-        Basis_Matrix[:, 1] = np.array([Basis_Matrix[1, 0],
-                                       -Basis_Matrix[0, 0]])
-
-    if dim > 2:
-        warnings.warn("Implement higher dimensionality than d={}".format(dim))
-
-    return Basis_Matrix
 
 def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05):
     '''
@@ -66,16 +44,16 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
         rho = 1
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
-
+    
     normal_vector = obs.get_normal_direction(x_t, in_global_frame=False)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=False)
 
     # Check if there was correct placement of reference point
-    Gamma_referencePoint = obs.get_gamma(obs.reference_point)
+    Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
 
     if not obs.is_boundary and Gamma_referencePoint >= 1:
         # Check what this does and COMMENT!!!!
-        
+        import pdb; pdb.set_trace() ## DEBUG ##
         # surface_position = obs.get_obstace_radius* x_t/LA.norm(x_t)
         # direction_surface2reference = obs.get_reference_point()-surface_position
 
@@ -101,31 +79,16 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
             # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], color='g')
             # plt.ion()
 
-    E_orth = np.zeros((dim, dim))
-    
-    # Create orthogonal basis matrix        
-    E_orth[:, 0] = normal_vector# Basis matrix
-
-    for ii in range(1,dim):
-
-        if dim ==2:
-            E_orth[0, 1] = E_orth[1, 0]
-            E_orth[1, 1] = - E_orth[0, 0]
-        else:
-            warnings.warn('Implement higher dimensions for E')
-            
-        # TODO higher dimensions
-        # E[:dim-(ii), ii] = normal_vector[:dim-(ii)]*normal_vector[dim-(ii)]
-        # E[dim-(ii), ii] = -np.dot(normal_vector[:dim-(ii)], normal_vector[:dim-(ii)])
-        # E_orth[:, ii] = E_orth[:, ii]/LA.norm(E_orth[:, ii])
-
+    E_orth = get_orthogonal_basis(normal_vector, normalize=True)
     E = np.copy((E_orth))
     E[:, 0] = -reference_direction
-    
-    eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma,
-                                                                     is_boundary=obs.is_boundary)
+    norm_refDir = np.linalg.norm(E[:, 0])
+    if norm_refDir:
+        E[:, 0] = E[:, 0]/norm_refDir
+        
+    eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma, is_boundary=obs.is_boundary)
     D = np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
-    
+
     return E, D, Gamma, E_orth
 
 
@@ -357,8 +320,7 @@ def compute_eigenvalueMatrix(Gamma, rho=1, dim=2, radialContuinity=True):
 
 def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
     # UNTITLED5 Summary of this function goes here
-    #   Detailed explanation goes here
-
+    # Detailed explanation goes here
     distMeas = np.array(distMeas)
     n_points = distMeas.shape[0]
     
@@ -376,12 +338,12 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
         
     if weightType == 'inverseGamma':
         distMeas = distMeas - distMeas_lowerLimit
-        w = 1/distMeas**weightPow
+        w = (1/distMeas)**weightPow
+        if np.sum(w)==0:
+            return w
         w = w/np.sum(w) # Normalization
-
     else:
         warnings.warn("Unkown weighting method.")
-
     return w
 
 
@@ -449,19 +411,30 @@ def obs_check_collision_2d(obs_list, XX, YY):
     return np.reshape(noColl, dim_points)
 
 
-def obs_check_collision(points, obs_list=[]):
+def obs_check_collision(obs_list, dim, *args):
     # No obstacles
-    if len(obs_list) == 0:
-        return
+    if len(obs_list)==0:
+        return np.ones(args[0].shape)
 
-    dim = points.shape[0]
+    dim = obs_list[0].dim
+
+    if len(*args)==dim:
+        points = np.array([])
+        for ii in range(dim):
+            input_shape = args[0].shape
+            points = np.vstack((points, np.arary(args[ii]).flatten()))
+            
     N_points = points.shape[1]
 
     # At the moment only implemented for 2D
     collision = np.zeros((N_points))
 
-    noColl = np.ones((1,N_points))
+    for ii in range(N_points):
+        pass
+    return noColl
 
+def obs_check_collision_ellipse(obs_list, dim, points):
+    
     for it_obs in range(len(obs_list)):
         # \Gamma = \sum_{i=1}^d (xt_i/a_i)^(2p_i) = 1
         R = compute_R(dim,obs_list[it_obs].th_r)

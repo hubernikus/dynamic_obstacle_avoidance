@@ -24,7 +24,9 @@ options = [5]
 
 N_resol = 10
 saveFigures=False
+
 ########################################################################
+
 
 def main(options=[], N_resol=100, saveFigures=False):
     for option in options:

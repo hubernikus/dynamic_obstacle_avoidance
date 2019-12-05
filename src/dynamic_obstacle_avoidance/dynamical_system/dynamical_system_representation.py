@@ -9,14 +9,27 @@ Library of different dynamical systems
 import numpy as np
 import numpy.linalg as LA
 
+def linear_ds_max_vel(x, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
+    vel = attractor-x
 
-def linearAttractor(x, x0='default'):
+    dist = np.linalg.norm(vel)
+    if dist < slow_down_region:
+        max_vel = max_vel*dist/slow_down_region
+        
+    norm_vel = dist
+    if norm_vel>max_vel:
+        vel = vel/norm_vel*max_vel
+
+    return vel
+
+
+def linearAttractor(x, x0=None):
     # change initial value for n dimensions
 
     dim = x.shape[0]
 
-    if type(x0)==str and x0=='default':
-        x0 = dim*[0]
+    if x0 is None:
+        x0 = np.zeros(dim)
     
     #M = x.shape[1]
     M= 1
@@ -39,6 +52,7 @@ def linearAttractor_const(x, x0 = 'default', velConst=0.3, distSlow=0.01):
         
 
 def nonlinear_wavy_DS(x, x0=[0,0]):
+
     xd = np.zeros((np.array(x).shape))
     if len(xd.shape)>1:
         xd[0,:] = - x[1,:] * np.cos(x[0,:]) - x[0,:]
@@ -71,12 +85,27 @@ def constVelocity_distance(dx, x, x0=[0,0], velConst = 1.0, distSlow=0.1):
     
     return np.min([1, xt_mag/distSlow])*velConst*dx
 
+def make_velocity_constant(vel, position, position_attractor, constant_velocity=0.3, slowing_down_radius=0.01):
+    vel_magn = np.linalg.norm(vel)
 
-def constVelocity(dx, x, x0=[0,0], velConst = 0.4, distSlow=0.01):
-    dx_mag = np.sqrt(np.sum(np.array(dx)**2))
-    
+    if vel_magn:
+        dist2attr = np.linalg.norm(position-position_attractor)
+        if dist2attr < slowing_down_radius:
+            constant_velocity = constant_velocity*dist2attr/slowing_down_radius
+        vel = vel/vel_magn * constant_velocity
+        
+    return vel
+
+def constVelocity(dx, x, x0=[0,0], velConst=0.4, distSlow=0.01):
+    dx_mag = np.linalg.norm(dx)
+
     if dx_mag: # nonzero value
-        dx = min(1, 1/dx_mag)*velConst*dx
+        dist_attr = np.linalg.norm(x-x0)
+        if dist_attr < distSlow:
+            velConst = velConst*dist_attr/distSlow
+
+        dx = dx/dx_magn*velConst
+        # dx = min(1, 1/dx_mag)*velConst*dx
 
     return dx
 

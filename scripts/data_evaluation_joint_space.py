@@ -23,8 +23,8 @@ from dynamic_obstacle_avoidance.visualization.animated_simulation import run_ani
 from dynamic_obstacle_avoidance.obstacle_avoidance.learning_obstacle import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-
 import json # store/load data
+
 
 use_test_data = True
 if use_test_data:
@@ -67,9 +67,7 @@ def get_boundary_values(file_in_path, file_in_name, plot_raw_data=False, save_da
     cassifier_svm = svm.SVC(kernel='rbf', gamma=20, C=20.0)
     model = cassifier_svm.fit(X, y)
     # model = model.fit
-
-    xx, yy = np.meshgrid(np.arange(0, 1, 0.01),
-                         np.arange(0, 1, 0.01))
+    xx, yy = np.meshgrid( np.arange(0, 1, 0.01), np.arange(0, 1, 0.01) )
 
     prediction_svm = cassifier_svm.predict(np.c_[xx.ravel(), yy.ravel()])
     prediction_svm = prediction_svm.reshape(xx.shape)

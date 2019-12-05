@@ -67,6 +67,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
 
     
 def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True):
+    
     dim = 2
 
     # Numerical hull of ellipsoid 
@@ -93,37 +94,20 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             plt.plot([x_obs_sf[i][0] for i in range(len(x_obs_sf))],
                 [x_obs_sf[i][1] for i in range(len(x_obs_sf))], 'k--')
             
-                # obs_polygon.append(
-                    # plt.Polygon( 
-                        # np.vstack((
-                            # np.array([[x_range[0], x_range[1],x_range[1], x_range[0]],
-                                      # [y_range[0], y_range[0],y_range[1], y_range[1]]]).T,
-                        # obs[n].x_obs)), zorder=2, alpha=0.5))
-
-                # obs_polygon.append(
-                    # plt.Polygon( 
-                        # np.vstack((
-                            # np.array([[x_range[0], x_range[1],x_range[1], x_range[0]],
-                                      # [y_range[0], y_range[0],y_range[1], y_range[1]]]).T
-                        # )), zorder=2, alpha=0.5))
-                # obs_hole.append(plt.Polygon(obs[n].x_obs, zorder=2, alpha=0.5))
-
-            # obs_polygon.append( plt.Polygon(obs[n].x_obs, zorder=2, alpha=0.5))
-            obs_polygon.append( plt.Polygon(obs[n].x_obs, alpha=0.8, zorder=2))
-
             if obs[n].is_boundary:
-                boundary_polygon = plt.Polygon( 
-                    np.vstack((
-                        np.array([[x_range[0], x_range[1],x_range[1], x_range[0]],
-                                  [y_range[0], y_range[0],y_range[1], y_range[1]]]).T
-                    )), alpha=0.5, zorder=-1)
-                boundary_polygon.set_color(np.array([176,124,124])/255.)
-                                
-                obs_polygon[n].set_color('white')
-                obs_polygon[n].set_alpha(1)
-                obs_polygon[n].set_zorder(-1)
+                outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
+                                           [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
                 
+                boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-2)
+                boundary_polygon.set_color(np.array([176,124,124])/255.)
+                plt.gca().add_patch(boundary_polygon)
+
+                obs_polygon.append( plt.Polygon(obs[n].x_obs, alpha=1.0, zorder=-1))
+                obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
+
             else:
+                obs_polygon.append( plt.Polygon(obs[n].x_obs, alpha=0.8, zorder=2))
+                
                 if len(obstacleColor)==len(obs):
                     obs_polygon[n].set_color(obstacleColor[n])
                 else:
@@ -132,12 +116,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             obs_polygon_sf.append( plt.Polygon(obs[n].x_obs_sf, zorder=1, alpha=0.2))
             obs_polygon_sf[n].set_color([1,1,1])
 
-            if obs[n].is_boundary:
-                plt.gca().add_patch(boundary_polygon)
-
             plt.gca().add_patch(obs_polygon_sf[n])
             plt.gca().add_patch(obs_polygon[n])
-            
 
             if show_obstacle_number:
                 ax_ifd.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
@@ -193,7 +173,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         N_x = N_y = 1
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
 
-    # Only for Development and testing
+    # TODO: DEBUGGING Only for Development and testing
     ########## START REMOVE ##########
     # N_x = N_y = 1
     # XX = np.zeros((N_x, N_y))
@@ -218,9 +198,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         
         XX[ix, iy] = x_sample[ii]
         YY[ix, iy] = y_sample[ii]
-
     ########## STOP REMOVE ###########
-
+    
 
     if attractingRegion: # Forced to attracting Region
         def obs_avoidance_temp(x, xd, obs):
@@ -244,7 +223,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
         res_init = ax_init.streamplot(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[(0.3,0.3,0.3)])
         
-        ax_init.plot(xAttractor[0],xAttractor[1], 'k*')
+        ax_init.plot(xAttractor[0], xAttractor[1], 'k*')
         plt.gca().set_aspect('equal', adjustable='box')
 
         plt.xlim(x_range)

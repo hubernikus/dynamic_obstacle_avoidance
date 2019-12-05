@@ -18,9 +18,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation, samplePointsAtBorder
 
 ########################################################################
-options = [7.0]
+options = [0]
 
-N_resol = 10
+N_resol = 3
 
 saveFigures=True
 ########################################################################
@@ -34,12 +34,12 @@ def main(options=[], N_resol=100, saveFigures=False):
 
             xAttractor=[1,0]
             
-            obs.append(Cuboid(axes_length=[8, 9.6], center_position=[3, 1], orientation=0./180*pi, absolut_margin=0.0, is_boundary=True))
+            obs.append(Cuboid(axes_length=[8, 9.6], center_position=[3, 1], orientation=0./180*pi, is_boundary=True))
             
             obs.append(Ellipse(axes_length=[1., 2], center_position=[5, 2.1], p=[1,1], orientation=150./180*pi, sf=1, is_boundary=False))
 
             obs.append(Ellipse(axes_length=[0.3, 1.8], center_position=[3, -2.4], p=[1,1], orientation=-70./180*pi, sf=1, is_boundary=False))
-                                
+
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
 
             # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=[], xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_initial', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
@@ -239,15 +239,14 @@ def main(options=[], N_resol=100, saveFigures=False):
             
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='noonsmooth_several_obstacles', noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init, figureSize=(25.,10), showLabel=False)
 
+            
 if (__name__==("__main__")):
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1]!='-i':
         N_resol = int(sys.argv[1])
-
-    if len(sys.argv) > 2:
-        options = [float(sys.argv[2])]
-
-    if len(sys.argv) > 3:
-        saveFigures = bool(sys.argv[3])
+        if len(sys.argv) > 2:
+            options = [float(sys.argv[2])]
+            if len(sys.argv) > 3:
+                saveFigures = bool(sys.argv[3])
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 

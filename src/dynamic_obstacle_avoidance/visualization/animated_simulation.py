@@ -52,6 +52,7 @@ def samplePointsAtBorder(number_of_points, x_range, y_range, obs=[]):
     x_init = np.hstack((x_init, 
                         np.vstack((np.ones(N_y)*x_range[1],
                                    np.linspace(y_range[0]+ySpacing,y_range[1]-ySpacing, num=N_y) )) ))
+    
     if len(obs):
         collisions = obs_check_collision(x_init, obs)
         x_init = x_init[:,collisions[0]]
@@ -61,13 +62,14 @@ def samplePointsAtBorder(number_of_points, x_range, y_range, obs=[]):
 
 ##### Anmation Function #####
 class Animated():
-    """An animated scatter plot using matplotlib.animations.FuncAnimation."""
-    def __init__(self, x0=None, obs=[], N_simuMax = 600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimensions=2):
+    """
+    An animated scatter plot using matplotlib.animations.FuncAnimation.
+    """
+    def __init__(self, x0=None, obs=[], N_simuMax=600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimensions=2):
 
         if isinstance(x0, type(None)):
             self.dim = dimensions
             self.infitineLoop = True
-            
         else:
             self.infitineLoop = False
             self.dim = x0.shape[0]
@@ -179,8 +181,8 @@ class Animated():
         if not (iSim%10) and self.print_count: # Display every tenth loop count
             print('loop count={} - frame ={}-Simulation time ={}'.format(self.iSim, iSim, np.round(self.dt*self.iSim, 3) ))
 
-        intersection_obs = obs_common_section(self.obs)
-        dynamic_center_3d(self.obs, intersection_obs)
+        # intersection_obs = obs_common_section(self.obs)
+        # dynamic_center_3d(self.obs, intersection_obs)
         
         if self.RK4_int: # Runge kutta integration
             for j in range(self.N_points):
@@ -263,9 +265,24 @@ class Animated():
         for n in range(len(self.obs)):
             if self.dim==2:
                 emptyList = [[0,0] for i in range(50)]
-                self.obs_polygon.append( plt.Polygon(emptyList, animated=True,))
-                self.obs_polygon[n].set_color(np.array([176,124,124])/255)
-                self.obs_polygon[n].set_alpha(0.8)
+                
+                if self.obs[n].is_boundary:
+                    x_range = self.ax.get_xlim()
+                    y_range = self.ax.get_ylim()
+                    outer_boundary = np.array([[x_range[0], x_range[1],x_range[1], x_range[0]],
+                                               [y_range[0], y_range[0],y_range[1], y_range[1]]]).T
+                    
+                    boundary_polygon = plt.Polygon(outer_boundary, alpha=0.5, zorder=-2)
+                    boundary_polygon.set_color(np.array([176,124,124])/255.)
+                    plt.gca().add_patch(boundary_polygon) # No track of this one
+
+                    self.obs_polygon.append( plt.Polygon(self.obs[n].x_obs, alpha=1.0, zorder=-1))
+                    self.obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
+                else:
+                    self.obs_polygon.append( plt.Polygon(emptyList, animated=True,))
+
+                    self.obs_polygon[n].set_color(np.array([176,124,124])/255.)
+                    self.obs_polygon[n].set_alpha(0.8)
                 patch_o = plt.gca().add_patch(self.obs_polygon[n])
                 self.patches.append(patch_o)
 
@@ -430,12 +447,12 @@ def run_animation(*args, animationName="test", saveFigure=False,
         print('Starting animation')
         # if len(matplotlib._pylab_helpers.Gcf.get_all_fig_managers()): # at least one fig open
         
-        try: # Avoid error when shutting down.
+        try: # Avoid long error when shutting down.
             anim.show()
             print('Finished or converged.')
         except:
             print('\nWARNING: animation was interrupted.')
-            # raise
+            # raise # Display for debugging
 
 def test_function():
     t = np.linspace(0,2*np.pi)

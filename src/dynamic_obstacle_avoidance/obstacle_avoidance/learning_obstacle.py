@@ -443,6 +443,8 @@ class PolygonWithLearnedSurface(Polygon):
     # Currently only for boundary polygons with no points outside the free space
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.n_special_surfaces_angles = 1
         
         self.special_surfaces = []
         self.special_surfaces_angles = np.array((self.n_special_surfaces_angles,0))

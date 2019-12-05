@@ -242,8 +242,8 @@ if show_radial_simulation:
     
 
 # RADIAL - CUSTOM
-show_custom_simulation = False
-if show_radial_simulation:
+show_custom_simulation = True
+if show_custom_simulation:
     ang = np.arctan2(XX[1,:], XX[0,:])
     mag = np.linalg.norm(XX, axis=0)
 
@@ -275,6 +275,7 @@ if show_radial_simulation:
     
     fig, ax = plt.subplots() 
     cs = ax.contourf(pp, rr, predict_class, cmap=plt.cm.coolwarm, alpha=0.8)
+    
     cbar = fig.colorbar(cs)
     # plt.axis('equal')
     plt.xlim(-pi, pi), plt.ylim(0, 1)

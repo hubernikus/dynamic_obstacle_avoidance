@@ -2,7 +2,7 @@
 '''
 @date 2019-10-15
 @author Lukas Huber 
-@mail lukas.huber@epfl.ch
+@email lukas.huber@epfl.ch
 '''
 
 import time
@@ -23,12 +23,17 @@ import matplotlib.pyplot as plt
 
 visualize_debug = False
 
+
 class Obstacle(State):
-    """ General class of obstacles """
-    # TODO create obstacle container/list which can fast iterate through obstacles and perform other calculations
+    """ 
+    General class of obstacles 
+    """
+    def __repr__(self):
+        return "Obstacle of Type: {}".format(type(self))
+
     def __init__(self, orientation=0, sf=1, delta_margin=0, sigma=1,  center_position=[0,0], tail_effect=True, always_moving=True, 
                  x0=None, th_r=None,
-                 linear_velocity=[0,0], angular_velocity=0, xd=[0,0], w=0,
+                 linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
                  # , *args, **kwargs): # maybe random arguments
@@ -68,8 +73,31 @@ class Obstacle(State):
             self.func_w = 0
         else:
             self.always_moving = always_moving
+        
+        if angular_velocity is None:
+            if w is None:
+                if self.dim==2:
+                    angular_velocity = 0
+                elif self.dim==3:
+                    angular_velocity = np.zeros(self.dim)
+                else:
+                    raise ValueError("Define angular velocity for higher dimensions.")
+            else:
+                angular_velocity = w
+        self.angular_velocity = angular_velocity
+        self.w = self.angular_velocity # TOOD - remove
 
-        if sum(np.abs(xd)) or w or self.timeVariant:
+        if linear_velocity is None:
+            if xd is None:
+                linear_velocity=np.zeros(self.dim)
+            else:
+                linear_velocity = xd
+        self.linear_velocity = linear_velocity
+        self.xd = self.linear_velocity
+
+        # Special case of moving obstacle (Create subclass)
+        if sum(np.abs(self.linear_velocity)) or np.sum(self.angular_velocity) \
+           or self.timeVariant:
             # Dynamic simulation - assign varibales:
             self.x_start = x_start
             self.x_end = x_end
@@ -77,14 +105,6 @@ class Obstacle(State):
         else:
             self.x_start = 0
             self.x_end = 0
-
-        if not isinstance(w, type(None)):
-            angular_velocity = w
-        self.angular_velocity = angular_velocity
-        self.w = self.angular_velocity # TOOD - remove
-
-        self.linear_velocity = linear_velocity
-        self.xd = xd # TOOD - remove
 
         # Trees of stars
         self.hirarchy = hirarchy
@@ -108,6 +128,7 @@ class Obstacle(State):
     # def update_reference(self, new_ref):
         # TODo write function
 
+    
     def transform_global2relative(self, position): # Inherit
         if len(position.shape)==1:
             return self.rotMatrix.T.dot(position - np.array(self.center_position))
@@ -140,6 +161,24 @@ class Obstacle(State):
     def transform_global2relative_dir(self, direction): # TODO - inherit
         return self.rotMatrix.T.dot(direction)
 
+    @property
+    def global_reference_point(self):
+        # Rename kernel-point?
+        return self.transform_global2relative(self._reference_point)
+    
+    @global_reference_point.setter
+    def global_reference_point(self, value):
+        self._reference_point = self.transform_global2relative(value)
+        
+    @property
+    def reference_point(self):
+        # Rename kernel-point?
+        return self._reference_point
+    
+    @reference_point.setter
+    def reference_point(self, value):
+        self._reference_point = value
+        
     @property
     def orientation(self):
         return self._orientation
@@ -190,12 +229,7 @@ class Obstacle(State):
             warnings.warn('rotation not yet defined in dimensions d > 3 !')
             self.rotMatrix = np.eye(self.dim)
 
-
-
-    @property
-    def global_reference_point(self):
-        return self.transform_relative2global(self.reference_point)
-        
+    
     def extend_hull_around_reference(self, edge_reference_dist=0.3):
         # TODO add margin
 
@@ -275,6 +309,10 @@ class Obstacle(State):
         self.center_position = position
         # self.reference_point = position
         # self.center_dyn = self.reference_point
+
+    def move_center(self, position):
+        self.center_position = position
+        
 
 
     def update_position_and_orientation(self, position, orientation,
@@ -424,7 +462,6 @@ class Obstacle(State):
 
     def get_angle_weight(self, angles, max_angle=pi, min_angle=0, check_range=False, weight_pow=1):
         # n_angless = np.array(angles).shape[0]
-
         if check_range:
             ind_low = angles <= min_angle
             if np.sum(ind_low):
@@ -432,9 +469,22 @@ class Obstacle(State):
 
             angles = np.min(np.vstack((angles, np.ones(n_angles)*max_angle)) )
 
-        # [min, max] -> [0, 1] weights
-        weights = (angles-min_angle)/(max_angle-min_angle)
+        zero_ind = angles<=min_angle
+        if np.sum(zero_ind):
+            return zero_ind/np.sum(zero_ind)
 
+        nonzero_ind = angles<max_angle
+        if not np.sum(nonzero_ind):
+            warnings.warn("No angle has an influence")
+            # print('Angles', angles)
+            return np.zeros(angles.shape)
+        
+        elif np.sum(nonzero_ind)==1:
+            return nonzero_ind*1.0
+        
+        # [min, max] -> [0, 1] weights
+        weights = (angles[nonzero_ind]-min_angle)/(max_angle-min_angle)
+        
         # [min, max] -> [infty, 1]
         weights = 1/weights
 
@@ -442,12 +492,15 @@ class Obstacle(State):
         weights = (weights - 1)**weight_pow
 
         weight_norm = np.sum(weights)
-
-
+        
         if weight_norm:
-            return weights/weight_norm
-        return weights
+            weights =  weights/weight_norm
 
+        weights_all = np.zeros(angles.shape)
+        weights_all[nonzero_ind] = weights 
+        return weights_all
+
+    
     def get_distance_weight(self, distance, power=1, distance_min=0):
         ind_positiveDistance = (distance>0)
 
@@ -595,12 +648,8 @@ class Ellipse(Obstacle):
                     angle2referencePlane = self.get_angle2referencePatch(position)
                     weights = self.get_angle_weight(angle2referencePlane)
 
-                    try:
-                        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, obs=self, position=position, normalize_reference=True)
-
-                    except:
-                        # pass
-                        import pdb; pdb.set_trace() ## DEBUG ##
+                    normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, normalize_reference=True)
+                    
                     # return normal_vector
 
         if self.reference_point_is_inside or np.sum(ind_intersect)==0:
@@ -608,11 +657,11 @@ class Ellipse(Obstacle):
             normal_vector = (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
 
         if normalize:
+            # TODO: can it be removed?
             normal_vector = normal_vector/LA.norm(normal_vector)
 
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector) 
-
         return normal_vector
 
 
@@ -689,7 +738,7 @@ class Ellipse(Obstacle):
         R = np.array(self.rotMatrix)
 
         x_obs = np.zeros((self.d, numPoints))
-
+        
         if self.d == 2:
             x_obs[0,:] = a[0]*np.cos(theta)
             x_obs[1,:] = np.copysign(a[1], theta)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))
