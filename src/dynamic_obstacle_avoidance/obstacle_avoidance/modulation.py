@@ -415,7 +415,6 @@ def obs_check_collision(obs_list, dim, *args):
     # No obstacles
     if len(obs_list)==0:
         return np.ones(args[0].shape)
-
     dim = obs_list[0].dim
 
     if len(*args)==dim:

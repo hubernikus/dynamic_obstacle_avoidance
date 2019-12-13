@@ -10,6 +10,7 @@ import numpy as np
 from numpy import pi
 
 import time
+import warnings
 
 # Visualization libraries
 import matplotlib.pyplot as plt
@@ -244,7 +245,9 @@ class Animated():
                 else:
                     self.obs_polygon[o].xyz = self.obs[o].x_obs
         self.iSim += 1 # update simulation counter
-        self.check_convergence() # Check convergence 
+
+        # Convergence is not discovered during video-saving
+        self.check_convergence() # Check convergence
         
         # Pause for constant simulation speed
         self.old_time = self.sleep_const(self.old_time)
@@ -433,10 +436,11 @@ def run_animation(*args, animationName="test", saveFigure=False,
     # i.e. choose one or the other for each run
     if saveFigure:
         try: # avoid error warnings 
-            anim.ani.save("fig/" + animationName + ".mp4", dpi=100,fps=50)
+            anim.ani.save("figures/" + animationName + ".mp4", dpi=100,fps=50)
         except:
-            print('\n\nWARNING: saving interrupted.')
-            # raise
+            warnings.warn('\n\n Saving not succesfull.')
+            # raise RuntimeError('WARNING: saving not succesfull.')
+            raise
 
         plt.close('all')
         
@@ -445,7 +449,6 @@ def run_animation(*args, animationName="test", saveFigure=False,
         return anim
     else:
         print('Starting animation')
-        # if len(matplotlib._pylab_helpers.Gcf.get_all_fig_managers()): # at least one fig open
         
         try: # Avoid long error when shutting down.
             anim.show()

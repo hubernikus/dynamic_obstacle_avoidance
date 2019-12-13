@@ -55,6 +55,10 @@ class ObstacleContainer(State):
 
     def __repr__(self):
         return "ObstacleContainer of length #{}".format(len(self))
+
+    def __str__(self):
+        return "ObstacleContainer of length #{}".format(len(self))
+
         
     def __len__(self):
         return len(self._obstacle_list)
