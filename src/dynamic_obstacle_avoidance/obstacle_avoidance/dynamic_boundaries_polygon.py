@@ -15,8 +15,37 @@ class DynamicBoundariesPolygon(Polygon):
     '''
     Dynamic Boundary for Application in 3D with surface polygons
     '''
-    def __init__(self, indeces_of_flexibleTiles=None, inflation_parameter=None,
+    def __init__(self, indeces_of_flexibleTiles=None, inflation_parameter=None, is_surgery_setup=False, 
                  *args, **kwargs):
+
+        if is_surgery_setup:
+            a1, a2 = 0.05, 0.20
+            d_a = (a2-a1)/2
+            l = 0.30
+
+            edge_points = np.array([[-a1, -a1, 0],
+                                    [a1, -a1, 0],
+                                    [a1, a1, 0],
+                                    [-a1, a1, 0],
+                                    [-a2, -a2, l],
+                                    [a2, -a2, l],
+                                    [a2, a2, l],
+                                    [-a2, a2, l]]).T
+
+            indeces_of_tiles = np.array([
+                # [0,1,2,3], # Bottom Part
+                # [4,5,6,7], # Lid
+                [0,1,4,5],
+                [1,2,5,6],
+                [2,3,6,7],
+                [3,0,7,5]])
+
+            kwargs['th_r'] = 0
+            
+            kwargs['edge_point'] = edge_points
+            kwargs['indeces_of_tiles'] = indeces_of_tiles
+            kwargs['inflation_parameter'] = [0.03, 0.03, 0.03, 0.03]
+            
         # define boundary functions
         center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0])
         super(DynamicBoundariesPolygon, self).__init__(center_position=center_position, *args, **kwargs)
