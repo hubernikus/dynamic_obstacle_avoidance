@@ -13,9 +13,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 import matplotlib.pyplot as plt # for debugging
 
 class State(object):
-    def __init__(self, *args,
-                 typename=None, name="default", reference_frame="world",
-                 is_empty=True):
+    def __init__(self, typename=None, name="default", reference_frame="world", is_empty=True, *args):
+                 
 
         # Decode input
         if len(args): # Nonzero

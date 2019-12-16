@@ -58,7 +58,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
         # direction_surface2reference = obs.get_reference_point()-surface_position
 
         # Per default negative
-        referenceNormal_angle = np.arccos(reference_direction.T @ normal_vector)
+        referenceNormal_angle = np.arccos(reference_direction.T.dot(normal_vector))
         
         # if referenceNormal_angle < (matrix_singularity_margin):
             # x_global = obs.transform_relative2global(x_t)
@@ -144,8 +144,8 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
         a = obs.axes_length
 
     if obs.th_r:
-        vec_cent2ref = np.array(obs.rotMatrix).T @ vec_cent2ref
-        vec_point2ref = np.array(obs.rotMatrix).T @ vec_point2ref
+        vec_cent2ref = np.array(obs.rotMatrix).T.dot(vec_cent2ref)
+        vec_point2ref = np.array(obs.rotMatrix).T.dot(vec_point2ref)
         
         
     if not LA.norm(vec_cent2ref): # center = ref
@@ -185,7 +185,7 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
         # rad_ref2 = get_radius_ellipsoid(vec_ref2dir, a)
         # vec_ref2surf = rad_ref2*vec_ref2dir - vec_cent2ref
 
-        vec_cent2dir = rotMat @ dir_surf_cone[:, 0]
+        vec_cent2dir = rotMat.dot(dir_surf_cone[:, 0])
         vec_cent2dir /= LA.norm(vec_cent2dir) # nonzero value expected
         rad_ref2 = get_radius_ellipsoid(vec_cent2dir, a)
         vec_ref2surf = rad_ref2*vec_cent2dir - vec_cent2ref
@@ -245,7 +245,7 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
 #         rotMat = np.array([[np.cos(ang_tot), np.sin(ang_tot)],
 #                            [-np.sin(ang_tot), np.cos(ang_tot)]])
 
-#         vec_ref2dir = rotMat @ dir_surf_cone[:, 0]
+#         vec_ref2dir = rotMat.dot(dir_surf_cone[:, 0])
         
 #         vec_ref2dir /= LA.norm(vec_ref2dir) # nonzero value expected
         
@@ -438,7 +438,7 @@ def obs_check_collision_ellipse(obs_list, dim, points):
         # \Gamma = \sum_{i=1}^d (xt_i/a_i)^(2p_i) = 1
         R = compute_R(dim,obs_list[it_obs].th_r)
 
-        Gamma = sum( ( 1/obs_list[it_obs].sf * R.T @ (points - np.tile(np.array([obs_list[it_obs].x0]).T,(1,N_points) ) ) / np.tile(np.array([obs_list[it_obs].a]).T, (1, N_points)) )**(np.tile(2*np.array([obs_list[it_obs].p]).T, (1,N_points)) ) )
+        Gamma = sum( ( 1/obs_list[it_obs].sf * R.T.dot(points - np.tile(np.array([obs_list[it_obs].x0]).T,(1,N_points) ) ) / np.tile(np.array([obs_list[it_obs].a]).T, (1, N_points)) )**(np.tile(2*np.array([obs_list[it_obs].p]).T, (1, N_points)) ) )
 
         noColl = (noColl* Gamma>1)
 

@@ -143,7 +143,7 @@ def obs_common_section(obs):
                     N_inter = intersection_sf[it_intersect].shape[1] # Number of intersection points
 
                     ## R = compute_R(d,obs[it_obs2].th_r)
-                    Gamma_temp = ( rotMat[:,:,it_obs2].T @(intersection_sf[it_intersect]-np.tile(obs[it_obs2].center_position,(N_inter,1)).T )/ np.tile(obs[it_obs2].a,(N_inter,1)).T ) ** (2*np.tile(obs[it_obs2].p,(N_inter,1)).T)
+                    Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(intersection_sf[it_intersect]-np.tile(obs[it_obs2].center_position,(N_inter,1)).T)/ np.tile(obs[it_obs2].a,(N_inter,1)).T ) ** (2*np.tile(obs[it_obs2].p,(N_inter,1)).T)
                     Gamma = np.sum( 1/obs[it_obs2].sf *Gamma_temp, axis=0 )
 
                     ind = Gamma<1
@@ -161,13 +161,13 @@ def obs_common_section(obs):
                     # \Gamma = \sum_[i=1]^d (xt_i/a_i)^(2p_i) == 1
                     N_points = len(obs[it_obs1].x_obs_sf)
                     
-                    Gamma_temp = (rotMat[:,:,it_obs1].T @  (np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
+                    Gamma_temp = (rotMat[:,:,it_obs1].T.dot(np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
                     Gamma = np.sum( (1/obs[it_obs1].sf *  Gamma_temp) ** (2*np.tile(obs[it_obs1].p, (N_points,1)).T), axis=0)
                     intersection_sf_temp = np.array(obs[it_obs2].x_obs_sf)[Gamma<1,:].T
 
                     # Get all poinst of obs1 in obs2
                     #                 R = compute_R(d,obs[it_obs2].th_r)
-                    Gamma_temp = ( rotMat[:,:,it_obs2].T @ (np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
+                    Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
                     Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
                     intersection_sf_temp = np.hstack((intersection_sf_temp, np.array(obs[it_obs1].x_obs_sf)[Gamma<1,:].T ) )
 
@@ -199,11 +199,11 @@ def obs_common_section(obs):
                                 resolution = x_obs_sf_interior.shape[1] # number of points 
 
                                 # Get Gamma value
-                                Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T @ (x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
+                                Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T.dot(x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
                                 intersection_sf[it_intersect] = np.hstack((intersection_sf[it_intersect],x_obs_sf_interior[:,Gamma<1] ))
                                 
                             # Check center point
-                            if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T @ ( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
+                            if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T.dot( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
                                 intersection_sf[it_intersect] = np.hstack([intersection_sf[it_intersect],np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
 
 
@@ -300,12 +300,12 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
             N_points = len(obs[it_obs1].x_obs_sf)
 
             # Get all points of obs2 in obs1
-            Gamma_temp = (rotMat[:,:,it_obs1].T @  (np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
+            Gamma_temp = (rotMat[:,:,it_obs1].T.dot(np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
             Gamma = np.sum( (1/obs[it_obs1].sf *  Gamma_temp) ** (2*np.tile(obs[it_obs1].p, (N_points,1)).T), axis=0) 
             intersection_points = np.array(obs[it_obs2].x_obs_sf)[Gamma<1,:].T
 
             # Get all points of obs1 in obs2
-            Gamma_temp = ( rotMat[:,:,it_obs2].T @ (np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
+            Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
             Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
             intersection_points = np.hstack((intersection_points, np.array(obs[it_obs1].x_obs_sf)[Gamma<1,:].T ) )
 
@@ -329,11 +329,11 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
                         resolution = x_obs_sf_interior.shape[1] # number of points 
 
                         # Get Gamma value
-                        Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T @ (x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
+                        Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T.dot(x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
                         intersection_points = np.hstack((intersection_points,x_obs_sf_interior[:,Gamma<1] ))
 
                     # Check center point
-                    if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T @ ( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
+                    if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T.dot( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
                         intersection_points = np.hstack([intersection_points,np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
                 
                 # Get mean
@@ -360,7 +360,7 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
         # Iteratively search through clusters. Similar to google page ranking
         while new_obstacles:
             intersection_cluster_old = intersection_cluster
-            intersection_cluster = intersection_matrix_reduced @ intersection_cluster + intersection_cluster
+            intersection_cluster = intersection_matrix_reduced.dot(intersection_cluster) + intersection_cluster
             intersection_cluster = intersection_cluster.astype(bool)
 
             # Bool operation. Equals to one if not equal

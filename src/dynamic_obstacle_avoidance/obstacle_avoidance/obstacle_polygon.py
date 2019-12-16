@@ -30,7 +30,8 @@ class Polygon(Obstacle):
             # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
             ind_open = []
             
-        super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
+        super(Polygon, self).__init__(*args, **kwargs)
 
         if absolute_edge_position:
             self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
@@ -83,7 +84,7 @@ class Polygon(Obstacle):
 
         
         for ii in range(self.n_planes):
-            normalDistance2center[ii] = normal_vector[:, ii].T @ edge_points[:, ii]
+            normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii])
 
             if normalDistance2center[ii] < 0:
                 normal_vector[:, ii] = (-1) * normal_vector[:, ii]
@@ -106,7 +107,7 @@ class Polygon(Obstacle):
                                          np.reshape(self.edge_points[:,0],(self.dim,1))))
 
         for pp in range(self.edge_points.shape[1]):
-            self.boundary_points[:,pp] = self.rotMatrix @ self.boundary_points[:, pp] + np.array([self.center_position])
+            self.boundary_points[:,pp] = self.rotMatrix.dot(self.boundary_points[:, pp]) + np.array([self.center_position])
 
         self.boundary_points[:, -1]  = self.boundary_points[:, 0]
 
@@ -120,7 +121,7 @@ class Polygon(Obstacle):
         x_obs_sf  = np.hstack((x_obs_sf, x_obs_sf[:,0].reshape(2,1)))
 
         for jj in range(x_obs_sf.shape[1]): # TODO replace for loop with numpy-math
-            x_obs_sf[:, jj] = self.rotMatrix @ x_obs_sf[:, jj] + np.array([self.center_position])
+            x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
 
         # TODO rename more intuitively
         self.x_obs = self.boundary_points.T # Surface points
@@ -325,4 +326,4 @@ class Cuboid(Polygon):
         edge_points[:,0] = self.axes_length/2.0*np.array([-1,-1])
         edge_points[:,1] = self.axes_length/2.0*np.array([1,-1])
 
-        super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+        super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)

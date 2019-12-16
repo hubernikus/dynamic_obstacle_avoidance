@@ -25,6 +25,8 @@ visualize_debug = False
 
 
 class ObstacleContainer(State):
+# class ObstacleContainer(List): # ?? inherit from list?
+    # List like obstacle container
     # Contains properties of the obstacle environment. Which require centralized handling
     # TODO: Update this in a smart way
     # TODO: how much in obstacle class, how much in container?
@@ -58,12 +60,11 @@ class ObstacleContainer(State):
 
     def __str__(self):
         return "ObstacleContainer of length #{}".format(len(self))
-
         
     def __len__(self):
         return len(self._obstacle_list)
 
-    @ property
+    @property
     def number(self):
         return len(self._obstacle_list)
 

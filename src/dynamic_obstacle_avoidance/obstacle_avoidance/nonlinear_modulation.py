@@ -101,14 +101,14 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
         # Loop to find new DS-evaluation point
         for o in np.arange(N_obs)[ind_hirarchy]:
             # rotating the query point into the obstacle frame of reference
-            position_relative[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
+            position_relative[:,o] = R[:,:,o].T.dot(m_x[:,hh+1]-obs[o].center_position)
 
             # TODO compute weight separately to avoid unnecessary computation
             E[:,:,o], D[:,:,o], Gamma[o], E_orth[:,:,o] = compute_modulation_matrix(position_relative[:,o],obs[o], R[:,:,o])
 
         for o in np.arange(N_obs)[ind_hirarchy_low]:
             # TODO only evaluate GAMMA and not matrices
-            position_relative[:,o] = R[:,:,o].T @ (m_x[:,hh+1]-obs[o].center_position)
+            position_relative[:,o] = R[:,:,o].T.dot(m_x[:,hh+1]-obs[o].center_position)
             E_, D_, Gamma[o],E_orth_  = compute_modulation_matrix(position_relative[:,o],obs[o], R[:,:,o])
 
         Gammas_hirarchy[:,hh] = Gamma
@@ -242,9 +242,9 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
         xd_obs_n = np.exp(-1/obs[n].sigma*(max([Gammas_hirarchy[n,-1],1])-1))*  ( np.array(obs[n].xd) + xd_w )
         
         # Only consider velocity of the obstacle in direction
-        xd_obs_n = LA.inv(E_orth[:,:,n]) @ xd_obs_n
+        xd_obs_n = LA.inv(E_orth[:,:,n]).dot(xd_obs_n)
         xd_obs_n[0] = np.max(xd_obs_n[0], 0)
-        xd_obs_n = E_orth[:,:,n] @ xd_obs_n
+        xd_obs_n = E_orth[:,:,n].dot(xd_obs_n)
 
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
@@ -295,8 +295,8 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
                 # print('zero weight', weight_ind[n])
                 continue
             
-            M[:,:,n] = (R[:,:,n] @ E[:,:,n] @ D[:,:,n] @ LA.pinv(E[:,:,n]) @ R[:,:,n].T)
-            xd_hat[:,n] = M[:,:,n] @ xd #velocity modulation
+            M[:,:,n] = (R[:,:,n].dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(R[:,:,n].T))
+            xd_hat[:,n] = M[:,:,n].dot(xd) #velocity modulation
             xd_mags[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
             if xd_mags[n]: # Nonzero magnitude ---
                 xd_hat_n = xd_hat[:,n]/xd_mags[n]
@@ -306,7 +306,7 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
             if not d==2:
                 warnings.warn('not implemented for d neq 2')
 
-            Rfn = Rf @ xd_hat_n
+            Rfn = Rf.dot(xd_hat_n)
             k_fn = Rfn[1:]
             kfn_norm = LA.norm(k_fn) # Normalize
             if kfn_norm:#nonzero
@@ -343,9 +343,9 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
 
         # Reverse k_d
         if norm_kd: #nonzero
-            n_xd = Rf.T @ np.hstack((np.cos(norm_kd), np.sin(norm_kd)/norm_kd*k_d ))
+            n_xd = Rf.T.dot(np.hstack((np.cos(norm_kd), np.sin(norm_kd)/norm_kd*k_d)) )
         else:
-            n_xd = Rf.T @ np.hstack((1, k_d ))
+            n_xd = Rf.T.dot(np.hstack((1, k_d )))
 
         xd = xd_mag*n_xd.squeeze()
  

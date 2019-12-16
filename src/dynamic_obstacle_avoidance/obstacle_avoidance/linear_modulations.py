@@ -82,7 +82,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
             R[:,:,n] = np.eye(d)
 
         # Move to obstacle centered frame
-        x_t = R[:,:,n].T @ (x-obs[n].center_position)
+        x_t = R[:,:,n].T.dot(x-obs[n].center_position)
 
         E[:,:,n], D[:,:,n], Gamma[n], E_orth[:,:,n] = compute_modulation_matrix(x_t, obs[n], R[:,:,n])
     if N_attr:
@@ -132,10 +132,9 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     xd_hat_magnitude = np.zeros((N_obs))
 
     for n in range(N_obs):
-        # xd_R = LA.pinv(E[:,:,n]) @ R[:,:,n].T @ xd
-        M[:,:,n] = R[:,:,n] @ E[:,:,n] @ D[:,:,n] @ LA.pinv(E[:,:,n]) @ R[:,:,n].T
+        M[:,:,n] = R[:,:,n].dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(R[:,:,n].T)
         
-        xd_hat[:,n] = M[:,:,n] @ xd # velocity modulation
+        xd_hat[:,n] = M[:,:,n].dot(xd) # velocity modulation
 
         if repulsive_obstacle:
             if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
@@ -147,7 +146,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
                                        repulsive_gamma)*repulsive_factor
                 if obs[n].is_boundary:
                     repulsive_velocity *= (-1)
-                    xd_hat[:,n] += R[:,:,n] @ E[:,0,n] * repulsive_velocity
+                    xd_hat[:,n] += R[:,:,n] .dot(E[:, 0, n]) * repulsive_velocity
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 

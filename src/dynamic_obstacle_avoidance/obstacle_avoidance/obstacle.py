@@ -12,6 +12,8 @@ import warnings, sys
 
 import numpy.linalg as LA
 
+# import dynamic_obstacle_avoidance
+
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
@@ -343,8 +345,8 @@ class Obstacle(State):
         connection_matrix = np.vstack((connection_direction, -connection_passive)).T
 
         if LA.det(connection_matrix): # nonzero value
-            direction_factors = (LA.inv(connection_matrix) @
-                                 (np.array(passive_line['point_start'])
+            direction_factors = (LA.inv(connection_matrix).dot(
+                                 np.array(passive_line['point_start'])
                                   - np.array(direction_line['point_start']) ))
 
             # Smooth because it's a tangent
@@ -450,11 +452,11 @@ class Obstacle(State):
 
             vec_position2edge[:, ii] /= LA.norm(vec_position2edge[:, ii])
 
-            cos_position2edge = vec_position2edge[:, ii].T @ self.tangent_vector[:,ii]
+            cos_position2edge = vec_position2edge[:, ii].T.dot(self.tangent_vector[:,ii])
             angle2refencePatch[ii] = np.arccos(cos_position2edge)
 
         if False:
-            cos_tangs = np.sum(self.tangent_vector[:,0].T @ self.tangent_vector[:,1])
+            cos_tangs = np.sum(self.tangent_vector[:,0].T.dot(self.tangent_vector[:,1]))
             print('angle', np.arccos(cos_tangs))
 
         return angle2refencePatch
@@ -594,13 +596,12 @@ class Obstacle(State):
         print('TODO: check class')
 
 
-
 class Ellipse(Obstacle):
-    def __init__(self, *args,
-                 axes_length=None, a=None, p=[1,1],
-                 **kwargs):
-        # import pdb; pdb.set_trace() ## DEBUG ##
-        super().__init__(*args, **kwargs)
+    # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
+    def __init__(self, axes_length=None, a=None, p=[1,1], *args, **kwargs):
+        super(Ellipse, self).__init__(*args, **kwargs)
+        
+        # Obstacle.__init__(self, *args, **kwargs)
 
         # TODO: remove redundant Leave at the moment for backwards compatibility
         if type(axes_length) == type(None):
@@ -756,11 +757,11 @@ class Ellipse(Obstacle):
             self.sf = 1
 
         if type(self.sf) == int or type(self.sf) == float:
-            x_obs_sf = R @ (self.sf*x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
+            x_obs_sf = R.dot(self.sf*x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
         else:
-            x_obs_sf = R @ (x_obs*np.tile(self.sf,(1,numPoints))) + np.tile(self.center_position, (numPoints,1)).T
+            x_obs_sf = R.dot(x_obs*np.tile(self.sf,(1,numPoints))) + np.tile(self.center_position, (numPoints,1)).T
 
-        x_obs = R @ x_obs + np.tile(np.array([self.center_position]).T,(1,numPoints))
+        x_obs = R.dot(x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
 
         if sum(a_temp) == 0:
             # self.x_obs = x_obs.T.tolist()
@@ -784,7 +785,7 @@ class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
                  *args, **kwargs):
         
-        super().__init__(*args, **kwargs)
+        super(StarshapedFlower, self).__init__(*args, **kwargs)
 
         # Object Specific Paramters
         self.radius_magnitude=radius_magnitude
@@ -818,9 +819,9 @@ class StarshapedFlower(Obstacle):
 
         if self.orientation: # nonzero
             for jj in range(self.x_obs.shape[1]):
-                self.x_obs[:, jj] = self.rotMatrix @ self.x_obs[:, jj] + np.array([self.center_position])
+                self.x_obs[:, jj] = self.rotMatrix.dot(self.x_obs[:, jj]) + np.array([self.center_position])
             for jj in range(self.x_obs_sf.shape[1]):
-                self.x_obs_sf[:,jj] = self.rotMatrix @ self.x_obs_sf[:, jj] + np.array([self.center_position])
+                self.x_obs_sf[:,jj] = self.rotMatrix.dot(self.x_obs_sf[:, jj]) + np.array([self.center_position])
 
         self.x_obs = self.x_obs.T
         self.x_obs_sf = self.x_obs_sf.T
