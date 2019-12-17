@@ -23,6 +23,7 @@ import time
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 # from dynamic_obstacle_avoidance.visualization.animated_simulation_3d import samplePointsAtBorder
 # from dynamic_obstacle_avoidance.visualization.animated_simulation_3d import run_animation
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Ellipse
 from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import DynamicBoundariesPolygon
 from dynamic_obstacle_avoidance.visualization.visualization_3d_level import Visualization3dLevel
@@ -70,7 +71,8 @@ def main(simulationNumber=0, saveFigures=False):
             [3,0,7,5]])
         
         # obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
-        obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
+        # obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
+        obs = ObstacleContainer([DynamicBoundariesPolygon(is_surgery_setup=True)])
 
         # obs.append(Ellipse(axes_length=[1, 1, 2], center_position=[0, 0, 0], orientation=[1,0,0,0]))
 

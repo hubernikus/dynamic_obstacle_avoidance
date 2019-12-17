@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/USSR/bin/python3
 
 from math import pi
 import numpy as np
@@ -42,16 +42,16 @@ class DynamicBoundariesPolygon(Polygon):
 
             kwargs['th_r'] = 0
             
-            kwargs['edge_point'] = edge_points
+            kwargs['edge_points'] = edge_points
             kwargs['indeces_of_tiles'] = indeces_of_tiles
-            kwargs['inflation_parameter'] = [0.03, 0.03, 0.03, 0.03]
+            inflation_parameter = [0.03, 0.03, 0.03, 0.03]
             
         # define boundary functions
         center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0])
         super(DynamicBoundariesPolygon, self).__init__(center_position=center_position, *args, **kwargs)
 
-        if isinstance(indeces_of_flexibleTiles, type(None)):
-            self.indices_of_flexibleTiles = self.indices_of_tiles
+        if indeces_of_flexibleTiles is None:
+            self.indices_of_flexibleTiles = self.ind_tiles
         else:
             self.indeces_of_flexibleTiles = indeces_of_flexibleTiles
 

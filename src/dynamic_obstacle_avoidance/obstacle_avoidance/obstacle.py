@@ -599,7 +599,10 @@ class Obstacle(State):
 class Ellipse(Obstacle):
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, a=None, p=[1,1], *args, **kwargs):
-        super(Ellipse, self).__init__(*args, **kwargs)
+        if sys.version_info>(3,0):
+            super().__init__(*args, **kwargs)
+        else:
+            super(Ellipse, self).__init__(*args, **kwargs)
         
         # Obstacle.__init__(self, *args, **kwargs)
 
@@ -784,8 +787,10 @@ class Ellipse(Obstacle):
 class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
                  *args, **kwargs):
-        
-        super(StarshapedFlower, self).__init__(*args, **kwargs)
+        if sys.version_info>(3,0):
+            super().__init__(*args, **kwargs)
+        else:
+            super(StarshapedFlower, self).__init__(*args, **kwargs)
 
         # Object Specific Paramters
         self.radius_magnitude=radius_magnitude

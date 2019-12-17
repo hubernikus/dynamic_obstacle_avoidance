@@ -1,4 +1,4 @@
- #!/usr/bin/python3
+ #!/USSR/bin/python3
 
 '''
 @date 2019-10-15
@@ -21,6 +21,7 @@ class Polygon(Obstacle):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
         
+        
         self.edge_points = np.array(edge_points)
 
         if (not 'center_position' in kwargs.keys()) or kwargs['center_position'] is None:
@@ -29,9 +30,11 @@ class Polygon(Obstacle):
         if ind_open is None:
             # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
             ind_open = []
-            
-        # super().__init__(*args, **kwargs)
-        super(Polygon, self).__init__(*args, **kwargs)
+
+        if (sys.version_info > (3, 0)): # TODO: remove in future
+            super().__init__(*args, **kwargs)
+        else:
+            super(Polygon, self).__init__(*args, **kwargs)
 
         if absolute_edge_position:
             self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
@@ -44,9 +47,9 @@ class Polygon(Obstacle):
             self.ind_tiles = indeces_of_tiles
             self.n_planes = indeces_of_tiles.shape[0]
             # TODO: How hard would it be to find flexible tiles?
-
+            
         self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
-
+        
 
     @property
     def hull_edge(self):
@@ -326,4 +329,7 @@ class Cuboid(Polygon):
         edge_points[:,0] = self.axes_length/2.0*np.array([-1,-1])
         edge_points[:,1] = self.axes_length/2.0*np.array([1,-1])
 
-        super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+        if sys.version_info>(3,0):
+            super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+        else:
+            super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
