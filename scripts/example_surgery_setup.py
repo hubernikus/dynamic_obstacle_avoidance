@@ -69,11 +69,10 @@ def main(simulationNumber=0, saveFigures=False):
             [2,3,6,7],
             [3,0,7,5]])
         
+        # obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
         obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
 
         # obs.append(Ellipse(axes_length=[1, 1, 2], center_position=[0, 0, 0], orientation=[1,0,0,0]))
-                           
-                           
                            
 
         x_range = [-0.15, 0.15]
