@@ -55,7 +55,7 @@ class Obstacle(State):
         self.x0 = center_position
 
         if type(th_r)!= type(None):
-            _orientation = th_r
+            orientation = th_r
         self._orientation = orientation
 
         self.dim = len(self.center_position) #Dimension of space

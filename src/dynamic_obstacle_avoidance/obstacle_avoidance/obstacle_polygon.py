@@ -93,8 +93,9 @@ class Polygon(Obstacle):
                 normal_vector[:, ii] = (-1) * normal_vector[:, ii]
                 normalDistance2center[ii] = (-1)*normalDistance2center[ii]
 
+        import pdb; pdb.set_trace() ## DEBUG
         # Normalize
-        normal_vector /= np.tile(LA.norm(normal_vector, axis=0), (self.dim,1))
+        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1))
 
         return normal_vector, normalDistance2center
 
