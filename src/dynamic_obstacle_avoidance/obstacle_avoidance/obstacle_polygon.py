@@ -59,9 +59,11 @@ class Polygon(Obstacle):
     def calculate_normalVectorAndDistance(self, edge_points=None):
         if isinstance(edge_points, type(None)):
             edge_points = self.edge_points
-
-        normal_vector = np.zeros(edge_points.shape)
-        normalDistance2center = np.zeros(edge_points.shape[1])
+            
+        # normal_vector = np.zeros(edge_points.shape)
+        # normalDistance2center = np.zeros(edge_points.shape[1])
+        normal_vector = np.zeros((edge_points.shape[0], self.n_planes))
+        normalDistance2center = np.zeros(self.n_planes)
         
         if self.dim==2:
             for ii in range(self.n_planes):
@@ -93,9 +95,8 @@ class Polygon(Obstacle):
                 normal_vector[:, ii] = (-1) * normal_vector[:, ii]
                 normalDistance2center[ii] = (-1)*normalDistance2center[ii]
 
-        import pdb; pdb.set_trace() ## DEBUG
         # Normalize
-        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1))
+        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1)) 
 
         return normal_vector, normalDistance2center
 
