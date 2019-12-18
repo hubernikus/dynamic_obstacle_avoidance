@@ -86,7 +86,6 @@ class Polygon(Obstacle):
                     normal_vector[:, ii]= normal_vector[:, ii]/norm_mag
         else:
             raise ValueError("Implement for d>3.")
-
         
         for ii in range(self.n_planes):
             normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii])

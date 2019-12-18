@@ -90,7 +90,7 @@ def main(simulationNumber=0, saveFigures=False):
         y_range = [-0.15, 0.15]
         z_Range = [-a2, a2*2]
 
-        attractorPos = [0,0]
+        attractorPos = [0, 0]
         eanimationName = 'surgery_simulation.mp4'
 
         static_simulation = True
@@ -112,4 +112,3 @@ if __name__ == "__main__":
         saveFigures = bool(int(sys.argv[2]))
 
     main(simulationNumber=simulationNumber, saveFigures=saveFigures)
- 
