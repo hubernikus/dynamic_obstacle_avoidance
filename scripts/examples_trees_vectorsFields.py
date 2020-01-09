@@ -19,7 +19,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 
 ########################################################################
 # Chose the option you want to run as a number in the option list (integer from -2 to 10)
-options = [6]
+options = [-1]
 
 n_resolution = 15
 saveFigures=False
@@ -350,6 +350,40 @@ def main(options=[0], n_resolution=100, saveFigures=False):
 
         # VectorFields_nonlinear(xRange, yRange, n_resolution, obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='nonlinear_convergence', noTicks=True, obs_avoidance_func=obs_avoidance_nonlinear_hirarchy, dynamicalSystem=nonlinear_wavy_DS, nonlinear=True)
         VectorFields_nonlinear(xRange, yRange, n_resolution, obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='nonlinear_', noTicks=True, obs_avoidance_func=obs_avoidance_nonlinear_hirarchy, dynamicalSystem=linearAttractor, nonlinear=True)
+
+    if option==8:
+        xlim = [-1.0, 11]
+        ylim = [-5.5,5.5]
+
+        xAttractor=[0,0]
+
+        obs=[]
+
+        obs.append(Ellipse(a=[2.6, 1.5], p=[2,2], x0=[7, 0], th_r=0./180*pi))
+
+        obs.append(Ellipse(a=[3, 0.8], p=[2,2], x0=[5, 2.8],th_r=0/180*pi))
+        obs.append(Ellipse(a=[3, 0.8], p=[2,2], x0=[2.7, 0],th_r=90/180*pi))
+        obs.append(Ellipse(a=[3, 0.8], p=[2,2], x0=[5, -2.8],th_r=180/180*pi))
+
+        VectorFields_nonlinear(xlim, ylim, n_resolution, obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linear_convergence', noTicks=True, obs_avoidance_func=obs_avoidance_nonlinear_hirarchy, dynamicalSystem=linearAttractor, nonlinear=True, displacement_visualisation=False)
+
+    if option==9:
+        xlim = [-4.0, 11]
+        ylim = [-5.5,5.5]
+
+        xAttractor=[-3,-1]
+ 
+        obs=[]
+
+        r_1 = 0.1
+        r_2 = 1.0
+        delta_d = 0.1
+        d = r_1 + r_2 + delta_d
+        
+        obs.append(Ellipse(a=[r_1, r_1], p=[1,1], x0=[0, 0],th_r=0/180*pi))
+        obs.append(Ellipse(a=[r_2, r_2], p=[1,1], x0=[d, 0], th_r=0./180*pi))
+
+        VectorFields_nonlinear(xlim, ylim, n_resolution, obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linear_convergence', noTicks=True, obs_avoidance_func=obs_avoidance_nonlinear_hirarchy, dynamicalSystem=linearAttractor, nonlinear=True, displacement_visualisation=False) 
 
 
 main(options=options, n_resolution=n_resolution, saveFigures=saveFigures)
