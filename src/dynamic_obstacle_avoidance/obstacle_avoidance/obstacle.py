@@ -20,6 +20,7 @@ import numpy.linalg as LA
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
@@ -40,7 +41,7 @@ class Obstacle(State):
 
     def __init__(self, orientation=0, sf=1, delta_margin=0, sigma=1,  center_position=[0,0], tail_effect=True, always_moving=True, 
                  x0=None, th_r=None, dimension=None,
-                 position_3d=None, orientation_3d=None, # 3D compatibility
+                 # position_3d=None, orientation_3d=None, # 3D compatibility
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
@@ -53,10 +54,10 @@ class Obstacle(State):
         self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
 
-        if not position_3d is None:
-            self.position_3d = position_3d
-        if not orientation_3d is None:
-            self.orientatation_3d = position_3d
+        # if not position_3d is None:
+            # self.position_3d = position_3d
+        # if not orientation_3d is None:
+            # self.orientatation_3d = position_3d
 
         # Obstacle attitude
         if type(x0) != type(None):
@@ -208,6 +209,14 @@ class Obstacle(State):
             self._orientation = value
         self.compute_R()
 
+    @property
+    def position(self):
+        return self.center_position
+
+    @position.setter
+    def position(self, value):
+        self.center_position = value
+    
     @property
     def center_position(self):
         return self._center_position
@@ -376,27 +385,33 @@ class Obstacle(State):
         if isinstance(position, list):
             position = np.array(position)
 
-        if self.dim==2 and position.shape[0]==3:
+        if self.dim==2:
             # 2D navigation, but 3D sensor input
-            if isinstance(orientation, list):
-                # orientation = quaternion.quaternion(orientation)
-                orientation = np.array(orientation)
 
-            new_linear_velocity = (self.position_3d-position)/dt
-            # new_angular_velocity = (self.orientation_3d-orientation)/dt
-            new_angular_velocity = np.array([0,0,0]) # TODO: REMOVE
-
-            # Convert to 2D
-            position = position[:2]
-            orientation = orientation[0]
-            new_linear_velocity = new_linear_velocity[:2]
-            new_angular_velocity = new_angular_velocity[0]
-
-            self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_angular_velocity)*self.linear_velocity
-            self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            new_linear_velocity = (position-self.position)/dt
             
-            self.position = (k_position*(position) + (1-k_position)*(self.linear_velocity*dt + self.position) )
+            # Periodicity of oscillation
+            delta_orientation = orientation-self.orientation
+            if np.abs(delta_orientation)>pi:
+                if np.abs(delta_orientation+2*pi)<pi:
+                    orientation += 2*pi
+                elif np.abs(delta_orientation-2*pi)<pi:
+                    orientation -= 2*pi
+                else:
+                    raise ValueError('Unexpected angle difference')
+
+            new_angular_velocity = (orientation-self.orientation)/dt
+            
+            self.linear_velocity = new_linear_velocity 
+            self.angular_velocity = new_angular_velocity
+            # self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
+            # self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            
+            # self.center_position = (position)
+            self.center_position = (k_position*(position) \
+                                    + (1-k_position)*(self.linear_velocity*dt + self.center_position))
             self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
+            self.orientation = angle_modulo(self.orientation)
             # import pdb; pdb.set_trace()
             #TODO add filter
 

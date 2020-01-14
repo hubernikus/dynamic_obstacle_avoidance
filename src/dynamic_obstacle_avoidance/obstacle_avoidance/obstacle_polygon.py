@@ -160,7 +160,8 @@ class Polygon(Obstacle):
 
                     matrix_ref_tang = np.vstack((reference_dir, -surface_dir)).T
                     if LA.matrix_rank(matrix_ref_tang)>1:
-                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii], rcond=None)[0]
+                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii])[0]
+
                     else:
                         dist2hull[ii] = -1
                         dist_tangent = -1
