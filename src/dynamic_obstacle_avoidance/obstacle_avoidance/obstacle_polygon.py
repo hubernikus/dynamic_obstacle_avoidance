@@ -17,7 +17,7 @@ class Polygon(Obstacle):
     '''
     Star Shaped Polygons
     '''
-    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,   *args, **kwargs):
+    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True, *args, **kwargs):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
         
@@ -39,7 +39,7 @@ class Polygon(Obstacle):
         if absolute_edge_position:
             self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
         self.absolut_margin = 0
-
+        
         if self.dim==2:
             self.n_planes = self.edge_points.shape[1]
             
