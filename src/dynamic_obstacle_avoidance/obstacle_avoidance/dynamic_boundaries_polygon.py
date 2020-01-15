@@ -91,13 +91,27 @@ class DynamicBoundariesPolygon(Polygon):
             # return reference_point
         # return
 
+
+    def update_pos(t, dt, xlim=None, ylim=None, inflation_parameter=None, z_value=0):
+
+        if inflation_parameter is None:
+            freq = 2*pi/5
+            inflation_parameter = np.sin(t*freq)*np.ones(self.num_plane)
         
-    def update(self, inflation_parameter, time_new=0):
+        self.update(inflation_parameter, time_new=t, dt=dt)
+        self.draw_obstacle(numPoints=50, z_val=z_value) 
+
+        
+    def update(self, inflation_parameter, time_new=0, dt=None):
         self.inflation_parameter_old = self.inflation_parameter
         self.inflation_parameter = inflation_parameter
 
-        self.time_step = (time_new-self.time)
+        if dt is None:
+            self.time_step = (time_new-self.time)
+        else:
+            self.time_step = dt
         self.time = time_new
+
 
         
     def draw_obstacle(self, numPoints=20, z_val=None, inflation_parameter=None):

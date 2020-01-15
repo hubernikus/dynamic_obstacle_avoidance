@@ -76,18 +76,27 @@ def main(simulationNumber=0, saveFigures=False):
 
         # obs.append(Ellipse(axes_length=[1, 1, 2], center_position=[0, 0, 0], orientation=[1,0,0,0]))
 
+        
         x_range = [-0.15, 0.15]
         y_range = [-0.15, 0.15]
         z_Range = [-a2, a2*2]
 
-        attractorPos = [0,0]
+        attractorPos = np.array([0, 0, 0])
         eanimationName = 'surgery_simulation.mp4'
+
+        # inflation_parameter = [0,0,0,0]
+        # inflation_parameter = np.ones(4)*0.06
+        inflation_parameter = [0, 0.01, 0.05, 0.03]
 
         static_simulation = True
         if static_simulation:
             visualizer = Visualization3dLevel(obs=obs, x_range=x_range, y_range=y_range, z_range=0)
+            obs[0].inflation_parameter = inflation_parameter
+            visualizer.vectorfield2d(save_figure=True)
         else:
+            x_init = np.array([[-0.1, 0.1, 0.3]])
             visualizer = Visualization3dLevel(obs=obs, x_range=x_range, y_range=y_range, z_range=0)
+            visualizer.animate2d(x_init, attractorPos)
         
     print('\n\n---- Script finished ---- \n\n')
 

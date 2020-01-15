@@ -21,7 +21,6 @@ class Polygon(Obstacle):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
         
-        
         self.edge_points = np.array(edge_points)
 
         if (not 'center_position' in kwargs.keys()) or kwargs['center_position'] is None:

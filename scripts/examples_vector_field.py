@@ -1,5 +1,4 @@
 #!/USSR/bin/python3
-
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
 

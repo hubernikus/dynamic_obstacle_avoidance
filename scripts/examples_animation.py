@@ -592,7 +592,6 @@ def main(simulationNumber=0, saveFigures=False):
         run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.003, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01)
 
     if simulationNumber==14:
-        saveFigures=True
         N = 8
         x_init = np.vstack(( np.ones(N)*18,
                              np.linspace(-7, 7,num=N) ))

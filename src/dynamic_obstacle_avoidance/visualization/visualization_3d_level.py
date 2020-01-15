@@ -26,6 +26,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import Obs
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import linear_ds_max_vel
 
+from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation
+
+
 class Visualization3dLevel():
     def __init__(self, x_range=[-0.3, 0.3], y_range=[-0.3, 0.3], z_range=[-1, 1],
                  obs=ObstacleContainer([]), figureSize=(8,8)):
@@ -38,14 +41,16 @@ class Visualization3dLevel():
 
         self.x_range, self.y_range, self.z_range = x_range, y_range, z_range
 
+        
+    def vectorfield2d(self, save_figure=False):
         if isinstance(self.z_range, (int, float)):
-            for n in range(len(obs)):
+            for n in range(len(self.obs)):
                 self.obs[n].draw_obstacle(numPoints=50, z_val=self.z_range) # 50 points resolution
                 # self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
 
             pos_attractor = np.array([ 0.075, 0.075, 0.15])
             
-            self.draw_2d_obstacles(z_val=self.z_range)
+            self.draw_2d_obstacles(z_val=self.z_range, save_figure=save_figure)
             # self.draw_gamma_field(z_val=self.z_range)
             self.draw_2d_vectorfield(z_val=0.15, pos_attractor=pos_attractor, num_grid=40, stream_plot=False)
             # self.draw_2d_line(point1=[0.08, 0.0006], point2=[0.08, -0.0006], n_pos=10)
@@ -63,7 +68,10 @@ class Visualization3dLevel():
             self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
             print("NO DRAWING METHOD CHOSEN")
 
-    def draw_2d_obstacles(self, z_val=None):
+    def animate2d(self, x_init, attractor_position=np.array([0,0,0])):
+        run_animation(x_init, self.obs, x_range=self.x_range, y_range=self.y_range, dt=0.05, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01, attractorPos=attractor_position, animationName='surgery_setup', saveFigure=False, dimension=2)
+
+    def draw_2d_obstacles(self, z_val=None, save_figure=False):
         # Adjust dynamic center
         # if automatic_reference_point:
             # intersection_obs = obs_common_section(obs)
@@ -126,9 +134,21 @@ class Visualization3dLevel():
         # plt.plot(position[0], position[1], 'kx')
         # normal_surface = self.obs[0].get_normal_direction(position)
         # self.ax.quiver(position[0], position[1], normal_surface[0], normal_surface[1])
+
+
         
-        plt.ion()
-        plt.show()
+        if save_figure:
+            inf_str =''.join(str(e) for e in self.obs[0].inflation_parameter)
+            figName = "surgery_setup_param" + inf_str
+            try:
+                plt.savefig('figures/' + figName + '.png', bbox_inches='tight')
+            except:
+                plt.savefig('../figures/' + figName + '.png', bbox_inches='tight')
+
+        else:
+            plt.ion()
+            plt.show()
+            
         
 
     def draw_2d_vectorfield(self, z_val=0, num_grid=10, dim=3, pos_attractor=[0.1,0.1,0], stream_plot=True):

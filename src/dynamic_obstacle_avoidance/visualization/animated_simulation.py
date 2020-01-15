@@ -29,6 +29,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import DynamicBoundariesPolygon
+
 plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
 
 def samplePointsAtBorder(number_of_points, x_range, y_range, obs=[]):
@@ -66,15 +68,18 @@ class Animated():
     """
     An animated scatter plot using matplotlib.animations.FuncAnimation.
     """
-    def __init__(self, x0=None, obs=[], N_simuMax=600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimensions=2):
+    def __init__(self, x0=None, obs=[], N_simuMax=600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimension=None):
 
-        if isinstance(x0, type(None)):
-            self.dim = dimensions
+        if x0 is None:
+            self.dim = 2 # Default
             self.infitineLoop = True
         else:
             self.infitineLoop = False
             self.dim = x0.shape[0]
         self.print_count = False
+
+        if not dimension is None:
+            self.dim = dimension
 
         # Initialize class variables
         self.obs = obs
@@ -95,7 +100,7 @@ class Animated():
 
         # Get current simulation time
         self.old_time = time.time()
-        
+
         self.N_points = x0.shape[1]
 
         self.x_pos = np.zeros((self.dim, self.N_simuMax+2, self.N_points))
@@ -220,8 +225,15 @@ class Animated():
         #     print('Collision detected!!!!')
         for o in range(len(self.obs)):# update obstacles if moving
             # print('limitis', len(self.ax.get_ylim()))
-            self.obs[o].update_pos(self.t[self.iSim], self.dt,
-                                   self.ax.get_xlim(), self.ax.get_ylim()) # Update obstacles
+            if isinstance(self.obs[o], DynamicBoundariesPolygon):
+                it_point = 0
+                self.obs[o].update_pos(self.t[self.iSim], self.dt, z_value=self.x_pos[1, self.iSim+1, it_point]) # Update obstacles
+                # self.obs[o].update_pos(self.t[self.iSim], self.dt, self.ax.get_xlim(), self.ax.get_ylim()) # Update obstacles
+            else:
+                self.obs[o].update_pos(self.t[self.iSim], self.dt, self.ax.get_xlim(), self.ax.get_ylim()) # Update obstacles
+            
+            # self.obs[o].update_pos(self.t[self.iSim], self.dt, self.ax.get_xlim(), self.ax.get_ylim()) # Update obstacles
+            
 
             self.centers[o].set_xdata(self.obs[o].center_position[0])
             self.centers[o].set_ydata(self.obs[o].center_position[1])
@@ -236,14 +248,14 @@ class Animated():
 
             if self.obs[o].always_moving or self.obs[o].x_end > self.t[self.iSim] or self.iSim<1: # First two rounds or moving
                 if self.dim ==2: # only show safety-contour in 2d, otherwise not easily understandable
-                    self.contour[o].set_xdata([self.obs[o].x_obs_sf[ii][0] for ii in range(len(self.obs[o].x_obs_sf))])
-                    self.contour[o].set_ydata([self.obs[o].x_obs_sf[ii][1] for ii in range(len(self.obs[o].x_obs_sf))])
+                    self.contour[o].set_xdata([self.obs[o].x_obs_sf[ii][0] for ii in range(len(self.obs[o].x_obs_sf[:, :2]))])
+                    self.contour[o].set_ydata([self.obs[o].x_obs_sf[ii][1] for ii in range(len(self.obs[o].x_obs_sf[:, :2]))])
 
             if self.obs[o].always_moving or self.obs[o].x_end > self.t[self.iSim] or self.iSim<2:
                 if self.dim==2:
-                    self.obs_polygon[o].xy = self.obs[o].x_obs
+                    self.obs_polygon[o].xy = self.obs[o].x_obs[:, :2]
                 else:
-                    self.obs_polygon[o].xyz = self.obs[o].x_obs
+                    self.obs_polygon[o].xyz = self.obs[o].x_obs[:, :3]
         self.iSim += 1 # update simulation counter
 
         # Convergence is not discovered during video-saving
@@ -263,7 +275,13 @@ class Animated():
         
         # Numerical hull of ellipsoid
         for n in range(len(self.obs)):
-            self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
+            
+            print('is it', isinstance(self.obs[n], DynamicBoundariesPolygon))
+            if isinstance(self.obs[n], DynamicBoundariesPolygon):
+                it_point=0
+                self.obs[n].draw_obstacle(z_val=self.x_pos[1, self.iSim+1, it_point]) # Update obstacles)
+            else:
+                self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
 
         for n in range(len(self.obs)):
             if self.dim==2:
@@ -279,7 +297,7 @@ class Animated():
                     boundary_polygon.set_color(np.array([176,124,124])/255.)
                     plt.gca().add_patch(boundary_polygon) # No track of this one
 
-                    self.obs_polygon.append( plt.Polygon(self.obs[n].x_obs, alpha=1.0, zorder=-1))
+                    self.obs_polygon.append( plt.Polygon(self.obs[n].x_obs[:, :2], alpha=1.0, zorder=-1))
                     self.obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
                 else:
                     self.obs_polygon.append( plt.Polygon(emptyList, animated=True,))
