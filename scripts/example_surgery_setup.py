@@ -12,10 +12,20 @@ Dynamic Simulation - Obstacle Avoidance Algorithm
 @date 2018-05-24
 '''
 
-import sys
 import numpy as np
 from numpy import pi
 import time
+
+# REMOVE WHEN installed locally
+import os, sys
+from os.path import join
+
+file_dir = os.path.dirname(os.path.realpath(__file__))
+# library_path = join(file_dir, 'dynamic_obstacle_avoidance', 'src', 'dynamic_obstacle_avoidance')
+library_path = join(file_dir, '..', 'src')
+
+if not library_path in sys.path:
+    sys.path.append(library_path)
 
 # import quaternion
 
@@ -99,6 +109,7 @@ def main(simulationNumber=0, saveFigures=False):
             visualizer.animate2d(x_init, attractorPos)
         
     print('\n\n---- Script finished ---- \n\n')
+    import pdb; pdb.set_trace() ### DEBUG ###
 
     
 if __name__ == "__main__":
@@ -110,4 +121,3 @@ if __name__ == "__main__":
         saveFigures = bool(int(sys.argv[2]))
 
     main(simulationNumber=simulationNumber, saveFigures=saveFigures)
- 

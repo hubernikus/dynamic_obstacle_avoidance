@@ -9,6 +9,9 @@ Library of different dynamical systems
 import numpy as np
 import numpy.linalg as LA
 
+# TODO: clean up and restructure files.
+
+
 def linear_ds_max_vel(x, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
     vel = attractor-x
 
@@ -165,6 +168,7 @@ def velConst_attr(x, vel, x0=False, velConst=6, distSlow=0.5):
         vel = vel/vel_mag*new_mag
     
     return vel
+
 
 
 

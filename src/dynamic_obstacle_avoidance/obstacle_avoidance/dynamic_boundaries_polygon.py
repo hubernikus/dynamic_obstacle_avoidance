@@ -19,9 +19,9 @@ class DynamicBoundariesPolygon(Polygon):
                  *args, **kwargs):
 
         if is_surgery_setup:
-            a1, a2 = 0.05, 0.20
+            a1, a2 = 0.00, 0.16
             d_a = (a2-a1)/2
-            l = 0.30
+            l = 0.16
 
             edge_points = np.array([[-a1, -a1, 0],
                                     [a1, -a1, 0],
@@ -47,7 +47,7 @@ class DynamicBoundariesPolygon(Polygon):
             inflation_parameter = [0.03, 0.03, 0.03, 0.03]
             
         # define boundary functions
-        center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0])
+        center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0]) 
         super(DynamicBoundariesPolygon, self).__init__(center_position=center_position, *args, **kwargs)
 
         if indeces_of_flexibleTiles is None:
@@ -112,8 +112,6 @@ class DynamicBoundariesPolygon(Polygon):
             self.time_step = dt
         self.time = time_new
 
-
-        
     def draw_obstacle(self, numPoints=20, z_val=None, inflation_parameter=None):
         # Specific to square
         if z_val is None:

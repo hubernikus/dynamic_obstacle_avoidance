@@ -12,16 +12,22 @@ import warnings, sys
 
 import numpy.linalg as LA
 
+
+# import quaternion # numpy-quaternion 
+
 # import dynamic_obstacle_avoidance
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
 import matplotlib.pyplot as plt
+
+# import quaternion
 
 visualize_debug = False
 
@@ -34,18 +40,24 @@ class Obstacle(State):
         return "Obstacle of Type: {}".format(type(self))
 
     def __init__(self, orientation=0, sf=1, delta_margin=0, sigma=1,  center_position=[0,0], tail_effect=True, always_moving=True, 
-                 x0=None, th_r=None,
+                 x0=None, th_r=None, dimension=None,
+                 # position_3d=None, orientation_3d=None, # 3D compatibility
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
                  # , *args, **kwargs): # maybe random arguments
          # This class defines obstacles to modulate the DS around it
-        # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
+       # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
         self.sf = sf # TODO - rename
         self.delta_margin = delta_margin
         self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
+
+        # if not position_3d is None:
+            # self.position_3d = position_3d
+        # if not orientation_3d is None:
+            # self.orientatation_3d = position_3d
 
         # Obstacle attitude
         if type(x0) != type(None):
@@ -54,12 +66,12 @@ class Obstacle(State):
         self.center_position = self.position
         self.x0 = center_position
 
+        self.dim = len(self.center_position) # Dimension of space
+        self.d = len(self.center_position) # Dimension of space # TODO remove
+        
         if type(th_r)!= type(None):
-            _orientation = th_r
-        self._orientation = orientation
-
-        self.dim = len(self.center_position) #Dimension of space
-        self.d = len(self.center_position) #Dimension of space # TODO remove
+            orientation = th_r
+        self.orientation = orientation
 
         self.rotMatrix = []
         self.compute_R() # Compute Rotation Matrix
@@ -96,7 +108,7 @@ class Obstacle(State):
                 linear_velocity = xd
         self.linear_velocity = linear_velocity
         self.xd = self.linear_velocity
-
+        
         # Special case of moving obstacle (Create subclass)
         if sum(np.abs(self.linear_velocity)) or np.sum(self.angular_velocity) \
            or self.timeVariant:
@@ -108,10 +120,12 @@ class Obstacle(State):
             self.x_start = 0
             self.x_end = 0
 
+        self.update_timestamp()
+
         # Trees of stars
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
-        self.ind_children = [] 
+        self.ind_children = []
 
         # Relative Reference point // Dyanmic center
         # self.reference_point = self.center_position # TODO remove and rename
@@ -126,6 +140,8 @@ class Obstacle(State):
         self.is_convex = False # Needed?
 
         self.properties = {} # TODO: use kwargs
+
+        
 
     # def update_reference(self, new_ref):
         # TODo write function
@@ -187,43 +203,87 @@ class Obstacle(State):
     
     @orientation.setter
     def orientation(self, value):
-        self._orientation = value
+        if isinstance(value, list) and self.dim==3:
+            self._orientation = np.array(value) # TODO: change to quaternion
+        else:
+            self._orientation = value
         self.compute_R()
 
     @property
-    def th_r(self):
-        # TODO: remove since redundant
+    def position(self):
+        return self.center_position
+
+    @position.setter
+    def position(self, value):
+        self.center_position = value
+    
+    @property
+    def center_position(self):
+        return self._center_position
+    
+    @center_position.setter
+    def center_position(self, value):
+        if isinstance(value, list):
+            self._center_position = np.array(value) # TODO: change to quaternion
+        else:
+            self._center_position = value
+
+    @property
+    def th_r(self): # TODO: remove since redundant
         return self.orientation # getter
 
     @th_r.setter
-    def th_r(self, value):
-        # TODO: remove since redundant
+    def th_r(self, value): # TODO: remove since redundant
         self.orientation = value # setter
+
+    @property
+    def timestamp(self):
+        return self._timestamp
+
+    @timestamp.setter
+    def timestamp(self, value):
+        # if timestamp is None:
+        self._timestamp = value
+
+    def update_timestamp(self):
+        self._timestamp = time.time()
+
+    @property
+    def linear_velocity(self):
+        return self._linear_velocity
+
+    @linear_velocity.setter
+    def linear_velocity(self, value):
+        if len(value)>2:
+            import pdb; pdb.set_trace()
+        self._linear_velocity = value
+        
         
     def compute_R(self):
         # TODO - replace with quaternions
         # Find solution for higher dimensions
+        orientation = self._orientation
 
         # Compute the rotation matrix in 2D and 3D
-        if self.orientation == 0:
+        if orientation is None:
             self.rotMatrix = np.eye(self.dim)
             return
 
         # rotating the query point into the obstacle frame of reference
         if self.dim==2:
-            self.rotMatrix = np.array([[cos(self.orientation), -sin(self.orientation)],
-                                       [sin(self.orientation),  cos(self.orientation)]])
+            self.rotMatrix = np.array([[cos(orientation), -sin(orientation)],
+                                       [sin(orientation),  cos(orientation)]])
         elif self.dim==3:
             R_x = np.array([[1, 0, 0,],
-                        [0, np.cos(self.orientation[0]), np.sin(self.orientation[0])],
-                        [0, -np.sin(self.orientation[0]), np.cos(self.orientation[0])] ])
+                        [0, np.cos(orientation[0]), np.sin(orientation[0])],
+                        [0, -np.sin(orientation[0]), np.cos(orientation[0])] ])
 
-            R_y = np.array([[np.cos(self.orientation[1]), 0, -np.sin(self.orientation[1])],
+            R_y = np.array([[np.cos(orientation[1]), 0, -np.sin(orientation[1])],
                         [0, 1, 0],
-                        [np.sin(self.orientation[1]), 0, np.cos(self.orientation[1])] ])
+                        [np.sin(orientation[1]), 0, np.cos(orientation[1])] ])
 
-            R_z = np.array([[np.cos(self.orientation[2]), np.sin(self.orientation[2]), 0],
-                        [-np.sin(self.orientation[2]), np.cos(self.orientation[2]), 0],
+            R_z = np.array([[np.cos(orientation[2]), np.sin(orientation[2]), 0],
+                        [-np.sin(orientation[2]), np.cos(orientation[2]), 0],
                         [ 0, 0, 1] ])
 
             self.rotMatrix= R_x.dot(R_y).dot(R_z)
@@ -314,26 +374,46 @@ class Obstacle(State):
 
     def move_center(self, position):
         self.center_position = position
-        
 
 
-    def update_position_and_orientation(self, position, orientation,
-                                        k_position=0.1, k_linear_velocity=0.1,
-                                        k_orientation=0.1, k_angular_velocity=0.1):
+    def update_position_and_orientation(self, position, orientation, k_position=0.1, k_linear_velocity=0.1, k_orientation=0.1, k_angular_velocity=0.1):
+
         # TODO implement Kalman filter
         time_current = time.time()
-        dt = self.timestamp-time_current
+        dt = time_current-self.timestamp
+        
+        if isinstance(position, list):
+            position = np.array(position)
 
-        new_linear_velocity = (self.position-position)/dt
-        new_angular_velocity = (self.orientation-orientation)/dt
+        if self.dim==2:
+            # 2D navigation, but 3D sensor input
 
-        self.linear_velocity = k_linear_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
-        self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            new_linear_velocity = (position-self.position)/dt
+            
+            # Periodicity of oscillation
+            delta_orientation = orientation-self.orientation
+            if np.abs(delta_orientation)>pi:
+                if np.abs(delta_orientation+2*pi)<pi:
+                    orientation += 2*pi
+                elif np.abs(delta_orientation-2*pi)<pi:
+                    orientation -= 2*pi
+                else:
+                    raise ValueError('Unexpected angle difference')
 
-        self.position = (k_position*(position)
-                         + (1-k_position)*(self.linear_velocity*dt + self.position) )
-        self.orienation = (k_orientation*(orientation)
-                           + (1-k_orienation)*(self.angular_velocity*dt + self.position) )
+            new_angular_velocity = (orientation-self.orientation)/dt
+            
+            self.linear_velocity = new_linear_velocity 
+            self.angular_velocity = new_angular_velocity
+            # self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
+            # self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            
+            # self.center_position = (position)
+            self.center_position = (k_position*(position) \
+                                    + (1-k_position)*(self.linear_velocity*dt + self.center_position))
+            self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
+            self.orientation = angle_modulo(self.orientation)
+            # import pdb; pdb.set_trace()
+            #TODO add filter
 
         self.timestamp = time_current
 
@@ -594,6 +674,7 @@ class Obstacle(State):
 
     def obs_check_collision(self, ):
         print('TODO: check class')
+        raise NotImplementedError()
 
 
 class Ellipse(Obstacle):

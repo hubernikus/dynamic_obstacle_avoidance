@@ -17,7 +17,7 @@ class Polygon(Obstacle):
     '''
     Star Shaped Polygons
     '''
-    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,   *args, **kwargs):
+    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True, *args, **kwargs):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
         
@@ -38,7 +38,7 @@ class Polygon(Obstacle):
         if absolute_edge_position:
             self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
         self.absolut_margin = 0
-
+        
         if self.dim==2:
             self.n_planes = self.edge_points.shape[1]
             
@@ -58,9 +58,11 @@ class Polygon(Obstacle):
     def calculate_normalVectorAndDistance(self, edge_points=None):
         if isinstance(edge_points, type(None)):
             edge_points = self.edge_points
-
-        normal_vector = np.zeros(edge_points.shape)
-        normalDistance2center = np.zeros(edge_points.shape[1])
+            
+        # normal_vector = np.zeros(edge_points.shape)
+        # normalDistance2center = np.zeros(edge_points.shape[1])
+        normal_vector = np.zeros((edge_points.shape[0], self.n_planes))
+        normalDistance2center = np.zeros(self.n_planes)
         
         if self.dim==2:
             for ii in range(self.n_planes):
@@ -83,7 +85,6 @@ class Polygon(Obstacle):
                     normal_vector[:, ii]= normal_vector[:, ii]/norm_mag
         else:
             raise ValueError("Implement for d>3.")
-
         
         for ii in range(self.n_planes):
             normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii])
@@ -93,7 +94,7 @@ class Polygon(Obstacle):
                 normalDistance2center[ii] = (-1)*normalDistance2center[ii]
 
         # Normalize
-        normal_vector /= np.tile(LA.norm(normal_vector, axis=0), (self.dim,1))
+        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1)) 
 
         return normal_vector, normalDistance2center
 
@@ -158,7 +159,8 @@ class Polygon(Obstacle):
 
                     matrix_ref_tang = np.vstack((reference_dir, -surface_dir)).T
                     if LA.matrix_rank(matrix_ref_tang)>1:
-                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii], rcond=None)[0]
+                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii])[0]
+
                     else:
                         dist2hull[ii] = -1
                         dist_tangent = -1
