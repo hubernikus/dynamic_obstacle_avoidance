@@ -19,7 +19,7 @@ from dynamic_obstacle_avoidance.dynamical_system import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import dynamic_center_3d
 
 
 def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
@@ -74,25 +74,31 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
 
+
     # Adjust dynamic center
     if automatic_reference_point:
-        intersection_obs = obs_common_section(obs)
-        dynamic_center_3d(obs, intersection_obs)
+        intersection_obs = get_intersections_obstacles(obs)
+        get_dynamic_center_obstacles(obs, intersection_obs)
+
+    # Numerical hull of ellipsoid 
+    for n in range(len(obs)): 
+        obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
+
 
     if len(figHandle): 
         fig_ifd, ax_ifd = figHandle[0], figHandle[1] 
     else:
         fig_ifd, ax_ifd = plt.subplots(figsize=figureSize) 
-
+        
     if plotObstacle:
         obs_polygon = []
         obs_polygon_sf = []
 
         for n in range(len(obs)):
-            x_obs_sf = obs[n].x_obs_sf # todo include in obs_draw_ellipsoid
-            
-            plt.plot([x_obs_sf[i][0] for i in range(len(x_obs_sf))],
-                [x_obs_sf[i][1] for i in range(len(x_obs_sf))], 'k--')
+            # plt.plot([x_obs_sf[i][0] for i in range(len(x_obs_sf))], [x_obs_sf[i][1] for i in range(len(x_obs_sf))], 'k--')
+            x_obs = obs[n].boundary_points_global_closed
+            x_obs_sf = obs[n].boundary_points_margin_global_closed
+            plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
             
             if obs[n].is_boundary:
                 outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
@@ -102,18 +108,18 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 boundary_polygon.set_color(np.array([176,124,124])/255.)
                 plt.gca().add_patch(boundary_polygon)
 
-                obs_polygon.append( plt.Polygon(obs[n].x_obs, alpha=1.0, zorder=-1))
+                obs_polygon.append( plt.Polygon(x_obs.T, alpha=1.0, zorder=-1))
                 obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
 
             else:
-                obs_polygon.append( plt.Polygon(obs[n].x_obs, alpha=0.8, zorder=2))
+                obs_polygon.append( plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
                 
                 if len(obstacleColor)==len(obs):
                     obs_polygon[n].set_color(obstacleColor[n])
                 else:
                     obs_polygon[n].set_color(np.array([176,124,124])/255)
             
-            obs_polygon_sf.append( plt.Polygon(obs[n].x_obs_sf, zorder=1, alpha=0.2))
+            obs_polygon_sf.append( plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
             obs_polygon_sf[n].set_color([1,1,1])
 
             plt.gca().add_patch(obs_polygon_sf[n])
@@ -129,6 +135,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             
             if not any(reference_point==None):
                 ax_ifd.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
+                # ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
+                ax_ifd.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
+                # add group, too
                 
             if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
                 col=[0.5,0,0.9]
@@ -217,7 +226,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             pos = np.array([XX[ix,iy],YY[ix,iy]])
 
             xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
-            xd_mod[:,ix,iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # modulataed DS with IFS
+            xd_mod[:,ix,iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
 
     if sysDyn_init:
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
@@ -230,7 +239,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         plt.ylim(y_range)
 
     indOfnoCollision = obs_check_collision_2d(obs, XX, YY)
-    
+    # indOfnoCollision = np.zeros(np.squeeze(xd_mod[0,:,:]).shape) # DEBUGGING: remove
     dx1_noColl = np.squeeze(xd_mod[0,:,:]) * indOfnoCollision
     dx2_noColl = np.squeeze(xd_mod[1,:,:]) * indOfnoCollision
 

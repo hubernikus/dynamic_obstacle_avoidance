@@ -111,6 +111,7 @@ class DynamicBoundariesPolygon(Polygon):
         else:
             self.time_step = dt
         self.time = time_new
+        
 
     def draw_obstacle(self, numPoints=20, z_val=None, inflation_parameter=None):
         # Specific to square

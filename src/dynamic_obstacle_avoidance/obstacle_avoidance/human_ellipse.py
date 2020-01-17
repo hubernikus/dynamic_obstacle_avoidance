@@ -40,3 +40,5 @@ class HumanEllipse(Ellipse):
         
     def repulsion_force(self, position):
         raise NotImplementedError()
+
+    

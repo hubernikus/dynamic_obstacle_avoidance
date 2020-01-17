@@ -48,11 +48,26 @@ class Polygon(Obstacle):
             # TODO: How hard would it be to find flexible tiles?
             
         self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
-        
 
     @property
     def hull_edge(self):
         return self.edge_points
+
+    @hull_edge.setter
+    def hull_edge(self, value):
+        self.edge_points = value
+
+
+    def get_maximal_distance(self):
+        dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        return np.max(dist_edges)
+
+    def get_minimal_distance(self):
+        dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        return np.max(dist_edges)
+
+    def extend_hull_around_reference(self):
+        pass
 
 
     def calculate_normalVectorAndDistance(self, edge_points=None):
@@ -99,77 +114,103 @@ class Polygon(Obstacle):
         return normal_vector, normalDistance2center
 
 
-    def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None):
+    def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None, add_circular_margin=False):
+        # Compute only locally
         num_edges = self.edge_points.shape[1]
 
-        if not type(numPoints)==type(None):
-            n_curve_points = int(np.ceil(numPoints/(num_edges+1)) )
+        # if not type(numPoints)==type(None):
+            # n_curve_points = int(np.ceil(numPoints/(num_edges+1)) )
             # warnings.warn("Remove numPoints from function argument.")
 
-        self.boundary_points = np.hstack((self.edge_points,
-                                         np.reshape(self.edge_points[:,0],(self.dim,1))))
+        self._boundary_points = self.hull_edge
+        # self._boundary_points = np.hstack((self.edge_points,
+                                           # np.reshape(self.edge_points[:,0],(self.dim,1))))
 
-        for pp in range(self.edge_points.shape[1]):
-            self.boundary_points[:,pp] = self.rotMatrix.dot(self.boundary_points[:, pp]) + np.array([self.center_position])
+        # for pp in range(self.edge_points.shape[1]):
+            # self._boundary_points[:,pp] = self.rotMatrix.dot(self._boundary_points[:, pp]) + np.array([self.center_position])
 
-        self.boundary_points[:, -1]  = self.boundary_points[:, 0]
+        # self._boundary_points[:, -1]  = self._boundary_points[:, 0]
 
-        angles = np.linspace(0, 2*pi, num_edges*n_curve_points+1)
+        # self._boundary_points_with_margin = self._boundary_points
+        self._boundary_points_margin = copy.deepcopy(self.hull_edge)
+        return 
 
-        obs_margin_cirlce = self.absolut_margin* np.vstack((np.cos(angles), np.sin(angles)))
+        
+        if add_circular_margin:
+            # TODO CHECK & ACTIVATE!!
+            angles = np.linspace(0, 2*pi, num_edges*n_curve_points+1)
+            obs_margin_cirlce = self.absolut_margin* np.vstack((np.cos(angles), np.sin(angles)))
+            
+            self._boundary_points_with_margin = np.zeros((self.dim, 0))
+            for ii in range(num_edges):
+                self._boundary_points_with_margin = np.hstack((self._boundary_points_with_margin, np.tile(self.edge_points[:, ii], (n_curve_points+1, 1) ).T + obs_margin_cirlce[:, ii*n_curve_points:(ii+1)*n_curve_points+1] ))
+            self._boundary_points_with_margin  = np.hstack((self._boundary_points_with_margin, self._boundary_points_with_margin[:,0].reshape(2,1)))
+            
+        else:
+            dir_boundary_points = self._boundary_points/LA.norm(self._boundary_points, axis=0)
+            if self.is_boundary:
+                self._boundary_points_with_margin = self._boundary_points - dir_boundary_points*self.absolut_margin
 
-        x_obs_sf = np.zeros((self.dim, 0))
-        for ii in range(num_edges):
-            x_obs_sf = np.hstack((x_obs_sf, np.tile(self.edge_points[:, ii], (n_curve_points+1, 1) ).T + obs_margin_cirlce[:, ii*n_curve_points:(ii+1)*n_curve_points+1] ))
-        x_obs_sf  = np.hstack((x_obs_sf, x_obs_sf[:,0].reshape(2,1)))
+            else:
+                self._boundary_points_with_margin = self._boundary_points + dir_boundary_points*self.absolut_margin
+            
 
-        for jj in range(x_obs_sf.shape[1]): # TODO replace for loop with numpy-math
-            x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
+        # for jj in range(x_obs_sf.shape[1]): # TODO replace for loop with numpy-math
+            # x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
 
         # TODO rename more intuitively
-        self.x_obs = self.boundary_points.T # Surface points
-        self.x_obs_sf = x_obs_sf.T # Margin points
+        # self.x_obs = self._boundary_points.T # Surface points
+        # self.x_obs_sf = x_obs_sf.T # Margin points
 
 
     def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional"):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        if isinstance(position, list):
-            position = np.array(position)
-        
+        if isinstance(position, list):  position = np.array(position)
+
+        multiple_positions = (len(position.shape)>1)
+        if multiple_positions:
+            n_points = position.shape[1]
+        else:
+            n_points = 1
+            position = position.reshape((self.dim, n_points))
+
+        Gamma = np.zeros(n_points)
         if gamma_type=="proportional":
         # TODO: extend rule to include points with Gamma < 1 for both cases
             dist2hull = np.ones(self.edge_points.shape[1])*(-1)
             is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
 
-            mag_position = LA.norm(position)
-            if mag_position==0: # aligned with center, treat sepearately
+            mag_position = LA.norm(position, axis=0)
+
+            zero_mag = mag_position==0
+            if np.sum(zero_mag):
                 if self.is_boundary:
-                    return sys.float_info.max
+                    Gamma[zero_mag] = sys.float_info.max
                 else:
-                    return 0 #
+                    Gamma[zero_mag] = 0
                 
             reference_dir = position / mag_position
 
             if self.dim==2:
-                for ii in range(self.edge_points.shape[1]):
-                    # Use self.are_lines_intersecting() function
-                    surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
+                for jj in np.arange(n_points)[~zero_mag]: # TODO -- speed up!!!
+                    for ii in range(self.edge_points.shape[1]):
+                        # Use self.are_lines_intersecting() function
+                        surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
 
-                    matrix_ref_tang = np.vstack((reference_dir, -surface_dir)).T
-                    if LA.matrix_rank(matrix_ref_tang)>1:
-                        dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir, -surface_dir)).T, self.edge_points[:, ii])[0]
+                        matrix_ref_tang = np.vstack((reference_dir[:, jj], -surface_dir)).T
+                        if LA.matrix_rank(matrix_ref_tang)>1:
+                            dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
+                        else:
+                            dist2hull[ii] = -1
+                            dist_tangent = -1
+                        dist_tangent = np.round(dist_tangent, 10)
+                        is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
 
-                    else:
-                        dist2hull[ii] = -1
-                        dist_tangent = -1
-                    dist_tangent = np.round(dist_tangent, 10)
-                    is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
-
-                Gamma = mag_position/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
+                    Gamma[jj] = mag_position[jj]/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
                 
-            elif self.dim==3:
+            # elif self.dim==3:
                 # for ii in range(self.n_planes):
                     # n_corners = self.ind_tiles[ii].shape[0]
                     # for jj in range(n_corners):
@@ -182,13 +223,13 @@ class Polygon(Obstacle):
                         # perpendicular_line = point2corner - projection
                         # dist_edge = 
                         
-                Gamma = 1
-                
             else:
                 raise ValueError("Not defined for d=={}".format(self.dim))
-                
+
+            
             if self.is_boundary:
-                Gamma = 1/Gamma
+                Gamma = self.get_boundaryGamma(Gamma)
+                
 
         elif gamma_type=="norm2":
             distances2plane = self.get_distance_to_hullEdge(position)
@@ -202,9 +243,12 @@ class Polygon(Obstacle):
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
 
-        if Gamma<0: # DEBUGGING
+        if any(Gamma<0): # DEBUGGING
             import pdb; pdb.set_trace() ## DEBUG ##
             
+        if not multiple_positions:
+            return Gamma[0]
+
         return Gamma
 
     
@@ -334,3 +378,37 @@ class Cuboid(Polygon):
             super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
         else:
             super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+
+    def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):
+
+        dist_max = self.get_maximal_distance()*relative_hull_margin
+        if self.get_gamma(self.reference_point)>1:
+        # TODO add margin / here or somewhere else
+            if not self.dim==2:
+                raise NotImplementedError("Not defined for d>2")
+
+            # TODO:
+            for pp in range(self.n_planes):
+                v0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes] 
+                v1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
+
+                vec_ref = self.reference_point - self.edge_points[:, pp]
+
+                if np.cross(vec_ref, v0) > 0:
+                    if np.cross(vec_ref, v1) > 0:
+                        self.hull_edge = copy.deepcopy(self.edge_points)
+                        ref_mag = LA.norm(self.reference_point)
+                        self.hull_edge[:, pp] = self.reference_point*(1+dist_max/ref_mag)
+                    else:
+                        self.hull_edge = np.hstack((
+                            self.hull_edge[:, :pp],
+                            np.reshape(self.reference_point*(1+dist_max/ref_mag), (self.dim,1)),
+                            self.hull_edge[:, pp:]))
+            self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+            self.reference_point_is_inside = False
+        else:
+            self.hull_edge = self.edge_points
+
+            if not self.reference_point_is_inside:
+                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+            self.reference_point_is_inside = True

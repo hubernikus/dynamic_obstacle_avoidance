@@ -51,14 +51,16 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
     # Check if there was correct placement of reference point
     Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
 
-    if not obs.is_boundary and Gamma_referencePoint >= 1:
+    # if not obs.is_boundary and Gamma_referencePoint >= 1:
         # Check what this does and COMMENT!!!!
-        import pdb; pdb.set_trace() ## DEBUG ##
+        # import pdb; pdb.set_trace() ## DEBUG ##
+        # Per default negative
+        # referenceNormal_angle = np.arccos(reference_direction.T.dot(normal_vector))
+        
+        
         # surface_position = obs.get_obstace_radius* x_t/LA.norm(x_t)
         # direction_surface2reference = obs.get_reference_point()-surface_position
 
-        # Per default negative
-        referenceNormal_angle = np.arccos(reference_direction.T.dot(normal_vector))
         
         # if referenceNormal_angle < (matrix_singularity_margin):
             # x_global = obs.transform_relative2global(x_t)

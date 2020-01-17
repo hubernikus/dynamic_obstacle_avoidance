@@ -25,15 +25,23 @@ visualize_debug = False
 
 
 class ObstacleContainer(State):
-# class ObstacleContainer(List): # ?? inherit from list?
+# class ObstacleContainer(list): # ?? inherit from list?
     # List like obstacle container
     # Contains properties of the obstacle environment. Which require centralized handling
+    
     # TODO: Update this in a smart way
-    # TODO: how much in obstacle class, how much in container?
+    # TODO: how much information/treatement in the obstacle class, how much in container?
     
     def __init__(self, obs_list=None):
+        self.index_wall = None
+        
         if isinstance(obs_list, list):
             self._obstacle_list = obs_list
+            for ii in range(len(self._obstacle_list)):
+                if self._obstacle_list[ii].is_boundary:
+                    if not self.index_wall is None:
+                        warnings.warn("Several boundary obstacles in one container.")
+                    self.index_wall = ii
         else:
             self._obstacle_list = []
             
@@ -42,6 +50,8 @@ class ObstacleContainer(State):
         self._rotation_direction = None
 
         self.intersection_matrix = None
+
+        
 
         # The reset clusters has to be called after all obstacles are inserted in order to update the container
 
@@ -75,13 +85,21 @@ class ObstacleContainer(State):
         self._obstacle_list[key] = value
         
     def __delitem__(self, key):
-        del self._obstacle_list[key]
+        del(self._obstacle_list[key])
+        if self.index_wall>key:
+            self.index_wall -= 1
+        elif self.index_wall==key:
+            self.index_wall = None
 
     def add_obstacle(self, value):
-        self._obstacle_list.append(value)
+        self.append(value)
 
     def append(self, value): # compatibility with normal list
         self._obstacle_list.append(value)
+        if value.is_boundary:
+            if not self.index_wall is None:
+                warnings.warn("Two wall obstacles in container.")
+            self.index_wall = len(self._obstacle_list)-1
 
     def find_root(self):
         ind_parents = np.array([self[ii].ind_parent for ii in range(len(self))])

@@ -19,6 +19,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 import warnings
 import sys
 
+
+
+
 def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
@@ -83,7 +86,6 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
 
         # Move to obstacle centered frame
         x_t = R[:,:,n].T.dot(x-obs[n].center_position)
-
         E[:,:,n], D[:,:,n], Gamma[n], E_orth[:,:,n] = compute_modulation_matrix(x_t, obs[n], R[:,:,n])
     if N_attr:
         d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
@@ -132,6 +134,8 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     xd_hat_magnitude = np.zeros((N_obs))
 
     for n in range(N_obs):
+        # TODO: 
+        # M[:,:,n] = dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])) 
         M[:,:,n] = R[:,:,n].dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(R[:,:,n].T)
         
         xd_hat[:,n] = M[:,:,n].dot(xd) # velocity modulation
@@ -142,11 +146,20 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
                 repulsive_factor = 5
                 repulsive_gamma = (1+repulsive_gammaMargin)
                 
-                repulsive_velocity =  ((repulsive_gamma/Gamma[n])**repulsive_power-
+                repulsive_speed =  ((repulsive_gamma/Gamma[n])**repulsive_power-
                                        repulsive_gamma)*repulsive_factor
                 if obs[n].is_boundary:
-                    repulsive_velocity *= (-1)
-                    xd_hat[:,n] += R[:,:,n] .dot(E[:, 0, n]) * repulsive_velocity
+                    repulsive_speed *= (-1)
+                # xd_hat[:,n] += R[:,:,n] .dot(E[:, 0, n]) * repulsive_velocity
+                x_t = R[:,:,n].T.dot(x-obs[n].center_position)
+                norm_xt = np.linalg.norm(x_t)
+                if (norm_xt): # nonzero
+                    repulsive_velocity = x_t/norm_xt * repulsive_speed
+                else:
+                    repulsive_velocity = np.zeros(3.)
+                    repulsive_velocity[0] = 1*repulsive_speed
+                    
+                xd_hat[:, n] = repulsive_velocity
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 
@@ -182,67 +195,9 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
         # xd = constVelocity(xd, position, position_attractor)
     # transforming back from object frame of reference to inertial frame of reference
     xd = xd + xd_obs
-
     
     return xd
 
-
-    # #TODO: REMOVE ... following
-    # Rf = np.array([xd_normalized, xd_t]).T
-    # k_ds = np.zeros((d-1, N_obs))
-
-    
-    # for nn in range(N_obs):
-    #     if xd_hat_magnitude[n]: # Nonzero hat_magnitude
-    #         xd_hat_normalized = xd_hat[:,n]/xd_hat_magnitude[n] # normalized direction
-    #     else:
-    #         xd_hat_normalized = xd_hat[:,n]
-        
-    #     # if not d==2:
-    #         # raise ValueError('Not implemented for d ~= 2')
-
-    #     # import pdb; pdb.set_trace() ## DEBUG ##
-    #     xd_hat_normalized_velocityFrame = Rf @ xd_hat_normalized
-
-    #     # Kappa space - directional space
-    #     k_fn = xd_hat_normalized_velocityFrame[1:]
-    #     kfn_norm = LA.norm(k_fn) # Normalize
-    #     if kfn_norm:# nonzero
-    #         k_fn = k_fn/ kfn_norm
-            
-    #     sumHat = np.sum(xd_hat_normalized*xd_normalized)
-    #     if sumHat > 1 or sumHat < -1:
-    #         sumHat = max(min(sumHat, 1), -1)
-    #         warnings.warn('cosinus out of bound!')
-            
-    #     # !!!! ??? is this the same as 
-    #     # np.arccos(sumHat) == np.arccos(xd_hat_normalized_velocityFrame[0])
-        
-    #     k_ds[:,n] = np.arccos(sumHat)*k_fn.squeeze()
-
-    # # xd_hat_magnitude = np.sqrt(np.sum(xd_hat**2, axis=0) ) # TODO - remove as already caclulated
-    # if N_attr: #nonzero
-    #     k_ds = np.hstack((k_ds, np.zeros((d-1, N_attr)) )) # points at the origin
-    #     xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
-        
-    # # Weighted interpolation for several obstacles
-    # # weight = weight**weightPow
-    # # if not LA.norm(weight,2):
-    #     # warnings.warn('trivial weight.')
-    # # weight = weight/LA.norm(weight,2)
-    
-    # k_d = np.sum(k_ds*np.tile(weight, (d-1, 1)), axis=1)
-
-    # # print('k_d', k_d)
-    # norm_kd = LA.norm(k_d)
-    
-    # if norm_kd: # Nonzero
-    #     n_xd = Rf.T @ np.hstack((np.cos(norm_kd), np.sin(norm_kd)/norm_kd*k_d ))
-    # else:
-    #     n_xd = Rf.T @ np.hstack((1, k_d ))
-
-    # weighted_direction = n_xd
-    
 
 def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_moving, ds=linearAttractor, x0=False):
     # Fourth order integration of obstacle avoidance differential equation

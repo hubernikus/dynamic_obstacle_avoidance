@@ -11,9 +11,13 @@ import matplotlib.pyplot as plt # for debugging
 
 import warnings
 
+# TODO: include research from graph theory & faster computation
+
 class Intersection_matrix():
     # Matrix uses less space this way this is useful with many obstacles! e.g. dense crowds
     # Symmetric matrix with zero as diagonal values
+
+    # TODO: use scipy sparse matrices to replace this partially!!!
     def __init__(self, n_obs, dim=2):
         self._intersection_list = [False for ii in range(int((n_obs-1)*n_obs/2))]
         self._dim = n_obs-1
@@ -31,6 +35,9 @@ class Intersection_matrix():
     
     def get(self, row, col):
         return self[row, col]
+
+    def is_interescting(self, row, col):
+        return isinstance(self[row, col], np.ndarray) # other metric?
 
     def get_intersection_matrix(self):
         # Maybe not necessary function
@@ -82,6 +89,9 @@ def obs_common_section(obs):
     #OBS_COMMON_SECTION finds common section of two ore more obstacles 
     # at the moment only solution in two d is implemented
 
+    # TODO: REMOVE
+    warnings.warn("This is depreciated and will be removed")
+    
     N_obs = len(obs)
     # No intersection region 
     if N_obs <= 1:
@@ -130,15 +140,6 @@ def obs_common_section(obs):
             if intersection_with_obs1:# Modify intersecition part
                 obsCloseBy = False
 
-                # Roughly check dimensions before starting expensive calculation
-                #for ii in intersection_obs:
-                    # if it_intersect[ii]:
-                    #     if LA.norm(obs[ii].x0 - obs[it_obs2].x0) < np.lina(obs[ii].a)*obs[ii].sf + np.linalg.norm(obs[it_obs2].a)*obs[it_obs2].sf:
-                    #         # Obstacles to far apart
-                    #         obsCloseBy = True
-                    #         break
-
-                #if obsCloseBy:
                 if True:
                     N_inter = intersection_sf[it_intersect].shape[1] # Number of intersection points
 
@@ -152,24 +153,28 @@ def obs_common_section(obs):
                         intersection_sf[it_intersect] = intersection_sf[it_intersect][:,ind]
                         intersection_obs[it_intersect] = intersection_obs[it_intersect] + [it_obs2]
             else:
-                # Roughly check dimensions before starting expensive calculation
-                #if sqrt(sum((np.array(obs[it_obs1].center_position)-np.array(obs[it_obs2].center_position))**2)) < max(obs[it_obs1].a)*obs[it_obs1].sf + max(obs[it_obs2].a)*obs[it_obs2].sf: # Obstacles are close enough
                 if True:
                     
                     # get all points of obs2 in obs1
                     # R = compute_R(d,obs[it_obs1].th_r)
                     # \Gamma = \sum_[i=1]^d (xt_i/a_i)^(2p_i) == 1
-                    N_points = len(obs[it_obs1].x_obs_sf)
-                    
-                    Gamma_temp = (rotMat[:,:,it_obs1].T.dot(np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
-                    Gamma = np.sum( (1/obs[it_obs1].sf *  Gamma_temp) ** (2*np.tile(obs[it_obs1].p, (N_points,1)).T), axis=0)
-                    intersection_sf_temp = np.array(obs[it_obs2].x_obs_sf)[Gamma<1,:].T
+                    # if isinstance(obs[it_obs1], Ellipse):
+                        # N_points = len(obs[it_obs2].x_obs_sf)
+                        # Gamma_temp = (rotMat[:,:,it_obs1].T.dot(np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
+                        # Gamma = np.sum( (1/obs[it_obs1].sf *  Gamma_temp) ** (2*np.tile(obs[it_obs1].p, (N_points,1)).T), axis=0)
+                    # else:
+                    Gamma = obs[it_obs1].get_gamma(obs[it_obs2].x_obs_sf, in_global_frame=True)
+                    intersection_sf_temp = np.array(obs[it_obs2].x_obs_sf)[:, Gamma<1]
 
                     # Get all poinst of obs1 in obs2
                     #                 R = compute_R(d,obs[it_obs2].th_r)
-                    Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
-                    Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
-                    intersection_sf_temp = np.hstack((intersection_sf_temp, np.array(obs[it_obs1].x_obs_sf)[Gamma<1,:].T ) )
+                    # if isinstance(obs[it_obs2], Ellipse):
+                        # N_points = len(obs[it_obs1].x_obs_sf)
+                        # Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
+                        # Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
+                    # else:
+                    Gamma = obs[it_obs2].get_gamma(obs[it_obs1].x_obs_sf, in_global_frame=True)
+                    intersection_sf_temp = np.hstack((intersection_sf_temp, np.array(obs[it_obs1].x_obs_sf)[:, Gamma<1] ) )
 
                     if intersection_sf_temp.shape[1] > 0:
                         it_intersect = it_intersect + 1
@@ -179,9 +184,8 @@ def obs_common_section(obs):
 
                         # Increase resolution by sampling points within
                         # obstacle, too
-                                                    # obstaacles of 2 in 1
+                        # obstaacles of 2 in 1
                         for kk in range(2):
-                            
                             if kk == 0:
                                 it_obs1_ = it_obs1
                                 it_obs2_ = it_obs2
@@ -194,18 +198,21 @@ def obs_common_section(obs):
                                 N_points_interior = ceil(N_points/Gamma_steps*ii)
                                 
                                 #print('a_temp_outside', np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-                                x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-
-                                resolution = x_obs_sf_interior.shape[1] # number of points 
+                                
+                                # x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
+                                x_obs_sf_interior = obs[it_obs1_].get_scaled_boundary_points(1.0*ii/Gamma_steps)
+                                # resolution = x_obs_sf_interior.shape[1] # number of points 
 
                                 # Get Gamma value
-                                Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T.dot(x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
-                                intersection_sf[it_intersect] = np.hstack((intersection_sf[it_intersect],x_obs_sf_interior[:,Gamma<1] ))
+                                # Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T.dot(x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
+                                Gamma = obs[it_obs2_].get_gamma(x_obs_sf_interior, in_global_frame=True)
+                                intersection_sf[it_intersect] = np.hstack((intersection_sf[it_intersect],x_obs_sf_interior[:, Gamma<1] ))
+
                                 
                             # Check center point
-                            if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T.dot( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
-                                intersection_sf[it_intersect] = np.hstack([intersection_sf[it_intersect],np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
-
+                            # if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T.dot( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
+                            if 1 > obs[it_obs2_].get_gamma(obs[it_obs1_].center_position, in_global_frame=True):
+                                intersection_sf[it_intersect] = np.hstack([intersection_sf[it_intersect], np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
 
     #if intersection_with_obs1 continue 
     if len(intersection_sf)==0:
@@ -214,19 +221,13 @@ def obs_common_section(obs):
     #plt.plot(intersection_sf[0][0,:], intersection_sf[0][1,:], 'r.')
     
     for ii in range(len(intersection_obs)):
-    #     plot(intersection_sf[ii](1,:),intersection_sf[ii](2,:),'x')
         intersection_sf[ii] = np.unique(intersection_sf[ii], axis=1)
 
         # Get numerical mean
         x_center_dyn= np.mean(intersection_sf[ii], axis=1)
-        #plt.plot(x_center_dyn[0], x_center_dyn[1], 'go')
         
         for it_obs in intersection_obs[ii]:
             obs[it_obs].global_reference_point = x_center_dyn
-
-        # sort points according to angle
-    #     intersec_sf_cent = intersection_sf - repmat(x_center_dyn,1,size(intersection_sf,2))
-
 
         # TODO - replace atan2 for speed
     #     [~, ind] = sort( atan2(intersec_sf_cent(2,:), intersec_sf_cent(1,:)))
@@ -235,17 +236,24 @@ def obs_common_section(obs):
     #     intersection_sf = [intersection_sf, intersection_sf(:,1)]
 
     #     intersection_obs = [1:size(obs,2)]
-
+    
     return intersection_obs 
 
 
-def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5):
-    #OBS_COMMON_SECTION finds common section of two ore more obstacles 
-    # at the moment only solution in two d is implemented
+def obs_common_section_hirarchy(*args, **kwargs):
+    # TODO: depreciated -- remove
+    return find_intersections_obstacles(*args, **kwargs, representation_type="hirarchy")
 
-    N_obs = len(obs)
+
+def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5, representation_type='single_point'):
+    ''' OBS_COMMON_SECTION finds common section of two ore more obstacles '''
+    
+    # at the moment only solution in 2-dimensions is implemented
+    # TODO: cleanup comments etc.
+
+    num_obstacles = len(obs)
     # No intersection region 
-    if not N_obs:
+    if not num_obstacles:
         return []
 
     # Intersction surface
@@ -260,55 +268,35 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
 
     # Find Boundaries
     ind_wall = -1
-    for o in range(N_obs):
+    for o in range(num_obstacles):
         if obs[o].is_boundary:
             ind_wall = o
             break
 
     # Choose number of points each iteration 
-    Intersections = Intersection_matrix(N_obs)
+    Intersections = Intersection_matrix(num_obstacles)
     
-    rotMat = np.zeros((d,d, N_obs))
-    R_max = np.zeros((N_obs))
+    R_max = np.zeros((num_obstacles))
 
-    for it_obs in range(N_obs):
-        rotMat[:,:,it_obs] = np.array(( obs[it_obs].rotMatrix ))
+    for it_obs in range(num_obstacles):
         obs[it_obs].draw_obstacle()
 
         R_max[it_obs] = LA.norm(obs[it_obs].axes_length) # Maximum radius for ellipsoid
 
-    for it_obs1 in range(N_obs):
-        for it_obs2 in range(it_obs1+1,N_obs):
+    for it_obs1 in range(num_obstacles):
+        for it_obs2 in range(it_obs1+1,num_obstacles):
 
             if R_max[it_obs1]+R_max[it_obs2]<LA.norm(np.array(obs[it_obs1].center_position)-np.array(obs[it_obs2].center_position)):
                 continue # NO intersection possible, to far away
-
-            # 
-            # if True: @ Already intersection present
-            #     N_inter = intersection_sf[it_intersect].shape[1] # Number of intersection points
-
-            #     Gamma_temp = ( rotMat[:,:,it_obs2].T @(intersection_sf[it_intersect]-np.tile(obs[it_obs2].center_position,(N_inter,1)).T )/ np.tile(obs[it_obs2].a,(N_inter,1)).T ) ** (2*np.tile(obs[it_obs2].p,(N_inter,1)).T)
-            #     Gamma = np.sum( 1/obs[it_obs2].sf *Gamma_temp, axis=0 )
-
-            #     ind = Gamma<1
-
-            #     if sum(ind):
-            #         intersection_sf[it_intersect] = intersection_sf[it_intersect][:,ind]
-            #         intersection_obs[it_intersect] = intersection_obs[it_intersect] + [it_obs2]
-        
+            
             # get all points of obs2 in obs1
-            N_points = len(obs[it_obs1].x_obs_sf)
+            # N_points = len(obs[it_obs1].x_obs_sf)
 
-            # Get all points of obs2 in obs1
-            Gamma_temp = (rotMat[:,:,it_obs1].T.dot(np.array(obs[it_obs2].x_obs_sf).T-np.tile(obs[it_obs1].center_position,(N_points,1)).T ) / np.tile(obs[it_obs1].a, (N_points,1)).T )
-            Gamma = np.sum( (1/obs[it_obs1].sf *  Gamma_temp) ** (2*np.tile(obs[it_obs1].p, (N_points,1)).T), axis=0) 
-            intersection_points = np.array(obs[it_obs2].x_obs_sf)[Gamma<1,:].T
+            Gamma = obs[it_obs1].get_gamma(obs[it_obs2].x_obs_sf, in_global_frame=True)
+            intersection_points = np.array(obs[it_obs2].x_obs_sf)[:, Gamma<1]
 
-            # Get all points of obs1 in obs2
-            Gamma_temp = ( rotMat[:,:,it_obs2].T.dot(np.array(obs[it_obs1].x_obs_sf).T-np.tile(obs[it_obs2].center_position,(N_points,1)).T ) / np.tile(obs[it_obs2].a, (N_points,1)).T )
-            Gamma = np.sum(( 1/obs[it_obs2].sf *  Gamma_temp)  ** (2*np.tile(obs[it_obs2].p, (N_points,1)).T), axis=0 )
-            intersection_points = np.hstack((intersection_points, np.array(obs[it_obs1].x_obs_sf)[Gamma<1,:].T ) )
-
+            Gamma = obs[it_obs2].get_gamma(obs[it_obs1].x_obs_sf, in_global_frame=True)
+            intersection_points = np.hstack((intersection_points, obs[it_obs1].x_obs_sf[:, Gamma<1] ) )
             # if intersection_sf_temp.shape[1] > 0:
             if intersection_points.shape[1]>0:
                 # Increase resolution by sampling points within obstacle, too
@@ -320,32 +308,35 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
                     elif kk ==1: # Turn around obstacles
                         it_obs1_ = it_obs2
                         it_obs2_ = it_obs1
+                        
+                    if obs[it_obs1_].is_boundary:
+                            continue
 
                     for ii in range(1,Gamma_steps):
-                        N_points_interior = ceil(N_points/Gamma_steps*ii)
-
-                        x_obs_sf_interior= obs[it_obs1_].draw_obstacle(numPoints=N_points_interior, a_temp = np.array(obs[it_obs1_].a)/Gamma_steps*ii)
-
-                        resolution = x_obs_sf_interior.shape[1] # number of points 
+                        x_obs_sf_interior = obs[it_obs1_].get_scaled_boundary_points(1.0*ii/Gamma_steps)
 
                         # Get Gamma value
-                        Gamma = np.sum( (1/obs[it_obs2_].sf *  rotMat[:,:,it_obs2_].T.dot(x_obs_sf_interior-np.tile(obs[it_obs2_].center_position,(resolution,1)).T ) / np.tile(obs[it_obs2_].a, (resolution,1)).T ) ** (2*np.tile(obs[it_obs2_].p, (resolution,1)).T), axis=0)
+                        Gamma = obs[it_obs2_].get_gamma(x_obs_sf_interior, in_global_frame=True)
                         intersection_points = np.hstack((intersection_points,x_obs_sf_interior[:,Gamma<1] ))
-
                     # Check center point
-                    if 1 > sum( (1/obs[it_obs2_].sf*rotMat[:,:,it_obs2_].T.dot( np.array(obs[it_obs1_].center_position) - np.array(obs[it_obs2_].center_position) )/ np.array(obs[it_obs2_].a) ) ** (2*np.array(obs[it_obs2_].p))):
-                        intersection_points = np.hstack([intersection_points,np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
-                
+                    if 1 > obs[it_obs2_].get_gamma(obs[it_obs1_].center_position, in_global_frame=True):
+                        intersection_points = np.hstack([intersection_points, np.tile(obs[it_obs1_].center_position,(1,1)).T ] )
+
                 # Get mean
                 # intersection_points = np.unique(intersection_points, axis=1)
-                Intersections.set(it_obs1, it_obs2, np.mean(intersection_points,1))
+                Intersections.set(it_obs1, it_obs2, np.mean(intersection_points, axis=1))
+                
 
     # Iterate over all obstacles with an intersection
     intersection_matrix = Intersections.get_bool_matrix()
 
     # All obstacles, which have at least one intersection
-    intersecting_obstacles = np.arange(N_obs)[np.sum(intersection_matrix,0)>0]
+    intersecting_obstacles = np.arange(num_obstacles)[np.sum(intersection_matrix, axis=0)>0]
 
+    if not obs.index_wall is None:
+        # TODO solve more cleanly...
+        intersecting_obstacles = np.delete(intersecting_obstacles, np.nonzero(intersecting_obstacles==obs.index_wall), axis=0)
+        
     intersection_clusters = []
 
     while intersecting_obstacles.shape[0]:
@@ -356,7 +347,7 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
         
         intersection_cluster[0] = True
 
-        new_obstacles = 1 # new obstacles in cluster
+        new_obstacles = True # new obstacles in cluster
         # Iteratively search through clusters. Similar to google page ranking
         while new_obstacles:
             intersection_cluster_old = intersection_cluster
@@ -365,32 +356,83 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
 
             # Bool operation. Equals to one if not equal
             new_obstacles = np.any(intersection_cluster ^ intersection_cluster_old)
-        
+            
         intersection_clusters.append(intersecting_obstacles[intersection_cluster].tolist())
-        
+
+        if not obs.index_wall is None: # Add wall connection
+            if np.sum(intersection_matrix[intersecting_obstacles,:][:,obs.index_wall]):
+                intersection_clusters[-1].append(obs.index_wall)
+
         # Only keep non-intersecting obstacles
         intersecting_obstacles = intersecting_obstacles[intersection_cluster==0]
+        
+    if representation_type=='single_point':
+        get_single_reference_point(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_clusters, Intersections=Intersections, dim=dim)
+        
+    elif representation_type=='hirarchy':
+        get_obstacle_tree(obs=obs, obstacle_weight=R_max, intersection_clusters= intersection_clusters, Intersections=Intersections, dim=dim)
+        
+    else:
+        raise NotImplementedError("Representation type <<{}>> not defined".format(representation_type))
 
+    if get_intersection_matrix:
+        return intersection_clusters, Intersections
+    else:
+        return intersection_clusters
+    
 
+def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Intersections, dim):
+    # TODO: make applicable for all environments with 
+    for ii in range(len(intersection_clusters)): # list of cluster-lists
+        
+        if obs.index_wall in intersection_clusters[ii]: # Cluster is touching wall
+            for jj in intersection_clusters[ii]:
+                if jj == obs.index_wall:
+                    continue
+                
+                if Intersections.is_interescting(jj, obs.index_wall):
+                    wall_intersection_point = Intersections.get(jj, obs.index_wall)
+                    break
+                
+            for jj in intersection_clusters[ii]:
+                if jj == obs.index_wall:
+                    continue
+                obs[jj].set_reference_point(wall_intersection_point, in_global_frame=True)
+            # import pdb; pdb.set_trace() ## DEBUG ##
+                
+        else:
+            geometric_center = np.zeros(dim)
+            total_weight = 0
+            # TODO: take intersection position mean
+            for jj in intersection_clusters[ii]:
+                geometric_center += obstacle_weight[jj]*np.array(obs[jj].center_position)
+                total_weight += obstacle_weight[jj]
+            geometric_center /= total_weight
+
+            for jj in intersection_clusters[ii]:
+                obs[jj].set_reference_point(geometric_center)
+                
+            # Take first position of intersection # TODO make more general
+
+def get_obstacle_tree(obs, obstacle_weight, intersection_clusters, Intersection, dim):
     # All (close) relatives of one object
     intersection_relatives = intersection_matrix 
     # Choose center
-    geometric_center = np.zeros(dim)
 
-    
+    geometric_center = np.zeros(dim)
     for ii in range(len(intersection_clusters)): # list of cluster-lists
         total_weight = 0
 
         # Find center obstacle
         for jj in intersection_clusters[ii]:
-            geometric_center += R_max[jj]*np.array(obs[jj].center_position)
-            total_weight += R_max[jj]
+            geometric_center += obstacle_weight[jj]*np.array(obs[jj].center_position)
+            total_weight += obstacle_weight[jj]
         geometric_center /= total_weight
 
         center_distance = [LA.norm(geometric_center - np.array(obs[kk].center_position)) for kk in range(len(intersection_clusters[ii]))]
 
         # Center obstacle // root_index
-        root_index = np.arange(N_obs)[intersection_clusters[ii]][np.argmin(center_distance)]
+        root_index = np.arange(num_obstacles)[intersection_clusters[ii]][np.argmin(center_distance)]
                 
         obs[root_index].hirarchy = 0
         obs[root_index].reference_point = obs[root_index].center_position
@@ -399,13 +441,12 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
 
         # For all elements in one cluster
         while len(obstacle_tree):
-            
             # Iterate over all children
-            for jj in np.arange(N_obs)[intersection_relatives[:,obstacle_tree[0]]]:
+            for jj in np.arange(num_obstacles)[intersection_relatives[:,obstacle_tree[0]]]:
                 if jj!=obstacle_tree[0]:
                     obs[jj].hirarchy = obs[obstacle_tree[0]].hirarchy+1
                     obs[jj].ind_parent = obstacle_tree[0] # TODO use pointer...
-                    
+
                     obs[jj].reference_point = Intersections.get(jj, obstacle_tree[0])
                     # intersection_relatives[jj, obstacle_tree[0]] = False
                     intersection_relatives[obstacle_tree[0], jj] = False
@@ -413,8 +454,4 @@ def obs_common_section_hirarchy(obs, hirarchy=True, get_intersection_matrix=Fals
             
             del obstacle_tree[0]
 
-    if get_intersection_matrix:
-        return intersection_obs, Intersections
-    else:
-        return intersection_obs
 

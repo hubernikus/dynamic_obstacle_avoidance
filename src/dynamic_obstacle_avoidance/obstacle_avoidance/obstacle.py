@@ -12,9 +12,7 @@ import warnings, sys
 
 import numpy.linalg as LA
 
-
 # import quaternion # numpy-quaternion 
-
 # import dynamic_obstacle_avoidance
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
@@ -34,8 +32,10 @@ visualize_debug = False
 
 class Obstacle(State):
     """ 
-    General class of obstacles 
+    (Virtual) base class of obstacles 
     """
+
+    # TODO -- enforce certain functions
     def __repr__(self):
         return "Obstacle of Type: {}".format(type(self))
 
@@ -46,8 +46,8 @@ class Obstacle(State):
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
                  # , *args, **kwargs): # maybe random arguments
-         # This class defines obstacles to modulate the DS around it
-       # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
+        # This class defines obstacles to modulate the DS around it
+        # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
         self.sf = sf # TODO - rename
         self.delta_margin = delta_margin
@@ -78,8 +78,8 @@ class Obstacle(State):
 
         self.resolution = 0 #Resolution of drawing
 
-        self.x_obs = [] # Numerical drawing of obstacle boundarywq
-        self.x_obs_sf = [] # Obstacle boundary plus margin!
+        self._boundary_points = [] # Numerical drawing of obstacle boundarywq
+        self._boundary_points_margin = [] # Obstacle boundary plus margin!
 
         self.timeVariant = timeVariant
         if self.timeVariant:
@@ -122,7 +122,7 @@ class Obstacle(State):
 
         self.update_timestamp()
 
-        # Trees of stars
+        # Trees of stars // move to 'properties'
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
         self.ind_children = []
@@ -130,7 +130,7 @@ class Obstacle(State):
         # Relative Reference point // Dyanmic center
         # self.reference_point = self.center_position # TODO remove and rename
         self.reference_point = np.zeros(self.dim) # TODO remove and rename
-        self.center_dyn = self.reference_point # TODO remove and rename
+        # self.center_dyn = self.reference_point # TODO remove and rename
 
         self.reference_point_is_inside = True
 
@@ -140,38 +140,46 @@ class Obstacle(State):
         self.is_convex = False # Needed?
 
         self.properties = {} # TODO: use kwargs
-
         
 
     # def update_reference(self, new_ref):
         # TODo write function
 
     
-    def transform_global2relative(self, position): # Inherit
+    def transform_global2relative(self, position): 
+        if not position.shape[0]==self.dim:
+            raise ValueError("Wrong position dimensions")
+            
         if len(position.shape)==1:
             return self.rotMatrix.T.dot(position - np.array(self.center_position))
         elif len(position.shape)==2:
-            n_points = self.position.shape[1]
-            return self.rotMatrix.T.dot(position.T - np.tile(self.center_position, (n_points,1)).T )
+            n_points = position.shape[1]
+            return self.rotMatrix.T.dot(position - np.tile(self.center_position, (n_points,1)).T)
         else:
             raise ValueError("Unexpected position-shape")
 
-    def transform_relative2global(self, other): # TODO - inherit
-        if not isinstance(other, (list, np.ndarray)):
-            raise TypeError()
-        if isinstance(other, (list)):
-            other = np.array(other)
-        if not other.shape[0]==self.dim:
+    def transform_relative2global(self, position):
+        if not isinstance(position, (list, np.ndarray)):
             raise TypeError()
 
-        if len(other.shape)==1:
-            return self.rotMatrix.dot(other) + self.center_position
-        elif len(other.shape)==2:
+        if isinstance(position, (list)):
+            position = np.array(position)
+            
+        if not position.shape[0]==self.dim:
+            raise TypeError()
+
+        if len(position.shape)==1:
+            return self.rotMatrix.dot(position) + self.center_position
+        elif len(position.shape)==2:
             # TODO - make it a oneliner without for loop to speed up
-            for ii in range(other.shape[1]):
-                other[:, ii] = self.rotMatrix.dot(other[:, ii]) + self.center_position
-            return other
+            # for ii in range(position.shape[1]):
+                # position[:, ii] = self.rotMatrix.dot(position[:, ii]) + self.center_position
+            # return position
+            n_points = position.shape[1]
+            return self.rotMatrix.dot(position) + np.tile(self.center_position, (n_points,1)).T
         # return (self.rotMatrix.dot(position))  + np.array(self.center_position)
+        else:
+            raise ValueError("Unexpected position-shape")
         
     def transform_relative2global_dir(self, direction): # TODO - inherit
         return self.rotMatrix.dot(direction)
@@ -180,23 +188,39 @@ class Obstacle(State):
         return self.rotMatrix.T.dot(direction)
 
     @property
+    def center_dyn(self):# TODO: depreciated -- delete
+        return self.reference_point
+    
+    @property
     def global_reference_point(self):
         # Rename kernel-point?
-        return self.transform_global2relative(self._reference_point)
+        return self.transform_relative2global(self._reference_point)
     
-    @global_reference_point.setter
-    def global_reference_point(self, value):
-        self._reference_point = self.transform_global2relative(value)
+    # @global_reference_point.setter
+    # def global_reference_point(self, value):
+        # self._reference_point = self.transform_global2relative(value)
+        
+    # @property
+    # def kernel_point(self):
+        # Rename kernel-point?
+        # return self._reference_point
+    
+    # @kernel_point.setter
+    # def kernel_point(self, value):
+        # self._reference_point = value
         
     @property
     def reference_point(self):
         # Rename kernel-point?
         return self._reference_point
-    
+
     @reference_point.setter
     def reference_point(self, value):
         self._reference_point = value
-        
+    # @reference_point.setter
+    # def reference_point(self, value):
+        # self._reference_point = value
+
     @property
     def orientation(self):
         return self._orientation
@@ -224,16 +248,16 @@ class Obstacle(State):
     @center_position.setter
     def center_position(self, value):
         if isinstance(value, list):
-            self._center_position = np.array(value) # TODO: change to quaternion
+            self._center_position = np.array(value) 
         else:
             self._center_position = value
 
     @property
-    def th_r(self): # TODO: remove since redundant
+    def th_r(self): # TODO: will be removed since outdated
         return self.orientation # getter
 
     @th_r.setter
-    def th_r(self, value): # TODO: remove since redundant
+    def th_r(self, value): # TODO: will be removed since outdated
         self.orientation = value # setter
 
     @property
@@ -257,7 +281,44 @@ class Obstacle(State):
         if len(value)>2:
             import pdb; pdb.set_trace()
         self._linear_velocity = value
-        
+
+    @property
+    def boundary_points_local(self):
+        return self._boundary_points
+
+    @property
+    def x_obs(self):
+        return self.boundary_points_global
+
+    @property
+    def boundary_points_global_closed(self):
+        boundary = self.boundary_points_global
+        return np.hstack((boundary, boundary[:, 0:1]))
+
+    @property
+    def boundary_points_global(self):
+        return self.transform_relative2global(self._boundary_points)
+
+    @property
+    def boundary_points_margin_local(self):
+        return self._boundary_points_margin
+
+    @property
+    def x_obs_sf(self):
+        return self.boundary_points_margin_global
+
+    @property
+    def boundary_points_margin_global(self):
+        return self.transform_relative2global(self._boundary_points_margin)
+
+    @property
+    def boundary_points_margin_global_closed(self):
+        boundary = self.boundary_points_margin_global
+        return np.hstack((boundary, boundary[:, 0:1]))
+
+
+    # @boundary_points.setter
+    # def boundary_points
         
     def compute_R(self):
         # TODO - replace with quaternions
@@ -292,61 +353,6 @@ class Obstacle(State):
             self.rotMatrix = np.eye(self.dim)
 
     
-    def extend_hull_around_reference(self, edge_reference_dist=0.3):
-        # TODO add margin
-
-        vec_cent2ref = np.array(self.get_reference_point(in_global_frame=False))
-        dist_cent2ref = LA.norm(vec_cent2ref)
-
-        self.hull_edge = vec_cent2ref*(1 + edge_reference_dist*np.min(self.axes_length)/dist_cent2ref)
-        # self.hull_edge =  np.array(self.get_reference_point(in_global_frame=False))
-        self.tangent_vector, self.tangent_points = get_tangents2ellipse(self.hull_edge, self.axes)
-        self.normal_vector = np.zeros((self.dim, 2))
-        self.normalDistance2center = np.zeros(2)
-
-        # # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
-        # # Solve for determinant D=0 (tangent with only one intersection point)
-        # A_ =  self.hull_edge[0]**2 - self.axes[0]**2
-        # B_ = -2*self.hull_edge[0]*self.hull_edge[1]
-        # C_ = self.hull_edge[1]**2 - self.axes[1]**2
-        # D_ = B_**2 - 4*A_*C_
-
-        # m = [0, 0]
-
-        # m[1] = (-B_ - np.sqrt(D_)) / (2*A_)
-        # m[0] = (-B_ + np.sqrt(D_)) / (2*A_)
-
-        # self.tangent_points = np.zeros((self.dim, 2))
-        # self.tangent_vector = np.zeros((self.dim, 2))
-
-        # for ii in range(2):
-        #     c = self.hull_edge[1] - m[ii]*self.hull_edge[0]
-
-        #     A = (self.axes[0]*m[ii])**2 + self.axes[1]**2
-        #     B = 2*self.axes[0]**2*m[ii]*c
-        #     # D != 0 so C not interesting
-
-        #     self.tangent_points[0, ii] = -B/(2*A)
-        #     self.tangent_points[1, ii] = m[ii]*self.tangent_points[0, ii] + c
-
-        #     self.tangent_vector[:,ii] = self.tangent_points[:, ii]-self.hull_edge
-        #     self.tangent_vector[:,ii] /= LA.norm(self.tangent_vector[:,ii])
-
-        for ii in range(2):
-            self.normal_vector[:, ii] = np.array([self.tangent_vector[1,ii],
-                                                  -self.tangent_vector[0,ii]])
-            # Check direction
-            self.normalDistance2center[ii] = self.normal_vector[:, ii].T.dot(self.hull_edge)
-
-            if (self.normalDistance2center[ii] < 0):
-                self.normal_vector[:, ii] = self.normal_vector[:, ii]*(-1)
-                self.normalDistance2center[ii] *= -1
-
-        if False:
-            # plt.plot()
-            for ii in range(2):
-                norm_abs = transform_relative2global_dir(self.normal_vector[:,ii])
-                plt.quiver(0,0, norm_abs, norm_abs, color='y', label='Normal')
 
 
     def set_reference_point(self, position, in_global_frame=False): # Inherit
@@ -355,14 +361,8 @@ class Obstacle(State):
             position = self.transform_global2relative(position)
             
         self.reference_point = position
-        self.center_dyn = self.reference_point
-
-        if self.get_gamma(self.reference_point)>1:
-            self.extend_hull_around_reference()
-            self.reference_point_is_inside = False
-        else:
-            self.reference_point_is_inside = True
-
+        
+        self.extend_hull_around_reference()
 
     def move_obstacle_to_referencePoint(self, position, in_global_frame=True):
         if not in_global_frame:
@@ -423,7 +423,12 @@ class Obstacle(State):
         connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start'])
         connection_passive = np.array(passive_line['point_end']) - np.array(passive_line['point_start'])
         connection_matrix = np.vstack((connection_direction, -connection_passive)).T
-
+        
+        # if True:
+            # plt.plot()
+            # plt.plot(self.boundary_points_local[:, 0], self.boundary_points_local[:, 1], 'k--')
+            # import pdb; pdb.set_trace() ## DEBUG ##
+        
         if LA.det(connection_matrix): # nonzero value
             direction_factors = (LA.inv(connection_matrix).dot(
                                  np.array(passive_line['point_start'])
@@ -467,9 +472,8 @@ class Obstacle(State):
         else:
             return self.reference_point
 
-
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):
-        if len(Gamma.shape)>1:
+        if len(Gamma)>1:
             ind_small_gamma = (Gamma <= Gamma_ref)
             Gamma[ind_small_gamma] = sys.float_info.max
             Gamma[~ind_small_gamma] = (1-Gamma_ref)/(Gamma[~ind_small_gamma]-Gamma_ref)
@@ -525,6 +529,7 @@ class Obstacle(State):
         distance2plane = np.sum((self.normal_vector*vec_position2edge), axis=0)
 
         angle2refencePatch = np.ones(n_planes)*max_angle
+
 
         for ii in range(n_planes):
             if distance2plane[ii]<0:
@@ -670,310 +675,15 @@ class Obstacle(State):
 
                 self.draw_obstacle()
 
-                
-
+    def get_scaled_boundary_points(self, scale, safety_margin=True, redraw_obstacle=False):
+        # Draws at 1:scale
+        if safety_margin:
+            scaled_boundary_points = scale*self._boundary_points_margin
+        else:
+            scaled_boundary_points = scale*self._boundary_points
+            
+        return self.transform_relative2global(scaled_boundary_points)
+        
     def obs_check_collision(self, ):
         print('TODO: check class')
         raise NotImplementedError()
-
-
-class Ellipse(Obstacle):
-    # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
-    def __init__(self, axes_length=None, a=None, p=[1,1], *args, **kwargs):
-        if sys.version_info>(3,0):
-            super().__init__(*args, **kwargs)
-        else:
-            super(Ellipse, self).__init__(*args, **kwargs)
-        
-        # Obstacle.__init__(self, *args, **kwargs)
-
-        # TODO: remove redundant Leave at the moment for backwards compatibility
-        if type(axes_length) == type(None):
-            self.a = a
-            self.axes = np.array(a)
-            self.axes_length = np.array(a)
-        else:
-            self.axes_length = axes_length
-            self.axes = np.array(axes_length)
-            self.a = axes_length
-            
-        self.margin_axes =  self.axes*np.array(self.sf)+np.array(self.delta_margin)
-
-        # TODO: rename & make p one value (NOT array)
-        self.p = np.array(p) # TODO - rename
-        
-        self.is_convex = True
-
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        if not self.reference_point_is_inside:
-            ind_intersect = np.zeros(self.normalDistance2center.shape, dtype=bool)
-
-            distances2plane = self.get_distance_to_hullEdge(position)
-
-            ind_outside = (distances2plane > 0)
-
-            if np.sum(ind_outside)>0:
-                for ii in np.arange(ind_outside.shape[0])[ind_outside]:
-
-                    reference_line = {"point_start":[0,0],
-                                      "point_end":position}
-                    # TODO - don't use reference point, but little 'offset' to avoid singularity
-                    tangent_line = {"point_start":self.hull_edge,
-                                    "point_end":self.tangent_points[:, ii]}
-
-                    ind_intersect[ii], dist = self.are_lines_intersecting(reference_line, tangent_line)
-
-                    if ind_intersect[ii]:
-                        break
-
-                if np.sum(ind_intersect): # nonzero
-                    angle2referencePlane = self.get_angle2referencePatch(position)
-                    weights = self.get_angle_weight(angle2referencePlane)
-
-                    normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, normalize_reference=True)
-                    
-                    # return normal_vector
-
-        if self.reference_point_is_inside or np.sum(ind_intersect)==0:
-            # normal_vector = (2*self.p/self.margin_axes*(position/self.margin_axes)**(2*self.p-1))
-            normal_vector = (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
-
-        if normalize:
-            # TODO: can it be removed?
-            normal_vector = normal_vector/LA.norm(normal_vector)
-
-        if in_global_frame:
-            normal_vector = self.transform_relative2global_dir(normal_vector) 
-        return normal_vector
-
-
-    def get_gamma(self, position, in_global_frame=False, gamma_type='proportional'):
-        # if not type(position)==np.ndarray:
-            # position = np.array(position)
-
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        if not self.reference_point_is_inside:
-            for ii in np.arange(self.tangent_points.shape[1]):
-                reference_line = {"point_start":[0,0], "point_end":position}
-
-                # TODO - don't use reference point, but little 'offset' to avoid singularity
-                tangent_line = {"point_start":self.hull_edge,
-                                "point_end":self.tangent_points[:, ii]}
-
-                ind_intersect, dist_intersect = self.are_lines_intersecting(reference_line, tangent_line)
-                if ind_intersect:
-                    return LA.norm(position)/dist_intersect
-
-        # Original Gamma
-        if gamma_type=='proportional':
-            Gamma = np.sum((position / self.margin_axes)**(2*self.p[0]))  # distance
-            Gamma = Gamma**(1./(2*self.p[0]))
-        else:
-            raise NotImplementedError()
-        
-        if len(Gamma.shape)>1:
-            Gamma = (position / np.tile(self.axes_length, (N_points,1)).T )
-            Gamma = np.sum( (1/self.sf * Gamma) ** (2*np.tile(self.p, (N_points,1)).T), axis=0)
-
-        if self.is_boundary:
-            Gamma = self.get_boundaryGamma(Gamma,Gamma_ref=self.Gamma_ref)
-        return Gamma
-
-    
-    def draw_ellipsoid(self, *args, **kwargs):
-        # TODO remove
-        raise NotImplementedError("<<draw_ellipsoid>> has been renamed <<draw_obstacle>>")
-    
-    
-    def draw_obstacle(self, numPoints=20, a_temp = [0,0], draw_sfObs=False):
-        if not self.reference_point_is_inside:
-            angle_tangents = np.zeros(2)
-            for ii in range(angle_tangents.shape[0]):
-                angle_tangents[ii] = np.arctan2(self.tangent_points[1, ii], self.tangent_points[0, ii])
-            theta = np.zeros(numPoints)
-
-            if angle_tangents[0]>angle_tangents[1]:
-                theta[1:-1] = np.linspace(angle_tangents[0], angle_tangents[1], numPoints-2)
-            else:
-                theta[1:-1] = np.linspace(angle_tangents[1], angle_tangents[0]+2*pi, numPoints-2)
-                theta = angle_modulo(theta)
-        else:
-            if self.d == 2:
-                theta = np.linspace(-pi,pi, num=numPoints)
-                resolution = numPoints # Resolution of drawing #points
-            else:
-                numPoints = [numPoints, ceil(numPoints/2)]
-                theta, phi = np.meshgrid(np.linspace(-pi,pi, num=numPoints[0]),np.linspace(-pi/2,pi/2,num=numPoints[1]) ) #
-                numPoints = numPoints[0]*numPoints[1]
-                resolution = numPoints # Resolution of drawing #points
-                theta = theta.T
-                phi = phi.T
-
-        if sum(a_temp) == 0:
-            a = self.a
-        else:
-            a = a_temp
-
-        p = self.p[:]
-        R = np.array(self.rotMatrix)
-
-        x_obs = np.zeros((self.d, numPoints))
-        
-        if self.d == 2:
-            x_obs[0,:] = a[0]*np.cos(theta)
-            x_obs[1,:] = np.copysign(a[1], theta)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))
-        else:
-            x_obs[0,:] = (a[0]*np.cos(phi)*np.cos(theta)).reshape((1,-1))
-            x_obs[1,:] = (a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))).reshape((1,-1))
-            x_obs[2,:] = (a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) ).reshape((1,-1))
-
-
-        if not self.reference_point_is_inside:
-            x_obs[:,0] = x_obs[:,-1] = self.hull_edge
-
-        x_obs_sf = np.zeros((self.d,numPoints))
-        if not hasattr(self, 'sf'):
-            self.sf = 1
-
-        if type(self.sf) == int or type(self.sf) == float:
-            x_obs_sf = R.dot(self.sf*x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
-        else:
-            x_obs_sf = R.dot(x_obs*np.tile(self.sf,(1,numPoints))) + np.tile(self.center_position, (numPoints,1)).T
-
-        x_obs = R.dot(x_obs) + np.tile(np.array([self.center_position]).T,(1,numPoints))
-
-        if sum(a_temp) == 0:
-            # self.x_obs = x_obs.T.tolist()
-            # self.x_obs_sf = x_obs_sf.T.tolist()
-            self.x_obs = x_obs.T
-            self.x_obs_sf = x_obs_sf.T
-        else:
-             return x_obs_sf
-
-    def get_radius_of_angle(self, angle, in_global_frame=False):
-        if in_global_frame:
-            position =  transform_polar2cartesian(magnitude=10, angle=angle-self.orientation)
-        else:
-            position = transform_polar2cartesian(magnitude=1, angle=angle)
-        
-        gamma = self.get_gamma(position, gamma_type='proportional')
-        return LA.norm(position)/gamma
-
-    
-class StarshapedFlower(Obstacle):
-    def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
-                 *args, **kwargs):
-        if sys.version_info>(3,0):
-            super().__init__(*args, **kwargs)
-        else:
-            super(StarshapedFlower, self).__init__(*args, **kwargs)
-
-        # Object Specific Paramters
-        self.radius_magnitude=radius_magnitude
-        self.radius_mean=radius_mean
-
-        self.number_of_edges=number_of_edges
-
-    def get_radius_of_angle(self, angle, in_global_frame=False):
-        if in_global_frame:
-            angle -= self.orientation
-        return self.radius_mean+self.radius_magnitude*np.cos((angle)*self.number_of_edges)
-
-
-    def get_radiusDerivative_of_angle(self, angle, in_global_frame=False):
-        if in_global_frame:
-            angle -= self.orientation
-        return -self.radius_magnitude*self.number_of_edges*np.sin((angle)*self.number_of_edges)
-
-
-    def draw_obstacle(self, include_margin=False, n_curve_points=100, numPoints=None):
-        # warnings.warn("Remove numPoints from function argument.")
-
-        angular_coordinates = np.linspace(0,2*pi, n_curve_points)
-        radius_angle = self.get_radius_of_angle(angular_coordinates)
-
-        if self.dim==2:
-            direction = np.vstack(( np.cos(angular_coordinates), np.sin(angular_coordinates) ))
-
-        self.x_obs = (radius_angle * direction)
-        self.x_obs_sf = (radius_angle * self.sf * direction)
-
-        if self.orientation: # nonzero
-            for jj in range(self.x_obs.shape[1]):
-                self.x_obs[:, jj] = self.rotMatrix.dot(self.x_obs[:, jj]) + np.array([self.center_position])
-            for jj in range(self.x_obs_sf.shape[1]):
-                self.x_obs_sf[:,jj] = self.rotMatrix.dot(self.x_obs_sf[:, jj]) + np.array([self.center_position])
-
-        self.x_obs = self.x_obs.T
-        self.x_obs_sf = self.x_obs_sf.T
-
-
-    def get_gamma(self, position, in_global_frame=False, norm_order=2):
-        if not type(position)==np.ndarray:
-            position = np.array(position)
-
-        # Rename
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        mag_position = LA.norm(position)
-        if mag_position==0:
-            if self.is_boundary:
-                return sys.float_info.max
-            else:
-                return 0
-
-        direction = np.arctan2(position[1], position[0])
-
-        Gamma = mag_position/self.get_radius_of_angle(direction)
-
-        # TODO extend rule to include points with Gamma < 1 for both cases
-        if self.is_boundary:
-            Gamma = 1/Gamma
-
-        return Gamma
-
-
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        mag_position = LA.norm(position)
-        if not mag_position:
-            return np.ones(self.dim)/self.dim # just return one direction
-
-        direction = np.arctan2(position[1], position[0])
-        derivative_radius_of_angle = self.get_radiusDerivative_of_angle(direction)
-
-        radius = self.get_radius_of_angle(direction)
-
-        normal_vector = np.array(([
-            derivative_radius_of_angle*np.sin(direction) + radius*np.cos(direction),
-            - derivative_radius_of_angle*np.cos(direction) + radius*np.sin(direction)]))
-
-        if normalize:
-            mag_vector = LA.norm(normal_vector)
-            if mag_vector: #nonzero
-                normal_vector = normal_vector/mag_vector
-                
-        if False:
-            # self.draw_reference_hull(normal_vector, position)
-            pos_abs = self.transform_relative2global(position)
-            norm_abs = self.transform_relative2global_dir(normal_vector)
-            plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color='g')
-            ref_abs = self.get_reference_direction(position)
-            ref_abs = self.transform_relative2global_dir(ref_abs)
-            plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color='k')
-
-            plt.ion()
-            plt.show()
-
-        if in_global_frame:
-            normal_vector = self.transform_relative2global_dir(normal_vector)
-            
-        return normal_vector
