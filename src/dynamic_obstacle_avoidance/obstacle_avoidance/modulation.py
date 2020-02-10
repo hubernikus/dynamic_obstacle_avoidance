@@ -57,10 +57,8 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
         # Per default negative
         # referenceNormal_angle = np.arccos(reference_direction.T.dot(normal_vector))
         
-        
         # surface_position = obs.get_obstace_radius* x_t/LA.norm(x_t)
         # direction_surface2reference = obs.get_reference_point()-surface_position
-
         
         # if referenceNormal_angle < (matrix_singularity_margin):
             # x_global = obs.transform_relative2global(x_t)
@@ -434,8 +432,9 @@ def obs_check_collision(obs_list, dim, *args):
         pass
     return noColl
 
+
 def obs_check_collision_ellipse(obs_list, dim, points):
-    
+    # TODO: delete / depreciated
     for it_obs in range(len(obs_list)):
         # \Gamma = \sum_{i=1}^d (xt_i/a_i)^(2p_i) = 1
         R = compute_R(dim,obs_list[it_obs].th_r)
@@ -447,11 +446,20 @@ def obs_check_collision_ellipse(obs_list, dim, points):
     return noColl
 
 
-def get_tangents2ellipse(edge_point, axes, dim=2):
-    # TODO cut ellipse along direction
+def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
+    '''
+    Get 2D tangent vector of ellipse with axes <<axes>> and center <<center_point>>
+    with respect to a point <<edge_point>>
+
+    Function returns the tangents and the points of contact
+
+     '''
     if not dim==2:
-        # TODO cut ellipse along direction
+        # TODO cut ellipse along direction & apply 2D-problem
         raise TypeError("Not implemented for higher dimension")
+
+    if not center_point is None:
+        edge_point = edge_point-center_point
     
     # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
     # Solve for determinant D=0 (tangent with only one intersection point)
@@ -466,9 +474,7 @@ def get_tangents2ellipse(edge_point, axes, dim=2):
     m[0] = (-B_ + np.sqrt(D_)) / (2*A_)
 
     tangent_points = np.zeros((dim, 2))
-    # normal_vectors = np.zeros((dim, 2))
     tangent_vectors = np.zeros((dim, 2))
-    # normalDistance2center = np.zeros(2)
     tangent_angles = np.zeros(2)
 
     for ii in range(2):
@@ -476,7 +482,7 @@ def get_tangents2ellipse(edge_point, axes, dim=2):
 
         A = (axes[0]*m[ii])**2 + axes[1]**2
         B = 2*axes[0]**2*m[ii]*c
-        # D != 0 so C not interesting
+        # D != 0 to be tangent, so C not interesting.
 
         tangent_points[0, ii] = -B/(2*A)
         tangent_points[1, ii] = m[ii]*tangent_points[0, ii] + c
@@ -497,14 +503,31 @@ def get_tangents2ellipse(edge_point, axes, dim=2):
     if angle_difference_directional(tangent_angles[1], tangent_angles[0]) < 0:
         tangent_points = np.flip(tangent_points, axis=1)
         tangent_vectors = np.flip(tangent_vectors, axis=1)
+
+    if not center_point is None:
+        tangent_points = tangent_points + np.tile(center_point, (tangent_points.shape[1], 1)).T
         
     return tangent_vectors, tangent_points
 
 
-def get_intersectionWithEllipse(edge_point, direction, axes, only_positive_direction=False):
-    # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+def get_intersectionWithEllipse(edge_point, direction, axes, center_ellipse=None, only_positive_direction=False):
+    ''' 
+    Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+
+    edge_point / c : Starting point of line
+    direction / m : direction of line
+
+    axes / a1 & a2: Axes of ellipse
+    center_ellipse: Center of ellipse
+    '''
+
+    if not center_ellipse is None:
+        edge_point = edge_point - center_ellipse
+    
     # Dimension
-    dim = 2
+    dim = edge_point.shape[0]
+    if dim > 2:
+        raise NotImplementedError("Not yet implemented for D>2")
     
     if direction[0]==0:
         m = 0
@@ -519,7 +542,7 @@ def get_intersectionWithEllipse(edge_point, direction, axes, only_positive_direc
     D = B*B - 4*A*C
 
     if D<0:
-        return None
+        return np.zeros(dim, 0)
     
     sqrtD = np.sqrt(D)
 
@@ -533,20 +556,27 @@ def get_intersectionWithEllipse(edge_point, direction, axes, only_positive_direc
         if any (dist<0).to_list():
             # TODO: check if really the positive direction and remove 'if'
             import pdb; pdb.set_trace() ## DEBUG ##
-        return intersection
+        # return intersection
+    
     else:
         intersections = np.zeros((dim,2))
         intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
         intersections[1,:] = intersections[0,:]*m + c
 
-        return intersections
+        # return intersections
 
+    if not center_ellipse is None:
+        intersections = intersections + np.tile(center_ellipse, (2,1)).T
+    return intersections
+
+    
 def cut_planeWithEllispoid(reference_position, axes, plane):
     # TODO
     raise NotImplementedError()
 
 
 def cut_lineWithEllipse(line_points, axes):
+    # TODO
     raise NotImplementedError()
 
     

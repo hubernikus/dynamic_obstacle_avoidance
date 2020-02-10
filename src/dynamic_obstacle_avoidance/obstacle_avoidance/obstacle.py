@@ -1,4 +1,5 @@
 #!/USSR/bin/python3
+
 '''
 @date 2019-10-15
 @author Lukas Huber 
@@ -34,14 +35,15 @@ class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
     """
-
     # TODO -- enforce certain functions
     def __repr__(self):
         return "Obstacle of Type: {}".format(type(self))
 
-    def __init__(self, orientation=0, sf=1, delta_margin=0, sigma=1,  center_position=[0,0], tail_effect=True, always_moving=True, 
+    def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
+                 tail_effect=True, always_moving=True,
+                 sf=1,
+                 # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
-                 # position_3d=None, orientation_3d=None, # 3D compatibility
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
@@ -50,14 +52,10 @@ class Obstacle(State):
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
         self.sf = sf # TODO - rename
-        self.delta_margin = delta_margin
+        # self.delta_margin = delta_margin
+        
         self.sigma = sigma
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
-
-        # if not position_3d is None:
-            # self.position_3d = position_3d
-        # if not orientation_3d is None:
-            # self.orientatation_3d = position_3d
 
         # Obstacle attitude
         if type(x0) != type(None):
@@ -78,8 +76,8 @@ class Obstacle(State):
 
         self.resolution = 0 #Resolution of drawing
 
-        self._boundary_points = [] # Numerical drawing of obstacle boundarywq
-        self._boundary_points_margin = [] # Obstacle boundary plus margin!
+        self._boundary_points = None # Numerical drawing of obstacle boundarywq
+        self._boundary_points_margin = None # Obstacle boundary plus margin!
 
         self.timeVariant = timeVariant
         if self.timeVariant:
@@ -128,10 +126,7 @@ class Obstacle(State):
         self.ind_children = []
 
         # Relative Reference point // Dyanmic center
-        # self.reference_point = self.center_position # TODO remove and rename
         self.reference_point = np.zeros(self.dim) # TODO remove and rename
-        # self.center_dyn = self.reference_point # TODO remove and rename
-
         self.reference_point_is_inside = True
 
         self.Gamma_ref = Gamma_ref
@@ -144,6 +139,12 @@ class Obstacle(State):
 
     # def update_reference(self, new_ref):
         # TODo write function
+
+    def get_gamma(self, *args, **kwargs):
+        raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
+
+    def draw_obstacle(self, *args, **kwargs):
+        raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
 
     
     def transform_global2relative(self, position): 
@@ -158,15 +159,16 @@ class Obstacle(State):
         else:
             raise ValueError("Unexpected position-shape")
 
+
     def transform_relative2global(self, position):
         if not isinstance(position, (list, np.ndarray)):
-            raise TypeError()
+            raise TypeError('Position={} is of type {}'.format(position, type(position)))
 
         if isinstance(position, (list)):
             position = np.array(position)
             
         if not position.shape[0]==self.dim:
-            raise TypeError()
+            raise TypeError('Position is of dimension {}, instead of {}'.format(position.shape[0], self.dim))
 
         if len(position.shape)==1:
             return self.rotMatrix.dot(position) + self.center_position
@@ -208,6 +210,11 @@ class Obstacle(State):
     # @kernel_point.setter
     # def kernel_point(self, value):
         # self._reference_point = value
+
+    @property
+    def local_reference_point(self):
+        # Rename kernel-point?
+        return self._reference_point
         
     @property
     def reference_point(self):
@@ -283,8 +290,20 @@ class Obstacle(State):
         self._linear_velocity = value
 
     @property
+    def boundary_points(self):
+        return self._boundary_points
+
+    @boundary_points.setter
+    def boundary_points(self, value):
+        self._boundary_points = value
+        
+    @property
     def boundary_points_local(self):
         return self._boundary_points
+
+    @boundary_points_local.setter
+    def boundary_points_local(self, value):
+        self._boundary_points = value
 
     @property
     def x_obs(self):
@@ -299,23 +318,35 @@ class Obstacle(State):
     def boundary_points_global(self):
         return self.transform_relative2global(self._boundary_points)
 
+    # @property
+    # def boundary_points_margin(self):
+        # return self._boundary_points_margin
+    
+    # @boundary_points_margin.setter
+    # def boundary_points_margin(self, value):
+        # self._boundary_points_margin = value
+
     @property
     def boundary_points_margin_local(self):
         return self._boundary_points_margin
+    
+    @boundary_points_margin_local.setter
+    def boundary_points_margin_local(self, value):
+        self._boundary_points_margin = value
 
     @property
     def x_obs_sf(self):
         return self.boundary_points_margin_global
-
+    
     @property
     def boundary_points_margin_global(self):
+        # import pdb; pdb.set_trace() ## DEBUG ##
         return self.transform_relative2global(self._boundary_points_margin)
 
     @property
     def boundary_points_margin_global_closed(self):
         boundary = self.boundary_points_margin_global
         return np.hstack((boundary, boundary[:, 0:1]))
-
 
     # @boundary_points.setter
     # def boundary_points
@@ -352,9 +383,6 @@ class Obstacle(State):
             warnings.warn('rotation not yet defined in dimensions d > 3 !')
             self.rotMatrix = np.eye(self.dim)
 
-    
-
-
     def set_reference_point(self, position, in_global_frame=False): # Inherit
         # TODO --- Check if correct
         if in_global_frame:
@@ -374,7 +402,6 @@ class Obstacle(State):
 
     def move_center(self, position):
         self.center_position = position
-
 
     def update_position_and_orientation(self, position, orientation, k_position=0.1, k_linear_velocity=0.1, k_orientation=0.1, k_angular_velocity=0.1):
 
@@ -483,31 +510,7 @@ class Obstacle(State):
                 return sys.float_info.max
             else:
                 return (1-Gamma_ref)/(Gamma-Gamma_ref)
-
-    def get_distance_to_hullEdge(self, position, hull_edge=None):
-        if type(hull_edge)==type(None):
-            hull_edge = self.hull_edge
-            normal_vector = self.normal_vector
-        else:
-            normal_vector, dist = self.calculate_normalVectorAndDistance(hull_edge)
-
-
-        hull_edge = hull_edge.reshape(self.dim, -1)
-        n_planes = hull_edge.shape[1]
-        if len(hull_edge.shape)<2:
-            vec_position2edge = np.tile(position-hull_edge, (n_planes, 1)).T
-        else:
-            vec_position2edge = np.tile(position, (n_planes, 1)).T - hull_edge
-                
-        distance2plane = np.sum((normal_vector * vec_position2edge), axis=0)
-
-        if False:
-            vec_position2edge = np.tile(position, (n_planes, 1)).T - self.tangent_points
-            distance2plane = np.sum((self.normal_vector * vec_position2edge), axis=0)
-
-        return distance2plane
-
-
+    
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
             if len(position_dir.shape) > 1:
@@ -519,32 +522,6 @@ class Obstacle(State):
                 tangent_dir /= LA.norm(tangent_dir)
                 angle_arccos = np.sum(position_dir * tangent_dir)
         return np.arccos(angle_arccos)
-
-
-    def get_angle2referencePatch(self, position, max_angle=pi):
-        # angle between 0 and pi
-        n_planes = self.normal_vector.shape[1]
-
-        vec_position2edge = np.tile(position-self.hull_edge, (n_planes, 1)).T
-        distance2plane = np.sum((self.normal_vector*vec_position2edge), axis=0)
-
-        angle2refencePatch = np.ones(n_planes)*max_angle
-
-
-        for ii in range(n_planes):
-            if distance2plane[ii]<0:
-                continue
-
-            vec_position2edge[:, ii] /= LA.norm(vec_position2edge[:, ii])
-
-            cos_position2edge = vec_position2edge[:, ii].T.dot(self.tangent_vector[:,ii])
-            angle2refencePatch[ii] = np.arccos(cos_position2edge)
-
-        if False:
-            cos_tangs = np.sum(self.tangent_vector[:,0].T.dot(self.tangent_vector[:,1]))
-            print('angle', np.arccos(cos_tangs))
-
-        return angle2refencePatch
 
 
     def get_angle_weight(self, angles, max_angle=pi, min_angle=0, check_range=False, weight_pow=1):
@@ -644,10 +621,11 @@ class Obstacle(State):
 
         return reference_direction
 
+    
     def update_pos(self, t, dt, x_lim=[], y_lim=[]):
         # Inherit
         # TODO - implement function dependend movement (yield), nonlinear integration
-        # First order Euler integration
+        # Euler / Runge-Kutta integration
 
         if self.always_moving or self.x_end > t :
             if self.always_moving or self.x_start<t:
@@ -687,3 +665,8 @@ class Obstacle(State):
     def obs_check_collision(self, ):
         print('TODO: check class')
         raise NotImplementedError()
+
+    def get_distance_to_hullEdge(self, position, hull_edge=None):
+        raise NotImplementedError()
+
+

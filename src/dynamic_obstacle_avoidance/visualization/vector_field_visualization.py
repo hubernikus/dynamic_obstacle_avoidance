@@ -74,7 +74,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
 
-
     # Adjust dynamic center
     if automatic_reference_point:
         intersection_obs = get_intersections_obstacles(obs)
@@ -83,7 +82,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # Numerical hull of ellipsoid 
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
-
 
     if len(figHandle): 
         fig_ifd, ax_ifd = figHandle[0], figHandle[1] 
@@ -161,6 +159,11 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ax_ifd.plot(xAttractor[0],xAttractor[1], 'k*',linewidth=18.0, markersize=18)
 
+    # plt.ion()
+    # plt.show()
+    # return 
+    # import pdb; pdb.set_trace() ## DEBUG ##
+    
     # Show certain streamlines
     if np.array(points_init).shape[0]:
         plot_streamlines(points_init, ax_ifd, obs, xAttractor)
@@ -182,8 +185,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         N_x = N_y = 1
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
 
-    # TODO: DEBUGGING Only for Development and testing
+    
     ########## START REMOVE ##########
+    # TODO: DEBUGGING Only for Development and testing
     # N_x = N_y = 1
     # XX = np.zeros((N_x, N_y))
     # YY = np.zeros((N_x, N_y))
@@ -239,7 +243,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         plt.ylim(y_range)
 
     indOfnoCollision = obs_check_collision_2d(obs, XX, YY)
-    # indOfnoCollision = np.zeros(np.squeeze(xd_mod[0,:,:]).shape) # DEBUGGING: remove
     dx1_noColl = np.squeeze(xd_mod[0,:,:]) * indOfnoCollision
     dx2_noColl = np.squeeze(xd_mod[1,:,:]) * indOfnoCollision
 

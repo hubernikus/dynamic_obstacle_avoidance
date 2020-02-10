@@ -1,4 +1,4 @@
- #!/USSR/bin/python3
+ #!/Ussrhuu/Bin/python3
 
 '''
 @date 2019-10-15
@@ -11,13 +11,26 @@ import numpy as np
 import warnings, sys, copy
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between
+
+
+def is_one_point(point1, point2, margin=1e-9):
+    ''' Check if it the two points coincide [1-norm] '''
+    return np.sum(np.abs(point1-point2)) < 1e-9
+
 
 
 class Polygon(Obstacle):
     '''
     Star Shaped Polygons
+
+    Many calculations focus on 2D-problem.
+    Generalization and extension to higher dimensions is possible
+
     '''
-    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True, *args, **kwargs):
+    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
+                 margin_absolut=0,
+                 *args, **kwargs):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
         
@@ -29,34 +42,98 @@ class Polygon(Obstacle):
         if ind_open is None:
             # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
             ind_open = []
-
+        
+        if absolute_edge_position:
+            self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
+        
+        if self.dim==2:
+            self.n_planes_edge = self.edge_points.shape[1]
+            self.n_planes = self.edge_points.shape[1] # with reference
+            self.ind_edge_ref = None
+            
+        elif self.dim==3:
+            self.ind_tiles = indeces_of_tiles
+            self.n_planes = indeces_of_tiles.shape[0]
+            # TODO: How hard would it be to find flexible tiles?
+        else:
+            raise NotImplementedError("Not yet implemented for dimensions higher than 3")
+            
         if (sys.version_info > (3, 0)): # TODO: remove in future
             super().__init__(*args, **kwargs)
         else:
             super(Polygon, self).__init__(*args, **kwargs)
-
-        if absolute_edge_position:
-            self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
-        self.absolut_margin = 0
-        
-        if self.dim==2:
-            self.n_planes = self.edge_points.shape[1]
-            
-        if self.dim==3:
-            self.ind_tiles = indeces_of_tiles
-            self.n_planes = indeces_of_tiles.shape[0]
-            # TODO: How hard would it be to find flexible tiles?
-            
+    
         self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+
+        # Reference to other arrays
+        # self.edge_points -- # Points of 'the no-go zone'
+        
+        # No go zone assuming a uniform margin around the obstacle
+        self.edge_margin_points = self.edge_points
+        
+        # Extended in case that the reference point is outside the obstacle
+        self.edge_reference_points = self.edge_margin_points 
+
+        # self.hull_points = self.edge_points
+        self.margin_absolut = margin_absolut
 
     @property
     def hull_edge(self):
+        # TODO: remove // change
         return self.edge_points
 
-    @hull_edge.setter
-    def hull_edge(self, value):
-        self.edge_points = value
+    # @hull_edge.setter
+    # def hull_edge(self, value):
+        # self.edge_points = value
 
+    @property
+    def hull_points(self):
+        return self.edge_reference_points
+        # if self.reference_point_is_inside:
+            # if self.margin_absolut:
+                # self.edge_margin_points
+            # else:
+                # return self.edge_points
+        # else:
+            # return self.edge_reference_points
+            
+    @property
+    def margin_absolut(self):
+        return self._margin_absolut
+
+    @margin_absolut.setter
+    def margin_absolut(self, value):
+        self._margin_absolut = value
+        self.update_margin()
+
+    def update_margin(self):
+        if self._margin_absolut>0:
+            if self.dim==2:
+                self.edge_margin_points = np.zeros((self.dim, self.n_planes, 2))
+                tangent_dirs = np.zeros((self.dim, 2))
+                tangent_dirs[:, 1] = self.hull_points[:,0] - self.hull_points[:,-1]
+
+                for ii in range(self.n_planes):
+                    tangent_dirs[:, 0] = tangent_dirs[:, 1]
+                    tangent_dirs[:, 1] = self.edge_points[:, (ii+1)%self.n_planes] - self.edge_points[:,ii]
+                    if self.is_boundary:
+                        import pdb; pdb.set_trace() ## DEBUG ##
+                        # Implement
+                        
+                    else:
+                        if np.cross(tangent_dirs[:, 0], tangent_dirs[:, 1]) > 0:
+                            self.edge_margin_points[:, ii, 0] = self.edge_points[:, ii]+self.normal_vector[:,(ii-1)%self.n_planes]*self._margin_absolut
+                            self.edge_margin_points[:, ii, 1] = self.edge_points[:, ii]+self.normal_vector[:,ii]*self._margin_absolut
+                        else:
+                            tangent_dirs[:, 0] = tangent_dirs[:, 0]/np.linalg.norm(tangent_dirs[:, 0])
+                            tangent_dirs[:, 1] = tangent_dirs[:, 1]/np.linalg.norm(tangent_dirs[:, 1])
+                            angle = np.arccos(tangent_dirs[:, 0].T)
+            else:
+                raise NotImplementedError("Not defined for dim>2.")
+        else:
+            self.edge_margin_points = None
+
+        self.extend_hull_around_reference()
 
     def get_maximal_distance(self):
         dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
@@ -66,9 +143,8 @@ class Polygon(Obstacle):
         dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
-    def extend_hull_around_reference(self):
-        pass
-
+    # def extend_hull_around_reference(self):
+        # pass
 
     def calculate_normalVectorAndDistance(self, edge_points=None):
         if isinstance(edge_points, type(None)):
@@ -80,11 +156,18 @@ class Polygon(Obstacle):
         normalDistance2center = np.zeros(self.n_planes)
         
         if self.dim==2:
-            for ii in range(self.n_planes):
-                normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]]
-                                         - edge_points[:,ii])
-                normal_vector[:, ii] = np.array([normal_vector[1, ii],
-                                                      -normal_vector[0, ii],])
+            if len(edge_points.shape)==2:
+                for ii in range(self.n_planes):
+                    normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]] - edge_points[:,ii])
+            elif len(edge_points.shape)==3:#
+                # TODO: does this make sense
+                for ii in range(self.n_planes):
+                    normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1], 0] - edge_points[:,ii, 1])
+            else:
+                raise TypeError()
+                    
+            normal_vector = np.vstack((normal_vector[1, :], -normal_vector[0, :]))
+                                                 
         elif self.dim==3:
             for ii in range(self.n_planes):
                 tangent_0 = self.edge_points[:, self.ind_tiles[ii,1]] \
@@ -100,9 +183,13 @@ class Polygon(Obstacle):
                     normal_vector[:, ii]= normal_vector[:, ii]/norm_mag
         else:
             raise ValueError("Implement for d>3.")
-        
-        for ii in range(self.n_planes):
-            normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii])
+
+        if len(edge_points.shape)==2:
+            for ii in range(self.n_planes):
+                normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii])
+        else:
+            for ii in range(self.n_planes):
+                normalDistance2center[ii] = normal_vector[:, ii].T.dot(edge_points[:, ii, 0])
 
             if normalDistance2center[ii] < 0:
                 normal_vector[:, ii] = (-1) * normal_vector[:, ii]
@@ -114,32 +201,52 @@ class Polygon(Obstacle):
         return normal_vector, normalDistance2center
 
 
-    def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None, add_circular_margin=False):
+    def draw_obstacle(self, include_margin=False, n_curve_points=5, numPoints=None, add_circular_margin=False, point_density=2*pi/50):
         # Compute only locally
         num_edges = self.edge_points.shape[1]
 
-        # if not type(numPoints)==type(None):
-            # n_curve_points = int(np.ceil(numPoints/(num_edges+1)) )
-            # warnings.warn("Remove numPoints from function argument.")
-
-        self._boundary_points = self.hull_edge
+        self._boundary_points = self.edge_points
+        
         # self._boundary_points = np.hstack((self.edge_points,
                                            # np.reshape(self.edge_points[:,0],(self.dim,1))))
 
-        # for pp in range(self.edge_points.shape[1]):
-            # self._boundary_points[:,pp] = self.rotMatrix.dot(self._boundary_points[:, pp]) + np.array([self.center_position])
+        if self.margin_absolut:
+            self._boundary_points_margin = np.zeros((self.dim, 0))
+            for ii in range(self.n_planes):
+                if np.sum(np.abs(self.edge_reference_points[:, ii, 0]-self.edge_reference_points[:, ii, 1])):
+                    # If the reference point is outside the obstacle,
+                    # an additional <<edge_reference_point has been created
+                    if self.reference_point_is_inside or ii<self.ind_edge_ref:
+                        it_edge = ii
+                    else:
+                        it_edge = ii - (self.n_planes-self.n_planes_edge)
+                    
+                    v1 = self.edge_reference_points[:, ii, 0]-self.edge_points[:, it_edge]
+                    v1 = v1/np.linalg.norm(v1)
+                    
+                    v2 = self.edge_reference_points[:, ii, 1]-self.edge_points[:, it_edge]
+                    v2 = v2/np.linalg.norm(v2)
 
-        # self._boundary_points[:, -1]  = self._boundary_points[:, 0]
+                    if self.is_boundary:
+                        v1, v2 = v2, v1
+                    
+                    angle1= np.copysign(np.arccos(v1[0]), v1[1])
+                    angle2 = np.copysign(np.arccos(v2[0]), v2[1])
 
-        # self._boundary_points_with_margin = self._boundary_points
-        self._boundary_points_margin = copy.deepcopy(self.hull_edge)
-        return 
+                    angles = np.arange(angle1, angle1+angle_difference_directional(angle2,angle1), point_density)
+                    self._boundary_points_margin  = np.hstack((self._boundary_points_margin, self.margin_absolut * np.vstack((np.cos(angles), np.sin(angles))) + np.tile(self.edge_points[:, it_edge], (angles.shape[0], 1)).T))
 
+                self._boundary_points_margin = np.hstack((self._boundary_points_margin, self.edge_reference_points[:, ii, 1].reshape(self.dim, 1)))
+
+        else:
+            # self._boundary_points_with_margin = self._boundary_points
+            self._boundary_points_margin = self._boundary_points
+        # return 
         
         if add_circular_margin:
             # TODO CHECK & ACTIVATE!!
             angles = np.linspace(0, 2*pi, num_edges*n_curve_points+1)
-            obs_margin_cirlce = self.absolut_margin* np.vstack((np.cos(angles), np.sin(angles)))
+            obs_margin_cirlce = self.margin_absolut* np.vstack((np.cos(angles), np.sin(angles)))
             
             self._boundary_points_with_margin = np.zeros((self.dim, 0))
             for ii in range(num_edges):
@@ -149,25 +256,226 @@ class Polygon(Obstacle):
         else:
             dir_boundary_points = self._boundary_points/LA.norm(self._boundary_points, axis=0)
             if self.is_boundary:
-                self._boundary_points_with_margin = self._boundary_points - dir_boundary_points*self.absolut_margin
+                self._boundary_points_with_margin = self._boundary_points - dir_boundary_points*self.margin_absolut
 
             else:
-                self._boundary_points_with_margin = self._boundary_points + dir_boundary_points*self.absolut_margin
+                self._boundary_points_with_margin = self._boundary_points + dir_boundary_points*self.margin_absolut
             
 
         # for jj in range(x_obs_sf.shape[1]): # TODO replace for loop with numpy-math
             # x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
-
+            
         # TODO rename more intuitively
         # self.x_obs = self._boundary_points.T # Surface points
         # self.x_obs_sf = x_obs_sf.T # Margin points
 
 
-    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional"):
+    def get_distances_and_normal_to_surfacePannels(self, position, edge_points=None, in_global_frame=False):
+        '''
+        Get the distance to all surfaces panels
+        '''
+        
+        if self.dim > 2:
+            raise NotImplementedError("Higher dimensions lack functionality.")
+        
+        if edge_points is None:
+            edge_points = self.edge_points
+            
+            if in_global_frame:
+                position = self.transform_global2relative(position)
+
+        distances = np.zeros(edge_points.shape[1])
+        normal_vectors = np.zeros((self.dim, edge_points.shape[1]))
+        for ii in range(edge_points.shape[1]):
+            tangent_vector = edge_points[:, ii] - edge_points[:, (ii-1)]
+            normal_vectors[:, ii] = np.array([tangent_vector[1], -tangent_vector[0]])
+
+            normal_vectors[:, ii] = normal_vectors[:, ii]/np.linalg.norm(normal_vectors[:, ii], axis=0)
+            
+            # dist_refPoint =  normal_vectors[:, ii].dot(self.reference_point)
+            dist_edge = normal_vectors[:, ii].dot(edge_points[:, ii])
+            dist_pos = normal_vectors[:, ii].dot(position)
+
+            # distances[ii] = np.max(dist_edge - dist_refPoint, 0)
+            distances[ii] = max(dist_pos-dist_edge, 0)
+
+        return distances, normal_vectors
+    
+
+    def get_distance_to_hullEdge(self, position, in_global_frame=False):
+        ''''
+        Distance along the reference-direction to the hull for a convex obstacle towards the surface
+        '''
+        
+        if in_global_frame:
+            position = self.transform_global2relative(position)    
+        
+        is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
+
+        multiple_positions = (len(position.shape)>1)
+        if multiple_positions:
+            n_points = position.shape[1]
+        else:
+            n_points = 1
+            position = position.reshape((self.dim, n_points))
+
+        mag_position = LA.norm(position, axis=0)
+
+        zero_mag = mag_position==0
+        if np.sum(zero_mag):
+            if self.is_boundary:
+                Gamma[zero_mag] = sys.float_info.max
+
+        dist2hull = np.ones(n_points)*(-1)
+        
+        if self.dim==2:
+            # TODO -- speed up!!!
+            position_dir = position / mag_position
+            if not self.margin_absolut:
+                for jj in np.arange(n_points)[~zero_mag]:
+                    angle_to_reference = get_angle_space(position_dir[:, jj], self.edge_points)
+                        
+                    magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
+
+                    # angle_to_reference = np.arccos(ref)
+                    ind_low = np.argmin(np.abs(magnitude_angles))
+
+                    if magnitude_angles[ind_low]==0:
+                        dist2hull[jj] = np.linalg.norm(self.edge_points[:, ind_low])
+
+                    else:
+                        if angle_to_reference[0, ind_low] < 0:
+                            ind_high = (ind_low+1)%self.n_planes
+                        else:
+                            ind_high = ind_low
+                            ind_low = (ind_high-1)%self.n_planes
+
+                        surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
+
+                        dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
+
+                    # Gamma[jj] = mag_position[jj]/dist2hull
+                    
+            else:
+                for jj in np.arange(n_points)[~zero_mag]:
+                    try:
+                        angle_to_reference = get_angle_space(position_dir[:, jj],
+                                                         self.edge_reference_points[:, :, 0])
+                    except:
+                        import pdb; pdb.set_trace() ## DEBUG ##
+                        
+                    magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
+
+                    ind_low = np.argmin(np.abs(magnitude_angles))
+                    if angle_to_reference[0, ind_low] <= 0:
+                        ind_high = (ind_low+1)%self.n_planes
+                    else:
+                        ind_high = ind_low
+                        ind_low = (ind_high-1)%self.n_planes
+
+                    if not np.sum(np.abs(self.edge_reference_points[:, ind_low, 0]-self.edge_reference_points[:, ind_low, 1])): # one point
+                        surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 0]
+                        edge_point = self.edge_reference_points[:, ind_low, 0]
+
+                    else:
+                        angle_hull_double_low = get_angle_space(position_dir[:, jj], self.edge_reference_points[:, ind_low, 1])
+
+                        if angle_hull_double_low>0:
+                            # Solve quadratic equation to get intersection with (partial-) circl
+                            vv = position_dir[:, jj] # normalized
+                            if self.reference_point_is_inside or ind_low<self.ind_edge_ref:
+                                ind_edge = ind_low
+                            else:
+                                ind_edge = ind_low - (self.n_planes-self.n_planes_edge)
+                            pp = self.edge_points[:, ind_edge]
+
+                            AA = vv[0]*vv[0] + vv[1]* vv[1]
+                            BB = -2*(vv[0]*pp[0] + vv[1]*pp[1])
+                            CC = pp[0]*pp[0] + pp[1]*pp[1] \
+                                - self.margin_absolut*self.margin_absolut
+                            D_sqrt = np.sqrt(BB*BB - 4*AA*CC)
+
+                            ref_magnitude = np.array([(-BB+D_sqrt), (-BB-D_sqrt)])/(2*AA)
+                            dist2hull[jj] = np.max(ref_magnitude)
+
+                            # Gamma[jj] = mag_position[jj]/dist2hull
+                            continue
+                        else:
+                            surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 1]
+                            edge_point = self.edge_reference_points[:, ind_low, 1]
+
+                    dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
+                    # Gamma[jj] = mag_position[jj]/dist2hull
+
+        if not multiple_positions:
+            dist2hull = dist2hull[0]
+
+        return dist2hull
+
+    def adapt_normal_to_arc_extension(self, position, normal_vector, in_global_frame=False):
+        '''
+        Smooth extensions are created to account for the unidirectional margin around obstacles. 
+        This is considered here.
+        '''
+        if self.dim > 2:
+            raise NotImplementedError("Higher dimensions lack functionality.")
+        
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        if isinstance(position, list):  position = np.array(position)
+        angle_position = np.arctan2(position[1], position[0])
+
+        margin = 1e-9
+        for ii in range(self.edge_reference_points.shape[1]):
+
+            if not is_one_point(self.edge_reference_points[:, ii, 0], self.edge_reference_points[:, ii, 1]):
+                # Round surface extension
+                angle_low = np.arctan2(self.edge_reference_points[1, ii, 0], self.edge_reference_points[0, ii, 0])
+                angle_high = np.arctan2(self.edge_reference_points[1, ii, 1], self.edge_reference_points[0, ii, 1])
+            
+                if angle_is_in_between(angle_position, angle_low, angle_high):
+                    if self.reference_point_is_inside or ii<self.ind_edge_ref:
+                        it_edge = ii
+                    else:
+                        # Reference point is outside, i.e. additional point is added
+                        it_edge = ii - (self.n_planes-self.n_planes_edge)
+                    
+                    # Direction
+                    arc_normal = position - self.edge_points[:, it_edge]
+                    mag_normal = np.linalg.norm(arc_normal)
+                    if mag_normal: # Nonzero
+                        arc_normal = arc_normal/mag_normal
+                    else:
+                        arc_normal = self.get_reference_direction()
+                    
+                    # Weight
+                    local_radius = self.get_distance_to_hullEdge(position)
+                    delta_radius = max(np.linalg.norm(position)-local_radius, 0)
+                    max_delta = 1.1*self.margin_absolut # > 1x
+                    weight = max((1-delta_radius)/max_delta, 0)
+
+                    normal_vector = get_directional_weighted_sum(
+                        reference_direction=position,
+                        directions=np.vstack((normal_vector, arc_normal)).T,
+                        weights=np.array([(1-weight), weight]), normalize=False,
+                        normalize_reference=True)
+                    break
+                
+        if in_global_frame: 
+            normal_vector = self.transform_global2relative(transform_relative2global_dir)
+            
+        return normal_vector
+
+
+    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional"):
+        '''
+        Get distance value from surface
+        '''
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        if isinstance(position, list):
+            position = np.array(position)
 
         multiple_positions = (len(position.shape)>1)
         if multiple_positions:
@@ -177,9 +485,20 @@ class Polygon(Obstacle):
             position = position.reshape((self.dim, n_points))
 
         Gamma = np.zeros(n_points)
+        Gamma_new = np.zeros(n_points)
         if gamma_type=="proportional":
         # TODO: extend rule to include points with Gamma < 1 for both cases
-            dist2hull = np.ones(self.edge_points.shape[1])*(-1)
+            # dist2hull = np.ones(self.edge_points.shape[1])*(-1)
+
+            dist2hulledge = self.get_distance_to_hullEdge(position)
+            ind_nonzero = dist2hulledge>0
+
+            if np.sum(ind_nonzero):
+                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
+                Gamma[ind_nonzero] = mag_position / dist2hulledge[ind_nonzero]
+
+        elif False: # original "proportional"
+            # TODO: remove
             is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
 
             mag_position = LA.norm(position, axis=0)
@@ -188,28 +507,104 @@ class Polygon(Obstacle):
             if np.sum(zero_mag):
                 if self.is_boundary:
                     Gamma[zero_mag] = sys.float_info.max
-                else:
-                    Gamma[zero_mag] = 0
-                
-            reference_dir = position / mag_position
-
+                    
+            dist2hull = self.get_distance_to_hullEdge(position)
+            
             if self.dim==2:
-                for jj in np.arange(n_points)[~zero_mag]: # TODO -- speed up!!!
-                    for ii in range(self.edge_points.shape[1]):
-                        # Use self.are_lines_intersecting() function
-                        surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
+                # TODO -- speed up!!!
+                position_dir = position / mag_position
+                # for jj in np.arange(n_points)[~zero_mag]: 
+                #     for ii in range(self.edge_points.shape[1]):
+                #         # Use self.are_lines_intersecting() function
+                #         surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
 
-                        matrix_ref_tang = np.vstack((reference_dir[:, jj], -surface_dir)).T
-                        if LA.matrix_rank(matrix_ref_tang)>1:
-                            dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((reference_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
+                #         matrix_ref_tang = np.vstack((position_dir[:, jj], -surface_dir)).T
+                #         if LA.matrix_rank(matrix_ref_tang)>1:
+                #             dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
+                #         else:
+                #             dist2hull[ii] = -1
+                #             dist_tangent = -1
+                #         dist_tangent = np.round(dist_tangent, 10)
+                #         is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
+
+                #     Gamma[jj] = mag_position[jj]/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
+                if not self.margin_absolut:
+                    for jj in np.arange(n_points)[~zero_mag]:
+                        angle_to_reference = get_angle_space(position_dir[:, jj], self.edge_points)
+                        magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
+
+                        # angle_to_reference = np.arccos(ref)
+                        ind_low = np.argmin(np.abs(magnitude_angles))
+
+                        if magnitude_angles[ind_low]==0:
+                            dist2hull = np.linalg.norm(self.edge_points[:, ind_low])
+
                         else:
-                            dist2hull[ii] = -1
-                            dist_tangent = -1
-                        dist_tangent = np.round(dist_tangent, 10)
-                        is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
+                            if angle_to_reference[0, ind_low] < 0:
+                                ind_high = (ind_low+1)%self.n_planes
+                            else:
+                                ind_high = ind_low
+                                ind_low = (ind_high-1)%self.n_planes
 
-                    Gamma[jj] = mag_position[jj]/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
-                
+                            surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
+
+                            dist2hull, dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
+
+                        Gamma[jj] = mag_position[jj]/dist2hull
+                        
+                else:
+                    for jj in np.arange(n_points)[~zero_mag]:
+                        
+                        angle_to_reference = get_angle_space(position_dir[:, jj],
+                                                             self.edge_reference_points[:, :, 0])
+
+                        magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
+                        
+                        ind_low = np.argmin(np.abs(magnitude_angles))
+                        if angle_to_reference[0, ind_low] <= 0:
+                            ind_high = (ind_low+1)%self.n_planes
+                        else:
+                            ind_high = ind_low
+                            ind_low = (ind_high-1)%self.n_planes
+
+                        if not np.sum(np.abs(self.edge_reference_points[:, ind_low, 0]-self.edge_reference_points[:, ind_low, 1])): # one point
+                            surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 0]
+                            edge_point = self.edge_reference_points[:, ind_low, 0]
+                            
+                        else:
+                            angle_hull_double_low = get_angle_space(position_dir[:, jj], self.edge_reference_points[:, ind_low, 1])
+                            
+                            if angle_hull_double_low>0:
+                                # Solve quadratic equation to get intersection with (partial-) circl
+                                vv = position_dir[:, jj] # normalized
+                                if self.reference_point_is_inside or ind_low<self.ind_edge_ref:
+                                    ind_edge = ind_low
+                                else:
+                                    ind_edge = ind_low - (self.n_planes-self.n_planes_edge)
+                                pp = self.edge_points[:, ind_edge]
+                                
+                                AA = vv[0]*vv[0] + vv[1]* vv[1]
+                                BB = -2*(vv[0]*pp[0] + vv[1]*pp[1])
+                                CC = pp[0]*pp[0] + pp[1]*pp[1] \
+                                    - self.margin_absolut*self.margin_absolut
+                                D_sqrt = np.sqrt(BB*BB - 4*AA*CC)
+
+                                ref_magnitude = np.array([(-BB+D_sqrt), (-BB-D_sqrt)])/(2*AA)
+                                dist2hull = np.max(ref_magnitude)
+                                
+                                Gamma[jj] = mag_position[jj]/dist2hull
+                                continue
+                            else:
+                                surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 1]
+                                edge_point = self.edge_reference_points[:, ind_low, 1]
+                            
+                        dist2hull, dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
+                        Gamma[jj] = mag_position[jj]/dist2hull
+
+
+                        
+                                
+                # Gamma = Gamma_new
             # elif self.dim==3:
                 # for ii in range(self.n_planes):
                     # n_corners = self.ind_tiles[ii].shape[0]
@@ -222,38 +617,35 @@ class Polygon(Obstacle):
 
                         # perpendicular_line = point2corner - projection
                         # dist_edge = 
-                        
             else:
                 raise ValueError("Not defined for d=={}".format(self.dim))
-
             
             if self.is_boundary:
                 Gamma = self.get_boundaryGamma(Gamma)
-                
 
         elif gamma_type=="norm2":
             distances2plane = self.get_distance_to_hullEdge(position)
 
-            delta_Gamma = np.min(distances2plane) - self.absolut_margin
+            delta_Gamma = np.min(distances2plane) - self.margin_absolut
             ind_outside = (distances2plane > 0)
-            delta_Gamma = (LA.norm(distances2plane[ind_outside], ord=norm_order)-self.absolut_margin)
+            delta_Gamma = (LA.norm(distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
             normalization_factor = np.max(self.normalDistance2center)
             # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
             Gamma = 1 + delta_Gamma / normalization_factor
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
 
-        if any(Gamma<0): # DEBUGGING
-            import pdb; pdb.set_trace() ## DEBUG ##
-            
+        # if any(Gamma<0): # DEBUGGING
+            # import pdb; pdb.set_trace() ## DEBUG ##
+
         if not multiple_positions:
             return Gamma[0]
-
+                
         return Gamma
 
     
     def get_normal_direction(self, position, in_global_frame=False, normalize=True, normal_calulation_type="distance"):
-        if in_global_frame:
+        if in_global_frame: 
             position = self.transform_global2relative(position)
         
         mag_position = LA.norm(position)
@@ -274,10 +666,17 @@ class Polygon(Obstacle):
         else:
             temp_position = np.copy(position)
 
-        temp_edge_points = np.copy(self.edge_points)
-        temp_position = np.copy(temp_position)
+        if self.reference_point_is_inside and self.margin_absolut==0:
+            temp_edge_points = np.copy(self.edge_points)
+        else:
+            temp_edge_points = self.edge_reference_points.reshape(2, -1)
+            index_unique = np.unique(temp_edge_points, axis=1, return_index=True)[1]
+            temp_edge_points = temp_edge_points[:, np.sort(index_unique)]
 
-        distances2plane = self.get_distance_to_hullEdge(temp_position)
+        # temp_position = np.copy(temp_position)
+
+        # distances2plane = self.get_distance_to_hullEdge(temp_position)
+        distances2plane, normal_vectors = self.get_distances_and_normal_to_surfacePannels(temp_position, temp_edge_points)
 
         ind_outside = (distances2plane > 0)
 
@@ -286,26 +685,33 @@ class Polygon(Obstacle):
             return self.get_reference_direction(position)
 
         distance2plane = ind_outside*np.abs(distances2plane)
+        
+        # pi is the maximum angle. 
         angle2hull = np.ones(ind_outside.shape)*pi
 
+        if self.dim>2:
+            raise NotImplementedError("Under construction for d>2.")
+        
         for ii in np.arange(temp_edge_points.shape[1])[ind_outside]:
-            # TODO - More complex for dimensiosn>2
-
+            
             # Calculate distance to agent-position
-            dir_tangent = (temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
+            # dir_tangent = (temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
+            dir_tangent = (temp_edge_points[:, ii] - temp_edge_points[:, ii-1])
             position2edge = temp_position - temp_edge_points[:, ii]
+
+            
             if dir_tangent.T.dot(position2edge) < 0:
                 distance2plane[ii] = LA.norm(position2edge)
             else:
-                dir_tangent = -(temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
+                # dir_tangent = -(temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
+                dir_tangent = -(temp_edge_points[:, ii] - temp_edge_points[:, ii-1])
                 position2edge = temp_position - temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]]
                 if dir_tangent.T.dot(position2edge) < 0:
                     distance2plane[ii] = LA.norm(position2edge)
 
-            # TODO - don't use reference point, but little 'offset' to avoid singularity
             # Get closest point
-            edge_points_temp = np.vstack((temp_edge_points[:,ii],
-                                     temp_edge_points[:,(ii+1)%temp_edge_points.shape[1]])).T
+            # edge_points_temp = np.vstack((temp_edge_points[:,ii], temp_edge_points[:,(ii+1)%temp_edge_points.shape[1]])).T
+            edge_points_temp = np.vstack((temp_edge_points[:,ii-1], temp_edge_points[:,ii])).T
 
             # Calculate angle to agent-position
             ind_sort = np.argsort(LA.norm(np.tile(temp_position,(2,1)).T-edge_points_temp, axis=0))
@@ -321,7 +727,11 @@ class Polygon(Obstacle):
         weights = distance_weights*angle_weights # TODO: multiplication needed?
         weights = weights/np.sum(weights)
 
-        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, normalize_reference=True)
+        # import pdb; pdb.set_trace() ## DEBUG ##
+        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=normal_vectors, weights=weights, normalize=False, normalize_reference=True)
+
+        normal_vector = self.adapt_normal_to_arc_extension(position, normal_vector)
+        # if weight>0:
         
         if self.is_boundary and False:
             positionVec = position/mag_position # needed?
@@ -349,11 +759,14 @@ class Polygon(Obstacle):
             plt.ion()
             plt.show()
 
+        if in_global_frame: 
+            normal_vector = self.transform_global2relative_dir(normal_vector)
+            
         return normal_vector
     
 
 class Cuboid(Polygon):
-    def __init__(self, axes_length=[1,1], absolut_margin=0, *args, **kwargs):
+    def __init__(self, axes_length=[1,1], margin_absolut=0, *args, **kwargs):
         '''
         This class defines obstacles to modulate the DS around it
         At current stage the function focuses on Ellipsoids, 
@@ -361,54 +774,174 @@ class Cuboid(Polygon):
         '''
         self.axes_length = np.array(axes_length)
         
-        dim = self.axes_length.shape[0] # Dimension of space
-        
-        self.absolut_margin=absolut_margin
+        self.dim = self.axes_length.shape[0] # Dimension of space
 
-        if not dim==2:
+        if not self.dim==2:
             raise ValueError("Cuboid not yet defined for dimensions= {}".format(dim))
 
-        edge_points = np.zeros((dim, 4))
+        edge_points = np.zeros((self.dim, 4))
         edge_points[:,2] = self.axes_length/2.0*np.array([1,1])
         edge_points[:,3] = self.axes_length/2.0*np.array([-1,1])
         edge_points[:,0] = self.axes_length/2.0*np.array([-1,-1])
         edge_points[:,1] = self.axes_length/2.0*np.array([1,-1])
 
         if sys.version_info>(3,0):
-            super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+            super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
         else:
-            super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, **kwargs)
+            super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
+
 
     def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):
-
+        '''
+        Extend the hull of non-boundary, convex obstacles such that the reference point lies in
+        inside the boundary again.
+        '''
+        
         dist_max = self.get_maximal_distance()*relative_hull_margin
-        if self.get_gamma(self.reference_point)>1:
+        mag_ref_point = np.linalg.norm(self.reference_point)
+        
+        if mag_ref_point:
+            reference_point_temp = self.reference_point*(1 + dist_max/mag_ref_point)
+        
+        if not self.reference_point_is_inside: # Reset boundaryies
+            self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+        
+        if mag_ref_point and self.get_gamma(reference_point_temp)>1:
         # TODO add margin / here or somewhere else
             if not self.dim==2:
                 raise NotImplementedError("Not defined for d>2")
 
-            # TODO:
-            for pp in range(self.n_planes):
-                v0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes] 
-                v1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
+            if self.margin_absolut:
+                self.n_planes = self.n_planes_edge
+                for pp in range(self.n_planes):
+                    t0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes]
+                    t1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
 
-                vec_ref = self.reference_point - self.edge_points[:, pp]
+                    n0 = np.array([t0[1], -t0[0]])/np.linalg.norm(t0)
+                    n1 = np.array([t1[1], -t1[0]])/np.linalg.norm(t1)
 
-                if np.cross(vec_ref, v0) > 0:
-                    if np.cross(vec_ref, v1) > 0:
-                        self.hull_edge = copy.deepcopy(self.edge_points)
-                        ref_mag = LA.norm(self.reference_point)
-                        self.hull_edge[:, pp] = self.reference_point*(1+dist_max/ref_mag)
-                    else:
-                        self.hull_edge = np.hstack((
-                            self.hull_edge[:, :pp],
-                            np.reshape(self.reference_point*(1+dist_max/ref_mag), (self.dim,1)),
-                            self.hull_edge[:, pp:]))
-            self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+                    outer_edge_point = self.edge_points[:, pp] + self.margin_absolut*(n0+n1)
+
+                    vec_ref = reference_point_temp-outer_edge_point
+                    ref_mag = np.linalg.norm(vec_ref)
+
+                    if np.cross(vec_ref, t0) > 0:
+                        if np.cross(vec_ref, t1) > 0:
+                            self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
+                            
+                            self.edge_reference_points[:, pp, 0] = self.edge_reference_points[:, pp, 1] = reference_point_temp
+
+                            self.ind_edge_ref = self.n_planes # Set large
+                            
+                            qq = (pp+1)%self.n_planes
+                            it_edge = (pp+1)%self.n_planes_edge
+                        else:
+                            self.edge_reference_points = np.hstack((
+                                np.reshape(self.edge_margin_points[:, :pp, :], (self.dim, -1, 2)),
+                                np.reshape(np.tile(reference_point_temp,(2, 1)).T, (self.dim,1,2)),
+                                np.reshape(self.edge_margin_points[:, pp:, :], (self.dim, -1, 2))))
+                            self.n_planes += 1
+                            self.ind_edge_ref = pp 
+
+                            qq = (pp+1)%self.n_planes
+                            it_edge = pp
+                        # Correct for both?
+                        # for qq, ii in zip([(pp-1)%self.n_planes_edge, (pp+1)%self.n_planes_edge], [0,1]):
+
+                        tt, tang_points = get_tangents2ellipse(edge_point=self.edge_reference_points[:, pp, 0], axes=[self.margin_absolut]*2, center_point=self.edge_points[:, it_edge])
+
+                        # TODO: remove following check 
+                        self.edge_reference_points[:, qq, 0] = tang_points[:, 0] \
+                                                               if np.cross(tt[:, 0], t1) > 0 \
+                                                                  else tang_points[:, 1]
+
+                        qq = (pp-1)%self.n_planes
+                        it_edge = (pp-1)%self.n_planes_edge
+                        tt, tang_points = get_tangents2ellipse(edge_point=self.edge_reference_points[:, pp, 0], axes=[self.margin_absolut]*2, center_point=self.edge_points[:, it_edge])
+                        self.edge_reference_points[:, qq, 1] = tang_points[:, 0] \
+                                                               if np.cross(tt[:, 0], t0) < 0 \
+                                                                  else tang_points[:, 1]
+                        break
+                    
+                    elif np.cross(vec_ref, t1) < 0:
+                        vec_ref = reference_point_temp-self.edge_points[:, pp]
+                        if np.cross(vec_ref, t0) > 0 and np.cross(vec_ref, t1) > 0:
+                            self.edge_reference_points = np.hstack((
+                                np.reshape(self.edge_margin_points[:, :(pp+1), :], (self.dim, -1, 2)),
+                                np.reshape(np.tile(reference_point_temp, (2, 1)).T, (self.dim,1,2)),
+                                np.reshape(self.edge_margin_points[:, pp:, :], (self.dim, -1, 2))))
+
+                            self.n_planes += 2
+                            self.ind_edge_ref = pp+1
+                            
+                            tt, tang_points = get_tangents2ellipse(edge_point=self.edge_reference_points[:, pp+1, 0], axes=[self.margin_absolut]*2, center_point=self.edge_points[:, pp])
+                            
+                            if np.cross(tt[:, 0], tt[:, 1])>0:
+                                # TODO -- test and remove one
+                                self.edge_reference_points[:, (pp), 1] = tang_points[:, 1]
+                                self.edge_reference_points[:, (pp+2)%self.n_planes, 0] = tang_points[:, 0]
+                            else:
+                                self.edge_reference_points[:, (pp), 1] = tang_points[:, 0]
+                                self.edge_reference_points[:, (pp+2)%self.n_planes, 0] = tang_points[:, 1]
+                            
+                            debugging_mode=False
+                            if debugging_mode:
+                                plt.figure()
+                                points = np.zeros((self.dim, self.n_planes*2))
+
+                                it = 0
+                                for ii in range(self.n_planes):
+                                    for jj in range(2):
+                                        try:
+                                            points[:, it] = self.edge_reference_points[:, ii, jj]
+                                        except:
+                                            import pdb; pdb.set_trace() ## DEBUG ##
+                                        it+=1
+
+                                plt.plot(points[0, :], points[1, :])
+                                plt.ion()
+                                plt.show()
+
+                                import pdb; pdb.set_trace() ## DEBUG ##
+                                plt.close('all')
+                            break
+
+                    # Adapted normal
+                    self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.hull_points)
+                    
+            else:
+                import pdb; pdb.set_trace() ## DEBUG ##
+                
+                for pp in range(self.n_planes):
+                    # TODO: 
+                    n0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes]
+                    n1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
+
+                    vec_ref = reference_point_temp - self.edge_points[:, pp]
+
+                    ref_mag = LA.norm(reference_point_temp)
+
+                    if np.cross(vec_ref, n0) > 0:
+                        if np.cross(vec_ref, n1) > 0:
+                            self.edge_reference_points = copy.deepcopy(self.edge_points)
+                            self.edge_reference_points[:, pp] = reference_point_temp
+                        else:
+                            self.edge_reference_points = np.hstack((
+                                self.edge_reference_points[:, :pp],
+                                np.reshape(self.reference_point, (self.dim,1)),
+                                self.edge_reference_points[:, pp:]))
+
+                        break
+                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_reference_points)
+            
             self.reference_point_is_inside = False
+            self.n_planes = self.edge_reference_points.shape[1]
+            
         else:
-            self.hull_edge = self.edge_points
+            self.edge_reference_points = self.edge_margin_points # include margin
 
             if not self.reference_point_is_inside:
                 self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
             self.reference_point_is_inside = True
+            self.n_planes = self.n_planes_edge
+            self.ind_edge_ref = None

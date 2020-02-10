@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 '''
 Angle math for python
+Helper function for directional & angle evaluations
 
 @author Lukas Huber
 @date 2019-11-15
@@ -10,12 +11,39 @@ import numpy as np
 import warnings
 from math import pi
 
+
+def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
+    '''
+    Verify if angle_test is in between angle_low & angle_high
+    
+    Values are between [0, 2pi]. An absolute margin seems appropriate
+    '''
+    
+    delta_low = angle_difference_directional_2pi(angle_test, angle_low)
+    delta_high = angle_difference_directional_2pi(angle_high, angle_test)
+
+    delta_tot = angle_difference_directional_2pi(angle_high, angle_low)
+
+    return (np.abs((delta_high+delta_low)-delta_tot) < margin)
+
+
 def angle_modulo(angle):
     '''
     Get angle in [-pi, pi[ 
     '''
     return ((angle+pi) % (2*pi)) - pi
 
+
+def angle_difference_directional_2pi(angle1, angle2):
+    angle_diff = (angle1-angle2)
+
+    while angle_diff > 2*pi:
+        angle_diff -= 2*pi
+    while angle_diff < 0:
+        angle_diff += 2*pi
+    return angle_diff
+
+    
 def angle_difference_directional(angle1, angle2):
     '''
     Difference between two angles ]-pi, pi]
@@ -28,22 +56,20 @@ def angle_difference_directional(angle1, angle2):
         angle_diff = angle_diff+2*pi
     return angle_diff
 
+
 def angle_difference(angle1, angle2):
-    '''
-    Difference between two angles ]-pi, pi]
-    Note: angle1-angle2 (non-commutative)
-    '''
-    angle_diff = (angle1-angle2)
-    while angle_diff > pi:
-        angle_diff = angle_diff-2*pi
-    while angle_diff <= -pi:
-        angle_diff = angle_diff+2*pi
-    return angle_diff
+    return angle_difference_directional(angle1, angle2)
+    # angle_diff = (angle1-angle2)
+    # while angle_diff > pi:
+        # angle_diff = angle_diff-2*pi
+    # while angle_diff <= -pi:
+        # angle_diff = angle_diff+2*pi
+    # return angle_diff
 
 def angle_difference_abs(angle1, angle2):
     '''
     Difference between two angles [0,pi[
-    (commutative)
+    angle1-angle2 = angle2-angle1(commutative)
     '''
     angle_diff = np.abs(angle2-angle1)
     while angle_diff >= pi:
@@ -99,7 +125,11 @@ def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=T
     # output: [r, phi]
     return magnitude, angle
 
-def get_orthogonal_basis(vector, normalize=False):
+
+def get_orthogonal_basis(vector, normalize=True):
+    '''
+    Orthonormal basis for a vector
+    '''
     if isinstance(vector, list):
         vector = np.array(vector)
     elif not isinstance(vector, np.ndarray):
@@ -113,39 +143,102 @@ def get_orthogonal_basis(vector, normalize=False):
             raise ValueError("Orthogonal basis Matrix not defined for 0-direction vector.")
 
     dim = vector.shape[0]
-    Basis_Matrix = np.zeros((dim, dim))
+    basis_matrix = np.zeros((dim, dim))
 
     if dim == 2:
-        Basis_Matrix[:, 0] = vector
-        Basis_Matrix[:, 1] = np.array([Basis_Matrix[1, 0],
-                                       -Basis_Matrix[0, 0]])
+        basis_matrix[:, 0] = vector
+        basis_matrix[:, 1] = np.array([basis_matrix[1, 0],
+                                       -basis_matrix[0, 0]])
     elif dim == 3:
-        Basis_Matrix[:, 0] = vector
-        Basis_Matrix[:, 1] = np.array([-vector[1], vector[0], 0])
+        basis_matrix[:, 0] = vector
+        basis_matrix[:, 1] = np.array([-vector[1], vector[0], 0])
         
-        norm_vec2 = np.linalg.norm(Basis_Matrix[:, 1])
+        norm_vec2 = np.linalg.norm(basis_matrix[:, 1])
         if norm_vec2:
-            Basis_Matrix[:, 1] = Basis_Matrix[:, 1] / norm_vec2
+            basis_matrix[:, 1] = basis_matrix[:, 1] / norm_vec2
         else:
-            Basis_Matrix[:, 1] = [1, 0, 0]
+            basis_matrix[:, 1] = [1, 0, 0]
             
-        Basis_Matrix[:, 2] = np.cross(Basis_Matrix[:, 0], Basis_Matrix[:, 1])
+        basis_matrix[:, 2] = np.cross(basis_matrix[:, 0], basis_matrix[:, 1])
         
-        norm_vec = np.linalg.norm(Basis_Matrix[:, 2])
+        norm_vec = np.linalg.norm(basis_matrix[:, 2])
         if norm_vec:
-            Basis_Matrix[:, 2] = Basis_Matrix[:, 2] / norm_vec
+            basis_matrix[:, 2] = basis_matrix[:, 2] / norm_vec
         
     elif dim > 3: # TODO: general basis for d>3
-        raise ValueError("Not implemented for d>3")
+        basis_matrix[:, 0] = vector
+        for ii in range(1,dim):
+            # TODO: higher dimensions
+            if vector[ii]: # nonzero
+                basis_matrix[:ii, ii] = vector[:ii]
+                basis_matrix[ii, ii] = (-np.sum(vector[:ii]**2)/vector[ii])
+                basis_matrix[:ii+1, ii] = basis_matrix[:ii+1, ii]/np.linalg.norm(basis_matrix[:ii+1, ii])
+            else:
+                basis_matrix[ii, ii] = 1
+            # basis_matrix[dim-(ii), ii] = -np.dot(vector[:dim-(ii)], vector[:dim-(ii)])
+            # basis_matrix[:, ii] = basis_matrix[:, ii]/LA.norm(basis_matrix[:, ii])
+
+        # import pdb; pdb.set_trace() ## DEBUG ##
+        # raise ValueError("Not implemented for d>3")
         # warnings.warn("Implement higher dimensionality than d={}".format(dim))
+    return basis_matrix
 
-    # for ii in range(1,dim):
-        # TODO: higher dimensions
-        # E[:dim-(ii), ii] = normal_vector[:dim-(ii)]*normal_vector[dim-(ii)]
-        # E[dim-(ii), ii] = -np.dot(normal_vector[:dim-(ii)], normal_vector[:dim-(ii)])
-        # E_orth[:, ii] = E_orth[:, ii]/LA.norm(E_orth[:, ii])
 
-    return Basis_Matrix
+def get_angle_space(reference_direction, directions, normalize=True):
+    """
+    Get angle space transformation
+    """
+    dim = np.array(reference_direction).shape[0]
+    
+    if len(directions.shape)==1:
+        num_dirs = None
+        directions = directions.reshape(dim, 1)
+    else:
+        num_dirs = directions.shape[1]
+        
+    reference_direction = np.copy(reference_direction)
+    directions = np.copy(directions)
+
+    if normalize:
+        norm_refDir = np.linalg.norm(reference_direction)
+        if norm_refDir==0: # nonzero
+            raise ValueError("Zero norm direction as input")
+        reference_direction /= norm_refDir
+        
+        norm_dir = np.linalg.norm(directions, axis=0)
+        ind_nonzero = (norm_dir>0)
+        directions[:, ind_nonzero] = directions[:, ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
+
+    OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
+
+    directions_referenceSpace = np.zeros(np.shape(directions))
+    for ii in range(np.array(directions).shape[1]):
+        directions_referenceSpace[:,ii] = OrthogonalBasisMatrix.T.dot( directions[:,ii])
+
+    directions_referenceSpace = np.zeros(np.shape(directions))
+    for ii in range(np.array(directions).shape[1]):
+        directions_referenceSpace[:,ii] = OrthogonalBasisMatrix.T.dot( directions[:,ii])
+
+    directions_directionSpace = directions_referenceSpace[1:, :]
+
+    norm_dirSpace = np.linalg.norm(directions_directionSpace, axis=0)
+    ind_nonzero = (norm_dirSpace > 0)
+
+    directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
+
+    cos_directions = directions_referenceSpace[0,:]
+    if np.sum(cos_directions > 1) or np.sum(cos_directions < -1):
+        cos_directions = np.min(np.vstack((cos_directions, np.ones(num_dirs))), axis=0)
+        cos_directions = np.max(np.vstack((cos_directions, -np.ones(num_dirs))), axis=0)
+        warnings.warn("Cosinus value out of bound.")
+
+    directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
+
+    directions_directionSpace *= (-1) # in 2D for convention
+
+    if num_dirs is None:
+        directions_directionSpace = np.squeeze(directions_directionSpace)
+    return directions_directionSpace
 
 
 def get_directional_weighted_sum(reference_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
@@ -163,13 +256,12 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
     ind_nonzero = (weights>0)
 
     reference_direction = np.copy(reference_direction)
-    directions = directions[:, ind_nonzero]
+    directions = directions[:, ind_nonzero] # Creates new array
     weights = weights[ind_nonzero]
 
     if total_weight<1:
         weights = weights/np.sum(weights) * total_weight
 
-        
     n_directions = weights.shape[0]
     if (n_directions==1) and total_weight>=1:
         return directions[:, 0]
@@ -201,18 +293,16 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
 
     directions_directionSpace[:,ind_nonzero] = (directions_directionSpace[:, ind_nonzero] /  np.tile(norm_dirSpace[ind_nonzero], (dim-1, 1)))
 
-    # Do not check cosinus, since normalization happened
-    # TODO check why low, and remove
-
     cos_directions = directions_referenceSpace[0,:]
     if np.sum(cos_directions > 1) or np.sum(cos_directions < -1):
+        # Numerical error correction
         cos_directions = np.min(np.vstack((cos_directions, np.ones(n_directions))), axis=0)
         cos_directions = np.max(np.vstack((cos_directions, -np.ones(n_directions))), axis=0)
         warnings.warn("Cosinus value out of bound.")
 
     directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
-    direction_dirSpace_weightedSum = np.sum(directions_directionSpace*
-                                            np.tile(weights, (dim-1, 1)), axis=1)
+
+    direction_dirSpace_weightedSum = np.sum(directions_directionSpace* np.tile(weights, (dim-1, 1)), axis=1)
 
     norm_directionSpace_weightedSum = np.linalg.norm(direction_dirSpace_weightedSum)
 

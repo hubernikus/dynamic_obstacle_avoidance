@@ -337,7 +337,7 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
         # TODO solve more cleanly...
         intersecting_obstacles = np.delete(intersecting_obstacles, np.nonzero(intersecting_obstacles==obs.index_wall), axis=0)
         
-    intersection_clusters = []
+    intersection_cluster_list = []
 
     while intersecting_obstacles.shape[0]:
         intersection_matrix_reduced = intersection_matrix[intersecting_obstacles,:][:,intersecting_obstacles]
@@ -357,28 +357,28 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
             # Bool operation. Equals to one if not equal
             new_obstacles = np.any(intersection_cluster ^ intersection_cluster_old)
             
-        intersection_clusters.append(intersecting_obstacles[intersection_cluster].tolist())
+        intersection_cluster_list.append(intersecting_obstacles[intersection_cluster].tolist())
 
         if not obs.index_wall is None: # Add wall connection
-            if np.sum(intersection_matrix[intersecting_obstacles,:][:,obs.index_wall]):
-                intersection_clusters[-1].append(obs.index_wall)
+            if np.sum(intersection_matrix[intersection_cluster_list[-1],:][:,obs.index_wall]): # nonzero
+                intersection_cluster_list[-1].append(obs.index_wall)
 
         # Only keep non-intersecting obstacles
         intersecting_obstacles = intersecting_obstacles[intersection_cluster==0]
-        
+    
     if representation_type=='single_point':
-        get_single_reference_point(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_clusters, Intersections=Intersections, dim=dim)
+        get_single_reference_point(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_cluster_list, Intersections=Intersections, dim=dim)
         
     elif representation_type=='hirarchy':
-        get_obstacle_tree(obs=obs, obstacle_weight=R_max, intersection_clusters= intersection_clusters, Intersections=Intersections, dim=dim)
+        get_obstacle_tree(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_cluster_list, Intersections=Intersections, dim=dim)
         
     else:
         raise NotImplementedError("Representation type <<{}>> not defined".format(representation_type))
 
     if get_intersection_matrix:
-        return intersection_clusters, Intersections
+        return intersection_cluster_list, Intersections
     else:
-        return intersection_clusters
+        return intersection_cluster_list
     
 
 def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Intersections, dim):
@@ -397,9 +397,9 @@ def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Inte
             for jj in intersection_clusters[ii]:
                 if jj == obs.index_wall:
                     continue
+
                 obs[jj].set_reference_point(wall_intersection_point, in_global_frame=True)
-            # import pdb; pdb.set_trace() ## DEBUG ##
-                
+            
         else:
             geometric_center = np.zeros(dim)
             total_weight = 0
@@ -410,7 +410,7 @@ def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Inte
             geometric_center /= total_weight
 
             for jj in intersection_clusters[ii]:
-                obs[jj].set_reference_point(geometric_center)
+                obs[jj].set_reference_point(geometric_center, in_global_frame=True)
                 
             # Take first position of intersection # TODO make more general
 
