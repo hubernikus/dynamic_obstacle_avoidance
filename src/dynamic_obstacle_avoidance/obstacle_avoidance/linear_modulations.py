@@ -20,8 +20,6 @@ import warnings
 import sys
 
 
-
-
 def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
@@ -78,6 +76,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     R = np.zeros((d,d,N_obs))
 
     for n in range(N_obs):
+        # Among normal
         # Move the position into the obstacle frame of reference
         if obs[n].th_r: # Nonzero value
             R[:,:,n] = compute_R(d,obs[n].th_r)
@@ -87,6 +86,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
         # Move to obstacle centered frame
         x_t = R[:,:,n].T.dot(x-obs[n].center_position)
         E[:,:,n], D[:,:,n], Gamma[n], E_orth[:,:,n] = compute_modulation_matrix(x_t, obs[n], R[:,:,n])
+        
     if N_attr:
         d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
         weight = compute_weights(np.hstack((Gamma, [d_a])), N_obs+N_attr)
@@ -134,11 +134,15 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     xd_hat_magnitude = np.zeros((N_obs))
 
     for n in range(N_obs):
-        # TODO: 
-        # M[:,:,n] = dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])) 
-        M[:,:,n] = R[:,:,n].dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(R[:,:,n].T)
+        # TODO:
+        if obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd) <0:
+            # Only consider boundary when moving towards (normal direction)
+            xd_hat[:, n] = xd
+        else:
+            # M[:,:,n] = dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])) 
+            M[:,:,n] = R[:,:,n].dot(E[:,:,n]).dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(R[:,:,n].T)
         
-        xd_hat[:,n] = M[:,:,n].dot(xd) # velocity modulation
+            xd_hat[:,n] = M[:,:,n].dot(xd) # velocity modulation
 
         if repulsive_obstacle:
             if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
@@ -168,17 +172,8 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
     if np.sum(ind_nonzero):
         xd_hat_normalized[:, ind_nonzero] = xd_hat[:, ind_nonzero]/np.tile(xd_hat_magnitude[ind_nonzero], (dim, 1))
 
-    if False:
-        ax = plt.gca()
-        ax.quiver(x[0], x[1], E[0,0,0], E[1,0,0], color='g')
-        ax.quiver(x[0], x[1], E_orth[0,0,0], E_orth[1,0,0], color='r')
-        ax.quiver(x[0], x[1], xd[0], xd[1], color='b')
-        ax.quiver(x[0], x[1], xd_hat[0, 0], xd_hat[1, 0], color='k')
-        import pdb; pdb.set_trace() ## DEBUG ##
-
     if N_attr:
         # IMPLEMENT PROPERLY & TEST
-        import pdb; pdb.set_trace() ## DEBUG ## 
         k_ds = np.hstack((k_ds, np.zeros((d-1, N_attr)) )) # points at the origin
         xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
         
@@ -233,6 +228,8 @@ def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_movi
     k4 = dt*xd
 
     # x final
+    # Maybe: directional sum? Can this be done?
     x = x + 1./6*(k1+2*k2+2*k3+k4) # + O(dt^5)
+
 
     return x

@@ -19,8 +19,7 @@ from dynamic_obstacle_avoidance.dynamical_system import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import dynamic_center_3d
-
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
 
 def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
     if pos1[0]-pos0[0]: # m < infty
@@ -180,7 +179,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if type(point_grid)==int:
         N_x = N_y = point_grid
         YY, XX = np.mgrid[y_range[0]:y_range[1]:N_y*1j, x_range[0]:x_range[1]:N_x*1j]
-
+        
     else:
         N_x = N_y = 1
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
@@ -257,6 +256,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
 
             strm = res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
+            
         else:
             # Normalize
             normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)

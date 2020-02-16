@@ -79,7 +79,14 @@ class ObstacleContainer(State):
         return len(self._obstacle_list)
 
     def __getitem__(self, key):
-        return self._obstacle_list[key]
+        if isinstance(key, (str)):
+            for ii in range(len(self._obstacle_list)):
+                if self._obstacle_list[ii].name == key:
+                    return self._obstacle_list[ii]
+            raise ValueError("Obstacle <<{}>> not in list.".format(key))
+            
+        else:
+            return self._obstacle_list[key]
 
     def __setitem__(self, key, value):
         self._obstacle_list[key] = value

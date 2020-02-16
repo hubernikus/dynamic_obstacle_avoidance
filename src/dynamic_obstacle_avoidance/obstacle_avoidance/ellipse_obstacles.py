@@ -21,7 +21,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
 
 import matplotlib.pyplot as plt
 # import quaternion
@@ -35,6 +35,7 @@ class Ellipse(Obstacle):
     axes_length:
     curvature:
     '''
+    
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
@@ -265,15 +266,16 @@ class Ellipse(Obstacle):
         if self.reference_point_is_inside or self.position_is_in_direction_of_ellipse(position):
             normal_vector = self.get_normal_ellipse(position)
         else:
-            if self.margin_absolut:
-                angle_ref = np.arctan2(self.edge_reference_points[0,self.ind_edge_ref, 0],
-                                       self.edge_reference_points[0,self.ind_edge_ref, 0])
+            if False:
+            # if self.margin_absolut:
+                angle_ref = np.arctan2(self.edge_reference_points[1, self.ind_edge_ref, 0],
+                                       self.edge_reference_points[0, self.ind_edge_ref, 0])
 
                 angle_position = np.arctan2(position[1], position[0])
 
                 if angle_difference_directional(angle_ref, angle_position) > 0:
                     pass
-
+                
                 raise NotImplementedError()
 
             else:
@@ -291,41 +293,6 @@ class Ellipse(Obstacle):
                 weights = self.get_angle_weight(angle2referencePlane)
 
                 normal_vector = get_directional_weighted_sum(reference_direction=position, directions=self.normal_vector, weights=weights, normalize=False, normalize_reference=True)
-
-            # elif self.margin_absolut and 1:
-                # pass
-
-        # if self.margin_absolut:
-            # for ii in range(ii):
-                # angle_to_reference = get_angle_space(position_dir[:, jj], self.edge_reference_points[:, :, 0])
-
-        # ind_intersect = np.zeros(self.normalDistance2center.shape, dtype=bool)
-
-        # distances2plane = self.get_distance_to_hullEdge(position)
-        # ind_outside = (distances2plane > 0)
-
-        # if np.sum(ind_outside)>0:
-            # for ii in np.arange(ind_outside.shape[0])[ind_outside]:
-
-                # reference_line = {"point_start":[0,0],
-                                  # "point_end":position}
-
-                # TODO - don't use reference point, but little 'offset' to avoid singularity
-                # tangent_line = {"point_start":self.hull_edge,
-                                # "point_end":self.tangent_points[:, ii]}
-
-                # ind_intersect[ii], dist = self.are_lines_intersecting(reference_line, tangent_line)
-
-                # if ind_intersect[ii]:
-                    # break
-
-            # if np.sum(ind_intersect): # nonzero
-
-                # return normal_vector
-
-        # if self.reference_point_is_inside or np.sum(ind_intersect)==0:
-            # normal_vector = (2*self.p/self.margin_axes*(position/self.margin_axes)**(2*self.p-1))
-            # pass
 
         if normalize:
             # TODO: can it be removed?
@@ -655,39 +622,3 @@ class Ellipse(Obstacle):
         else:
             # self.reference_point_is_inside = True
             self.n_planes = 0 
-    
-    # def extend_hull_around_reference(self, edge_reference_dist=0.3):
-        # Old function
-        # TODO add margin
-
-        # if self.get_gamma(self.reference_point)<1:
-            # self.reference_point_is_inside = True
-            # return
-        # else:
-            # self.reference_point_is_inside = False
-
-        # vec_cent2ref = np.array(self.get_reference_point(in_global_frame=False))
-        # dist_cent2ref = LA.norm(vec_cent2ref)
-
-        # self.hull_edge = vec_cent2ref*(1 + edge_reference_dist*np.min(self.axes_length)/dist_cent2ref)
-        # self.hull_edge =  np.array(self.get_reference_point(in_global_frame=False))
-        # self.tangent_vector, self.tangent_points = get_tangents2ellipse(self.hull_edge, self.axes)
-        # self.normal_vector = np.zeros((self.dim, 2))
-        # self.normalDistance2center = np.zeros(2)
-
-        # for ii in range(2):
-        #     self.normal_vector[:, ii] = np.array([self.tangent_vector[1,ii],
-        #                                           -self.tangent_vector[0,ii]])
-        #     # Check direction
-        #     self.normalDistance2center[ii] = self.normal_vector[:, ii].T.dot(self.hull_edge)
-
-        #     if (self.normalDistance2center[ii] < 0):
-        #         self.normal_vector[:, ii] = self.normal_vector[:, ii]*(-1)
-        #         self.normalDistance2center[ii] *= -1
-        
-        # if False:
-        #     # plt.plot()
-        #     for ii in range(2):
-        #         norm_abs = transform_relative2global_dir(self.normal_vector[:,ii])
-        #         plt.quiver(0,0, norm_abs, norm_abs, color='y', label='Normal')
-

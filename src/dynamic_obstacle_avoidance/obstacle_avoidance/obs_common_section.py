@@ -11,13 +11,19 @@ import matplotlib.pyplot as plt # for debugging
 
 import warnings
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon, Cuboid
+
 # TODO: include research from graph theory & faster computation
 
 class Intersection_matrix():
-    # Matrix uses less space this way this is useful with many obstacles! e.g. dense crowds
-    # Symmetric matrix with zero as diagonal values
+    '''
+    Matrix uses less space this way this is useful with many obstacles! e.g. dense crowds
+    Symmetric matrix with zero as diagonal values
+    '''
 
     # TODO: use scipy sparse matrices to replace this partially!!!
+    
     def __init__(self, n_obs, dim=2):
         self._intersection_list = [False for ii in range(int((n_obs-1)*n_obs/2))]
         self._dim = n_obs-1
@@ -246,12 +252,17 @@ def obs_common_section_hirarchy(*args, **kwargs):
 
 
 def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5, representation_type='single_point'):
-    ''' OBS_COMMON_SECTION finds common section of two ore more obstacles '''
+    ''' 
+    OBS_COMMON_SECTION finds common section of two ore more obstacles 
+
+    Currently implemented solution is for the 2-dimensional case
+    '''
     
     # at the moment only solution in 2-dimensions is implemented
     # TODO: cleanup comments etc.
 
     num_obstacles = len(obs)
+    
     # No intersection region 
     if not num_obstacles:
         return []
@@ -276,12 +287,20 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
     # Choose number of points each iteration 
     Intersections = Intersection_matrix(num_obstacles)
     
-    R_max = np.zeros((num_obstacles))
+    R_max = np.zeros((num_obstacles)) # Maximum radius for ellipsoid
 
     for it_obs in range(num_obstacles):
         obs[it_obs].draw_obstacle()
+        
+        if isinstance(obs[it_obs], (Ellipse)):
+            R_max[it_obs] = LA.norm(obs[it_obs].axes_length) 
+        if isinstance(obs[it_obs], (Cuboid)):
+            R_max[it_obs] = LA.norm(obs[it_obs].axes_length)/2.0
+        elif isinstance(obs[it_obs], (Polygon)):
+            R_max[it_obs] = np.max(LA.norm(obs[it_obs].edge_points, axis=0))
 
-        R_max[it_obs] = LA.norm(obs[it_obs].axes_length) # Maximum radius for ellipsoid
+        R_max[it_obs] += obs[it_obs].margin_absolut
+    
 
     for it_obs1 in range(num_obstacles):
         for it_obs2 in range(it_obs1+1,num_obstacles):

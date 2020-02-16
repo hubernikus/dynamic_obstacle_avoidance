@@ -18,18 +18,20 @@ import numpy.linalg as LA
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+
+# TODO: remove following two? For Compability
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+
+# TODO: remove after debugging/developping
 import matplotlib.pyplot as plt
 
-# import quaternion
+# import quaternion 
 
 visualize_debug = False
-
 
 class Obstacle(State):
     """ 
@@ -37,11 +39,12 @@ class Obstacle(State):
     """
     # TODO -- enforce certain functions
     def __repr__(self):
-        return "Obstacle of Type: {}".format(type(self))
+        return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self))
 
     def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
                  tail_effect=True, always_moving=True,
                  sf=1,
+                 name="obstacle",
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
@@ -51,6 +54,7 @@ class Obstacle(State):
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
 
+        self.name = name
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
         
@@ -62,6 +66,7 @@ class Obstacle(State):
             center_position = x0 # TODO remove and rename
         self.position = center_position
         self.center_position = self.position
+        
         self.x0 = center_position
 
         self.dim = len(self.center_position) # Dimension of space
@@ -215,6 +220,11 @@ class Obstacle(State):
     def local_reference_point(self):
         # Rename kernel-point?
         return self._reference_point
+
+    @local_reference_point.setter
+    def local_reference_point(self, value):
+        # Rename kernel-point?
+        self._reference_point = value
         
     @property
     def reference_point(self):
@@ -224,9 +234,6 @@ class Obstacle(State):
     @reference_point.setter
     def reference_point(self, value):
         self._reference_point = value
-    # @reference_point.setter
-    # def reference_point(self, value):
-        # self._reference_point = value
 
     @property
     def orientation(self):
@@ -384,29 +391,44 @@ class Obstacle(State):
             self.rotMatrix = np.eye(self.dim)
 
     def set_reference_point(self, position, in_global_frame=False): # Inherit
-        # TODO --- Check if correct
+        """Defines reference point. 
+        It is used to create reference direction for the modulation of the system."""
+        
         if in_global_frame:
             position = self.transform_global2relative(position)
             
         self.reference_point = position
-        
         self.extend_hull_around_reference()
-
+        
     def move_obstacle_to_referencePoint(self, position, in_global_frame=True):
         if not in_global_frame:
             position = self.transform_relative2global(position)
 
         self.center_position = position
+        
         # self.reference_point = position
         # self.center_dyn = self.reference_point
+        
 
-    def move_center(self, position):
+    def move_center(self, position, in_global_frame=True):
+        ''' Change (center) position of the system. 
+        Note that all other variables are relative.'''
+        
+        if not in_global_frame:
+            position = self.transform_relative2global(position)
+        
         self.center_position = position
 
-    def update_position_and_orientation(self, position, orientation, k_position=0.1, k_linear_velocity=0.1, k_orientation=0.1, k_angular_velocity=0.1):
+
+    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None):
+
+        if self.dim>2:
+            raise NotImplementedError("Implement for dimension >2.")
 
         # TODO implement Kalman filter
-        time_current = time.time()
+        if time_current is None:
+            time_current = time.time()
+            
         dt = time_current-self.timestamp
         
         if isinstance(position, list):
@@ -418,31 +440,28 @@ class Obstacle(State):
             new_linear_velocity = (position-self.position)/dt
             
             # Periodicity of oscillation
-            delta_orientation = orientation-self.orientation
-            if np.abs(delta_orientation)>pi:
-                if np.abs(delta_orientation+2*pi)<pi:
-                    orientation += 2*pi
-                elif np.abs(delta_orientation-2*pi)<pi:
-                    orientation -= 2*pi
-                else:
-                    raise ValueError('Unexpected angle difference')
-
-            new_angular_velocity = (orientation-self.orientation)/dt
+            delta_orientation = angle_difference_directional(orientation, self.orientation)
+            new_angular_velocity = delta_orientation/dt
             
-            self.linear_velocity = new_linear_velocity 
-            self.angular_velocity = new_angular_velocity
-            # self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
-            # self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
-            
-            # self.center_position = (position)
+            self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
             self.center_position = (k_position*(position) \
                                     + (1-k_position)*(self.linear_velocity*dt + self.center_position))
-            self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
-            self.orientation = angle_modulo(self.orientation)
-            # import pdb; pdb.set_trace()
+
+            # Periodic Weighted Average
+            self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+
+            self.orientation = periodic_weighted_sum(
+                angles = [orientation, self.angular_velocity*dt + self.orientation],
+                weights = [k_orientation, (1-k_orientation)] )
+            
+            # self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
+            # self.orientation = angle_modulo(self.orientation)
             #TODO add filter
 
         self.timestamp = time_current
+
+        
+    
 
     def are_lines_intersecting(self, direction_line, passive_line):
         # TODO only return intersection point or None
@@ -450,11 +469,6 @@ class Obstacle(State):
         connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start'])
         connection_passive = np.array(passive_line['point_end']) - np.array(passive_line['point_start'])
         connection_matrix = np.vstack((connection_direction, -connection_passive)).T
-        
-        # if True:
-            # plt.plot()
-            # plt.plot(self.boundary_points_local[:, 0], self.boundary_points_local[:, 1], 'k--')
-            # import pdb; pdb.set_trace() ## DEBUG ##
         
         if LA.det(connection_matrix): # nonzero value
             direction_factors = (LA.inv(connection_matrix).dot(
@@ -500,16 +514,26 @@ class Obstacle(State):
             return self.reference_point
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):
-        if len(Gamma)>1:
-            ind_small_gamma = (Gamma <= Gamma_ref)
-            Gamma[ind_small_gamma] = sys.float_info.max
-            Gamma[~ind_small_gamma] = (1-Gamma_ref)/(Gamma[~ind_small_gamma]-Gamma_ref)
-            return Gamma
-        else:
+        '''
+        Reverse Gamma value such that boundaries can be treated with the same algorithm
+        as obstacles
+
+        Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
+        '''
+
+        if isinstance(Gamma, (float, int)):
             if Gamma <= Gamma_ref:
                 return sys.float_info.max
             else:
                 return (1-Gamma_ref)/(Gamma-Gamma_ref)
+            
+        else:
+            if isinstance(Gamma, (list)):
+                Gamma = np.array(Gamma)
+            ind_small_gamma = (Gamma <= Gamma_ref)
+            Gamma[ind_small_gamma] = sys.float_info.max
+            Gamma[~ind_small_gamma] = (1-Gamma_ref)/(Gamma[~ind_small_gamma]-Gamma_ref)
+            return Gamma
     
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
@@ -592,9 +616,6 @@ class Obstacle(State):
         for ii in range(2):
             tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
             plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], 'k--')
-
-        # plt.ion()
-        # plt.show()
 
     # @property
     # def global_reference_(self, position):

@@ -12,13 +12,10 @@ import warnings
 from math import pi
 
 
+
 def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
-    '''
-    Verify if angle_test is in between angle_low & angle_high
-    
-    Values are between [0, 2pi]. An absolute margin seems appropriate
-    '''
-    
+    ''' Verify if angle_test is in between angle_low & angle_high
+    Values are between [0, 2pi]. An absolute margin seems appropriate '''
     delta_low = angle_difference_directional_2pi(angle_test, angle_low)
     delta_high = angle_difference_directional_2pi(angle_high, angle_test)
 
@@ -28,9 +25,7 @@ def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
 
 
 def angle_modulo(angle):
-    '''
-    Get angle in [-pi, pi[ 
-    '''
+    ''' Get angle in [-pi, pi[  '''
     return ((angle+pi) % (2*pi)) - pi
 
 
@@ -56,15 +51,8 @@ def angle_difference_directional(angle1, angle2):
         angle_diff = angle_diff+2*pi
     return angle_diff
 
-
 def angle_difference(angle1, angle2):
     return angle_difference_directional(angle1, angle2)
-    # angle_diff = (angle1-angle2)
-    # while angle_diff > pi:
-        # angle_diff = angle_diff-2*pi
-    # while angle_diff <= -pi:
-        # angle_diff = angle_diff+2*pi
-    # return angle_diff
 
 def angle_difference_abs(angle1, angle2):
     '''
@@ -244,19 +232,22 @@ def get_angle_space(reference_direction, directions, normalize=True):
 def get_directional_weighted_sum(reference_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
     '''
     Weighted directional mean for inputs vector ]-pi, pi[ with respect to the reference_direction
-    
+
+    # INPUT
     reference_direction: basis direction for the angle-frame
     directions: the directions which the weighted sum is taken from
     weights: used for weighted sum
     total_weight: [<=1] 
     normalize: 
+
+    # OUTPUT 
+    
     '''
     # TODO remove obs and position
-    # Move to different file
-    ind_nonzero = (weights>0)
+    ind_nonzero = (weights>0) # non-negative
 
     reference_direction = np.copy(reference_direction)
-    directions = directions[:, ind_nonzero] # Creates new array
+    directions = directions[:, ind_nonzero] 
     weights = weights[ind_nonzero]
 
     if total_weight<1:
@@ -314,3 +305,22 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
         direction_weightedSum = OrthogonalBasisMatrix[:,0]
 
     return direction_weightedSum
+
+
+def periodic_weighted_sum(angles, weights, reference_angle=None):
+    '''Weighted Average of angles (1D)'''
+    # TODO: unify with directional_weighted_sum() // see above
+    # Extend to dimenions d>2
+    if isinstance(angles, list): angles = np.array(angles)
+    if isinstance(weights, list): weights = np.array(weights)
+
+    if reference_angle is None:
+        if len(angles)>2:
+            raise NotImplementedError("No mean defined for periodic function with more than two angles.")
+        reference_angle = angle_difference_directional_2pi(angles[0], angles[1])/2.0 + angle[1]
+        reference_angle = angle_modulo(reference_angle)
+
+    angles = angle_modulo(angles-reference_angle)
+    mean_angle = angles*weights
+
+    return angle_modulo(mean_angle + reference_angle)
