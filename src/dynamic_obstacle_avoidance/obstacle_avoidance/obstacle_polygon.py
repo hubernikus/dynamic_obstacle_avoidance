@@ -1,5 +1,3 @@
- #!/Ussrhuu/Bin/python3
-
 '''
 @date 2019-10-15
 @author Lukas Huber 
