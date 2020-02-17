@@ -46,12 +46,13 @@ def main(n_resol=90, *args, **kwargs):
 
     case_list = {"lab":0, "one_square":1, "one_ellipse":2}
     
-    case = "lab"
+    # case = "lab"
     # case = "one_square"
-    # case = "one_ellipse"
-      
-    if case_list[case]==case_list["lab"]:
+    case = "one_ellipse"
 
+    cases = [5]
+      
+    if 0 in cases:
         robot_margin = 0.4 # radius
         # edge_points = np.array((
         # [100.0,-100.0,-100.0, 100.0],
@@ -59,6 +60,7 @@ def main(n_resol=90, *args, **kwargs):
 
         # frame_id = "world_lab"
         # obs.append( Polygon(edge_points=edge_points, margin_absolut=0.5))
+        x_lim = [-4.1, 4.1]
         y_lim = [-4, 2]
         obs.append( Polygon(edge_points=edge_points, is_boundary=True, margin_absolut=robot_margin, center_position=np.array([-1.0, -1]) , name="lab") )
 
@@ -68,18 +70,25 @@ def main(n_resol=90, *args, **kwargs):
         obs.append( Cuboid(center_position=[-2.5, 0.0], axes_length=[0.8, 0.8], margin_absolut=0.4, name="table"))
         
         # Tool-Trolley
-        # obs.append( Cuboid(center_position=[0.01, -0.5], orientation=-80/180.*pi, axes_length=[1.2, 0.5]) )
-        obs.append( Cuboid(center_position=[0.3, -0.5], axes_length=[0.2, 0.4], margin_absolut=0.4, name="trolley", orientation=90/180.*pi))
+        obs.append( Cuboid(center_position=[2.1, -1.5], axes_length=[0.2, 0.4], margin_absolut=0.4, name="trolley", orientation=90/180.*pi))
+        # obs.append( Cuboid(center_position=[-1.0, -0.1], axes_length=[0.2, 0.4], margin_absolut=0.4, name="trolley", orientation=10/180.*pi))
 
         # Human
-        obs.append( Ellipse(center_position=[-1.0, -0.5], orientation=-10/180.*pi, axes_length=[0.5, 0.3], margin_absolut=0.4, name="human"))
+        # obs.append( Ellipse(center_position=[-1.0, -0.5], orientation=-30/180.*pi, axes_length=[0.5, 0.3], margin_absolut=0.4, name="human"))
+        obs.append( Ellipse(center_position=[-0.5, -2.0], orientation=-30/180.*pi, axes_length=[0.5, 0.3], margin_absolut=0.4, name="human"))
 
-        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=False, figName='lab_environment', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='lab_environment_closely_sparse', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
 
         plt.grid('true')
+
+    if 1.1 in cases:
+        robot_margin = 0.4 # radius
         
-    elif case_list[case]==case_list["one_square"]:
+        obs.append( Polygon(edge_points=edge_points, is_boundary=True, margin_absolut=robot_margin, center_position=np.array([-1.0, -1]) , name="lab") )
         
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='lab_environment_empty', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+        
+    if 2 in cases:
         obs.append( Cuboid(center_position=[0.0, 0.0], axes_length=[2.0, 2.0],
                            # margin_absolut=0.0,
                            margin_absolut=1.0, orientation=0*pi/180))
@@ -87,24 +96,65 @@ def main(n_resol=90, *args, **kwargs):
         # obs[-1].set_reference_point(np.array([3, 0]), in_global_frame=False)
 
 
-        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=False, figName='lab_environment_three_connected', noTicks=False, automatic_reference_point=True)
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='one_square', noTicks=False, automatic_reference_point=True)
+
+        
+        
+
+    if 2.1 in cases:
+        obs.append( Cuboid(center_position=[0.0, 0.0], axes_length=[2.0, 2.0],
+                           # margin_absolut=0.0,
+                           margin_absolut=1.0, orientation=0*pi/180))
+
+        obs[-1].set_reference_point(np.array([3, 0]), in_global_frame=False)
+
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='one_square_boundary_ref', noTicks=False, automatic_reference_point=True)
+
 
         # obs[-1].set_reference_point(np.array([1.4, 1.4]), in_global_frame=False)
         # obs.append( Cuboid(center_position=[-1.0, -1.2], axes_length=[1.0, 1.0], margin_absolut=1.0, orientation=120*pi/180))
         # obs.append( Cuboid(center_position=[0.0, -0.9], axes_length=[1.0, 1.0], margin_absolut=1.0, orientation=0))
         # obs[-1].set_reference_point(np.array([1.4, 1.4]), in_global_frame=False)
-    elif case_list[case]==case_list["one_ellipse"]:
+    if 3 in cases:
         obs.append( Ellipse(
-            center_position=[0.0, 0.0],
-            axes_length=[2.0, 1.0],
+            center_position=[0.0, -1.0],
+            axes_length=[0.8, 1.2],
             # margin_absolut=1.0,
-            margin_absolut=0.0,
-            orientation=00*pi/180))
+            margin_absolut=0.5,
+            orientation=30*pi/180))
         
-        obs[-1].set_reference_point(np.array([2.9, 2]), in_global_frame=True)
         # obs[-1].set_reference_point(np.array([0, 2]), in_global_frame=True)
         
-        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=False, figName='lab_environment', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='lab_environment', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+
+    if 4 in cases:
+        obs.append( Ellipse(
+            center_position=[0.0, -1.0],
+            axes_length=[0.8, 1.2],
+            # margin_absolut=1.0,
+            margin_absolut=0.5,
+            orientation=30*pi/180))
+
+        obs[-1].set_reference_point(np.array([2.9, 2]), in_global_frame=True)
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='ellipse_reference_point', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+
+    if 5 in cases:
+        obs.append( Ellipse(
+            center_position=[4.0, -3.0],
+            axes_length=[0.8, 1.2],
+            # margin_absolut=1.0,
+            margin_absolut=0.5,
+            orientation=30*pi/180))
+
+        obs.append( Cuboid(center_position=[0.0, 0.0], axes_length=[2.0, 2.0],
+                           # margin_absolut=0.0,
+                           margin_absolut=1.0, orientation=0*pi/180))
+
+
+        # obs[-1].set_reference_point(np.array([2.9, 2]), in_global_frame=True)
+        
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='two_obstacles', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
+
 
     return 
     

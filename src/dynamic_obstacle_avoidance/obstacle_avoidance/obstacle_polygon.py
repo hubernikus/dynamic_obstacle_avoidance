@@ -106,8 +106,7 @@ class Polygon(Obstacle):
         self._margin_absolut = value
         self.update_margin()
 
-    def get_reference_length(self):
-        return np.max(LA.norm(obs[it_obs].edge_points, axis=0)) + self.margin_absolut
+    
 
     def update_margin(self):
         if self._margin_absolut>0:
@@ -289,7 +288,8 @@ class Polygon(Obstacle):
         # TODO rename more intuitively
         # self.x_obs = self._boundary_points.T # Surface points
         # self.x_obs_sf = x_obs_sf.T # Margin points
-
+    def get_reference_length(self):
+        return np.min(np.linalg.norm(self.edge_points, axis=0)) + self.margin_absolut
 
     def get_distances_and_normal_to_surfacePannels(self, position, edge_points=None, in_global_frame=False):
         '''
@@ -969,4 +969,5 @@ class Cuboid(Polygon):
             super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
 
     def get_reference_length(self):
-        return LA.norm(obs[it_obs].axes_length)/2.0 + self.margin_absolut
+        return LA.norm(self.axes_length)/2.0 + self.margin_absolut
+

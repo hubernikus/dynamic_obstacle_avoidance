@@ -153,6 +153,7 @@ class Ellipse(Obstacle):
         
     def get_reference_length(self):
         return LA.norm(self.axes_length) + self.margin_absolut
+    
 
     def calculate_normalVectorAndDistance(self):
         normal_vector = np.zeros((self.dim, self.n_planes))
