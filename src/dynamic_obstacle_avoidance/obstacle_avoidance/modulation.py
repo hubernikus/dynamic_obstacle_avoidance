@@ -19,7 +19,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 import matplotlib.pyplot as plt
 
 
-def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05):
+def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
     '''
      The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
     Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.

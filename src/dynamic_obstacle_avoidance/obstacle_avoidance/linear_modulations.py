@@ -145,7 +145,7 @@ def obs_avoidance_interpolation_moving(x, xd, obs=[], attractor='none', weightPo
             xd_hat[:,n] = M[:,:,n].dot(xd) # velocity modulation
 
         if repulsive_obstacle:
-            if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm)
+            if Gamma[n] < (1+repulsive_gammaMargin): # Safety for implementation (Remove for pure algorithm) 
                 repulsive_power = 5
                 repulsive_factor = 5
                 repulsive_gamma = (1+repulsive_gammaMargin)

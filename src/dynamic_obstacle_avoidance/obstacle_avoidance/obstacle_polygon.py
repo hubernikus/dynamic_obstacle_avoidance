@@ -106,6 +106,9 @@ class Polygon(Obstacle):
         self._margin_absolut = value
         self.update_margin()
 
+    def get_reference_length(self):
+        return np.max(LA.norm(obs[it_obs].edge_points, axis=0)) + self.margin_absolut
+
     def update_margin(self):
         if self._margin_absolut>0:
             if self.dim==2:
@@ -673,7 +676,21 @@ class Polygon(Obstacle):
             temp_edge_points = np.copy(self.edge_points)
         else:
             temp_edge_points = self.edge_reference_points.reshape(2, -1)
-            index_unique = np.unique(temp_edge_points, axis=1, return_index=True)[1]
+            if (sys.version_info > (3, 0)): # TODO: remove in future
+                index_unique = np.unique(temp_edge_points, axis=1, return_index=True)[1]
+            else:
+                index_unique = []
+                for jj in range(temp_edge_points.shape[1]):
+                    is_unique = True
+                    for kk in index_unique:
+                        if is_one_point(temp_edge_points[:, jj], 
+                                        temp_edge_points[:, kk]):
+                            is_unique = False
+                            break
+                    if is_unique:
+                        index_unique.append(jj)
+                index_unique = np.array(index_unique)
+                
             temp_edge_points = temp_edge_points[:, np.sort(index_unique)]
 
         # temp_position = np.copy(temp_position)
@@ -951,4 +968,5 @@ class Cuboid(Polygon):
         else:
             super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
 
-
+    def get_reference_length(self):
+        return LA.norm(obs[it_obs].axes_length)/2.0 + self.margin_absolut

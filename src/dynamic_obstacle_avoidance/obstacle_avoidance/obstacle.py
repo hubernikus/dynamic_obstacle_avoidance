@@ -314,7 +314,7 @@ class Obstacle(State):
 
     @property
     def x_obs(self):
-        return self.boundary_points_global
+        return self.boundary_points_global_closed
 
     @property
     def boundary_points_global_closed(self):
@@ -343,7 +343,7 @@ class Obstacle(State):
 
     @property
     def x_obs_sf(self):
-        return self.boundary_points_margin_global
+        return self.boundary_points_margin_global_closed
     
     @property
     def boundary_points_margin_global(self):
@@ -370,8 +370,9 @@ class Obstacle(State):
 
         # rotating the query point into the obstacle frame of reference
         if self.dim==2:
-            self.rotMatrix = np.array([[cos(orientation), -sin(orientation)],
+            self.rotMatrix = np.array([[cos(orientation), -sin(orientation)], 
                                        [sin(orientation),  cos(orientation)]])
+                                       
         elif self.dim==3:
             R_x = np.array([[1, 0, 0,],
                         [0, np.cos(orientation[0]), np.sin(orientation[0])],
@@ -420,7 +421,14 @@ class Obstacle(State):
         self.center_position = position
 
 
-    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None):
+    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.99, k_angular_velocity=0.99, time_current=None):
+        ''' 
+        Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
+        Updated values for pose and twist are filetered.
+
+        Input: 
+        - Position (2D) & 
+        - Orientation (float)  '''
 
         if self.dim>2:
             raise NotImplementedError("Implement for dimension >2.")
@@ -441,6 +449,9 @@ class Obstacle(State):
             
             # Periodicity of oscillation
             delta_orientation = angle_difference_directional(orientation, self.orientation)
+            print('old orientation = {} // new orentation = {}'.format(
+                np.round(orientation, 2), np.round(self.orientation, 2)))
+            print('detlat orientation', np.round(delta_orientation, 2))
             new_angular_velocity = delta_orientation/dt
             
             self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
@@ -457,11 +468,9 @@ class Obstacle(State):
             # self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
             # self.orientation = angle_modulo(self.orientation)
             #TODO add filter
-
         self.timestamp = time_current
 
-        
-    
+        self.draw_obstacle()
 
     def are_lines_intersecting(self, direction_line, passive_line):
         # TODO only return intersection point or None

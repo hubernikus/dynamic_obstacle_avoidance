@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt # for debugging
 
 import warnings
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon, Cuboid
+# from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon, Cuboid
 
 # TODO: include research from graph theory & faster computation
 
@@ -248,7 +248,7 @@ def obs_common_section(obs):
 
 def obs_common_section_hirarchy(*args, **kwargs):
     # TODO: depreciated -- remove
-    return find_intersections_obstacles(*args, **kwargs, representation_type="hirarchy")
+    return find_intersections_obstacles(*args, representation_type="hirarchy", **kwargs)
 
 
 def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5, representation_type='single_point'):
@@ -291,16 +291,8 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
 
     for it_obs in range(num_obstacles):
         obs[it_obs].draw_obstacle()
-        
-        if isinstance(obs[it_obs], (Ellipse)):
-            R_max[it_obs] = LA.norm(obs[it_obs].axes_length) 
-        if isinstance(obs[it_obs], (Cuboid)):
-            R_max[it_obs] = LA.norm(obs[it_obs].axes_length)/2.0
-        elif isinstance(obs[it_obs], (Polygon)):
-            R_max[it_obs] = np.max(LA.norm(obs[it_obs].edge_points, axis=0))
 
-        R_max[it_obs] += obs[it_obs].margin_absolut
-    
+        R_max[it_obs] = obs[it_obs].get_reference_length()
 
     for it_obs1 in range(num_obstacles):
         for it_obs2 in range(it_obs1+1,num_obstacles):

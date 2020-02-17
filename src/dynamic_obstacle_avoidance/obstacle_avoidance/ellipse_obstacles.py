@@ -31,9 +31,9 @@ visualize_debug = False
 class Ellipse(Obstacle):
     '''
     Ellipse type obstacle 
-    Main attributes are:
-    axes_length:
-    curvature:
+    Geometry specifi attributes are
+    axes_length: 
+    curvature: float / array (list)
     '''
     
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
@@ -127,7 +127,10 @@ class Ellipse(Obstacle):
 
     @curvature.setter
     def curvature(self, value):
-        self._curvature = value
+        if isinstance(value, (list)): # TODO remove only allow one value...
+            self._curvature = np.array(value)
+        else:
+            self._curvature = value
 
     @property
     def margin_absolut(self):
@@ -147,6 +150,9 @@ class Ellipse(Obstacle):
     def get_maximal_distance(self):
         # Eucledian
         return np.sqrt(np.sum(self.a*2))
+        
+    def get_reference_length(self):
+        return LA.norm(self.axes_length) + self.margin_absolut
 
     def calculate_normalVectorAndDistance(self):
         normal_vector = np.zeros((self.dim, self.n_planes))

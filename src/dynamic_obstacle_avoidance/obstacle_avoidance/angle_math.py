@@ -317,10 +317,10 @@ def periodic_weighted_sum(angles, weights, reference_angle=None):
     if reference_angle is None:
         if len(angles)>2:
             raise NotImplementedError("No mean defined for periodic function with more than two angles.")
-        reference_angle = angle_difference_directional_2pi(angles[0], angles[1])/2.0 + angle[1]
+        reference_angle = angle_difference_directional_2pi(angles[0], angles[1])/2.0 + angles[1]
         reference_angle = angle_modulo(reference_angle)
 
     angles = angle_modulo(angles-reference_angle)
-    mean_angle = angles*weights
-
+    mean_angle = angles.T.dot(weights)
+    
     return angle_modulo(mean_angle + reference_angle)
