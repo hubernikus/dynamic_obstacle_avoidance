@@ -42,18 +42,17 @@ class Obstacle(State):
         return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self))
 
     def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
-                 tail_effect=True, always_moving=True,
-                 sf=1,
+                 tail_effect=True, sf=1,
                  name="obstacle",
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
-                 # , *args, **kwargs): # maybe random arguments
+                 # *args, **kwargs): # maybe random arguments
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-
+        
         self.name = name
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
@@ -68,7 +67,7 @@ class Obstacle(State):
         self.center_position = self.position
         
         self.x0 = center_position
-
+        
         self.dim = len(self.center_position) # Dimension of space
         self.d = len(self.center_position) # Dimension of space # TODO remove
         
@@ -88,8 +87,8 @@ class Obstacle(State):
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-        else:
-            self.always_moving = always_moving
+        # else:
+            # self.always_moving = always_moving
         
         if angular_velocity is None:
             if w is None:
@@ -98,6 +97,7 @@ class Obstacle(State):
                 elif self.dim==3:
                     angular_velocity = np.zeros(self.dim)
                 else:
+                    import pdb; pdb.set_trace();
                     raise ValueError("Define angular velocity for higher dimensions.")
             else:
                 angular_velocity = w
@@ -138,7 +138,8 @@ class Obstacle(State):
         self.is_boundary = is_boundary
 
         self.is_convex = False # Needed?
-
+        
+        # if 
         self.properties = {} # TODO: use kwargs
         
 
@@ -421,15 +422,14 @@ class Obstacle(State):
         self.center_position = position
 
 
-    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.99, k_angular_velocity=0.99, time_current=None):
-        ''' 
-        Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
+    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None, reset=False):
+        ''' Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
         Updated values for pose and twist are filetered.
 
         Input: 
         - Position (2D) & 
         - Orientation (float)  '''
-
+        
         if self.dim>2:
             raise NotImplementedError("Implement for dimension >2.")
 
@@ -437,33 +437,43 @@ class Obstacle(State):
         if time_current is None:
             time_current = time.time()
             
-        dt = time_current-self.timestamp
+        if reset:
+            self.center_position = position
+            self.orientation = orientation
+            self.linear_velocity = np.zeros(self.dim)
+            self.angular_velocity = np.zeros(self.dim)
+            self.draw_obstacle()
+            return 
+        
+        dt = time_current - self.timestamp
         
         if isinstance(position, list):
             position = np.array(position)
 
         if self.dim==2:
             # 2D navigation, but 3D sensor input
-
             new_linear_velocity = (position-self.position)/dt
             
             # Periodicity of oscillation
             delta_orientation = angle_difference_directional(orientation, self.orientation)
-            print('old orientation = {} // new orentation = {}'.format(
-                np.round(orientation, 2), np.round(self.orientation, 2)))
-            print('detlat orientation', np.round(delta_orientation, 2))
             new_angular_velocity = delta_orientation/dt
-            
-            self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
-            self.center_position = (k_position*(position) \
-                                    + (1-k_position)*(self.linear_velocity*dt + self.center_position))
+            # print('new orientation = {} // old orentation = {}'.format(np.round(orientation*180/pi, 2), np.round(self.orientation*180/pi, 2)))
+            # print('delta orientation', np.round(delta_orientation*180/pi, 2))
+
+            self.linear_velocity = k_linear_velocity*self.linear_velocity + (1-k_linear_velocity)*new_linear_velocity
+            self.center_position = k_position*(self.linear_velocity*dt + self.center_position) + (1-k_position)*(position)
 
             # Periodic Weighted Average
-            self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            # print('angular vel: old={} --- new={}'.format(np.round(self.angular_velocity, 2), np.round(new_angular_velocity, 2)))
+            self.angular_velocity = k_angular_velocity*self.angular_velocity + (1-k_angular_velocity)*new_angular_velocity 
 
+            # print('final vel={} // dt={}'.format(self.angular_velocity, dt))
+            # print('step', self.angular_velocity*dt)
+            # print('orientation', orientation)
+            # print('prediced or', self.angular_velocity*dt + self.orientation)
             self.orientation = periodic_weighted_sum(
-                angles = [orientation, self.angular_velocity*dt + self.orientation],
-                weights = [k_orientation, (1-k_orientation)] )
+                angles=[self.angular_velocity*dt+self.orientation, orientation],
+                weights=[k_orientation, (1-k_orientation)] )
             
             # self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
             # self.orientation = angle_modulo(self.orientation)
