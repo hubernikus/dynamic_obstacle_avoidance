@@ -337,7 +337,7 @@ class Ellipse(Obstacle):
             # rad_local = np.sqrt(1.0/np.sum((position/np.tile(self.axes_with_margin, (n_points, 1)).T)**np.tile(self.p, (n_points, 1)).T, axis=0))
             # return np.linalg.norm(position, axis=0)/(rad_local*np.linalg.norm(position, axis=0))
             # return 1.0/rad_local
-            return np.sqrt(np.sum((position/np.tile(axes, (n_points, 1)).T)**np.tile(2*curvature, (n_points, self.dim)).T, axis=0))
+            return np.sqrt(np.sum((position / np.tile(axes, (n_points, 1)).T)**np.tile(2*curvature, (n_points, self.dim)).T, axis=0))
         
         else:
             norm_position = np.linalg.norm(position)

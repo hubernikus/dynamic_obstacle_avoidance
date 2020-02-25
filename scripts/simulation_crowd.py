@@ -50,7 +50,46 @@ def main(n_resol=90, *args, **kwargs):
     # case = "one_square"
     case = "one_ellipse"
 
-    cases = [5]
+    cases = [-1]
+
+    if -1 in cases:
+        x_lim = [-3.1, 2.0]
+        y_lim = [-2.2, 2.0]
+        
+        robot_radius = 0.48
+        exponential_weight = 1
+        
+        edge_points = np.array((
+            [3.8, 3.8,-0.5,-0.5, 0.2, 0.2, 3.8],
+            [0.0, 2.0, 2.0,-0.8,-0.8,-2.0,-2.0]
+        ))
+        obs.append(Polygon(edge_points=edge_points, is_boundary=True, margin_absolut=robot_radius, sigma=exponential_weight, name="world_lab"))
+        
+        # Displacement
+        obs[-1].center_position += np.array([-2.4, 0])
+        obs[-1].orientation += 0.5/180*pi
+
+        # Human
+        obs.append(Ellipse(center_position=[-1.0, 0.8], axes_length=[0.35, 0.15], orientation=30/180.*pi, margin_absolut=robot_radius, sigma=exponential_weight, name='coworker'))
+        obs[-1].is_static = False
+
+        # Table
+        obs.append(Cuboid(center_position=[0.3, -1.70], axes_length=[1.0, 1.0], margin_absolut=robot_radius, sigma=exponential_weight, name='KIA'))
+        obs[-1].is_static = True
+
+        # Table
+        obs.append(Cuboid(center_position=[-0.65, -1.35], axes_length=[0.8, 1.8], margin_absolut=robot_radius, sigma=exponential_weight, name='table'))
+        obs[-1].is_static = True
+
+        # Table
+        obs.append(Cuboid(center_position=[1.18, 0.86], axes_length=[0.8, 1.8], margin_absolut=robot_radius, sigma=exponential_weight, name='table_computer'))
+        obs[-1].is_static = True
+
+        # pos_attractor = [-0.65, -1.0]
+        pos_attractor = [0.3, -0.75]
+        pos_attractor = [-1.75, -0.97]
+        n_resol = 3
+        Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='lab_environment_closely_sparse', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
       
     if 0 in cases:
         robot_margin = 0.4 # radius

@@ -242,7 +242,6 @@ def obs_common_section(obs):
     #     intersection_sf = [intersection_sf, intersection_sf(:,1)]
 
     #     intersection_obs = [1:size(obs,2)]
-    
     return intersection_obs 
 
 
@@ -278,11 +277,12 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
     d = dim # TODO remove!
 
     # Find Boundaries
-    ind_wall = -1
-    for o in range(num_obstacles):
-        if obs[o].is_boundary:
-            ind_wall = o
-            break
+    # ind_wall = obs.ind_wall
+    # ind_wall = -1
+    # for o in range(num_obstacles):
+        # if obs[o].is_boundary:
+            # ind_wall = o
+            # break
 
     # Choose number of points each iteration 
     Intersections = Intersection_matrix(num_obstacles)
@@ -294,6 +294,7 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
 
         R_max[it_obs] = obs[it_obs].get_reference_length()
 
+        
     for it_obs1 in range(num_obstacles):
         for it_obs2 in range(it_obs1+1,num_obstacles):
 
@@ -344,9 +345,16 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
     # All obstacles, which have at least one intersection
     intersecting_obstacles = np.arange(num_obstacles)[np.sum(intersection_matrix, axis=0)>0]
 
+    # import pdb; pdb.set_trace() ## DEBUG ##
+    
     if not obs.index_wall is None:
         # TODO solve more cleanly...
         intersecting_obstacles = np.delete(intersecting_obstacles, np.nonzero(intersecting_obstacles==obs.index_wall), axis=0)
+
+        # wall_intersections = np.arange(intersection_matrix.shape[0])[intersection_matrix[:, 0]]
+        # while(ii < len(intersecting_obstacles)):
+            # if intersecting_obstacles[ii] in wall_intersections:
+                # intersecting_obstacles
         
     intersection_cluster_list = []
 
@@ -390,11 +398,13 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
         return intersection_cluster_list, Intersections
     else:
         return intersection_cluster_list
-    
+
 
 def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Intersections, dim):
     # TODO: make applicable for all environments with 
     for ii in range(len(intersection_clusters)): # list of cluster-lists
+
+        wall_intersection_points = []
         
         if obs.index_wall in intersection_clusters[ii]: # Cluster is touching wall
             for jj in intersection_clusters[ii]:
@@ -402,14 +412,20 @@ def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Inte
                     continue
                 
                 if Intersections.is_interescting(jj, obs.index_wall):
-                    wall_intersection_point = Intersections.get(jj, obs.index_wall)
-                    break
-                
+                    wall_intersection_points.append(Intersections.get(jj, obs.index_wall))
+                    # break
+
+            wall_intersection_points = np.array(wall_intersection_points).T
             for jj in intersection_clusters[ii]:
                 if jj == obs.index_wall:
                     continue
-
-                obs[jj].set_reference_point(wall_intersection_point, in_global_frame=True)
+                
+                if wall_intersection_points.shape[1] == 1:
+                    obs[jj].set_reference_point(wall_intersection_points[:, 0], in_global_frame=True)
+                else:
+                    # TODO: use shortes hirarchy/graph-steps instead of Eucledian distance.
+                    dist_intersection = np.linalg.norm(wall_intersection_points - np.tile(obs[jj].position, (wall_intersection_points.shape[1], 1)).T, axis=0)
+                    obs[jj].set_reference_point(wall_intersection_points[:, np.argmin(dist_intersection)], in_global_frame=True)
             
         else:
             geometric_center = np.zeros(dim)
