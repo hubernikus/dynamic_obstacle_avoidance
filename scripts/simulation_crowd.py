@@ -63,6 +63,7 @@ def main(n_resol=90, *args, **kwargs):
             [3.8, 3.8,-0.5,-0.5, 0.2, 0.2, 3.8],
             [0.0, 2.0, 2.0,-0.8,-0.8,-2.0,-2.0]
         ))
+        
         obs.append(Polygon(edge_points=edge_points, is_boundary=True, margin_absolut=robot_radius, sigma=exponential_weight, name="world_lab"))
         
         # Displacement
@@ -85,10 +86,11 @@ def main(n_resol=90, *args, **kwargs):
         obs.append(Cuboid(center_position=[1.18, 0.86], axes_length=[0.8, 1.8], margin_absolut=robot_radius, sigma=exponential_weight, name='table_computer'))
         obs[-1].is_static = True
 
-        # pos_attractor = [-0.65, -1.0]
-        pos_attractor = [0.3, -0.75]
+        # pos_attractor = [0.3, -0.75]
         pos_attractor = [-1.75, -0.97]
-        n_resol = 3
+
+        # pos_attractor = obs['coworker'].get_reference_point(in_global_frame=True)
+        # n_resol = 3
         Simulation_vectorFields(x_lim, y_lim, n_resol, obs, xAttractor=pos_attractor, saveFigure=True, figName='lab_environment_closely_sparse', noTicks=False, automatic_reference_point=True, draw_vectorField=True)
       
     if 0 in cases:
