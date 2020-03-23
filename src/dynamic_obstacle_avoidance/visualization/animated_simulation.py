@@ -68,7 +68,7 @@ class Animated():
     """
     An animated scatter plot using matplotlib.animations.FuncAnimation.
     """
-    def __init__(self, x0=None, obs=[], N_simuMax=600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), dimension=None):
+    def __init__(self, x0=None, obs=[], N_simuMax=600, dt=0.01, attractorPos=None, convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int= False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,7), dimension=None):
 
         if x0 is None:
             self.dim = 2 # Default
@@ -85,10 +85,11 @@ class Animated():
         self.obs = obs
         self.N_simuMax = N_simuMax
         self.dt = dt
-        if attractorPos == 'default':
-            self.attractorPos = self.dim*[0.0]
+        
+        if attractorPos is None:
+            self.attractorPos = np.zeros(self.dim)
         else:
-            self.attractorPos = attractorPos
+            self.attractorPos = np.array(attractorPos)
             
         self.sleepPeriod=sleepPeriod
 
@@ -248,14 +249,16 @@ class Animated():
 
             if self.obs[o].always_moving or self.obs[o].x_end > self.t[self.iSim] or self.iSim<1: # First two rounds or moving
                 if self.dim ==2: # only show safety-contour in 2d, otherwise not easily understandable
-                    self.contour[o].set_xdata([self.obs[o].x_obs_sf[ii][0] for ii in range(len(self.obs[o].x_obs_sf[:, :2]))])
-                    self.contour[o].set_ydata([self.obs[o].x_obs_sf[ii][1] for ii in range(len(self.obs[o].x_obs_sf[:, :2]))])
+                    # self.contour[o].set_xdata([self.obs[o].x_obs_sf[ii][0] for ii in range(len(self.obs[o].x_obs_sf[:, :2]))])
+                    self.contour[o].set_xdata(self.obs[o].x_obs_sf[0, :])
+                    self.contour[o].set_ydata(self.obs[o].x_obs_sf[1, :])
 
             if self.obs[o].always_moving or self.obs[o].x_end > self.t[self.iSim] or self.iSim<2:
                 if self.dim==2:
-                    self.obs_polygon[o].xy = self.obs[o].x_obs[:, :2]
+                    self.obs_polygon[o].xy = self.obs[o].x_obs[:2, :].T
                 else:
-                    self.obs_polygon[o].xyz = self.obs[o].x_obs[:, :3]
+                    self.obs_polygon[o].xyz = self.obs[o].x_obs[:3, :].T
+
         self.iSim += 1 # update simulation counter
 
         # Convergence is not discovered during video-saving
@@ -270,13 +273,13 @@ class Animated():
     
 
     def setup_plot(self):
+        print("Start setup...")
         # Draw obstacle
         self.obs_polygon = []
         
         # Numerical hull of ellipsoid
         for n in range(len(self.obs)):
             
-            print('is it', isinstance(self.obs[n], DynamicBoundariesPolygon))
             if isinstance(self.obs[n], DynamicBoundariesPolygon):
                 it_point=0
                 self.obs[n].draw_obstacle(z_val=self.x_pos[1, self.iSim+1, it_point]) # Update obstacles)
@@ -388,8 +391,11 @@ class Animated():
                     self.attractorPos[0] = np.random.rand(1)[0]*(self.ax.get_xlim()[1]-self.ax.get_xlim()[0])+self.ax.get_xlim()[0]
                     self.attractorPos[1] = np.random.rand(1)[0]*(self.ax.get_ylim()[1]-self.ax.get_ylim()[0])+self.ax.get_ylim()[0]
 
-                    no_collisions = obs_check_collision(np.tile(self.attractorPos, (1,1)).T, self.obs)
-                    new_attractor_is_chosen = no_collisions[0]
+                    new_attractor_is_chosen = True
+                    for oo in range(len(self.obs)):
+                        if self.obs[oo].get_gamma(self.attractorPos) < 1:
+                            new_attractor_is_chosen = False
+                            break
 
                 self.attr_pos[0].set_data(self.attractorPos[0], self.attractorPos[1])
 
@@ -444,6 +450,8 @@ def run_animation(*args, animationName="test", saveFigure=False,
     # This function is called from other scripts
     # Somehow the class initialization <<Animated(**)>>
     # and anim.show() has to be in the same file/function
+    print("Run it...")
+    
     plt.close('all')
     # plt.ion()
     plt.ioff()

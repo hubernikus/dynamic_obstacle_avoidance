@@ -29,13 +29,11 @@ import matplotlib.pyplot as plt
 visualize_debug = False
 
 class Ellipse(Obstacle):
-    '''
-    Ellipse type obstacle 
+    ''' Ellipse type obstacle 
     Geometry specifi attributes are
     axes_length: 
     curvature: float / array (list)
     '''
-    
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
@@ -50,7 +48,7 @@ class Ellipse(Obstacle):
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
         elif not a is None:
-            self.axes_length = np.array(axes_length) # TODO: depreciated, remove
+            self.axes_length = np.array(a) # TODO: depreciated, remove
         else:
             warning.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
@@ -176,12 +174,15 @@ class Ellipse(Obstacle):
         normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1)) 
 
         return normal_vector, normalDistance2center
-
-    
-    def get_distance_to_hullEdge(self, position, hull_edge=None):
+        
+    def get_distance_to_hullEdge(self, position, hull_edge=None, in_global_frame=False):
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+        
         if hull_edge is None:
             hull_edge = self.hull_edge
             normal_vector = self.normal_vector
+            
         else:
             normal_vector, dist = self.calculate_normalVectorAndDistance(hull_edge)
 
@@ -223,13 +224,14 @@ class Ellipse(Obstacle):
         margin_subtraction = 1e-12
         
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
-    
+
 
     def get_normal_ellipse(self, position):
         '''
         Return normal to ellipse surface
         '''
         return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
+    
 
     def get_angle2referencePatch(self, position, max_angle=pi, in_global_frame=False):
         '''
@@ -337,7 +339,7 @@ class Ellipse(Obstacle):
             # rad_local = np.sqrt(1.0/np.sum((position/np.tile(self.axes_with_margin, (n_points, 1)).T)**np.tile(self.p, (n_points, 1)).T, axis=0))
             # return np.linalg.norm(position, axis=0)/(rad_local*np.linalg.norm(position, axis=0))
             # return 1.0/rad_local
-            return np.sqrt(np.sum((position/np.tile(axes, (n_points, 1)).T)**np.tile(2*curvature, (n_points, self.dim)).T, axis=0))
+            return np.sqrt(np.sum((position / np.tile(axes, (n_points, 1)).T)**np.tile(2*curvature, (n_points, self.dim)).T, axis=0))
         
         else:
             norm_position = np.linalg.norm(position)
@@ -346,13 +348,200 @@ class Ellipse(Obstacle):
             # rad_local = np.sqrt(1.0/np.sum(position/self.axes_with_margin**self.p) )
             # return 1.0/rad_local
             return np.sqrt(np.sum((position/axes)**(2*curvature) ))
+    
+    def get_surface_derivative_angle(self, angle_space, in_global_frame=False):
+        if self.dim ==2:
+            if in_global_frame:
+                angle_space = angle_space - self.orientation
+                # import pdb; pdb.set_trace() ## DEBUG ##
+                
+            direction = np.array([np.cos(angle_space), np.sin(angle_space)])
+            direction_perp = np.array([-direction[1], direction[0]])
+            
+        else:
+            raise NotImplementedError("TODO for d>2")
 
-    def get_gamma(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
+        # TODO: should this be more general definition
+        local_radius = self.get_intersection_with_surface(direction=direction, only_positive_direction=True)
+        
+        local_radius = np.linalg.norm(local_radius, 2)
+        derivative = direction_perp*local_radius - 0.5*direction * (local_radius**3) *self.get_radius_derivative_direction(angle_space)
+        
+        if in_global_frame:
+            derivative = self.transform_relative2global_dir(derivative)
+
+        return derivative
+    
+    
+    def get_radius_derivative_direction(self, angle_space):
+        axes = self.axes_with_margin
+        if self.dim==2:
+            return 2*np.cos(angle_space)*np.sin(angle_space)*(-1.0/(axes[0]*axes[0])+1.0/(axes[1]*axes[1]))
+        else:
+            raise NotImplementedError("Implement for d>2")
+        
+
+    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=False, in_global_frame=False):
+        ''' Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+
+        edge_point / c : Starting point of line
+        direction / m : direction of line
+
+        axes / a1 & a2: Axes of ellipse
+        center_ellipse: Center of ellipse '''
+
+        if in_global_frame:
+            direction = self.transform_global2relative_dir(direction)
+
+        if axes is None:
+            axes = self.axes_with_margin
+
+        if edge_point is None:
+            # edge_point = np.zeros(self.dim)
+            mag_x = 1.0/np.sqrt(np.sum((direction/axes)**2))
+            
+            intersections = mag_x * direction
+            
+            if not only_positive_direction:
+                intersections =  np.tile(pos, (2,1)).T
+                
+            if in_global_frame:
+                intersections = self.transform_relative2global(intersections)
+
+            return intersections
+
+        elif in_global_frame:
+            edge_point = self.transform_global2relative(edge_point)
+
+        # Dimension
+        if self.dim > 2:
+            raise NotImplementedError("Not yet implemented for D>2")
+
+            
+        
+        if not center_ellipse is None:
+            edge_point = edge_point - center_ellipse
+
+        
+        # x_1^2 * a_2^2 + (m*x_1+c)^2*a_1^2 = a_1^2*a_2^2
+        # x_1^2 (a_2^2 + m^2*a_1^2) + x_1*(a_1^2*m*c*2) + c^2*a_1^2 - a_1^2*a_2^2
+        if direction[0]==0:
+            m = sys.float_info.max
+        else:
+            m = direction[1]/direction[0]
+        c = edge_point[1] - m*edge_point[0]
+
+        A = (axes[0]*m)**2 + axes[1]**2
+        B = 2*axes[0]**2*m*c
+        C = (axes[0]*c)**2 - (axes[0]*axes[1])**2
+
+        D = B*B - 4*A*C
+
+        if D<0:
+            # import pdb; pdb.set_trace() ## DEBUG ##
+            warnings.warn("No intersection found.")
+            return 
+
+        sqrtD = np.sqrt(D)
+
+        if only_positive_direction:
+            intersections = np.zeros(self.dim)
+            intersections[0] = (-B+sqrtD)/(2*A)
+
+            if not direction[0]==0 and (intersections[0] - edge_point[0])/direction[0]>0:
+                intersections[0] = (-B-sqrtD)/(2*A)
+            intersections[1] = intersections[0]*m + c
+
+        else:
+            intersections = np.zeros((self.dim, 2))
+            intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
+            intersections[1,:] = intersections[0,:]*m + c
+            # return intersections
+
+        if not center_ellipse is None:
+            intersections = intersections + np.tile(center_ellipse, (intersections.shape[1],1)).T
+
+        if in_global_frame:
+            intersections = self.transform_relative2global(intersections)
+        return intersections
+
+
+    def _get_local_radius_ellipse(self, position, reference_point):
+        '''
+        Get radius of ellipse in direction of position from the reference point
+
+        # TODO: include in previous example
+        '''
+        # intersection = self.get_intersection_with_surface(reference_point, position-reference_point, only_positive_direction=True)
+        intersection = self.get_intersection_with_surface(reference_point, position-reference_point, only_positive_direction=True)
+        
+        try:
+            return np.linalg.norm(intersection-reference_point )
+        except:
+            print(intersection)
+            print(reference_point)
+            # import pdb; pdb.set_trace() ## DEBUG ##
+
+    
+    def _get_local_radius(self, position, reference_point=None):
+        # TODO: test for margin / reference point
+        # TODO: improve speed
+        if reference_point is None:
+            reference_point = self.reference_point
+
+        # TODO: remove and make actual reference point
+        if reference_point is None:
+            reference_point = np.zeros(self.dimension)
+
+        margin_absolut = self.margin_absolut
+        
+        n_points = position.shape[1]
+
+        radius = np.zeros(position.shape[1])
+        
+        # Original Gamma
+        if self.dim==2:
+            if (self.reference_point_is_inside):
+                for pp in range(n_points):
+                    radius[pp] = self._get_local_radius_ellipse(position[:, pp], reference_point)
+            else:
+                for pp in range(n_points):
+                    if self.position_is_in_direction_of_ellipse(position[:, pp]):
+                        radius[pp] = self._get_local_radius_ellipse(position[:, pp], reference_point)
+                    else:
+                        angle_position = np.arctan2(position[1, pp], position[0, pp])
+
+                        dist_intersect = -1
+                        for ii, sign in zip(range(self.n_planes), [1,-1]):
+                            angle_ref = np.arctan2(self.edge_reference_points[1,self.ind_edge_ref, ii], self.edge_reference_points[0,self.ind_edge_ref, ii])
+
+                            # print('angle ref', angle_ref)
+
+                            if sign*angle_difference_directional(angle_ref, angle_position) >= 0:
+                                surface_dir = (self.edge_reference_points[: ,self.ind_edge_ref, ii] - self.edge_reference_points[:, self.ind_edge_tang, 1-ii])
+
+                                dist_intersect, dist_tangent = LA.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[:, self.ind_edge_ref, ii], rcond=-1)[0]
+
+                        if dist_intersect<0: # 
+                            if not margin_absolut:
+                                # import pdb; pdb.set_trace() ## DEBUG ##
+                                raise ValueError("Negative value not possible.")
+
+                            intersections = get_intersectionWithEllipse(
+                                edge_point=np.zeros(self.dim), direction=position,
+                                axes=np.ones(self.dim)*margin_absolut)
+
+                            distances = np.linalg.norm(intersections, axis=0)
+                            dist_intersect = np.max(distances)
+                        radius[pp] = dist_intersect
+        return radius
+
+    # def get_gamma(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
+    def get_gamma_old(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
         '''
         Get distance function from surface
         '''
-        
-        # TODO: use cython to speed up
+        # TODO: depreciated... remove
         
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -438,14 +627,8 @@ class Ellipse(Obstacle):
 
         if not multiple_positions:
             return Gamma[0] # 1x1-array to value
-        
         return Gamma
-
     
-    def draw_ellipsoid(self, *args, **kwargs):
-        # TODO: depreciated -- remove
-        raise NotImplementedError("<<draw_ellipsoid>> has been renamed <<draw_obstacle>>")
-
     
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
         '''
@@ -453,7 +636,7 @@ class Ellipse(Obstacle):
         '''
         p = self.p
         a = self.axes_length
-        
+
         if update_core_boundary_points:
             if self.dim==2 :
                 theta = np.linspace(-pi,pi, num=numPoints)

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
 
 
 class HumanEllipse(Ellipse):
@@ -38,6 +38,9 @@ class HumanEllipse(Ellipse):
         self.personal_axis = np.array(personal_axis)
         self.personal_center = np.array(personal_center) # in local frame
         
+    def repulsion_force(self, position):
+        raise NotImplementedError()
+
     def repulsion_force(self, position):
         raise NotImplementedError()
 

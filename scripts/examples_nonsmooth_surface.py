@@ -14,13 +14,14 @@ import matplotlib.pyplot as plt
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
 from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation, samplePointsAtBorder
 
 ########################################################################
 options = [0]
 
-N_resol = 3
+N_resol = 30
 
 saveFigures=True
 ########################################################################
@@ -38,9 +39,13 @@ def main(options=[], N_resol=100, saveFigures=False):
             
             obs.append(Ellipse(axes_length=[1., 2], center_position=[5, 2.1], p=[1,1], orientation=150./180*pi, sf=1, is_boundary=False))
 
-            obs.append(Ellipse(axes_length=[0.3, 1.8], center_position=[3, -2.4], p=[1,1], orientation=-70./180*pi, sf=1, is_boundary=False))
+            obs.append(Ellipse(axes_length=[1.5, 1.5], center_position=[3, -2.1], p=[1,1], orientation=00./180*pi, sf=1, is_boundary=False))
 
-            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
+            # obs.append(Ellipse(axes_length=[1.5, 1.5], center_position=[3, 3.1], p=[1,1], orientation=00./180*pi, sf=1, is_boundary=False))
+
+            # obs.append(Ellipse(axes_length=[0.3, 1.8], center_position=[3, -2.4], p=[1,1], orientation=-70./180*pi, sf=1, is_boundary=False))
+
+            fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True, automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
 
             # fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=[], xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_initial', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
             

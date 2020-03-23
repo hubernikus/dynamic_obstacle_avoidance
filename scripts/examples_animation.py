@@ -17,7 +17,8 @@ import datetime
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.visualization.animated_simulation import run_animation, samplePointsAtBorder
@@ -25,7 +26,7 @@ from dynamic_obstacle_avoidance.visualization.animated_simulation import run_ani
 print(' ----- Script <<dynamic simulation>> started. ----- ')
 #############################################################
 # Choose a simulation between 0 and 12
-simulationNumber = 14
+simulationNumber = 1
 
 saveFigures = False
 #############################################################
@@ -102,6 +103,7 @@ def main(simulationNumber=0, saveFigures=False):
         y_range = [-10,10]
         zRange = [-10,10]
         #obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+        
 
         attractorPos = [0,0]
 
@@ -126,8 +128,8 @@ def main(simulationNumber=0, saveFigures=False):
         rCent = 3
         # obs[n].center_dyn=[obs[n].x0[0], 
                            # obs[n].x0[1]]
-        obs[n].center_dyn=[obs[n].x0[0]-rCent*np.cos(obs[n].th_r),
-                           obs[n].x0[1]-rCent*np.sin(obs[n].th_r)]
+        obs[n].reference_point=[obs[n].x0[0]-rCent*np.cos(obs[n].th_r),
+                                obs[n].x0[1]-rCent*np.sin(obs[n].th_r)]
 
         # n = 1
         # obs[n].center_dyn=[obs[n].x0[0]-rCent*np.cos(obs[n].th_r),
@@ -571,6 +573,7 @@ def main(simulationNumber=0, saveFigures=False):
         x_start = 0
         x_end = 2
         obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
+        import pdb; pdb.set_trace() ## DEBUG ##
 
         ### Create obstacle
         x0 = [0.5,-0.2,0]
@@ -587,7 +590,9 @@ def main(simulationNumber=0, saveFigures=False):
         obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
         x_range = [-0.2,1.8]
         y_range = [-1,1]
-        zRange = [-1,1]
+
+        import pdb; pdb.set_trace() ## DEBUG ##
+        
 
         run_animation(x_init, obs, x_range=x_range, y_range=y_range, dt=0.003, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01)
 
@@ -634,7 +639,11 @@ def main(simulationNumber=0, saveFigures=False):
     
 
 
-if __name__ == "__main__":
+if (__name__ )== "__main__":
+    
+    if len(sys.argv)>=2 and (sys.argv[1])=='-i':
+        del sys.argv[1]
+        
     if len(sys.argv) > 1:
         simulationNumber = sys.argv[1]
 

@@ -33,28 +33,34 @@ import matplotlib.pyplot as plt
 
 visualize_debug = False
 
+
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
     """
     # TODO -- enforce certain functions
+    id_counter = 0
+    active_counter = 0
+    
     def __repr__(self):
         return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self))
 
     def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
-                 tail_effect=True, always_moving=True,
-                 sf=1,
-                 name="obstacle",
+                 tail_effect=True, sf=1,
+                 name=None,
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
-                 # , *args, **kwargs): # maybe random arguments
+                 # *args, **kwargs): # maybe random arguments
         # This class defines obstacles to modulate the DS around it
         # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
-
-        self.name = name
+        if name is None:
+            self.name = "obstacle{}".format(Obstacle.id_counter)
+        else:
+            self.name = name
+            
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
         
@@ -68,7 +74,7 @@ class Obstacle(State):
         self.center_position = self.position
         
         self.x0 = center_position
-
+        
         self.dim = len(self.center_position) # Dimension of space
         self.d = len(self.center_position) # Dimension of space # TODO remove
         
@@ -88,8 +94,8 @@ class Obstacle(State):
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-        else:
-            self.always_moving = always_moving
+        # else:
+            # self.always_moving = always_moving
         
         if angular_velocity is None:
             if w is None:
@@ -98,6 +104,7 @@ class Obstacle(State):
                 elif self.dim==3:
                     angular_velocity = np.zeros(self.dim)
                 else:
+                    import pdb; pdb.set_trace();
                     raise ValueError("Define angular velocity for higher dimensions.")
             else:
                 angular_velocity = w
@@ -122,6 +129,7 @@ class Obstacle(State):
         else:
             self.x_start = 0
             self.x_end = 0
+            self.always_moving = False
 
         self.update_timestamp()
 
@@ -138,15 +146,91 @@ class Obstacle(State):
         self.is_boundary = is_boundary
 
         self.is_convex = False # Needed?
+        # If
+        # self.properties = {} # TODO: use kwargs
 
-        self.properties = {} # TODO: use kwargs
+        Obstacle.id_counter += 1 # New obstacle created
+        Obstacle.active_counter += 1
+
+    def __del__(self):
+        Obstacle.active_counter -= 1
+
+    @property
+    def dimension(self):
+        return self.dim
+    
+    # TODO: create function wrapper for this... / Decorator
+    # def position_array_wrapper(self, func, position, *args, **kwargs):
+    def get_gamma(self, position, *args, **kwargs):
+        ''' Get gamma value of obstacle '''
+        if len(position.shape)==1:
+            position = np.reshape(position, (self.dim, 1))
+            # import pdb; pdb.set_trace() ## DEBUG ##
+            
+            return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
+            
+        elif len(position.shape)==2:
+            return self._get_gamma(position, *args, **kwargs)
+                              
+        else:
+            ValueError("Triple dimensional position are unexpected")
+
+    # def __del__(self):
+        # ''' Destructor '''
+        # Obstacle.active_counter -= 1
+    
+    def _get_gamma(self, position, reference_point=None, in_global_frame=False, gamma_type='proportional'):
+        '''
+        Calculates the norm of the function.
+
+        Position input has to be 2-dimensional array
+        '''
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+            if not reference_point is None:
+                reference_point = self.transform_global2relative(reference_point)
+
+        if reference_point is None:
+            reference_point = self.local_reference_point
+        else:
+            if self.get_gamma(reference_point) > 0:
+                raise ValueError("Reference point is outside hull")
+
+        dist_position = np.linalg.norm(position, axis=0)
+        ind_nonzero = dist_position>0
+
+        if not np.sum(ind_nonzero): # only zero values
+            if self.is_boundary:
+                return np.ones(dist_position.shape)*sys.float_info.max
+            else:
+                return np.zeros(dist_position.shape)
         
+        gamma = np.zeros(dist_position.shape)
+        
+        radius = self._get_local_radius(position[:, ind_nonzero], reference_point)
+        
+        if gamma_type=='proportional':
+            gamma[ind_nonzero] = dist_position[ind_nonzero]/radius[ind_nonzero]
 
-    # def update_reference(self, new_ref):
-        # TODo write function
+        elif gamma_type=='linear':
+            gamma[ind_nonzero] = 1 + (dist_position[ind_nonzero]-radius[ind_nonzero])/self.get_reference_length()
+            
+        else:
+            raise NotImplementedError("Not implemented for other gamma types.")
 
-    def get_gamma(self, *args, **kwargs):
-        raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
+        if self.is_boundary:
+            if gamma_type=='proportional':
+                gamma[ind_nonzero] = 1/gamma[ind_nonzero]
+                gamma[~ind_nonzero] = sys.float_info.max
+                
+            else:
+                raise NotImplementedError("Not implemented for other gamma types.")
+
+        return gamma
+        
+    # def get_gamma(self, *args, **kwargs):
+                
+        # raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
 
     def draw_obstacle(self, *args, **kwargs):
         raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
@@ -188,10 +272,16 @@ class Obstacle(State):
         else:
             raise ValueError("Unexpected position-shape")
         
-    def transform_relative2global_dir(self, direction): # TODO - inherit
+    def transform_relative2global_dir(self, direction):
+        if self.dim > 3:
+            warnings.warn("Not implemented for higer dimensions")
+            return direction
         return self.rotMatrix.dot(direction)
 
-    def transform_global2relative_dir(self, direction): # TODO - inherit
+    def transform_global2relative_dir(self, direction):
+        if self.dim > 3:
+            warnings.warn("Not implemented for higer dimensions")
+            return direction
         return self.rotMatrix.T.dot(direction)
 
     @property
@@ -421,15 +511,14 @@ class Obstacle(State):
         self.center_position = position
 
 
-    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.99, k_angular_velocity=0.99, time_current=None):
-        ''' 
-        Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
+    def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None, reset=False):
+        ''' Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
         Updated values for pose and twist are filetered.
 
         Input: 
         - Position (2D) & 
         - Orientation (float)  '''
-
+        
         if self.dim>2:
             raise NotImplementedError("Implement for dimension >2.")
 
@@ -437,37 +526,36 @@ class Obstacle(State):
         if time_current is None:
             time_current = time.time()
             
-        dt = time_current-self.timestamp
+        if reset:
+            self.center_position = position
+            self.orientation = orientation
+            self.linear_velocity = np.zeros(self.dim)
+            self.angular_velocity = np.zeros(self.dim)
+            self.draw_obstacle()
+            return 
+        
+        dt = time_current - self.timestamp
         
         if isinstance(position, list):
             position = np.array(position)
 
         if self.dim==2:
             # 2D navigation, but 3D sensor input
-
             new_linear_velocity = (position-self.position)/dt
             
             # Periodicity of oscillation
             delta_orientation = angle_difference_directional(orientation, self.orientation)
-            print('old orientation = {} // new orentation = {}'.format(
-                np.round(orientation, 2), np.round(self.orientation, 2)))
-            print('detlat orientation', np.round(delta_orientation, 2))
             new_angular_velocity = delta_orientation/dt
-            
-            self.linear_velocity = k_linear_velocity*new_linear_velocity + (1-k_linear_velocity)*self.linear_velocity
-            self.center_position = (k_position*(position) \
-                                    + (1-k_position)*(self.linear_velocity*dt + self.center_position))
+            self.linear_velocity = k_linear_velocity*self.linear_velocity + (1-k_linear_velocity)*new_linear_velocity
+            self.center_position = k_position*(self.linear_velocity*dt + self.center_position) + (1-k_position)*(position)
 
             # Periodic Weighted Average
-            self.angular_velocity = k_angular_velocity*new_angular_velocity + (1-k_angular_velocity)*self.angular_velocity
+            self.angular_velocity = k_angular_velocity*self.angular_velocity + (1-k_angular_velocity)*new_angular_velocity 
 
             self.orientation = periodic_weighted_sum(
-                angles = [orientation, self.angular_velocity*dt + self.orientation],
-                weights = [k_orientation, (1-k_orientation)] )
+                angles=[self.angular_velocity*dt+self.orientation, orientation],
+                weights=[k_orientation, (1-k_orientation)] )
             
-            # self.orientation = (k_orientation*(orientation) + (1-k_orientation)*(self.angular_velocity*dt + self.orientation) ) # TODO: UPDATE ORIENTATION ROTATIONAL
-            # self.orientation = angle_modulo(self.orientation)
-            #TODO add filter
         self.timestamp = time_current
 
         self.draw_obstacle()
@@ -507,6 +595,7 @@ class Obstacle(State):
 
 
     def get_obstacle_radius(self, position, in_global_frame=False, Gamma=None): # Inherit
+        # TODO: remove since looping...
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -515,12 +604,14 @@ class Obstacle(State):
         dist_to_center = LA.norm(position)
 
         return dist_to_center/Gamma
+    
 
     def get_reference_point(self, in_global_frame=False): # Inherit
         if in_global_frame:
             return self.transform_relative2global(self.reference_point)
         else:
             return self.reference_point
+    
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):
         '''
@@ -543,7 +634,8 @@ class Obstacle(State):
             Gamma[ind_small_gamma] = sys.float_info.max
             Gamma[~ind_small_gamma] = (1-Gamma_ref)/(Gamma[~ind_small_gamma]-Gamma_ref)
             return Gamma
-    
+
+        
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
             if len(position_dir.shape) > 1:
@@ -606,7 +698,6 @@ class Obstacle(State):
         weights[ind_positiveDistance] = (1./distance[ind_positiveDistance])**power
         weights[ind_positiveDistance] /= np.sum(weights[ind_positiveDistance])
         # weights[~ind_positiveDistance] = 0
-
         return weights
 
     
@@ -625,29 +716,33 @@ class Obstacle(State):
         for ii in range(2):
             tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
             plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], 'k--')
-
-    # @property
-    # def global_reference_(self, position):
-        # self.get_reference_direction(position, in_global_frame=True)
-
         
     def get_reference_direction(self, position, in_global_frame=False, normalize=True):
         # Inherit
-        if in_global_frame:
-            position = self.transform_global2relative(position)
+        # if in_global_frame:
+            # position = self.transform_global2relative(position)
 
         if hasattr(self, 'reference_point') or hasattr(self,'center_dyn'):  # automatic adaptation of center
-            reference_direction = - (position-self.reference_point)
+            ref_point = self.global_reference_point if in_global_frame else self.local_reference_point
+            if len(position.shape)==1:
+                reference_direction = - (position - ref_point)
+            else:
+                reference_direction = - (position - np.tile(ref_point, (position.shape[1], 1)).T)
         else:
             reference_direction = - position
 
         if normalize:
-            ref_norm = LA.norm(reference_direction)
-            if ref_norm>0: 
-                return reference_direction/ref_norm
+            if len(position.shape)==1:
+                ref_norm = LA.norm(reference_direction)
+                if ref_norm>0:
+                    reference_direction = reference_direction/ref_norm 
+            else:
+                ref_norm = LA.norm(reference_direction, axis=0)
+                ind_nonzero = ref_norm>0
+                reference_direction[:, ind_nonzero] = reference_direction[:, ind_nonzero]/ref_norm[ind_nonzero]
 
-        if in_global_frame:
-            reference_direction = self.transform_global2relative_dir(reference_direction)
+        # if in_global_frame:
+            # reference_direction = self.transform_global2relative_dir(reference_direction)
 
         return reference_direction
 
@@ -674,7 +769,6 @@ class Obstacle(State):
                     self.center_position[1] = np.min([np.max([self.center_position[1], y_lim[0]]), y_lim[1]])
 
                 if self.w: # if new rotation speed
-
                     if self.d <= 2:
                         self.th_r = self.th_r + dt*self.w  #update orientation/attitude
                     else:
@@ -700,3 +794,10 @@ class Obstacle(State):
         raise NotImplementedError()
 
 
+class ObstacleDirection(Obstacle):
+    # def __init__(self):
+        # pass
+    pass
+        
+    
+    

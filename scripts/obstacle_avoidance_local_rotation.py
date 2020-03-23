@@ -54,7 +54,7 @@ def transform_to_directionSpace(reference_direction, directions, normalize=True)
         directions_referenceSpace[:,ii] = OrthogonalBasisMatrix.T.dot( directions[:,ii])
 
     directions_directionSpace = directions_referenceSpace[1:, :]
-    return directions_directionSpace
+    return directions_dirhectionSpace
 
 
 def windup_smoothening(angle_windup, angle):

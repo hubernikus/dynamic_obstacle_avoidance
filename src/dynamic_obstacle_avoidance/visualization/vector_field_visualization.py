@@ -66,7 +66,6 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
 
     
 def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True):
-    
     dim = 2
 
     # Numerical hull of ellipsoid 
@@ -75,8 +74,17 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     # Adjust dynamic center
     if automatic_reference_point:
+        tt = time.time()
         intersection_obs = get_intersections_obstacles(obs)
+        dt = time.time() - tt
+        print("Time for intersection: {}ms".format(np.round(1000*dt,2)))
+
+        # intersection_obs = []
+
+        tt = time.time()
         get_dynamic_center_obstacles(obs, intersection_obs)
+        dt = time.time() - tt
+        print("Time for dynamic_center: {}ms".format(np.round(dt*1000, 2)))
 
     # Numerical hull of ellipsoid 
     for n in range(len(obs)): 
@@ -192,10 +200,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # YY = np.zeros((N_x, N_y))
 
     it_start = 0
-    n_samples = 0
+    n_samples = 3
     
-    pos1 = [-1.516, -1.100]
-    pos2 = [-1.4, -1.1]
+    pos1 = [1.5, -1.200]
+    pos2 = [1.51, -1.21]
 
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]

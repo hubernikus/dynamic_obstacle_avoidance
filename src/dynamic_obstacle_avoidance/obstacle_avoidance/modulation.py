@@ -19,7 +19,67 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 import matplotlib.pyplot as plt
 
 
-def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
+
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1):
+    ''' Compute diagonal Matrix'''
+
+    # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
+    
+    if Gamma<=1: # point inside the obstacle
+        delta_eigenvalue = 1 
+    else:
+        delta_eigenvalue = 1./abs(Gamma)**(1/rho)
+
+    eigenvalue_reference = 1 - delta_eigenvalue
+    # eigenvalue_reference = 0.1
+    
+    if is_boundary:
+        # eigenvalue_tangent = 1
+        eigenvalue_tangent = 1 + delta_eigenvalue            
+    else:
+        eigenvalue_tangent = 1 + delta_eigenvalue            
+
+    # return eigenvalue_reference, eigenvalue_tangent
+    # eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma, is_boundary=is_boundary)
+    return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
+
+
+def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.05):
+    ''' Compute decomposition matrix and orthogonal matrix to basis'''
+    normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
+    reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
+
+    # TODO: remove
+    # margin_vec = 1e-6
+    # if np.abs(np.linalg.norm(normal_vector)-1)>margin_vec :
+        # warnings.warn('normal vector not normalized...')
+    # if np.abs(np.linalg.norm(reference_direction)-1)>margin_vec:
+        # warnings.warn('reference vector not normalized...')
+    # end remove
+
+    dot_prod = np.dot(normal_vector, reference_direction)
+    
+    if np.abs(dot_prod) < dot_margin:
+        # Adapt reference direction to avoid singularities
+        # WARNING: full convergence is not given anymore, but impenetrability
+        if not np.linalg.norm(normal_vector): # zero
+            normal_vector = -reference_direction
+        else:
+            weight = np.abs(dot_prod)/dot_margin
+            dir_norm = np.copysign(1,dot_prod)
+            reference_direction = get_directional_weighted_sum(reference_direction=normal_vector,
+                directions=np.vstack((reference_direction, dir_norm*normal_vector)).T,
+                weights=np.array([weight, (1-weight)]))
+    
+    E_orth = get_orthogonal_basis(normal_vector, normalize=True)
+    E = np.copy((E_orth))
+    E[:, 0] = -reference_direction
+    
+    return E, E_orth
+
+
+def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
+    # TODO: depreciated remove
     '''
      The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
     Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
@@ -27,8 +87,7 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
     Input
     x_t [dim]: The position of the robot in the obstacle reference frame
     obs [obstacle class]: Description of the obstacle with parameters
-    R [dim x dim]: Rotation matrix 
-    
+        
     Output
     E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles surface
     D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
@@ -45,11 +104,9 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
     
-    normal_vector = obs.get_normal_direction(x_t, in_global_frame=False)
-    reference_direction = obs.get_reference_direction(x_t, in_global_frame=False)
 
     # Check if there was correct placement of reference point
-    Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
+    # Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
 
     # if not obs.is_boundary and Gamma_referencePoint >= 1:
         # Check what this does and COMMENT!!!!
@@ -79,38 +136,11 @@ def compute_modulation_matrix(x_t, obs, R, matrix_singularity_margin=pi/2.0*1.05
             # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], color='g')
             # plt.ion()
 
-    E_orth = get_orthogonal_basis(normal_vector, normalize=True)
-    E = np.copy((E_orth))
-    E[:, 0] = -reference_direction
-    norm_refDir = np.linalg.norm(E[:, 0])
-    if norm_refDir:
-        E[:, 0] = E[:, 0]/norm_refDir
-        
-    eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma, is_boundary=obs.is_boundary)
-    D = np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
+    E, E_orth = compute_decomposition_matrix(obs, x_t, dim)
+    D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary)
 
     return E, D, Gamma, E_orth
 
-
-def calculate_eigenvalues(Gamma, rho=1, is_boundary=False):
-    if Gamma<=1:# point inside the obstacle
-        delta_eigenvalue = 1 
-    else:
-        delta_eigenvalue = 1./abs(Gamma)**(1/rho)
-
-    eigenvalue_reference = 1 - delta_eigenvalue
-    # eigenvalue_reference = 0.1
-    
-    if is_boundary:
-        # eigenvalue_tangent = 1
-        eigenvalue_tangent = 1 + delta_eigenvalue            
-    else:
-        eigenvalue_tangent = 1 + delta_eigenvalue            
-
-    # print('eig vals r={}, tang={}'.format(eigenvalue_reference, eigenvalue_tangent))
-    # import pdb; pdb.set_trace() ## DEBUG ##
-    
-    return eigenvalue_reference, eigenvalue_tangent
 
 
 def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):
@@ -415,6 +445,7 @@ def obs_check_collision(obs_list, dim, *args):
     # No obstacles
     if len(obs_list)==0:
         return np.ones(args[0].shape)
+    
     dim = obs_list[0].dim
 
     if len(*args)==dim:
@@ -509,66 +540,6 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
         
     return tangent_vectors, tangent_points
 
-
-def get_intersectionWithEllipse(edge_point, direction, axes, center_ellipse=None, only_positive_direction=False):
-    ''' 
-    Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
-
-    edge_point / c : Starting point of line
-    direction / m : direction of line
-
-    axes / a1 & a2: Axes of ellipse
-    center_ellipse: Center of ellipse
-    '''
-
-    if not center_ellipse is None:
-        edge_point = edge_point - center_ellipse
-    
-    # Dimension
-    dim = edge_point.shape[0]
-    if dim > 2:
-        raise NotImplementedError("Not yet implemented for D>2")
-    
-    if direction[0]==0:
-        m = 0
-    else:
-        m = direction[1]/direction[0]
-    c = edge_point[1] - m*edge_point[0]
-
-    A = (axes[0]*m)**2 + axes[1]**2
-    B = 2*axes[0]**2*m*c
-    C = (axes[0]*c)**2 + (axes[0]*axes[1])**2
-    
-    D = B*B - 4*A*C
-
-    if D<0:
-        return np.zeros(dim, 0)
-    
-    sqrtD = np.sqrt(D)
-
-    if only_positive_direction:
-        intersection = np.zeros(dim)
-        intersection[0] = (-B+sqrtD)/(2*A)
-        intersection[1] = intersection[1,:]*m + c
-
-        dist = (intersection - edge_point)/direction
-        
-        if any (dist<0).to_list():
-            # TODO: check if really the positive direction and remove 'if'
-            import pdb; pdb.set_trace() ## DEBUG ##
-        # return intersection
-    
-    else:
-        intersections = np.zeros((dim,2))
-        intersections[0,:] = np.array([(-B+sqrtD), (-B-sqrt(D))])/(2*A)
-        intersections[1,:] = intersections[0,:]*m + c
-
-        # return intersections
-
-    if not center_ellipse is None:
-        intersections = intersections + np.tile(center_ellipse, (2,1)).T
-    return intersections
-
     
 def cut_planeWithEllispoid(reference_position, axes, plane):
     # TODO
@@ -578,5 +549,13 @@ def cut_planeWithEllispoid(reference_position, axes, plane):
 def cut_lineWithEllipse(line_points, axes):
     # TODO
     raise NotImplementedError()
+
+
+# from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacle import Ellipse
+def get_intersectionWithEllipse(*args, **kwargs):
+    raise NotImplementedError("Module is integrated in Ellipse-Class.")
+    # return Ellipse.get_intersectionWith(*args, **kwargs)
+    
+
 
     

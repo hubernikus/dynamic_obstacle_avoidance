@@ -9,9 +9,10 @@ import warnings
 
 # TODO: Rewrite with faster & more advanced library //
 
-def get_gamma_weight(Gammas, gamma_threshold=10, Gamma_min=1, pow_gamma=3):
-    # Sum of weight gives importance of this object
-    # Each individual weight gives importance of vector
+
+def get_gamma_weight(Gammas, gamma_threshold, Gamma_min=1, pow_gamma=3):
+    '''Sum of weight gives importance of this object
+    Each individual weight gives importance of vector '''
     
     ind_nonzero = Gammas<gamma_threshold
 
@@ -82,9 +83,6 @@ def get_dynamic_center_obstacles(obs, intersection_lists, gamma_threshold=3, gam
         # for it2 in range(it1+1, n_obs):
             # if it2 in intersection_obs:
                 continue
-
-            # TODO: General Check for furthest point (for speed up)
-
             if Gamma_doubleList[it1][it2] is None:
                 Gamma_doubleList[it1][it2] = obs[it2].get_gamma(obs[it1].boundary_points_margin_global, in_global_frame=True)
             if Gamma_doubleList[it2][it1] is None:
@@ -112,14 +110,12 @@ def get_dynamic_center_obstacles(obs, intersection_lists, gamma_threshold=3, gam
             object_weights[it1] = default_kernel_point_weight
             
             weights = get_object_weight(object_weights)
-
-            print('reset for it', it1)
+            # print('reset for it', it1)
             
             obs[it1].set_reference_point(np.sum(kernel_points*np.tile(weights, (dimension,1) ), axis=1), in_global_frame=True)
 
-    
 
-def dynamic_center_3d_old(obs, intersection_obs, marg_dynCenter=1.3, N_distStep=3, resol_max=1000, N_resol = 16, numbFactor_closest=2 ):
+def dynamic_center_3d_old(obs, intersection_obs, marg_dynCenter=1.3, N_distStep=3, resol_max=1000, N_resol = 16, numbFactor_closest=2):
 
     N_obs = len(obs)
     if N_obs < 2:
@@ -264,7 +260,6 @@ def dynamic_center_3d_old(obs, intersection_obs, marg_dynCenter=1.3, N_distStep=
             else:
                 weight_obs_temp[it1,it2] = max(1/delta_dist -1/(ref_dist-dist_contact),0) # if too far away/
             weight_obs_temp[it2,it1] = weight_obs_temp[it1, it2]
-            
             # Desired Gamma in (0,1) to be on obstacle
     
     for it1 in range(N_obs): # Assign dynamic center

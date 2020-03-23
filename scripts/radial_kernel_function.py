@@ -20,7 +20,6 @@ from sklearn.gaussian_process.kernels import RBF
 def get_radius_of_angle(angle, radius_mean=0.6, radius_magnitude=0.2, number_of_edges=5, orientation=0):
     return radius_mean+radius_magnitude*np.cos((orientation+angle)*number_of_edges)
 
-
 def angle_difference_abs(angle1, angle2):
     '''
     Difference between two angles [0,pi[
@@ -33,7 +32,6 @@ def angle_difference_abs(angle1, angle2):
         angle_diff[ind_angle] = 2*pi-angle_diff[ind_angle]
     
     return angle_diff
-
 
 # INPUT: (n_samples_1, n_features), (n_samples_2, n_features)
 # OUTPUT: (n_samples_1, n_samples_2)
