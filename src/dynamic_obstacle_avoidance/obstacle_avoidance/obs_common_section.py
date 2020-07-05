@@ -17,9 +17,26 @@ import warnings
 # TODO: include research from graph theory & faster computation
 
 class DistanceMatrix():
+    '''Symmetric matrix storage. Only stores one half of the values, as a 1D '''
     def __init__(self, n_obs):
-        self.dim = n_obs
-        self._value_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
+        self._dim = n_obs
+        # self._value_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
+        self._value_list = (-1)*np.ones(int((n_obs-1)*n_obs/2))
+
+    @property
+    def num_obstacles(self):
+        return self._dim
+                
+    def __repr__(self):
+        matr = np.zeros((self._dim, self._dim))
+        for ii in range(self._dim):
+            for jj in range(ii+1, self._dim):
+                matr[ii, jj] = matr[jj, ii] = self[ii, jj]
+            
+        return str(matr)
+    
+    def __str__(self):
+        return self.__repr__()
 
     def __setitem__(self, key, value):
         if len(key)==2:
@@ -34,39 +51,46 @@ class DistanceMatrix():
             return self._value_list[ind]
         else:
             raise ValueError("Not two indexes given.")
-        
+
     def get_index(self, row, col):
+        '''Returns the corresponding list index [ind] from matrix index [row, col]'''
         if row > np.abs(self._dim):
-            print('WARNING: Fist object index out of bound.')
-            row = 0
-        if row < 0: row = self._dim+1-row
+            raise RuntimeError('Fist object index out of bound.')
+            # row = 0
             
         if col > np.abs(self._dim):
-            print('WARNING: Second object index out of bound.')
-            col = 1
-        if col < 0: row = self._dim+1-col
+            raise RuntimeError('Second object index out of bound.')
+            # col = 1
+            
+        if row < 0:
+            row = self._dim+1-row
+            
+        if col < 0:
+            row = self._dim+1-col
         
         if row == col:
-            print('WARNING: Self collision observation meainingless.')
-            row, col = 1, 0
+            raise RuntimeError('Self collision observation meaningless.')
+            # row, col = 1, 0
 
-        if col > row: # inverse indices
+        # Symmetric matrix - reverse  indices
+        if col > row: 
             col, row = row, col
-            
-        return int((row-col-1) + col*((self._dim) + self._dim-(col-1) )*0.5)
+
+        return int(int((row-col-1) + col*((self._dim-1) + self._dim-(col))*0.5))
     
 
 class Intersection_matrix(DistanceMatrix):
     '''
     Matrix uses less space this way this is useful with many obstacles! e.g. dense crowds
     Symmetric matrix with zero as diagonal values
-    '''
 
+    Stores one common point of intersecting obstacles
+    '''
     # TODO: use scipy sparse matrices to replace this partially!!!
     
     def __init__(self, n_obs, dim=2):
-        self._intersection_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
-        self._dim = n_obs-1
+        self._value_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
+        self._dim = n_obs
 
     def set(self, row, col, value):
         self[row, col] = value
@@ -75,41 +99,52 @@ class Intersection_matrix(DistanceMatrix):
     def get(self, row, col):
         return self[row, col]
 
-    def is_interescting(self, row, col):
-        # return isinstance(self[row, col], np.ndarray) # other metric?
-        return not (self[row, col] is None) # other metric?
+    def is_intersecting(self, row, col):
+        return bool(not (self[row, col] is None))
 
     def get_intersection_matrix(self):
         # Maybe not necessary function
         space_dim = 2
-        matr = np.zeros((space_dim, self._dim+1, self._dim+1))
-        for col in range(self._dim+1):
-            for row in range(self._dim+1):
+        # matr = np.zeros((space_dim, self._dim+1, self._dim+1))
+        # for col in range(self._dim+1):
+            # for row in range(self._dim+1):
+        matr = np.zeros((space_dim, self._dim, self._dim))
+        for col in range(self._dim):
+            for row in range(col+1, self._dim):
                 if col!=row and not isinstance(self.get(row,col), bool):
-                    matr[:,col,row] = self.get(row,col)
+                    matr[:, col, row] = matr[:, row, col] = self[row,col]
         return matr
 
     def get_bool_triangle_matrix(self):
-        intersection_exists_matrix = np.zeros((self._dim+1,self._dim+1), dtype=bool)
+        raise NotImplementedError("Function was removed. Use 'get_bool_matrix' instead.")
+        
+        # intersection_exists_matrix = np.zeros((self._dim+1,self._dim+1), dtype=bool)
+        # for col in range(self._dim+1):
+            # for row in range(col+1, self._dim+1):
+                
+        # intersection_exists_matrix = np.zeros((self._dim, self._dim), dtype=bool)
+        # for col in range(self._dim):
+            # for row in range(col+1, self._dim):
+                # if isinstance(self.get(row,col), bool) and (self.get(row,col) == False):
+                    # continue
+                # intersection_exists_matrix[row, col] = True
 
-        for col in range(self._dim+1):
-            for row in range(col+1, self._dim+1):
-                if isinstance(self.get(row,col), bool) and (self.get(row,col) == False):
-                    continue
-                intersection_exists_matrix[row, col] = True
-
-        return intersection_exists_matrix
+        # return intersection_exists_matrix
 
     def get_bool_matrix(self):
-        boolMat = self.get_bool_triangle_matrix()
-        return boolMat + boolMat.T
+        bool_matrix = np.zeros((self._dim, self._dim))
+        for ii in range(self._dim):
+            for jj in range(ii+1, self._dim):
+                bool_matrix[ii, jj] = bool_matrix[jj, ii] = self.is_intersecting(ii, jj)
+                
+        return bool_matrix
 
 
 def obs_common_section(obs):
     #OBS_COMMON_SECTION finds common section of two ore more obstacles 
     # at the moment only solution in two d is implemented
 
-    # TODO: REMOVE
+    # TODO: REMOVE ' depreciated
     warnings.warn("This is depreciated and will be removed")
     
     N_obs = len(obs)
@@ -124,12 +159,12 @@ def obs_common_section(obs):
     it_intersect = -1
 
     # Ext for more dimensions
-    d = len(obs[0].center_position)
+    dim = d = len(obs[0].center_position)
 
     N_points = 30 # Choose number of points each iteration
     Gamma_steps = 5 # Increases computational cost
     
-    rotMat = np.zeros((d,d, N_obs))
+    rotMat = np.zeros((dim, dim, N_obs))
     
     for it_obs in range(N_obs):
         rotMat[:,:,it_obs] = np.array(( obs[it_obs].rotMatrix ))
@@ -261,7 +296,7 @@ def obs_common_section(obs):
 
 def obs_common_section_hirarchy(*args, **kwargs):
     # TODO: depreciated -- remove
-    return find_intersections_obstacles(*args, representation_type="hirarchy", **kwargs)
+    return get_intersections_obstacles(*args, representation_type="hirarchy", **kwargs)
 
 
 def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=False, N_points=30, Gamma_steps=5, representation_type='single_point'):
@@ -273,12 +308,14 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
     
     # at the moment only solution in 2-dimensions is implemented
     # TODO: cleanup comments etc.
+    # Depreciated? Remove?
+    warnings.warn("Depreciated --- Remove!!!")
 
     num_obstacles = len(obs)
     
     # No intersection region 
-    if not num_obstacles:
-        return []
+    if num_obstacles <=1:
+        return np.zeros((num_obstacles, num_obstacles))
 
     # Intersction surface
     intersection_obs = []
@@ -299,18 +336,17 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
             # break
 
     # Choose number of points each iteration
-    if isinstance(Intersections, list):
+    if isinstance(obs, list):
         Intersections = Intersection_matrix(num_obstacles)
-        warnings.warn()
+        warnings.warn("We advice to use the <<Obstacle Container>> to store obstacles.")
     else:
-        # Intersections = obs.in
-        raise Warning()
+        Intersections = (obs.get_distance()==0)
+        # raise Warning()
     
     R_max = np.zeros((num_obstacles)) # Maximum radius for ellipsoid
 
     for it_obs in range(num_obstacles):
         obs[it_obs].draw_obstacle()
-
         R_max[it_obs] = obs[it_obs].get_reference_length()
 
         
@@ -358,36 +394,46 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
                 # Get mean
                 # intersection_points = np.unique(intersection_points, axis=1)
                 Intersections.set(it_obs1, it_obs2, np.mean(intersection_points, axis=1))
-                
 
+    intersection_cluster_list = get_intersection_cluster(Intersections, obs, representation_type)
+    if get_intersection_matrix:
+        return intersection_cluster_list, Intersections
+    else:
+        return intersection_cluster_list
+
+    
+def get_intersection_cluster(Intersections, obs, representation_type='single_point'):
+    """ Get the clusters number of the intersections.
+    It automatically assign the reference points for intersecting clusters. """
+    # Get variables
+    num_obstacles = Intersections.num_obstacles
+    dim = obs[0].center_position.shape[0]
+    
+    R_max = np.zeros(num_obstacles)
+    for it_obs in range(num_obstacles):
+        R_max[it_obs] = obs[it_obs].get_reference_length()
+    
     # Iterate over all obstacles with an intersection
     intersection_matrix = Intersections.get_bool_matrix()
 
     # All obstacles, which have at least one intersection
     intersecting_obstacles = np.arange(num_obstacles)[np.sum(intersection_matrix, axis=0)>0]
-
-    # import pdb; pdb.set_trace() ## DEBUG ##
     
     if not obs.index_wall is None:
         # TODO solve more cleanly...
         intersecting_obstacles = np.delete(intersecting_obstacles, np.nonzero(intersecting_obstacles==obs.index_wall), axis=0)
-
-        # wall_intersections = np.arange(intersection_matrix.shape[0])[intersection_matrix[:, 0]]
-        # while(ii < len(intersecting_obstacles)):
-            # if intersecting_obstacles[ii] in wall_intersections:
-                # intersecting_obstacles
         
     intersection_cluster_list = []
 
     while intersecting_obstacles.shape[0]:
         intersection_matrix_reduced = intersection_matrix[intersecting_obstacles,:][:,intersecting_obstacles]
-
-        # print(intersecting_obstacles)
         intersection_cluster = np.zeros(intersecting_obstacles.shape[0], dtype=bool)
         
         intersection_cluster[0] = True
 
-        new_obstacles = True # new obstacles in cluster
+        # By default new obstacles in cluster
+        new_obstacles = True
+        
         # Iteratively search through clusters. Similar to google page ranking
         while new_obstacles:
             intersection_cluster_old = intersection_cluster
@@ -407,32 +453,41 @@ def get_intersections_obstacles(obs, hirarchy=True, get_intersection_matrix=Fals
         intersecting_obstacles = intersecting_obstacles[intersection_cluster==0]
     
     if representation_type=='single_point':
+        # import pdb; pdb.set_trace()
         get_single_reference_point(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_cluster_list, Intersections=Intersections, dim=dim)
         
     elif representation_type=='hirarchy':
         get_obstacle_tree(obs=obs, obstacle_weight=R_max, intersection_clusters=intersection_cluster_list, Intersections=Intersections, dim=dim)
         
     else:
-        raise NotImplementedError("Representation type <<{}>> not defined".format(representation_type))
+        raise NotImplementedError("Method '{}' not defined".format(representation_type))
 
-    if get_intersection_matrix:
-        return intersection_cluster_list, Intersections
-    else:
-        return intersection_cluster_list
+    return intersection_cluster_list
 
 
-def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Intersections, dim):
-    # TODO: make applicable for all environments with 
-    for ii in range(len(intersection_clusters)): # list of cluster-lists
+def get_single_reference_point(obs, intersection_clusters, Intersections, dim, obstacle_weight=None):
+    """ Assign local reference points from intersection clusters."""
+    
+    # TODO: make applicable for all environments with
+    if obstacle_weight is None:
+        obstacle_weight = np.ones(len(obs))/len(obs)
+    
+    # Iterate over the list of intersection clusters and find one common
+    # reference point for each of the clusters
+    for ii in range(len(intersection_clusters)):
+        # import pdb; pdb.set_trace()
 
+        # Intersection points of obstacles with wall
         wall_intersection_points = []
-        
-        if obs.index_wall in intersection_clusters[ii]: # Cluster is touching wall
+
+        if obs.index_wall in intersection_clusters[ii]:
+            # The cluster is touching wall, hence the reference point has to be placed at the wall.
             for jj in intersection_clusters[ii]:
                 if jj == obs.index_wall:
                     continue
-                
-                if Intersections.is_interescting(jj, obs.index_wall):
+
+                # Check if obstacle jj is intersecting with the wall
+                if Intersections.is_intersecting(jj, obs.index_wall):
                     wall_intersection_points.append(Intersections.get(jj, obs.index_wall))
                     # break
 
@@ -440,7 +495,8 @@ def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Inte
             for jj in intersection_clusters[ii]:
                 if jj == obs.index_wall:
                     continue
-                
+                wall_intersection_points.shape[1] == 1
+                    
                 if wall_intersection_points.shape[1] == 1:
                     obs[jj].set_reference_point(wall_intersection_points[:, 0], in_global_frame=True)
                 else:
@@ -459,8 +515,8 @@ def get_single_reference_point(obs, obstacle_weight, intersection_clusters, Inte
 
             for jj in intersection_clusters[ii]:
                 obs[jj].set_reference_point(geometric_center, in_global_frame=True)
-                
             # Take first position of intersection # TODO make more general
+
 
 def get_obstacle_tree(obs, obstacle_weight, intersection_clusters, Intersection, dim):
     # All (close) relatives of one object
@@ -501,5 +557,3 @@ def get_obstacle_tree(obs, obstacle_weight, intersection_clusters, Intersection,
                     obstacle_tree.append(jj)
             
             del obstacle_tree[0]
-
-

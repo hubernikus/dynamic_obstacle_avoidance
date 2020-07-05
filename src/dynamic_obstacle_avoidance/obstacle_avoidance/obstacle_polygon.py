@@ -1,7 +1,7 @@
+#!/USSR/bin/python3
+
 '''
-@date 2019-10-15
-@author Lukas Huber 
-@mail lukas.huber@epfl.ch
+Polygon Obstacle
 '''
 
 import time
@@ -11,11 +11,14 @@ import warnings, sys, copy
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between
 
+__author__ = "LukasHuber"
+__date__ =  "2020-02-28"
+__email__ =  "lukas.huber@epfl.ch"
+
 
 def is_one_point(point1, point2, margin=1e-9):
     ''' Check if it the two points coincide [1-norm] '''
     return np.sum(np.abs(point1-point2)) < 1e-9
-
 
 
 class Polygon(Obstacle):
@@ -105,8 +108,6 @@ class Polygon(Obstacle):
     def margin_absolut(self, value):
         self._margin_absolut = value
         self.update_margin()
-
-    
 
     def update_margin(self):
         if self._margin_absolut>0:
@@ -321,7 +322,26 @@ class Polygon(Obstacle):
             distances[ii] = max(dist_pos-dist_edge, 0)
 
         return distances, normal_vectors
-    
+
+    def get_local_radius_point(self, direction, in_global_frame=False):
+        if in_global_frame:
+            # position = direction + self.center_position
+            position = self.transform_global2relative(direction)
+        else:
+            position = direction
+
+        # rad = self.get_distance_to_hullEdge(position=position, in_global_frame=in_global_frame)
+        rad = self.get_distance_to_hullEdge(position=position)
+        
+        norm_pos = np.linalg.norm(position)
+        if norm_pos: # nonzero
+            position = position/norm_pos
+
+        surface_position = position*rad
+        
+        if in_global_frame:
+            surface_position = self.transform_relative2global(surface_position)
+        return surface_position
 
     def get_distance_to_hullEdge(self, position, in_global_frame=False):
         ''''
@@ -354,7 +374,8 @@ class Polygon(Obstacle):
             position_dir = position / mag_position
             if not self.margin_absolut:
                 for jj in np.arange(n_points)[~zero_mag]:
-                    angle_to_reference = get_angle_space(position_dir[:, jj], self.edge_points)
+                    # import pdb; pdb.set_trace()
+                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_points)
                     
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
@@ -372,15 +393,15 @@ class Polygon(Obstacle):
                             ind_low = (ind_high-1)%self.n_planes
 
                         surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
-
+                        
                         dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
 
                     # Gamma[jj] = mag_position[jj]/dist2hull
+                    
             else:
                 for jj in np.arange(n_points)[~zero_mag]:
-                    angle_to_reference = get_angle_space(position_dir[:, jj],
-                                                         self.edge_reference_points[:, :, 0])
-                        
+                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
+                            
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
                     ind_low = np.argmin(np.abs(magnitude_angles))
@@ -395,7 +416,7 @@ class Polygon(Obstacle):
                         edge_point = self.edge_reference_points[:, ind_low, 0]
 
                     else:
-                        angle_hull_double_low = get_angle_space(position_dir[:, jj], self.edge_reference_points[:, ind_low, 1])
+                        angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
 
                         if angle_hull_double_low>0:
                             # Solve quadratic equation to get intersection with (partial-) circl
@@ -431,6 +452,7 @@ class Polygon(Obstacle):
             dist2hull = dist2hull[0]
 
         return dist2hull
+    
 
     def adapt_normal_to_arc_extension(self, position, normal_vector, in_global_frame=False):
         '''
@@ -558,7 +580,7 @@ class Polygon(Obstacle):
                 #     Gamma[jj] = mag_position[jj]/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
                 if not self.margin_absolut:
                     for jj in np.arange(n_points)[~zero_mag]:
-                        angle_to_reference = get_angle_space(position_dir[:, jj], self.edge_points)
+                        angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_points)
                         magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
                         # angle_to_reference = np.arccos(ref)
@@ -583,8 +605,8 @@ class Polygon(Obstacle):
                 else:
                     for jj in np.arange(n_points)[~zero_mag]:
                         
-                        angle_to_reference = get_angle_space(position_dir[:, jj],
-                                                             self.edge_reference_points[:, :, 0])
+                        angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
+                                                             
 
                         magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
                         
@@ -600,7 +622,7 @@ class Polygon(Obstacle):
                             edge_point = self.edge_reference_points[:, ind_low, 0]
                             
                         else:
-                            angle_hull_double_low = get_angle_space(position_dir[:, jj], self.edge_reference_points[:, ind_low, 1])
+                            angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
                             
                             if angle_hull_double_low>0:
                                 # Solve quadratic equation to get intersection with (partial-) circl
@@ -747,7 +769,9 @@ class Polygon(Obstacle):
         weights = distance_weights*angle_weights # TODO: multiplication needed?
         weights = weights/np.sum(weights)
 
-        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=normal_vectors, weights=weights, normalize=False, normalize_reference=True)
+        normal_vector = get_directional_weighted_sum(
+            null_direction=position, directions=normal_vectors, weights=weights,
+            normalize=False, normalize_reference=True)
 
         if self.margin_absolut: # Nonzero
             normal_vector = self.adapt_normal_to_arc_extension(position, normal_vector)

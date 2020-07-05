@@ -1,7 +1,6 @@
 """
 @author lukas huber
 email: hubernikus@gmail.com
-Please feel free to use and modify this, but keep the above information. Thanks!
 """
 import warnings
 
@@ -260,8 +259,6 @@ class CrowdSimulation():
 
     def import_path():
         pass
-        
-    
 
 
 # call the animator.  blit=True means only re-draw the parts that have changed.

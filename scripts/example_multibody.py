@@ -28,7 +28,7 @@ print(' ----- Script <<dynamic simulation>> started. ----- ')
 # Choose a simulation between 0 and 12
 simulationNumber = 1
 
-saveFigures = False
+saveFigures = True
 #############################################################
 
 def main(simulationNumber=0, saveFigures=False):
@@ -57,7 +57,7 @@ def main(simulationNumber=0, saveFigures=False):
         # pos_obs = np.vstack(( np.cos(delta_phi), np.sin(delta_phi) ))*rad_obs_ring \
                   # + np.tile(center_ring, (n_obs, 1)).T
         pos_obs = x_init
-
+        #
         dphi = 5./180*pi
         delta_phi = delta_phi+dphi # slight initial rotation
         attr_list = -np.vstack(( np.cos(delta_phi), np.sin(delta_phi) ))*rad_obs_ring \
@@ -72,7 +72,9 @@ def main(simulationNumber=0, saveFigures=False):
 
         obs[0].draw_obstacle()
 
-        run_animation_multibody(x_init, obs, x_range=x_range, y_range=y_range, dt=0.03, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.001, attractorPos=attr_list, velocity_max=5.0)
+        run_animation_multibody(x_init, obs, x_range=x_range, y_range=y_range, dt=0.020, N_simuMax=800, convergenceMargin=0.3, sleepPeriod=0.001, attractorPos=attr_list, velocity_max=3.0, saveFigure=saveFigures, animationName="multibody_")
+
+        
 if (__name__ )== "__main__":
     
     if len(sys.argv)>=2 and (sys.argv[1])=='-i':
@@ -88,3 +90,7 @@ if (__name__ )== "__main__":
         main(simulationNumber=simulationNumber, saveFigures=saveFigures)
     except:
         raise
+
+
+
+    

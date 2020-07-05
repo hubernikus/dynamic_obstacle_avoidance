@@ -1,10 +1,11 @@
 '''
 Obstacle Avoidance Algorithm script with vecotr field
-
-@author LukasHuber
-@date 2018-02-15
 '''
-
+from dynamic_obstacle_avoidance.dynamical_system import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
 
 # General classes
 import numpy as np
@@ -15,11 +16,10 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib
 
-from dynamic_obstacle_avoidance.dynamical_system import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
+__author__ = "Lukas Huber"
+__date__ =  "2018-02-15"
+__email__ = "lukas.huber@epfl.ch"
+
 
 def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
     if pos1[0]-pos0[0]: # m < infty
@@ -66,6 +66,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
 
     
 def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True):
+    
     dim = 2
 
     # Numerical hull of ellipsoid 
@@ -75,15 +76,17 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # Adjust dynamic center
     if automatic_reference_point:
         tt = time.time()
-        intersection_obs = get_intersections_obstacles(obs)
+        obs.update_reference_points()
+        obs.reset_obstacles_have_moved()
+        # intersection_obs = get_intersections_obstacles(obs)
         dt = time.time() - tt
-        print("Time for intersection: {}ms".format(np.round(1000*dt,2)))
+        # print("Time for intersection: {}ms".format(np.round(1000*dt,2)))
 
         # intersection_obs = []
 
-        tt = time.time()
-        get_dynamic_center_obstacles(obs, intersection_obs)
-        dt = time.time() - tt
+        # tt = time.time()
+        # get_dynamic_center_obstacles(obs, intersection_obs)
+        # dt = time.time() - tt
         print("Time for dynamic_center: {}ms".format(np.round(dt*1000, 2)))
 
     # Numerical hull of ellipsoid 
@@ -100,7 +103,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         obs_polygon_sf = []
 
         for n in range(len(obs)):
-            # plt.plot([x_obs_sf[i][0] for i in range(len(x_obs_sf))], [x_obs_sf[i][1] for i in range(len(x_obs_sf))], 'k--')
             x_obs = obs[n].boundary_points_global_closed
             x_obs_sf = obs[n].boundary_points_margin_global_closed
             plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
@@ -169,8 +171,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # plt.ion()
     # plt.show()
     # return 
-    # import pdb; pdb.set_trace() ## DEBUG ##
-    
     # Show certain streamlines
     if np.array(points_init).shape[0]:
         plot_streamlines(points_init, ax_ifd, obs, xAttractor)
@@ -198,12 +198,11 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # N_x = N_y = 1
     # XX = np.zeros((N_x, N_y))
     # YY = np.zeros((N_x, N_y))
-
     it_start = 0
-    n_samples = 3
+    n_samples = 0
     
-    pos1 = [1.5, -1.200]
-    pos2 = [1.51, -1.21]
+    pos1 = [4, 3.]
+    pos2 = [4, 4.]
 
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -273,7 +272,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
-                res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
+                res_ifd = ax_ifd.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
+                
             else:
                 res_ifd = ax_ifd.quiver(XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
                 # res_ifd = ax_ifd.quiver(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[0.8, 0.2, 0.2], zorder=0)

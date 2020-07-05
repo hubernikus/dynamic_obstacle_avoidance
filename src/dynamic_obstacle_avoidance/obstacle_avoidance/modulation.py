@@ -44,7 +44,7 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1):
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 
 
-def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.05):
+def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
     ''' Compute decomposition matrix and orthogonal matrix to basis'''
     normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
@@ -58,8 +58,12 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
     # end remove
 
     dot_prod = np.dot(normal_vector, reference_direction)
+
+    # x = obs.transform_relative2global(x_t)
+    # ref_dir = obs.transform_relative2global_dir(reference_direction)
+    # plt.quiver(x[0], x[1], ref_dir[0], ref_dir[1], color='r')
     
-    if np.abs(dot_prod) < dot_margin:
+    if obs.is_non_starshaped and np.abs(dot_prod) < dot_margin:
         # Adapt reference direction to avoid singularities
         # WARNING: full convergence is not given anymore, but impenetrability
         if not np.linalg.norm(normal_vector): # zero
@@ -74,6 +78,10 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
     E_orth = get_orthogonal_basis(normal_vector, normalize=True)
     E = np.copy((E_orth))
     E[:, 0] = -reference_direction
+
+    # tang = obs.transform_relative2global_dir(E[:, 1])
+    # plt.quiver(x[0], x[1], tang[0], tang[1], color='g')
+    # import pdb; pdb.set_trace()
     
     return E, E_orth
 
@@ -499,6 +507,11 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
     C_ = edge_point[1]**2 - axes[1]**2
     D_ = B_**2 - 4*A_*C_
 
+    if D_ < 0:
+        # print(edge_point)
+        # print(axes)
+        raise RuntimeError("Invalid value for D_<0 (D_={})".format(D_))
+    
     m = np.zeros(2)
 
     m[1] = (-B_ - np.sqrt(D_)) / (2*A_)
@@ -540,6 +553,35 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
         
     return tangent_vectors, tangent_points
 
+def get_reference_weight(distance, obs_reference_size=None, distance_min=0, distance_max=3, weight_pow=1):
+    ''' Get a weight inverse proportinal to the distance'''
+    weights_all = np.zeros(distance.shape)
+    if any (distance==distance_min):
+        ind0 = (distance==0)
+        weights_all[ind0] = 1/np.sum(ind0)
+        return weights_all
+
+    ind_range = np.logical_and(distance>distance_min, distance<distance_max)
+    if not any(ind_range):
+        return weights_all
+
+    dist_temp = distance[ind_range]
+    weights = 1/(dist_temp-distance_min) - 1/(distance_max-distance_min)
+    weights = weights**weight_pow
+
+    # Normalize
+    weights = weights/np.sum(weights)
+
+    # Add amount of movement relative to distance
+    if not obs_reference_size is None:
+        distance_max = distance_max*obs_reference_size
+        
+    weight_ref_displacement = (1/(dist_temp+1-distance_min)
+                               - 1/(distance_max+1-distance_min))
+        
+    weights_all[ind_range] = weights*weight_ref_displacement
+    return weights_all
+
     
 def cut_planeWithEllispoid(reference_position, axes, plane):
     # TODO
@@ -553,7 +595,7 @@ def cut_lineWithEllipse(line_points, axes):
 
 # from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacle import Ellipse
 def get_intersectionWithEllipse(*args, **kwargs):
-    raise NotImplementedError("Module is integrated in Ellipse-Class.")
+    raise NotImplementedError("Use function integrated in Ellipse-Class.")
     # return Ellipse.get_intersectionWith(*args, **kwargs)
     
 

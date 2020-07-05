@@ -44,8 +44,7 @@ directions_2 = np.vstack((np.cos(phi_2), np.sin(phi_2)))
 
 if 1 in case :
     center_1 = np.array([0.0, 0])
-    radius_1 = 2b
-    
+    radius_1 = 2    
 
     center_2 = np.array([0.0, 0])
     radius_2 = 1

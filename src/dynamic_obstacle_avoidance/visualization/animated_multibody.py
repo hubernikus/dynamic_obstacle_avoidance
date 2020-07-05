@@ -409,7 +409,7 @@ def run_animation_multibody(*args, animationName="test", saveFigure=False,
     # i.e. choose one or the other for each run
     if saveFigure:
         try: # avoid error warnings 
-            anim.ani.save("figures/" + animationName + ".mp4", dpi=100,fps=50)
+            anim.ani.save("../figures/" + animationName + ".mp4", dpi=100,fps=50)
         except:
             warnings.warn('\n\n Saving not succesfull.')
             # raise RuntimeError('WARNING: saving not succesfull.')

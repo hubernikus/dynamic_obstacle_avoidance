@@ -2,15 +2,15 @@
 '''
 Angle math for python
 Helper function for directional & angle evaluations
-
-@author Lukas Huber
-@date 2019-11-15
 '''
 
 import numpy as np
 import warnings
 from math import pi
 
+__author__ = "Lukas Huber"
+__date__ = "2019-11-15"
+__email__ = "lukas.huber@epfl.ch"
 
 def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
     ''' Verify if angle_test is in between angle_low & angle_high
@@ -164,17 +164,17 @@ def get_orthogonal_basis(vector, normalize=True):
             # basis_matrix[dim-(ii), ii] = -np.dot(vector[:dim-(ii)], vector[:dim-(ii)])
             # basis_matrix[:, ii] = basis_matrix[:, ii]/LA.norm(basis_matrix[:, ii])
 
-        # import pdb; pdb.set_trace() ## DEBUG ##
         # raise ValueError("Not implemented for d>3")
         # warnings.warn("Implement higher dimensionality than d={}".format(dim))
+        
     return basis_matrix
 
 
-def get_angle_space(reference_direction, directions, normalize=True):
+def get_angle_space(directions, null_direction=None, OrthogonalBasisMatrix=None, normalize=True):
     """
     Get angle space transformation
     """
-    dim = np.array(reference_direction).shape[0]
+    dim = np.array(directions).shape[0]
     
     if len(directions.shape)==1:
         num_dirs = None
@@ -182,20 +182,15 @@ def get_angle_space(reference_direction, directions, normalize=True):
     else:
         num_dirs = directions.shape[1]
         
-    reference_direction = np.copy(reference_direction)
     directions = np.copy(directions)
 
     if normalize:
-        norm_refDir = np.linalg.norm(reference_direction)
-        if norm_refDir==0: # nonzero
-            raise ValueError("Zero norm direction as input")
-        reference_direction /= norm_refDir
-        
         norm_dir = np.linalg.norm(directions, axis=0)
         ind_nonzero = (norm_dir>0)
         directions[:, ind_nonzero] = directions[:, ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
 
-    OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
+    if OrthogonalBasisMatrix is None:
+        OrthogonalBasisMatrix = get_orthogonal_basis(null_direction)
 
     directions_referenceSpace = np.zeros(np.shape(directions))
     for ii in range(np.array(directions).shape[1]):
@@ -214,25 +209,45 @@ def get_angle_space(reference_direction, directions, normalize=True):
 
     cos_directions = directions_referenceSpace[0,:]
     if np.sum(cos_directions > 1) or np.sum(cos_directions < -1):
-        cos_directions = np.min(np.vstack((cos_directions, np.ones(num_dirs))), axis=0)
-        cos_directions = np.max(np.vstack((cos_directions, -np.ones(num_dirs))), axis=0)
+        cos_directions = np.min(np.vstack((cos_directions, np.ones(directions.shape[1]))), axis=0)
+        cos_directions = np.max(np.vstack((cos_directions, -np.ones(directions.shape[1]))), axis=0)
         warnings.warn("Cosinus value out of bound.")
 
     directions_directionSpace *= np.tile(np.arccos(cos_directions), (dim-1, 1))
-
-    directions_directionSpace *= (-1) # in 2D for convention
-
+    directions_directionSpace *= (-1) # in 2D for convention 
+    
     if num_dirs is None:
-        directions_directionSpace = np.squeeze(directions_directionSpace)
+        directions_directionSpace = np.reshape(directions_directionSpace, (dim-1))
+        
     return directions_directionSpace
 
 
-def get_directional_weighted_sum(reference_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
+def get_angle_space_inverse(dir_angle_space, null_direction=None, NullMatrix=None):
+    """
+    Inverse angle space transformation
+    """
+    # TODO: multiple direction
+    if NullMatrix is None:
+        NullMatrix = get_orthogonal_basis(null_direction)
+
+    norm_directionSpace = np.linalg.norm(dir_angle_space)
+    if norm_directionSpace:
+        directions = (NullMatrix.dot(
+            np.hstack((np.cos(norm_directionSpace),
+                       np.sin(norm_directionSpace) / norm_directionSpace * dir_angle_space)) ))
+    else:
+        directions = NullMatrix[:,0]
+
+    return directions
+    
+
+
+def get_directional_weighted_sum(null_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
     '''
-    Weighted directional mean for inputs vector ]-pi, pi[ with respect to the reference_direction
+    Weighted directional mean for inputs vector ]-pi, pi[ with respect to the null_direction
 
     # INPUT
-    reference_direction: basis direction for the angle-frame
+    null_direction: basis direction for the angle-frame
     directions: the directions which the weighted sum is taken from
     weights: used for weighted sum
     total_weight: [<=1] 
@@ -244,7 +259,7 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
     # TODO remove obs and position
     ind_nonzero = (weights>0) # non-negative
 
-    reference_direction = np.copy(reference_direction)
+    null_direction = np.copy(null_direction)
     directions = directions[:, ind_nonzero] 
     weights = weights[ind_nonzero]
 
@@ -255,13 +270,13 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
     if (n_directions==1) and total_weight>=1:
         return directions[:, 0]
 
-    dim = np.array(reference_direction).shape[0]
+    dim = np.array(null_direction).shape[0]
 
     if normalize_reference:
-        norm_refDir = np.linalg.norm(reference_direction)
+        norm_refDir = np.linalg.norm(null_direction)
         if norm_refDir==0: # nonzero
             raise ValueError("Zero norm direction as input")
-        reference_direction /= norm_refDir
+        null_direction /= norm_refDir
 
      # TODO - higher dimensions
     if normalize:
@@ -269,7 +284,7 @@ def get_directional_weighted_sum(reference_direction, directions, weights, total
         ind_nonzero = (norm_dir>0)
         directions[:, ind_nonzero] = directions[:, ind_nonzero]/np.tile(norm_dir[ind_nonzero], (dim, 1))
 
-    OrthogonalBasisMatrix = get_orthogonal_basis(reference_direction)
+    OrthogonalBasisMatrix = get_orthogonal_basis(null_direction)
 
     directions_referenceSpace = np.zeros(np.shape(directions))
     for ii in range(np.array(directions).shape[1]):
