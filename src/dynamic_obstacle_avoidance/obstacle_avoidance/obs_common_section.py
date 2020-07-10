@@ -92,6 +92,7 @@ class Intersection_matrix(DistanceMatrix):
         self._value_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
         self._dim = n_obs
 
+
     def set(self, row, col, value):
         self[row, col] = value
 
@@ -105,9 +106,11 @@ class Intersection_matrix(DistanceMatrix):
     def get_intersection_matrix(self):
         # Maybe not necessary function
         space_dim = 2
-        # matr = np.zeros((space_dim, self._dim+1, self._dim+1))
-        # for col in range(self._dim+1):
-            # for row in range(self._dim+1):
+        # matr = np.zeros((self._dim, self._dim), dtype=bool)
+        # for col in range(self._dim):
+            # for row in range(col+1, self._dim):
+                # matr[col, row] = matr[row, col] = not (self[row, col] is None)
+
         matr = np.zeros((space_dim, self._dim, self._dim))
         for col in range(self._dim):
             for row in range(col+1, self._dim):
@@ -132,7 +135,7 @@ class Intersection_matrix(DistanceMatrix):
         # return intersection_exists_matrix
 
     def get_bool_matrix(self):
-        bool_matrix = np.zeros((self._dim, self._dim))
+        bool_matrix = np.zeros((self._dim, self._dim), dtype=bool)
         for ii in range(self._dim):
             for jj in range(ii+1, self._dim):
                 bool_matrix[ii, jj] = bool_matrix[jj, ii] = self.is_intersecting(ii, jj)

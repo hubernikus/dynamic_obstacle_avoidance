@@ -169,8 +169,6 @@ def main(options=[], N_resol=100, saveFigures=False):
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='threeEllipses_inCube_bad', noTicks=False, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol)
 
 
-        
-
 if (__name__)=="__main__":
     if len(sys.argv) > 1:
         options = sys.argv[1]

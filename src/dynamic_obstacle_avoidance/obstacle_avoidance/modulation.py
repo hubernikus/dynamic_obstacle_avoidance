@@ -556,11 +556,14 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
 def get_reference_weight(distance, obs_reference_size=None, distance_min=0, distance_max=3, weight_pow=1):
     ''' Get a weight inverse proportinal to the distance'''
     weights_all = np.zeros(distance.shape)
-    if any (distance==distance_min):
+
+    # if False:
+    if any(np.logical_and(distance<=distance_min, distance>0)):
         ind0 = (distance==0)
         weights_all[ind0] = 1/np.sum(ind0)
         return weights_all
 
+    # print('distance_max', distance_max)
     ind_range = np.logical_and(distance>distance_min, distance<distance_max)
     if not any(ind_range):
         return weights_all
@@ -574,12 +577,16 @@ def get_reference_weight(distance, obs_reference_size=None, distance_min=0, dist
 
     # Add amount of movement relative to distance
     if not obs_reference_size is None:
-        distance_max = distance_max*obs_reference_size
+        distance_max = distance_max*obs_reference_size[ind_range]
         
     weight_ref_displacement = (1/(dist_temp+1-distance_min)
                                - 1/(distance_max+1-distance_min))
-        
-    weights_all[ind_range] = weights*weight_ref_displacement
+
+    try:
+    # if True:
+        weights_all[ind_range] = weights*weight_ref_displacement
+    except:
+        import pdb; pdb.set_trace()
     return weights_all
 
     

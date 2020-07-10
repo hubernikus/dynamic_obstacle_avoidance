@@ -3,8 +3,8 @@
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
 
-@author LukasHuber
-@date 2018-02-15
+__author__ = "LukasHuber"
+__date__ = "2020-02-15"
 '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
@@ -41,9 +41,6 @@ def main(options=[], N_resol=100, saveFigures=False):
 
             obs.append(Ellipse(axes_length=[1.5, 1.5], center_position=[3, -2.1], p=[1,1], orientation=00./180*pi, sf=1, is_boundary=False))
 
-            # obs.append(Ellipse(axes_length=[1.5, 1.5], center_position=[3, 3.1], p=[1,1], orientation=00./180*pi, sf=1, is_boundary=False))
-
-            # obs.append(Ellipse(axes_length=[0.3, 1.8], center_position=[3, -2.4], p=[1,1], orientation=-70./180*pi, sf=1, is_boundary=False))
 
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True, automatic_reference_point=False, point_grid=N_resol, show_streamplot=False)
 

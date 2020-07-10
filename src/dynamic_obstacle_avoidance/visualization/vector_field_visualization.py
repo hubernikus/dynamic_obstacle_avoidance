@@ -201,8 +201,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [4, 3.]
-    pos2 = [4, 4.]
+    pos1 = [0.61, 3.75]
+    pos2 = [0.8, 3.75]
+    
 
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -231,12 +232,24 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     xd_init = np.zeros((2,N_x,N_y))
     xd_mod  = np.zeros((2,N_x,N_y))
 
+    indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
+    
+    # import pdb; pdb.set_trace()
+    
     for ix in range(N_x):
         for iy in range(N_y):
+            if not indOfNoCollision[ix, iy]:
+                continue
+            
             pos = np.array([XX[ix,iy],YY[ix,iy]])
 
             xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
+            # print('pos', pos)
             xd_mod[:,ix,iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
+
+            # import pdb; pdb.set_trace()
+
+    dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
     if sysDyn_init:
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
@@ -248,25 +261,26 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         plt.xlim(x_range)
         plt.ylim(y_range)
 
-    indOfnoCollision = obs_check_collision_2d(obs, XX, YY)
-    dx1_noColl = np.squeeze(xd_mod[0,:,:]) * indOfnoCollision
-    dx2_noColl = np.squeeze(xd_mod[1,:,:]) * indOfnoCollision
 
     end_time = time.time()
 
-    print('Number of points: {}'.format(point_grid*point_grid))
-    print('Average time: {} ms'.format(np.round((end_time-start_time)/(N_x*N_y)*1000),5) )
+    # print('Number of points: {}'.format(point_grid*point_grid))
+    n_calculations = np.sum(indOfNoCollision)
+    print('Number of free points: {}'.format(n_calculations))
+    print('Average time: {} ms'.format(np.round((end_time-start_time)/(n_calculations)*1000),5) )
     print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
     if plotStream:
         if colorCode:
-            velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
+            # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
 
             strm = res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
             
         else:
             # Normalize
             normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
+
+            max_vel = 0.3
             ind_nonZero = normVel>0
             dx1_noColl[ind_nonZero] = dx1_noColl[ind_nonZero]/normVel[ind_nonZero]
             dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]

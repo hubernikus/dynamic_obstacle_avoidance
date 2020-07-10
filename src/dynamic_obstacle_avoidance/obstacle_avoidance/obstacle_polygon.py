@@ -324,9 +324,10 @@ class Polygon(Obstacle):
         return distances, normal_vectors
 
     def get_local_radius_point(self, direction, in_global_frame=False):
+        ''' Get local radius points from relative direction. '''
         if in_global_frame:
             # position = direction + self.center_position
-            position = self.transform_global2relative(direction)
+            position = self.transform_global2relative_dir(direction)
         else:
             position = direction
 
@@ -347,7 +348,6 @@ class Polygon(Obstacle):
         ''''
         Distance along the reference-direction to the hull for a convex obstacle towards
         '''
-        
         if in_global_frame:
             position = self.transform_global2relative(position)    
         
@@ -401,7 +401,7 @@ class Polygon(Obstacle):
             else:
                 for jj in np.arange(n_points)[~zero_mag]:
                     angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
-                            
+
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
                     ind_low = np.argmin(np.abs(magnitude_angles))
@@ -414,6 +414,8 @@ class Polygon(Obstacle):
                     if is_one_point(self.edge_reference_points[:, ind_low, 0], self.edge_reference_points[:, ind_low, 1]): # one point
                         surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 0]
                         edge_point = self.edge_reference_points[:, ind_low, 0]
+                        # import pdb; pdb.set_trace()
+                        # a=1
 
                     else:
                         angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
@@ -441,15 +443,21 @@ class Polygon(Obstacle):
 
                             # Gamma[jj] = mag_position[jj]/dist2hull
                             continue
+                        
                         else:
                             surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 1]
                             edge_point = self.edge_reference_points[:, ind_low, 1]
 
+                    # Get distance to hull for both ifs
                     dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
+
                     # Gamma[jj] = mag_position[jj]/dist2hull
 
         if not multiple_positions:
             dist2hull = dist2hull[0]
+
+        # print('dist2hull', dist2hull)
+        # import pdb; pdb.set_trace()
 
         return dist2hull
     
@@ -497,7 +505,7 @@ class Polygon(Obstacle):
                     weight = max((1-delta_radius)/max_delta, 0)
 
                     normal_vector = get_directional_weighted_sum(
-                        reference_direction=position,
+                        null_direction=position,
                         directions=np.vstack((normal_vector, arc_normal)).T,
                         weights=np.array([(1-weight), weight]), normalize=False,
                         normalize_reference=True)
@@ -803,9 +811,19 @@ class Polygon(Obstacle):
             plt.ion()
             plt.show()
 
+        # TODO: remove if not needed
+        test_normal_vector = True
+        if test_normal_vector:
+            ref_dir = self.get_reference_direction(position)
+
+            if ref_dir.dot(normal_vector) > 0:
+                normal_vector = (-1)*normal_vector
+                warnings.warn("Had to flip. Adapt computation")
+        
+
         if in_global_frame: 
             normal_vector = self.transform_global2relative_dir(normal_vector)
-            
+
         return normal_vector
 
 
