@@ -16,8 +16,9 @@ __email__ =  "lukas.huber@epfl.ch"
 
 import warnings, sys
 import numpy as np
-if not sys.version_info>(3,0): # Python 2
-    import itertools.izip as izip
+# if not sys.version_info>(3,0): # Python 2
+    # import pdb; pdb.set_trace()
+    # import itertools.zip as izip
 
 
 class GradientContainer(ObstacleContainer):
@@ -26,8 +27,8 @@ class GradientContainer(ObstacleContainer):
     def __init__(self, obs_list=None):
         if sys.version_info>(3,0): # Python 3
             super().__init__(obs_list)
-        else: # Python 2 compatibility 
-            super(BaseContainer, self).__init__(obs_list)
+        else: # Python 2 compatibility
+            super(ObstacleContainer, self).__init__(obs_list)
 
         self._obstacle_is_updated = np.ones(self.number , dtype=bool)
 
@@ -46,7 +47,11 @@ class GradientContainer(ObstacleContainer):
         #     if not self.index_wall is None:
         #         warnings.warn("Two wall obstacles in container.")
         #     self.index_wall = len(self._obstacle_list)-1
-        super().append(value)
+        if sys.version_info>(3,0): # Python 3
+            super().append(value)
+        else: # Python 2 compatibility
+            super(ObstacleContainer, self).append(value)
+        
 
         if len(self)==1:
             self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
@@ -73,6 +78,7 @@ class GradientContainer(ObstacleContainer):
         self._distance_matrix[ii, jj] = value
         
     def reset_obstacles_have_moved(self):
+        ''' Resets obstacles in list such that they have NOT moved.'''
         for obs in self._obstacle_list:
             obs.has_moved = False
 
@@ -168,8 +174,11 @@ class GradientContainer(ObstacleContainer):
             
             for oo in cluster_intersecting:
                 self[oo].set_reference_point(ref_point, in_global_frame=True)
-                
-    
+
+        # Indicate that no obstacle has moved (since last reference-point search).
+        self.reset_obstacles_have_moved()
+
+        
     def update_boundary_reference_points(self, max_it=100, convergence_err=1e-3, contact_err=1e-3, step_size=2):
         ''' Boundary reference point refers to the closest point on the obstacle surface 
         to another obstacle. '''

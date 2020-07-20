@@ -22,15 +22,14 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_learning import LearningObstacle
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_learning import LearningObstacle
+# from sklearn.cluster import DBSCAN # Only used for learning (Clustering)
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import Intersection_matrix
 
 visualize_debug = False
 
-from sklearn.cluster import DBSCAN # Only used for learning (Clustering)
-
-class BaseContainer():
+class BaseContainer(object):
     def __init__(self, obs_list=None):
         # self.index_wall = None
 
@@ -110,6 +109,11 @@ class BaseContainer():
         
     def __len__(self):
         return len(self._obstacle_list)
+
+    @property
+    def boundary(self):
+        return self._obstacle_list[-1]
+    
 
     @property
     def number(self):

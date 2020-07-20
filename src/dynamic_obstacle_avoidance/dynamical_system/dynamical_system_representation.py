@@ -11,19 +11,43 @@ import numpy.linalg as LA
 
 # TODO: clean up and restructure files.
 
+def linear_ds(position, attractor=None):
+    ''' Linear Dynamical System'''
+    if attractor is None:
+        return (-1)*position
+    else:
+        return attractor-position
 
-def linear_ds_max_vel(x, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
-    vel = attractor-x
+def linear_ds_max_vel(position, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
+    ''' Linear Dynamical System with decreasing velocity close to the attractor,
+    but constant (maximal) velocity, everywhere else.'''
+    velocity = attractor-position
 
-    dist = np.linalg.norm(vel)
-    if dist < slow_down_region:
-        max_vel = max_vel*dist/slow_down_region
+    distance = np.linalg.norm(attractor-position)
+    if distance < slow_down_region:
+        max_vel = max_vel*distance/slow_down_region
         
-    norm_vel = dist
+    norm_vel = velocity
     if norm_vel>max_vel:
-        vel = vel/norm_vel*max_vel
+        velocity = velocity/norm_vel*max_vel
 
+    return velocity
+
+
+def limit_velocity(velocity, position, final_position, max_vel=0.07, slow_down_dist=0.1):
+    ''' Limit velocity with convergence to 0 around the final position.'''
+    dist = final_position-position
+    dist_norm = np.linalg.norm(dist)
+    vel_norm = np.linalg.norm(velocity)
+
+    if not dist_norm or not vel_norm:
+        vel = np.zeros(3)
+    elif dist_norm < slow_down_dist:
+        vel = velocity/vel_norm*max_vel*dist_norm/slow_down_dist
+    else:
+        vel = velocity/vel_norm*max_vel
     return vel
+
 
 
 def linearAttractor(x, x0=None):

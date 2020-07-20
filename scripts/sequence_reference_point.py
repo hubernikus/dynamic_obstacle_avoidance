@@ -95,7 +95,7 @@ class ReferencePointSequence():
         for im_it in range(n_figs):
             self.obs_list.update_reference_points()
             self.obs_list.reset_obstacles_have_moved()
-
+            
             plt.figure()
 
             for ii in range(len(obs)):
