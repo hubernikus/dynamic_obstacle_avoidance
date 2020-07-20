@@ -38,7 +38,7 @@ class Obstacle(State):
     active_counter = 0
     
     def __repr__(self):
-        if self.is_boundary:
+        if self.boundary:
             return "Wall <<{}>> is of Type: {}".format(self.name, type(self).__name__)
         else:
             return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
@@ -147,7 +147,8 @@ class Obstacle(State):
         self.is_non_starshaped = False
 
         # Allows to track which obstacles need an update on the reference point search
-        self.has_moved = True 
+        self.has_moved = True
+        self.is_dynamic = False
         
         # If
         # self.properties = {} # TODO: use kwargs
@@ -186,9 +187,9 @@ class Obstacle(State):
     
     def _get_gamma(self, position, reference_point=None, in_global_frame=False, gamma_type='proportional'):
         ''' Calculates the norm of the function.
-
         Position input has to be 2-dimensional array '''
-        
+
+        # print('pos init', position)
         if in_global_frame:
             position = self.transform_global2relative(position)
             if not reference_point is None:
@@ -210,7 +211,11 @@ class Obstacle(State):
                 return np.zeros(dist_position.shape)
 
         gamma = np.zeros(dist_position.shape)
-        radius = self._get_local_radius(position[:, ind_nonzero], reference_point)
+        # radius = self._get_local_radius(position[:, ind_nonzero], reference_point)
+        # With respect to center. Is this ok?
+        radius = self._get_local_radius(position[:, ind_nonzero])
+
+        # import pdb; pdb.set_trace() 
         
         if gamma_type=='proportional':
             gamma[ind_nonzero] = dist_position[ind_nonzero]/radius[ind_nonzero]

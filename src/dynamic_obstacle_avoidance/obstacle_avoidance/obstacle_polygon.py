@@ -178,7 +178,10 @@ class Polygon(Obstacle):
         if self.dim==2:
             if len(edge_points.shape)==2:
                 for ii in range(self.n_planes):
-                    normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]] - edge_points[:,ii])
+                    try:
+                        normal_vector[:, ii] = (edge_points[:,(ii+1)%normal_vector.shape[1]] - edge_points[:,ii])
+                    except:
+                        import pdb; pdb.set_trace()
             elif len(edge_points.shape)==3:#
                 # TODO: does this make sense
                 for ii in range(self.n_planes):
@@ -835,6 +838,9 @@ class Polygon(Obstacle):
         
         dist_max = self.get_maximal_distance()*relative_hull_margin
         mag_ref_point = np.linalg.norm(self.reference_point)
+
+        # Reset number of planes
+        self.n_planes = self.n_planes_edge
         
         if mag_ref_point:
             reference_point_temp = self.reference_point*(1 + dist_max/mag_ref_point)
