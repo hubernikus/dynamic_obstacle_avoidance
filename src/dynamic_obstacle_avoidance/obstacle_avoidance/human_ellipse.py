@@ -20,7 +20,9 @@ import matplotlib.pyplot as plt
 
 
 
-class PedestrianTracker(Ellipse):
+class TrackedPedestrian(Ellipse):
+    ''' Recognized the pedestrian using a tracker. 
+    It remembers the original position to later 'interpolate' the actual one. '''
     def __init__(self,
                  axes_length=[1.0, 1.0],
                  *args, **kwargs):
@@ -31,7 +33,9 @@ class PedestrianTracker(Ellipse):
             super(Ellipse, self).__init__(axes_length=axes_length, *args, **kwargs)
 
         self.is_dynamic = True
-        
+
+        self.position_original = copy.deepcopy(self.position)
+
 
 
 class HumanEllipse(Ellipse):

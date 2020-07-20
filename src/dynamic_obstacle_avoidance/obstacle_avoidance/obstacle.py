@@ -38,7 +38,7 @@ class Obstacle(State):
     active_counter = 0
     
     def __repr__(self):
-        if self.is_boundary:
+        if self.boundary:
             return "Wall <<{}>> is of Type: {}".format(self.name, type(self).__name__)
         else:
             return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
