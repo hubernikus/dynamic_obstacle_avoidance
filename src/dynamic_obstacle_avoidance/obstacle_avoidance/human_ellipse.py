@@ -16,8 +16,7 @@ from math import sin, cos, pi, ceil
 import warnings, sys
 
 import numpy.linalg as LA
-import matplotlib.pyplot as plt
-
+# import matplotlib.pyplot as plt
 
 
 class TrackedPedestrian(Ellipse):
@@ -35,7 +34,6 @@ class TrackedPedestrian(Ellipse):
         self.is_dynamic = True
 
         self.position_original = copy.deepcopy(self.position)
-
 
 
 class HumanEllipse(Ellipse):
