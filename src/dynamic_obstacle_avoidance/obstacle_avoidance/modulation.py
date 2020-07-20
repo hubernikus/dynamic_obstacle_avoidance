@@ -414,6 +414,8 @@ def compute_R(d, th_r):
 
 
 def obs_check_collision_2d(obs_list, XX, YY):
+    ''' Check if points (as a list in *args) are colliding with any of the obstacles. 
+    Function is implemented for 2D only. '''
     d = 2
 
     dim_points = XX.shape
@@ -432,14 +434,9 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
     N_points = points.shape[1]
 
-    noColl = np.ones((1,N_points), dtype=bool)
+    noColl = np.ones((1, N_points), dtype=bool)
 
     for it_obs in range(len(obs_list)):
-        # on the surface, we have: \Gamma = \sum_{i=1}^d (xt_i/a_i)^(2p_i) == 1
-        R = compute_R(d,obs_list[it_obs].th_r)
-
-        # Gamma = np.sum( ( 1/obs_list[it_obs].sf * R.T @ (points - np.tile(np.array([obs_list[it_obs].x0]).T,(1,N_points) ) ) / np.tile(np.array([obs_list[it_obs].a]).T, (1, N_points)) )**(np.tile(2*np.array([obs_list[it_obs].p]).T, (1,N_points)) ), axis=0 )
-
         Gamma = np.zeros(N_points)
         for ii in range(N_points):
             Gamma[ii] = obs_list[it_obs].get_gamma(points[:,ii], in_global_frame=True)
@@ -450,6 +447,8 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
 
 def obs_check_collision(obs_list, dim, *args):
+    ''' Check if points (as a list in *args) are colliding with any of the obstacles. '''
+
     # No obstacles
     if len(obs_list)==0:
         return np.ones(args[0].shape)
@@ -469,10 +468,12 @@ def obs_check_collision(obs_list, dim, *args):
 
     for ii in range(N_points):
         pass
+    import pdb; pdb.set_trace()
     return noColl
 
 
 def obs_check_collision_ellipse(obs_list, dim, points):
+    warnings.warn("Depreciated --- delete this function ")
     # TODO: delete / depreciated
     for it_obs in range(len(obs_list)):
         # \Gamma = \sum_{i=1}^d (xt_i/a_i)^(2p_i) = 1

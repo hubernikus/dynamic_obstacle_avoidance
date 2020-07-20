@@ -413,6 +413,8 @@ class Ellipse(Obstacle):
         axes / a1 & a2: Axes of ellipse
         center_ellipse: Center of ellipse '''
 
+
+        # import pdb; pdb.set_trace()
         if in_global_frame:
             direction = self.transform_global2relative_dir(direction)
 
@@ -502,9 +504,15 @@ class Ellipse(Obstacle):
         '''
         Get radius of ellipse in direction of position from the reference point
         '''
-        # TODO: include in previous example
-        
-        direction = position if (relative_center is None) else position-relative_center
+        # TODO: extend for actual relative center
+
+        if relative_center is None:
+            relative_center = np.zeros(self.dim)
+
+        # try:
+        direction = position-relative_center
+        # except:
+            # import pdb; pdb.set_trace()
             
         intersection = self.get_intersection_with_surface(
             relative_center, direction, only_positive_direction=True)
@@ -521,7 +529,7 @@ class Ellipse(Obstacle):
         # TODO: test for margin / reference point
         # TODO: improve speed
         if relative_center is None:
-            relative_center = self.relative_center
+            relative_center = np.zeros(self.dim)
 
         # TODO: remove and make actual reference point
         if relative_center is None:
@@ -530,14 +538,13 @@ class Ellipse(Obstacle):
         margin_absolut = self.margin_absolut
         n_points = position.shape[1]
         radius = np.zeros(position.shape[1])
-        
+
         # Original Gamma
         if self.dim==2:
             if (self.reference_point_is_inside):
                 for pp in range(n_points):
                     # radius[pp] = self._get_local_radius_ellipse(position[:, pp], relative_center)
                     radius[pp] = self._get_local_radius_ellipse(position[:, pp])
-
             else:
                 for pp in range(n_points):
                     if self.position_is_in_direction_of_ellipse(position[:, pp]):
@@ -557,11 +564,12 @@ class Ellipse(Obstacle):
 
                                 dist_intersect, dist_tangent = LA.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[:, self.ind_edge_ref, ii], rcond=-1)[0]
 
+                                dist_intersect = dist_intersect*np.linalg.norm(position[:, pp])
+
                         if dist_intersect<0: # 
                             if not margin_absolut:
                                 raise ValueError("Negative value not possible.")
 
-                            # import pdb; pdb.set_trace()
                             intersections = self.get_intersection_with_surface(edge_point=np.zeros(self.dim), direction=position[:, pp], axes=np.ones(self.dim)*margin_absolut)
                                 
                             # self.get_intersectionWithEllipse()

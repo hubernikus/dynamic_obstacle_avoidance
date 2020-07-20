@@ -65,7 +65,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True):
     
     dim = 2
 
@@ -143,7 +143,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             if not any(reference_point==None):
                 ax_ifd.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
                 # ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
-                ax_ifd.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
+                if reference_point_number:
+                    ax_ifd.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
                 # add group, too
                 
             if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
@@ -201,8 +202,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [0.61, 3.75]
-    pos2 = [0.8, 3.75]
+    pos1 = [1.70, 0]
+    pos2 = [1.90, 0]
     
 
     x_sample_range = [pos1[0], pos2[0]]
@@ -233,7 +234,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     xd_mod  = np.zeros((2,N_x,N_y))
 
     indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
-    
+
     # import pdb; pdb.set_trace()
     
     for ix in range(N_x):
@@ -242,6 +243,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 continue
             
             pos = np.array([XX[ix,iy],YY[ix,iy]])
+            # print('pos', pos)
+            # import pdb; pdb.set_trace()
 
             xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
             # print('pos', pos)

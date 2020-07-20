@@ -1,9 +1,14 @@
 #!/USSR/bin/python3
 '''
-@date 2019-10-15
-@author Lukas Huber 
-@mail lukas.huber@epfl.ch
+Script to create human specific pedestrian obstacle descriptions.
 '''
+
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
+
+__date__ = "2019-10-15"
+__author__ =  "Lukas Huber"
+__mail__ =  "lukas.huber@epfl.ch"
 
 import time
 import numpy as np
@@ -13,9 +18,20 @@ import warnings, sys
 import numpy.linalg as LA
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
+
+class PedestrianTracker(Ellipse):
+    def __init__(self,
+                 axes_length=[1.0, 1.0],
+                 *args, **kwargs):
+        
+        if sys.version_info>(3,0):
+            super().__init__(axes_length=axes_length, *args, **kwargs)
+        else:
+            super(Ellipse, self).__init__(axes_length=axes_length, *args, **kwargs)
+
+        self.is_dynamic = True
+        
 
 
 class HumanEllipse(Ellipse):
