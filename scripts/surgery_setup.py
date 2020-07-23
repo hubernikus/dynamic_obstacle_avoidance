@@ -8,27 +8,8 @@
 '''
 Dynamic Simulation - Obstacle Avoidance Algorithm
 
-@author LukasHuber
-@date 2018-05-24
+
 '''
-
-import numpy as np
-from numpy import pi
-import time
-
-# REMOVE WHEN installed locally
-import os, sys
-from os.path import join
-
-file_dir = os.path.dirname(os.path.realpath(__file__))
-# library_path = join(file_dir, 'dynamic_obstacle_avoidance', 'src', 'dynamic_obstacle_avoidance')
-library_path = join(file_dir, '..', 'src')
-
-if not library_path in sys.path:
-    sys.path.append(library_path)
-
-# import quaternion
-
 # from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 # from dynamic_obstacle_avoidance.visualization.animated_simulation_3d import samplePointsAtBorder
@@ -38,6 +19,14 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Ellip
 from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import DynamicBoundariesPolygon
 from dynamic_obstacle_avoidance.visualization.visualization_3d_level import Visualization3dLevel
 
+__author__ = "LukasHuber"
+__date__ = "2020-07-21"
+
+import numpy as np
+from numpy import pi
+import time
+
+
 print(' ----- Script <<surgery_setup>> started. ----- ')
 
 #############################################################
@@ -46,8 +35,6 @@ print(' ----- Script <<surgery_setup>> started. ----- ')
 simulationNumber = 0
 
 saveFigures = False
-
-
 
 #############################################################
 
