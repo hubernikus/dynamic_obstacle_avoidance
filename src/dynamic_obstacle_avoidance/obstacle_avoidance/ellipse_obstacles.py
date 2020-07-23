@@ -40,6 +40,7 @@ class Ellipse(Obstacle):
                  margin_absolut=0,
                  hull_with_respect_to_reference=False,
                  *args, **kwargs):
+        
         if sys.version_info>(3,0):
             super().__init__(*args, **kwargs)
         else:

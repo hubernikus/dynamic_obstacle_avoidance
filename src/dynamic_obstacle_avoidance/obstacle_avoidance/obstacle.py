@@ -43,7 +43,7 @@ class Obstacle(State):
         else:
             return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
 
-    def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
+    def __init__(self, orientation=0, sigma=1, center_position=[0,0],
                  tail_effect=True, sf=1,
                  name=None,
                  # margin_absolut=0, 
