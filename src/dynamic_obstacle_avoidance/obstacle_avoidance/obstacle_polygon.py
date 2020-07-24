@@ -62,6 +62,7 @@ class Polygon(Obstacle):
         elif self.dim==3:
             self.ind_tiles = indeces_of_tiles
             self.n_planes = indeces_of_tiles.shape[0]
+            self.n_planes_edge = self.n_planes
             # TODO: How hard would it be to find flexible tiles?
         else:
             raise NotImplementedError("Not yet implemented for dimensions higher than 3")
@@ -107,6 +108,7 @@ class Polygon(Obstacle):
     @margin_absolut.setter
     def margin_absolut(self, value):
         self._margin_absolut = value
+        # import pdb; pdb.set_trace()
         self.update_margin()
 
     def update_margin(self):

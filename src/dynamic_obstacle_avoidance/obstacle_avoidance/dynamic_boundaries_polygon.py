@@ -40,11 +40,11 @@ class DynamicBoundariesPolygon(Polygon):
                 [2,3,6,7],
                 [3,0,7,5]])
 
-            kwargs['th_r'] = 0
-            
             kwargs['edge_points'] = edge_points
             kwargs['indeces_of_tiles'] = indeces_of_tiles
+            kwargs['is_boundary'] = True
             inflation_parameter = [0.03, 0.03, 0.03, 0.03]
+            
             
         # define boundary functions
         center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0]) 
@@ -118,7 +118,7 @@ class DynamicBoundariesPolygon(Polygon):
         if z_val is None:
             raise NotImplementedError("Implement drawing in 3D")
 
-        self.x_obs = np.zeros((self.d, numPoints))
+        self.boundary_points_local = np.zeros((self.d, numPoints))
 
         # Assume symmetric setup
         xy_max = self.get_flat_wall_value(z_val)
@@ -148,7 +148,7 @@ class DynamicBoundariesPolygon(Polygon):
             
             for ii in range(num_plane_points):
                 # pos_xy = (xy_max-xy_min)/num_plane_points*ii + xy_min
-                self.x_obs[:, it_xobs] = self.get_point_of_plane(position=pos_xy[:, ii], plane_index=it_plane, inflation_parameter=inflation_parameter)
+                self.boundary_points_local[:, it_xobs] = self.get_point_of_plane(position=pos_xy[:, ii], plane_index=it_plane, inflation_parameter=inflation_parameter)
                                 
                 it_xobs += 1
                 # No rotation in absolute frame, since only relative 2D analysis
@@ -157,7 +157,8 @@ class DynamicBoundariesPolygon(Polygon):
                 if not it_plane:
                     plt.figure()
                 plt.plot(pos_xy[0, :], pos_xy[1, :], 'b.')
-                plt.plot(self.x_obs[0, it_xobs-num_plane_points:it_xobs], self.x_obs[1, it_xobs-num_plane_points:it_xobs], 'gx')
+                plt.plot(self.boundary_points_local[0, it_xobs-num_plane_points:it_xobs],
+                         self.boundary_points_local[1, it_xobs-num_plane_points:it_xobs], 'gx')
     
 
     def get_reference_direction(self, position, in_global_frame=False):

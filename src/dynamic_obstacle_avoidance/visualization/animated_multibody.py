@@ -1,8 +1,5 @@
-'''Dynamic Simulation - Obstacle Avoidance Algorithm
-
-@author LukasHuber
-@date 2019-05-24
-
+'''
+Dynamic Simulation - Obstacle Avoidance Algorithm
 '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
@@ -11,6 +8,9 @@ from numpy import pi
 
 import time
 import warnings
+
+__author =  "LukasHuber"
+__date__ =  "2019-05-24"
 
 # Visualization libraries
 import matplotlib.pyplot as plt
@@ -138,6 +138,7 @@ class AnimatedMultibody():
 
     
     def update(self, iSim):
+        # print('Start loop {}'.format(iSim))
         if self.pause:        # NO ANIMATION -- PAUSE
             self.old_time=time.time()
             return (self.lines + self.obs_polygon + self.contour + self.centers + self.cent_dyns + self.startPoints + self.endPoints + self.attr_pos)
@@ -216,12 +217,17 @@ class AnimatedMultibody():
 
         self.t[self.iSim+1] = (self.iSim+1)*self.dt
 
+        
+        # print('End loop {}'.format(iSim))
+        if not self.iSim%20:
+            print('Loop {}/{}'.format(self.iSim, self.N_simuMax))
+
         return (self.lines + self.obs_polygon + self.contour + self.centers + self.cent_dyns + self.startPoints + self.endPoints + self.attr_pos)
     
 
     def setup_plot(self):
         print("Start setup...")
-        # Draw obstacle
+        # Draw obstacle as polygon
         self.obs_polygon = []
         
         # Numerical hull of ellipsoid
@@ -285,6 +291,7 @@ class AnimatedMultibody():
             cent_dyn, = self.ax.plot([],[], 'k+', animated=True, linewidth=18, markeredgewidth=4, markersize=13)
                 
             self.cent_dyns.append(cent_dyn)
+
                 
         
         for ii in range(self.N_points):
@@ -311,6 +318,7 @@ class AnimatedMultibody():
 
         self.fig.canvas.mpl_connect('button_press_event', self.onClick)  # Button click enabled
 
+        print("... finished setup")
         return (self.lines + self.obs_polygon + self.contour + self.centers + self.cent_dyns + self.startPoints + self.endPoints + self.attr_pos)
 
     
@@ -408,14 +416,17 @@ def run_animation_multibody(*args, animationName="test", saveFigure=False,
     # animation cannot run properly when getting saved at the same time to file.
     # i.e. choose one or the other for each run
     if saveFigure:
+        print('Saving figures')
         try: # avoid error warnings 
             anim.ani.save("../figures/" + animationName + ".mp4", dpi=100,fps=50)
+            print('Saving figure succesful.')
         except:
             warnings.warn('\n\n Saving not succesfull.')
             # raise RuntimeError('WARNING: saving not succesfull.')
             raise
-
+        # print('Print finished saving')
         plt.close('all')
+        
         
     elif return_animationObject:
         print("Returning animation object")

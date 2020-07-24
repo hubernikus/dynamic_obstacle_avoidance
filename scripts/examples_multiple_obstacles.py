@@ -1,8 +1,5 @@
 #!/USSR/bin/python3
-
-'''
-Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
-'''
+''' Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
@@ -10,45 +7,56 @@ import matplotlib.pyplot as plt
 import sys
 from math import pi
 
+__author__ = "LukasHuber"
+__date__ = "2018-02-15"
+__email__ = "lukas.huber@epfl.ch"
+
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields  #
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon, Cuboid
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
-
-__author__ = "LukasHuber"
-__date__ = "2018-02-15"
-__email__ = "lukas.huber@epfl.ch"
-
+from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 
 ########################################################################
 # Chose the option you want to run as a number in the option list (integer from -2 to 10)
 
 options = [0]
 
-N_resol = 80
+N_resol = 60
 
 saveFigures=False
 ########################################################################
 
 def main(options=[0], N_resol=100, saveFigures=False):
     for option in options:
-        obs = ObstacleContainer() # create empty obstacle list
+        obs = GradientContainer() # create empty obstacle list
         if option==0:
-            xAttractor = [-2., 0]
+            xAttractor = [8., -1]
             
-            x_lim, y_lim = [-3, 3], [-3.1, 3.1]
+            x_lim, y_lim = [2, 8], [-2.1, 2.5]
+            # x_lim, y_lim = [-0, 7.1], [-0.1, 7.1]
             
-            # obs.append(Ellipse(center_position=[0, 0.9],
-                               # orientation=60/180.*pi,
-                               # axes_length=[1.2, 0.6]))
+            obs.append(Ellipse(center_position=[3.5, 0.4],
+                               # orientation=0/180.*pi,
+                               axes_length=[0.3, 0.2]))
 
-            obs.append(Ellipse(center_position=[0, -0.5],
-                               orientation=-60/180.*pi,
-                               axes_length=[1.3, 0.5]))
+            obs.append(Ellipse(center_position=[7, -1],
+                               # orientation=0/180.*pi,
+                               axes_length=[0.3, 0.2]))
+
             
-            Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='twoEllispoidsIntersecting', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=N_resol)
+            obs.append(Ellipse(center_position=[6, -0.4],
+                               # orientation=0/180.*pi,
+                               axes_length=[0.2, 0.3]))
+
+            import pdb; pdb.set_trace()
+            
+            
+            Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+                                    saveFigure=saveFigures, figName='twoEllispoidsIntersecting',
+                                    noTicks=False, draw_vectorField=True,
+                                    automatic_reference_point=True, point_grid=N_resol)
 
         if option==1:
             xAttractor = [1., 0]
@@ -69,12 +77,13 @@ def main(options=[0], N_resol=100, saveFigures=False):
             
 
 if (("__main__")==str(__name__)):
-    if len(sys.argv) > 1 and not sys.argv[1]=='-i':
-        options = [int(sys.argv[1])]
-        if len(sys.argv) > 2:
-            N_resol = int(sys.argv[2])
-            if len(sys.argv) > 3:
-                saveFigures = bool(sys.argv[3])
+    
+    # if len(sys.argv) > 1 and not sys.argv[1]=='-i':
+        # options = [int(sys.argv[1])]
+        # if len(sys.argv) > 2:
+            # N_resol = int(sys.argv[2])
+            # if len(sys.argv) > 3:
+                # saveFigures = bool(sys.argv[3])
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 

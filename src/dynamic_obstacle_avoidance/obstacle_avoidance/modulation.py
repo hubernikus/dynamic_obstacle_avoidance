@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1):
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=2.0):
     ''' Compute diagonal Matrix'''
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
@@ -30,7 +30,7 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1):
     else:
         delta_eigenvalue = 1./abs(Gamma)**(1/rho)
 
-    eigenvalue_reference = 1 - delta_eigenvalue
+    eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
     # eigenvalue_reference = 0.1
     
     if is_boundary:
@@ -145,7 +145,9 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
             # plt.ion()
 
     E, E_orth = compute_decomposition_matrix(obs, x_t, dim)
-    D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary)
+    import pdb; pbd.set_trace()
+    D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary,
+                                repulsion_coeff = obs.repulsion_coeff)
 
     return E, D, Gamma, E_orth
 

@@ -13,12 +13,14 @@ import matplotlib.pyplot as plt
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 
 ########################################################################
 
 # Chose the option you want to run as a number in the option list (integer from -2 to 10)
-options = [-5]
+options = [0]
 N_resol = 80
 saveFigures=False
 
@@ -26,7 +28,7 @@ saveFigures=False
 
 def main(options=[0], N_resol=100, saveFigures=False):
     for option in options:
-        obs = [] # create empty obstacle list
+        obs = GradientContainer() # create empty obstacle list
         if option==-6:
             x_lim = [-3,3]
             y_lim = [-0.1,5]
@@ -176,7 +178,7 @@ def main(options=[0], N_resol=100, saveFigures=False):
 
             obs[0].center_dyn = x0
 
-            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True, )
+            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True)
 
 
         if option==0:
@@ -184,30 +186,31 @@ def main(options=[0], N_resol=100, saveFigures=False):
             a=[0.4, 1]
             p=[1,1]
             x0=[1.5,0]
-            th_r=0/180*pi
+            th_r=30/180*pi
             sf=1
-            obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+            obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf,
+                               tail_effect=False, repulsion_coeff=2.0))
 
             xlim = [-0.5,4]
             ylim = [-2,2]
 
             xAttractor = [0,0]
 
-            obs[0].center_dyn = x0
+            # obs[0].center_dyn = x0
 
             Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True)
 
-            pltLines(xAttractor, obs[0].center_dyn)
-            if saveFigures:
-                plt.savefig('fig/' + 'ellipseCenterMiddle_centerLine' + '.eps', bbox_inches='tight')       
-            rat = 0.6
-            obs[0].center_dyn = [x0[0] - rat*np.sin(th_r)*a[1],
-                                 x0[1] - rat*np.cos(th_r)*a[1]]
-            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerNotMiddle', noTicks=True)
-            pltLines(xAttractor, obs[0].center_dyn)
+            # pltLines(xAttractor, obs[0].center_dyn)
+            # if saveFigures:
+                # plt.savefig('fig/' + 'ellipseCenterMiddle_centerLine' + '.eps', bbox_inches='tight')       
+            # rat = 0.6
+            # obs[0].center_dyn = [x0[0] - rat*np.sin(th_r)*a[1],
+                                 # x0[1] - rat*np.cos(th_r)*a[1]]
+            # Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerNotMiddle', noTicks=True)
+            # pltLines(xAttractor, obs[0].center_dyn)
 
-            if saveFigures:
-                plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine' + '.eps', bbox_inches='tight')
+            # if saveFigures:
+                # plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine' + '.eps', bbox_inches='tight')
 
 
         if option==1:

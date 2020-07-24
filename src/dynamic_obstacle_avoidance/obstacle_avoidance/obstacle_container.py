@@ -34,6 +34,8 @@ class BaseContainer(object):
         # self.index_wall = None
 
         self._obstacle_list = []
+
+        self.contains_wall_obstacle = False
         
         if isinstance(obs_list, list):
             for ii in range(len(obs_list)):
@@ -42,7 +44,7 @@ class BaseContainer(object):
                         # warnings.warn("Several boundary obstacles in one container.")
                     # self.index_wall = ii
         self.contains_wall_obstacle = False
-
+        
     @property
     def index_wall(self):
         ''' Wall obstacles are placed at the end of the list.'''
@@ -214,7 +216,7 @@ class ObstacleContainer(BaseContainer):
             self._distance_matrix = None
         else:
             # self._intersection_matrix = Intersection_matrix(n_obs=, dim=self[0].dim)
-            self._boundary_reference_points = np.zeros((2, n_obs, n_obs))
+            self._boundary_reference_points = np.zeros((2, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=self.number)
 
         # The reset clusters has to be called after all obstacles are inserted in order to update the container

@@ -33,7 +33,8 @@ def main(n_resol=90, *args, **kwargs):
 
     pos_attractor = [-1.5, 1.0]
 
-    obs = ObstacleContainer()
+    # obs = ObstacleContainer()
+    obs = GradientContainer()
     
     edge_points = np.array((
         [4.0, 1.0, 1.0, 0.0, 0.0,-4.0, -4.0,-2.5,-2.5, 0.0, 0.0, 4.0],

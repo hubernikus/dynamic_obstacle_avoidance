@@ -1,21 +1,12 @@
-# ....
-#
-'''
-%load_ext autoreload
-%autoreload 2
-'''
-# !/usr/bin/python3
+#### !/usr/bin/python3
 '''
 Dynamic Simulation - Obstacle Avoidance Algorithm
-
-
 '''
-# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
-# from dynamic_obstacle_avoidance.visualization.animated_simulation_3d import samplePointsAtBorder
-# from dynamic_obstacle_avoidance.visualization.animated_simulation_3d import run_animation
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Ellipse
+# from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_ import Ellipse
 from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import DynamicBoundariesPolygon
 from dynamic_obstacle_avoidance.visualization.visualization_3d_level import Visualization3dLevel
 
@@ -25,7 +16,6 @@ __date__ = "2020-07-21"
 import numpy as np
 from numpy import pi
 import time
-
 
 print(' ----- Script <<surgery_setup>> started. ----- ')
 
@@ -66,14 +56,10 @@ def main(simulationNumber=0, saveFigures=False):
             [1,2,5,6],
             [2,3,6,7],
             [3,0,7,5]])
+
         
-        # obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
-        # obs.append(DynamicBoundariesPolygon(edge_points=points, indeces_of_tiles=indeces_of_tiles, indeces_of_flexibleTiles=indeces_of_tiles, inflation_parameter=[0.03, 0.03, 0.03, 0.03], th_r=0))
         obs = ObstacleContainer([DynamicBoundariesPolygon(is_surgery_setup=True)])
 
-        # obs.append(Ellipse(axes_length=[1, 1, 2], center_position=[0, 0, 0], orientation=[1,0,0,0]))
-
-        
         x_range = [-0.15, 0.15]
         y_range = [-0.15, 0.15]
         z_Range = [-a2, a2*2]
@@ -96,15 +82,18 @@ def main(simulationNumber=0, saveFigures=False):
             visualizer.animate2d(x_init, attractorPos)
         
     print('\n\n---- Script finished ---- \n\n')
-    import pdb; pdb.set_trace() ### DEBUG ###
+    # import pdb; pdb.set_trace() ### DEBUG ###
 
     
-if __name__ == "__main__":
+if (__name__) == "__main__":
     
-    if len(sys.argv) > 1:
-        simulationNumber = int(sys.argv[1])
+    # if len(sys.argv) > 1:
+        # simulationNumber = int(sys.argv[1])
 
-    if len(sys.argv) > 2:
-        saveFigures = bool(int(sys.argv[2]))
+    # if len(sys.argv) > 2:
+        # saveFigures = bool(int(sys.argv[2]))
 
     main(simulationNumber=simulationNumber, saveFigures=saveFigures)
+
+
+print(' ----- Script <<surgery_setup>> finished 2. ----- ')

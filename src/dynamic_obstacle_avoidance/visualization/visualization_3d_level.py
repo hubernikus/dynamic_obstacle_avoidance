@@ -8,12 +8,11 @@ Obstacle Avoidance Algorithm script with vecotr field
 
 # General classes
 import numpy as np
-from numpy import pi
+from math import pi
 import copy
 import time
 
 import matplotlib.pyplot as plt
-import matplotlib
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import make_velocity_constant
 # from dynamic_obstacle_avoidance.dynamical_system import *

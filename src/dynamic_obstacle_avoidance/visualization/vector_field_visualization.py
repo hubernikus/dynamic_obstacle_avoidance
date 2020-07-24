@@ -77,7 +77,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if automatic_reference_point:
         tt = time.time()
         obs.update_reference_points()
-        obs.reset_obstacles_have_moved()
+        # obs.reset_obstacles_have_moved()
         # intersection_obs = get_intersections_obstacles(obs)
         dt = time.time() - tt
         # print("Time for intersection: {}ms".format(np.round(1000*dt,2)))
