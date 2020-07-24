@@ -11,7 +11,7 @@ import numpy.linalg as LA
 
 # TODO: clean up and restructure files.
 
-def linear_ds(position, attractor=None):
+def get_linear_ds(position, attractor=None):
     ''' Linear Dynamical System'''
     if attractor is None:
         return (-1)*position
