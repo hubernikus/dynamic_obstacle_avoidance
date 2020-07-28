@@ -38,13 +38,13 @@ class Obstacle(State):
     active_counter = 0
     
     def __repr__(self):
-        if self.boundary:
+        if self.is_boundary:
             return "Wall <<{}>> is of Type: {}".format(self.name, type(self).__name__)
         else:
             return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
 
-    def __init__(self, orientation=0, sigma=1,  center_position=[0,0],
-                 tail_effect=True, sf=1,
+    def __init__(self, orientation=None, sigma=1,  center_position=[0,0],
+                 tail_effect=True, sf=1, repulsion_coeff=1,
                  name=None,
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
@@ -66,7 +66,7 @@ class Obstacle(State):
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
 
         # Obstacle attitude
-        if type(x0) != type(None):
+        if not x0 is None:
             center_position = x0 # TODO remove and rename
         self.position = center_position
         self.center_position = self.position
@@ -75,9 +75,17 @@ class Obstacle(State):
         
         self.dim = len(self.center_position) # Dimension of space
         self.d = len(self.center_position) # Dimension of space # TODO remove
-        
-        if type(th_r)!= type(None):
-            orientation = th_r
+
+        if orientation is None:
+            if self.dim==2:
+                orientation = 0
+            if self.dim==3:
+                orientation = np.zeros(3)
+                
+            if not th_r is None:
+                # TODO: depreciated remove
+                orientation = th_r
+                
         self.orientation = orientation
 
         self.rotMatrix = []
@@ -113,8 +121,8 @@ class Obstacle(State):
                 linear_velocity=np.zeros(self.dim)
             else:
                 linear_velocity = xd
-        
-        self.linear_velocity_const = linear_velocity
+
+        self.linear_velocity = linear_velocity
 
         # TODO: remove
         # Special case of moving obstacle (Create subclass) 
@@ -149,6 +157,8 @@ class Obstacle(State):
         # Allows to track which obstacles need an update on the reference point search
         self.has_moved = True
         self.is_dynamic = False
+
+        self.repulsion_coeff = repulsion_coeff
         
         # If
         # self.properties = {} # TODO: use kwargs
@@ -380,6 +390,11 @@ class Obstacle(State):
     @property
     def center_dyn(self):# TODO: depreciated -- delete
         return self.reference_point
+
+    # @property
+    # def center_dyn(self):# TODO: depreciated -- delete
+        # return self.reference_point
+    
     
     @property
     def global_reference_point(self):
@@ -428,7 +443,18 @@ class Obstacle(State):
             self._orientation = np.array(value) # TODO: change to quaternion
         else:
             self._orientation = value
-        self.compute_R()
+
+        if self.dim==2:
+            self.compute_R()
+
+    @property
+    def th_r(self): # TODO: will be removed since outdated
+        return self.orientation # getter
+
+    @th_r.setter
+    def th_r(self, value): # TODO: will be removed since outdated
+        self.orientation = value # setter
+
 
     @property
     def position(self):
@@ -437,6 +463,15 @@ class Obstacle(State):
     @position.setter
     def position(self, value):
         self.center_position = value
+
+    @property
+    def x0(self):
+        return self.center_position
+
+    @x0.setter
+    def x0(self, value):
+        self.center_position = value
+        self.has_moved = True
     
     @property
     def center_position(self):
@@ -448,14 +483,6 @@ class Obstacle(State):
             self._center_position = np.array(value) 
         else:
             self._center_position = value
-
-    @property
-    def th_r(self): # TODO: will be removed since outdated
-        return self.orientation # getter
-
-    @th_r.setter
-    def th_r(self, value): # TODO: will be removed since outdated
-        self.orientation = value # setter
 
     @property
     def timestamp(self):
@@ -488,16 +515,15 @@ class Obstacle(State):
         if isinstance(value, list):
             value = np.array(value)
         self._linear_velocity_const = value
+
+    @property
+    def linear_velocity(self):
+        return self._linear_velocity
+
+    @linear_velocity.setter
+    def linear_velocity(self, value):
         self._linear_velocity = value
-
-    @property
-    def w(self): # TODO: remove
-        warnings.warn("Outdated name")
-        return self._angular_velocity_const
-
-    @property
-    def linear_velocity(self): # TODO: remove
-        return self._linear_velocity_const
+        self._linear_velocity_const = value
 
     @property
     def angular_velocity_const(self):
@@ -509,6 +535,11 @@ class Obstacle(State):
             value = np.array(value)
         self._angular_velocity_const = value
         self._angular_velocity = value
+
+    @property
+    def w(self): # TODO: remove
+        warnings.warn("Outdated name")
+        return self._angular_velocity_const
 
     @property
     def boundary_points(self):
@@ -678,6 +709,7 @@ class Obstacle(State):
             # Periodicity of oscillation
             delta_orientation = angle_difference_directional(orientation, self.orientation)
             new_angular_velocity = delta_orientation/dt
+            # import pdb; pdb.set_trace()
             self.linear_velocity = k_linear_velocity*self.linear_velocity + (1-k_linear_velocity)*new_linear_velocity
             self.center_position = k_position*(self.linear_velocity*dt + self.center_position) + (1-k_position)*(position)
 

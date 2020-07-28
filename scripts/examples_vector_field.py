@@ -1,24 +1,27 @@
 #!/USSR/bin/python3
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
-
-@author LukasHuber
-@date 2018-02-15
 '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 import matplotlib.pyplot as plt
 
+__author__ = "LukasHuber"
+__date__ = "2018-02-15"
+
+ 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 
 ########################################################################
 
 # Chose the option you want to run as a number in the option list (integer from -2 to 10)
-options = [-5]
+options = [0]
 N_resol = 80
 saveFigures=False
 
@@ -26,7 +29,7 @@ saveFigures=False
 
 def main(options=[0], N_resol=100, saveFigures=False):
     for option in options:
-        obs = [] # create empty obstacle list
+        obs = GradientContainer() # create empty obstacle list
         if option==-6:
             x_lim = [-3,3]
             y_lim = [-0.1,5]
@@ -176,7 +179,7 @@ def main(options=[0], N_resol=100, saveFigures=False):
 
             obs[0].center_dyn = x0
 
-            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True, )
+            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True)
 
 
         if option==0:
@@ -184,30 +187,31 @@ def main(options=[0], N_resol=100, saveFigures=False):
             a=[0.4, 1]
             p=[1,1]
             x0=[1.5,0]
-            th_r=0/180*pi
+            th_r=30/180*pi
             sf=1
-            obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
+            obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf,
+                               tail_effect=False, repulsion_coeff=2.0))
 
             xlim = [-0.5,4]
             ylim = [-2,2]
 
             xAttractor = [0,0]
 
-            obs[0].center_dyn = x0
+            # obs[0].center_dyn = x0
 
             Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerMiddle', noTicks=True)
 
-            pltLines(xAttractor, obs[0].center_dyn)
-            if saveFigures:
-                plt.savefig('fig/' + 'ellipseCenterMiddle_centerLine' + '.eps', bbox_inches='tight')       
-            rat = 0.6
-            obs[0].center_dyn = [x0[0] - rat*np.sin(th_r)*a[1],
-                                 x0[1] - rat*np.cos(th_r)*a[1]]
-            Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerNotMiddle', noTicks=True)
-            pltLines(xAttractor, obs[0].center_dyn)
+            # pltLines(xAttractor, obs[0].center_dyn)
+            # if saveFigures:
+                # plt.savefig('fig/' + 'ellipseCenterMiddle_centerLine' + '.eps', bbox_inches='tight')       
+            # rat = 0.6
+            # obs[0].center_dyn = [x0[0] - rat*np.sin(th_r)*a[1],
+                                 # x0[1] - rat*np.cos(th_r)*a[1]]
+            # Simulation_vectorFields(xlim, ylim, N_resol, obs, xAttractor=xAttractor, saveFigure=False, figName='ellipse_centerNotMiddle', noTicks=True)
+            # pltLines(xAttractor, obs[0].center_dyn)
 
-            if saveFigures:
-                plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine' + '.eps', bbox_inches='tight')
+            # if saveFigures:
+                # plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine' + '.eps', bbox_inches='tight')
 
 
         if option==1:
@@ -512,16 +516,17 @@ def main(options=[0], N_resol=100, saveFigures=False):
             if saveFigures:
                 plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine_pres_colMap' + '.eps', bbox_inches='tight')
 
-print('name', __name__)    
-if (str(__name__)==("__main__")):
-    if len(sys.argv) > 1:
-        options = sys.argv[1]
+# print('name', __name__)    
+if (__name__)=="__main__":
+    if False:
+        if len(sys.argv) > 1:
+            options = sys.argv[1]
 
-    if len(sys.argv) > 2:
-        N_resol = sys.argv[2]
+            if len(sys.argv) > 2:
+                N_resol = sys.argv[2]
 
-    if len(sys.argv) > 3:
-        saveFigures = sys.argv[3]
+                if len(sys.argv) > 3:
+                    saveFigures = sys.argv[3]
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 

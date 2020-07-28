@@ -25,15 +25,18 @@ class TrackedPedestrian(Ellipse):
     def __init__(self,
                  axes_length=[1.0, 1.0],
                  *args, **kwargs):
+
+        kwargs['axes_length'] = axes_length
+        # print('kwargs', kwargs)
         
         if sys.version_info>(3,0):
-            super().__init__(axes_length=axes_length, *args, **kwargs)
+            super().__init__(*args, **kwargs)
         else:
-            super(Ellipse, self).__init__(axes_length=axes_length, *args, **kwargs)
+            super(TrackedPedestrian, self).__init__(*args, **kwargs)
 
         self.is_dynamic = True
 
-        self.position_original = copy.deepcopy(self.position)
+        self.position_original = np.copy(self.position)
 
 
 class HumanEllipse(Ellipse):

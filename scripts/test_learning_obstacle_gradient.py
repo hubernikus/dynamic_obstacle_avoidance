@@ -51,7 +51,7 @@ def create_obstacle_from_data(file_in_path, file_in_name, save_data=True):
     # TODO: save data to file
     # if save_data:
         # file_name = file_in_path+file_in_name + "csv"
-        # pickle.dump(Obstacles, file_name)
+       # pickle.dump(Obstacles, file_name)
 
 def read_obstacle_from_file(file_in_path, file_name):
     # TODO: make it work

@@ -34,6 +34,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     xd [dim]: modulated dynamical system at position x
     '''
 
+    # import pdb; pdb.set_trace()
+
     if not x is None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
@@ -104,9 +106,11 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     for n in np.arange(N_obs)[ind_obs]:
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
-        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim)
-        E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(
-            obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
+        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim, repulsion_coeff = obs[n].repulsion_coeff)
+        # import pdb; pdb.set_trace()
+        E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
+            
+            
 
     xd_obs = np.zeros((dim))
     
@@ -151,12 +155,20 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 xd_temp = np.copy(xd)
 
             # Modulation with M = E @ D @ E^-1
-            xd_hat[:, n] = E[:,:,n].dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])).dot(xd_temp)
+            xd_trafo = LA.pinv(E[:,:,n]).dot(xd_temp)
             
-            if not evaluate_in_global_frame:
-                xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
+            if not obs[n].tail_effect and xd_trafo[0]>0:
+                xd_hat[:, n] = xd
+            else:
+                xd_hat[:, n] = E[:,:,n].dot(D[:,:,n]).dot(xd_trafo)
+            
+                if not evaluate_in_global_frame:
+                    xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
+                
+                    
                 
         if repulsive_obstacle:
+        # if False:
             # Move away from center in case of a collision
             if Gamma[n] < (1+repulsive_gammaMargin): 
                 repulsive_power = 5
