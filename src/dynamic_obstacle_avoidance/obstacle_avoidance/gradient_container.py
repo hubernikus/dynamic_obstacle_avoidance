@@ -4,18 +4,23 @@ Container encapsulates all obstacles.
 Gradient container finds the dynamic reference point through gradient descent.
 '''
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
-
 __author__ = "LukasHuber"
 __date__ =  "2020-06-30"
 __email__ =  "lukas.huber@epfl.ch"
 
 import warnings, sys
 import numpy as np
+import copy
+
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
+
+from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
+from dynamic_obstacle_avoidance import settings
+
 # if not sys.version_info>(3,0): # Python 2
     # import pdb; pdb.set_trace()
     # import itertools.zip as izip
@@ -134,7 +139,6 @@ class GradientContainer(ObstacleContainer):
                     distances[jj] = self.get_distance(ii, jj)
 
             weights = get_reference_weight(distances, obs_reference_size)
-
                 
             if np.sum(weights):
                 reference_point = np.zeros(self[ii].dim)
@@ -189,6 +193,7 @@ class GradientContainer(ObstacleContainer):
 
         # Compare two (2) obstacles to each other
         n_com = 2
+
 
         # Iterate over all obstacles (but last element, because nothing to compare to)
         for ii in range(len(self)-1):
@@ -283,7 +288,7 @@ class GradientContainer(ObstacleContainer):
                         self.intersection_matrix[ii, jj] = ref_point1
                         
 
-    def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-4, convergence_err=1e-3, max_it=100):
+    def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-3, convergence_err=1e-3, max_it=100):
         ''' Find closest point of obstacles using gradient descent in direction space. 
         Gradient Descent is performed in the angle space of the obstacle. '''
         
@@ -293,14 +298,33 @@ class GradientContainer(ObstacleContainer):
         surface_derivatives = np.zeros((dim, 2))
 
         # Setup for numerical gradient descent
-        step_size = 0.03 
+        step_size = 1
         it_count = 0
+        delta_angle = 0
+
+        # TODO: adapt alpha depending if it's first time!
+        alpha = 0.5
+        beta = 0.99
 
         # Obstacles intersecting
         is_intersecting = False
 
+        
+        # Check if step leads to convergence  (expensive but worth it)
+        for obs, ii in zip([obs0, obs1], [0, 1]):
+            angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
+            direction_angle = get_angle_space_inverse(angle, NullMatrix=NullMatrices[ii, :, :])
+
+            surface_points[:, ii] = obs.get_local_radius_point(
+                direction=direction_angle, in_global_frame=True)
+            
+        dist_dir = (surface_points[:, 1] - surface_points[:, 0])
+        dist_magnitude = np.linalg.norm(dist_dir)
+
+
         while not is_intersecting:
             # Gradient descent in the angle space of the obstacle
+
             for obs, ii in zip([obs0, obs1], [0, 1]):
                 angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
                 if np.linalg.norm(angle) > pi:
@@ -308,6 +332,26 @@ class GradientContainer(ObstacleContainer):
                 surface_derivatives[:, ii] = obs.get_surface_derivative_angle_num(
                     angle, NullMatrix=NullMatrices[ii, :, :], in_global_frame=True)
             
+            # Calculate step
+            delta_angle = (0.5/dist_magnitude*
+                           np.array([-dist_dir.dot(surface_derivatives[:, 0]),
+                                     dist_dir.dot(surface_derivatives[:, 1])]))
+            
+            # Backtracking line search
+            step_size = beta*step_size
+
+            # Calculate new angle (points in direction space)
+            step = alpha*step_size*delta_angle
+            angles_new = angles - step
+
+            # Stop after maximum iteration or absolute convergence error
+            if np.linalg.norm(step) < convergence_err:
+                print("Convergence of angle descent reached at iteration {}.".format(it_count))
+                break
+
+            # Check if step leads to convergence  (expensive but worth it)
+            for obs, ii in zip([obs0, obs1], [0, 1]):
+                angle = angles_new[ii*(dim-1):(ii+1)*(dim-1)]
                 direction_angle = get_angle_space_inverse(
                     angle, NullMatrix=NullMatrices[ii, :, :])
 
@@ -315,24 +359,39 @@ class GradientContainer(ObstacleContainer):
                     direction=direction_angle, in_global_frame=True)
 
             dist_dir = (surface_points[:, 1] - surface_points[:, 0])
-            dist_magnitude = np.linalg.norm(dist_dir)
-
-            if dist_magnitude < contact_err:
+            dist_magnitude_new = np.linalg.norm(dist_dir)
+            
+            if dist_magnitude_new < contact_err:
                 is_intersecting = True
-                print("Points are intersecting. Switching to Gamma-descent.")
+                print("Obstacles are intersecting. Switching to Gamma-descent.")
                 continue
 
-            delta_angle = (0.5/dist_magnitude*
-                           np.array([-dist_dir.dot(surface_derivatives[:, 0]),
-                                     dist_dir.dot(surface_derivatives[:, 1])]))
+            # Check if step was to big or accept
+            if dist_magnitude_new > dist_magnitude:
+                step_size = step_size/2.0
+                it_count += 1
+                if it_count > max_it:
+                    print("Maximum {} iterations reached..".format(it_count))
+                    break
+                continue
 
-            angles = angles - step_size*delta_angle
+            # Update values
+            angles = angles_new
+            dist_magnitude = dist_magnitude_new
+
+
+            if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
+                settings.boundary_ref_point_list.append(angles_new)
+                settings.dist_ref_points.append(dist_magnitude_new)
+                settings.position0.append(copy.deepcopy(surface_points[:, 0]))
+                settings.position1.append(copy.deepcopy(surface_points[:, 1]))
+            
             it_count += 1
 
-            # Gradient descent step
-            if it_count>max_it or np.linalg.norm(step_size*delta_angle) < convergence_err:
-                print("Convergence of angle descent reached after {} iterations.".format(it_count))
+            if it_count > max_it:
+                print("Maximum {} iterations reached".format(it_count))
                 break
+
 
         reference_points = np.zeros((dim, 2))
         for obs, ii in zip((obs0, obs1), [0, 1]):
@@ -341,26 +400,26 @@ class GradientContainer(ObstacleContainer):
 
             reference_points[:, ii] = obs.get_local_radius_point(direction=dir0,
                                                                  in_global_frame=True)
-        
+
+        if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
+            for obs, ii in zip([obs0, obs1], [0, 1]):
+                direction_angle = get_angle_space_inverse(
+                    angle, NullMatrix=NullMatrices[ii, :, :])
+                surface_points[:, ii] = obs.get_local_radius_point(
+                    direction=direction_angle, in_global_frame=True)
+            settings.position0.append(copy.deepcopy(surface_points[:, 0]))
+            settings.position1.append(copy.deepcopy(surface_points[:, 1]))
+                
+
+        # Do gamma descent if objects are interesecting
         if is_intersecting:
-            # Is intersecting
             reference_point = self.gamma_gradient_descent(
                 obs0, obs1, common_point=np.mean(reference_points, axis=1)
             )
-
             dist = 0
-
-            # print('center obs1 & obs2', obs0.center_position, obs1.center_position)
-            # print('ref_pos obs1 & obs2', reference_point, reference_point)
-            # print('same-same \n')
-            
             return dist, reference_point, reference_point
         
         else:
-            # print('center obs1 & obs2', obs0.center_position, obs1.center_position)
-            # print('ref_pos obs1 & obs2', reference_points[:, 0], reference_points[:, 1])
-            # print('diff-diff \n')
-            
             return dist_magnitude, reference_points[:, 0], reference_points[:, 1]
 
         

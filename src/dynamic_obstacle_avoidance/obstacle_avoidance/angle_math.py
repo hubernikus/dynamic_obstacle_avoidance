@@ -232,14 +232,13 @@ def get_angle_space_inverse(dir_angle_space, null_direction=None, NullMatrix=Non
 
     norm_directionSpace = np.linalg.norm(dir_angle_space)
     if norm_directionSpace:
-        directions = (NullMatrix.dot(
-            np.hstack((np.cos(norm_directionSpace),
-                       np.sin(norm_directionSpace) / norm_directionSpace * dir_angle_space)) ))
+        directions = (NullMatrix.dot(np.hstack((np.cos(norm_directionSpace), np.sin(norm_directionSpace) / norm_directionSpace * dir_angle_space)) ))
+                
+                                                    
     else:
         directions = NullMatrix[:,0]
 
     return directions
-    
 
 
 def get_directional_weighted_sum(null_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):

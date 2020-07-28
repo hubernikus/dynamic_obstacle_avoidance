@@ -1,15 +1,16 @@
 #!/USSR/bin/python3
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
-
-@author LukasHuber
-@date 2018-02-15
 '''
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 import matplotlib.pyplot as plt
 
+__author__ = "LukasHuber"
+__date__ = "2018-02-15"
+
+ 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
@@ -515,16 +516,17 @@ def main(options=[0], N_resol=100, saveFigures=False):
             if saveFigures:
                 plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine_pres_colMap' + '.eps', bbox_inches='tight')
 
-print('name', __name__)    
-if (str(__name__)==("__main__")):
-    if len(sys.argv) > 1:
-        options = sys.argv[1]
+# print('name', __name__)    
+if (__name__)=="__main__":
+    if False:
+        if len(sys.argv) > 1:
+            options = sys.argv[1]
 
-    if len(sys.argv) > 2:
-        N_resol = sys.argv[2]
+            if len(sys.argv) > 2:
+                N_resol = sys.argv[2]
 
-    if len(sys.argv) > 3:
-        saveFigures = sys.argv[3]
+                if len(sys.argv) > 3:
+                    saveFigures = sys.argv[3]
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 
