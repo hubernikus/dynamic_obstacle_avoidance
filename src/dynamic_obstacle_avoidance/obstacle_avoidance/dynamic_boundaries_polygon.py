@@ -68,6 +68,7 @@ class DynamicBoundariesPolygon(Polygon):
         self.time = 0
         self.update(self.inflation_parameter)
 
+
         # self.dirs_evaluation = np.array([[0,1,0],
                                          # [1,0,0],
                                          # [0,1,0]
@@ -118,6 +119,7 @@ class DynamicBoundariesPolygon(Polygon):
         if z_val is None:
             raise NotImplementedError("Implement drawing in 3D")
 
+        import pdb; pdb.set_trace()
         self.boundary_points_local = np.zeros((self.d, numPoints))
 
         # Assume symmetric setup

@@ -67,8 +67,10 @@ class Visualization3dLevel():
             self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
             print("NO DRAWING METHOD CHOSEN")
 
+    
     def animate2d(self, x_init, attractor_position=np.array([0,0,0])):
         run_animation(x_init, self.obs, x_range=self.x_range, y_range=self.y_range, dt=0.05, N_simuMax=1040, convergenceMargin=0.3, sleepPeriod=0.01, attractorPos=attractor_position, animationName='surgery_setup', saveFigure=False, dimension=2)
+        
 
     def draw_2d_obstacles(self, z_val=None, save_figure=False):
         # Adjust dynamic center
@@ -91,6 +93,7 @@ class Visualization3dLevel():
             x_obs_sf = self.obs[n].x_obs # todo include in obs_draw_ellipsoid
 
             plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
+            import pdb; pdb.set_trace()
 
             obs_polygon.append( plt.Polygon(self.obs[n].x_obs[:2, :].T, alpha=0.8, zorder=2))
 
@@ -99,12 +102,13 @@ class Visualization3dLevel():
                     np.vstack((
                         np.array([[self.x_range[0], self.x_range[1], self.x_range[1], self.x_range[0]],
                                   [self.y_range[0], self.y_range[0], self.y_range[1], self.y_range[1]]]).T
-                    )), alpha=0.5, zorder=-1)
+                    )), alpha=0.5, zorder=-2)
+                
                 boundary_polygon.set_color(np.array([176,124,124])/255.)
 
                 obs_polygon[n].set_color('white')
-                obs_polygon[n].set_alpha(1)
-                obs_polygon[n].set_zorder(-1)
+                # obs_polygon[n].set_alpha(0.9)
+                # obs_polygon[n].set_zorder(-1)
 
             else:
                 if len(obstacleColor)==len(self.obs):
