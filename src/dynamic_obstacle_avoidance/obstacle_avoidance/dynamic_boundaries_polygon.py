@@ -14,14 +14,19 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polyg
 class DynamicBoundariesPolygon(Polygon):
     '''
     Dynamic Boundary for Application in 3D with surface polygons
+
+    Pyramid shape (without top edge)
     '''
     def __init__(self, indeces_of_flexibleTiles=None, inflation_parameter=None, is_surgery_setup=False, 
                  *args, **kwargs):
 
         if is_surgery_setup:
-            a1, a2 = 0.00, 0.16
+            # With of bottom (a1) and top (a2) square respectively
+            a1, a2 = 0.01, 0.16
             d_a = (a2-a1)/2
-            l = 0.16
+            
+            # Height z
+            l = 0.16 
 
             edge_points = np.array([[-a1, -a1, 0],
                                     [a1, -a1, 0],
@@ -44,11 +49,20 @@ class DynamicBoundariesPolygon(Polygon):
             kwargs['indeces_of_tiles'] = indeces_of_tiles
             kwargs['is_boundary'] = True
             inflation_parameter = [0.03, 0.03, 0.03, 0.03]
-            
+
+
             
         # define boundary functions
         center_position = np.array([0, 0, kwargs['edge_points'][2, -1]/2.0]) 
         super(DynamicBoundariesPolygon, self).__init__(center_position=center_position, *args, **kwargs)
+
+        # Define range of 'cube'
+        self.x_min = np.min(self.edge_points[0, :])
+        self.x_max = np.max(self.edge_points[0, :])
+        self.y_min = np.min(self.edge_points[1, :])
+        self.y_max = np.max(self.edge_points[1, :])
+        self.z_min = np.min(self.edge_points[2, :])
+        self.z_max = np.max(self.edge_points[2, :])
 
         if indeces_of_flexibleTiles is None:
             self.indices_of_flexibleTiles = self.ind_tiles
@@ -67,6 +81,9 @@ class DynamicBoundariesPolygon(Polygon):
 
         self.time = 0
         self.update(self.inflation_parameter)
+
+
+        
 
 
         # self.dirs_evaluation = np.array([[0,1,0],
@@ -117,15 +134,23 @@ class DynamicBoundariesPolygon(Polygon):
     def draw_obstacle(self, numPoints=20, z_val=None, inflation_parameter=None):
         # Specific to square
         if z_val is None:
-            raise NotImplementedError("Implement drawing in 3D")
+            raise NotImplementedError("Implement _drawing in 3D")
 
-        import pdb; pdb.set_trace()
+        # Check z value
+        if z_val>self.z_max or z_val<self.z_min:
+            print("z_value out of bound")
+            import pdb; pdb.set_trace()
+            return
+        
         self.boundary_points_local = np.zeros((self.d, numPoints))
 
         # Assume symmetric setup
         xy_max = self.get_flat_wall_value(z_val)
 
+        # Iterator of the boundary point-list
         it_xobs = 0
+
+        # For each wall 
         for it_plane in range(self.num_planes):
             if inflation_parameter is None:
                 inflation_parameter = self.inflation_parameter[it_plane]
@@ -147,10 +172,14 @@ class DynamicBoundariesPolygon(Polygon):
                     pos_xy[ii, :] = np.linspace(-max_val, max_val, num_plane_points)
                     
             pos_xy[2,:] = np.ones(num_plane_points)*z_val
+            # import pdb; pdb.set_trace()
+            # a=0
             
             for ii in range(num_plane_points):
                 # pos_xy = (xy_max-xy_min)/num_plane_points*ii + xy_min
-                self.boundary_points_local[:, it_xobs] = self.get_point_of_plane(position=pos_xy[:, ii], plane_index=it_plane, inflation_parameter=inflation_parameter)
+                self.boundary_points_local[:, it_xobs] = self.get_point_of_plane(
+                    position=pos_xy[:, ii], plane_index=it_plane,
+                    inflation_parameter=inflation_parameter)
                                 
                 it_xobs += 1
                 # No rotation in absolute frame, since only relative 2D analysis
@@ -161,7 +190,8 @@ class DynamicBoundariesPolygon(Polygon):
                 plt.plot(pos_xy[0, :], pos_xy[1, :], 'b.')
                 plt.plot(self.boundary_points_local[0, it_xobs-num_plane_points:it_xobs],
                          self.boundary_points_local[1, it_xobs-num_plane_points:it_xobs], 'gx')
-    
+        # import pdb; pdb.set_trace();
+        # a=0
 
     def get_reference_direction(self, position, in_global_frame=False):
         if in_global_frame:
@@ -221,9 +251,12 @@ class DynamicBoundariesPolygon(Polygon):
 
     
     def get_flat_wall_value(self, z_value):
-        # Assumption of symmetry
+        # Assumption of pyramid shape (without edge)
         z_max = self.edge_points[2,-1]
-        flat_wall = (self.edge_points[0,-2]-self.edge_points[0, 1]) / (2*z_max)*(z_value+z_max) + self.edge_points[0, 1]
+
+        xy_at_min_z = self.edge_points[0, 1]
+        xy_at_max_z = self.edge_points[0,-2]
+        flat_wall = (xy_at_max_z - xy_at_min_z) /(2*z_max)*(z_value+z_max) + xy_at_min_z
         # if np.isnan(flat_wall): # TODO: remove
             # import pdb; pdb.set_trace() ## DEBUG ##
         return flat_wall
@@ -309,10 +342,6 @@ class DynamicBoundariesPolygon(Polygon):
             
             tangents_plane[:, ii] = (pos_high-pos_low)/(2*delta_dist)
             
-            # mag_tangent = np.linalg.norm(tangents_plane[ii])
-            # if mag_tangent: # nonzero
-                # tangents_plane[ii] = tangents_plane[ii]/mag_tangent
-
         if plane_index<=1:
             normal_plane = np.cross(tangents_plane[:, 0], tangents_plane[:, 1])
         else:
@@ -322,35 +351,9 @@ class DynamicBoundariesPolygon(Polygon):
         mag_norm = np.linalg.norm(normal_plane)
         if mag_norm:
             normal_plane = normal_plane / mag_norm
-            
-        # ax = plt.gca()
-        # ax.quiver(position[0], position[1], normal_plane[0], normal_plane[1])
-        # import pdb; pdb.set_trace() ## DEBUG ##
         
         return normal_plane
 
-    # def get_normal_on_plane(self, position, plane_index, delta_dist=0.0010):
-    #     normal_plane = np.zeros(self.dim)
-    #     tangents_plane = np.zeros((self.dim, 2))
-
-    #     if plane_index%2: # 1/3
-    #         axis = [1,2]
-    #     else:
-    #         axis = [0,2]
-    #     for ii, ax in zip(range(axis.shape[0]), axis):
-    #         delta_vec = np.zeros(self.dim)
-    #         delta_vec[ii] = delta_dist
-            
-    #         gamma_high = self.get_gamma(position+delta_vec, plane_index)
-    #         gamma_low = self.get_gamma(position-delta_vec, plane_index)
-            
-    #         normal_plane[ii] = (gamma_high-gamma_low)/delta_dist
-
-    #     mag_norm = np.linalg.norm(normal_plane)
-    #     if mag_norm:
-    #         normal_plane = normal_plane / mag_norm
-            
-    #     return normal_plane
     
     def get_tangent2D_and_normal_of_plane(self, position, plane_index, clockwise_plane_edge):
         # TODO: check the direction of the normal
@@ -364,7 +367,7 @@ class DynamicBoundariesPolygon(Polygon):
 
         return tangent_2d, normal_vector
         
-    def get_normal_direction(self, position, surface_point=None, in_global_frame=False):
+    def get_normal_direction(self, position, surface_point=None, in_global_frame=False, normalize=False):
         position_surface = self.line_search_surface_point(position) # Automatically find plane
         plane_index = self.get_closest_plane(position)
 
@@ -413,7 +416,12 @@ class DynamicBoundariesPolygon(Polygon):
         angle_weights = self.get_angle_weight(angle_to_tangent)
 
         # import pdb; pdb.set_trace() ## DEBUG ##
-        normal_vector = get_directional_weighted_sum(reference_direction=position, directions=normals_planes, weights=angle_weights, total_weight=min(1/Gamma, 1), normalize_reference=True)
+        normal_vector = get_directional_weighted_sum(null_direction=position, directions=normals_planes, weights=angle_weights, total_weight=min(1/Gamma, 1), normalize_reference=True)
+
+        if normalize and False:
+            mag_normal = np.linalg.norm(normal_vector)
+            if mag_normal:
+                normal_vector = normal_vector / mag_normal
         
 
         if False:
@@ -484,13 +492,16 @@ class DynamicBoundariesPolygon(Polygon):
 
         if np.linalg.norm((position-self.reference_point)[:2])==0:
             return sys.float_info.max
-            
+
         if plane_index is None:
             position_surface = self.line_search_surface_point(position) # Automatically find plane
         else:
-            position_surface = self.line_search_surface_point(position, plane_index) 
+            position_surface = self.line_search_surface_point(position, plane_index)
+
         rad_local = np.linalg.norm(position_surface) # local frame
         dist_position = np.linalg.norm(position)
+
+        import pdb; pdb.set_trace()
 
         if self.is_boundary:
             if dist_position:
@@ -510,7 +521,7 @@ class DynamicBoundariesPolygon(Polygon):
 
         if plane_index is None:
             plane_index = self.get_closest_plane(position)
-            
+                    
         position_inside = copy.deepcopy(position)
 
         direction = -self.get_reference_direction(position)
@@ -527,6 +538,8 @@ class DynamicBoundariesPolygon(Polygon):
             position_outside = position_inside
             position_inside = np.zeros(self.dim)
             max_dimension = np.argmax(np.abs(direction))
+
+        import pdb; pdb.set_trace()
 
         for ii in range(max_it):
             position_middle = 0.5*(position_inside+position_outside)
@@ -546,8 +559,11 @@ class DynamicBoundariesPolygon(Polygon):
 
     
     def get_closest_plane(self, position, in_global_frame=False):
-        # Assumption of squared symmetry along x&y
-        # Walls aligned with axes
+        ''' Get the index of the closes plane. 
+        First one is at low y value (iterating in positive rotation around z)
+
+        Assumption of squared symmetry along x&y and Walls aligned with axes. '''
+        
         if in_global_frame:
             position = self.transform_global2relative(position)
             
@@ -556,40 +572,6 @@ class DynamicBoundariesPolygon(Polygon):
         else:
             return 2 if position[0]>(-position[1]) else 3
     
-    
-    # def flexible_boundary_elevation(self, position, in_global_frame=False):
-    #     if in_global_frame:
-    #         position = self.transform_global2relative(position)
-
-    #     for ii in range(self.indices_of_flexibleTiles.shape[0]):
-    #         # self.get_elevation_plane(position_projected, plane_index=ii, inflation_parmeters=[1])
-    #         pass
-
-        
-    # def get_normal_direction(self, position, in_global_frame=False):
-    #     if in_global_frame:
-    #         position = self.transform_global2relative(position)
-
-            
-    # def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional", gamma_power=1):
-
-    #     if in_global_frame:
-    #         position = self.transform_global2relative(position)
-            
-    #     norm_pos = np.linalg.norm(position)
-    #     if not norm_pos: # zero value
-    #         return sys.float_info.max
-
-    #     ind_cosest_plane = self.get_closest_plane(position)
-
-    #     point_intersect = self.line_search_surface_point(position,
-    #                                                      plane_index=ind_cosest_plane,
-    #                                                      direction=self.get_reference_direction() )
-            
-
-    #     plt.plot('closest')
-        
-    #     return (np.linalg.norm(point_intersect)/norm_pos)**gamma_power
     
     def flexible_boundary_local_velocity(self, position, in_global_frame=False):
         if in_global_frame:

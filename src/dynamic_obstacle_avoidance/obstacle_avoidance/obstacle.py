@@ -24,24 +24,20 @@ __date__ =  "2019-10-15"
 __author__ = "Lukas Huber"
 __email__ =  "lukas.huber@epfl.ch"
 
-# import quaternion 
-
 visualize_debug = False
-
 
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
     """
-    # TODO -- enforce certain functions
     id_counter = 0
     active_counter = 0
     
     def __repr__(self):
         if self.is_boundary:
-            return "Wall <<{}>> is of Type: {}".format(self.name, type(self).__name__)
+            return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
         else:
-            return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
+            return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
     def __init__(self, orientation=None, sigma=1,  center_position=[0,0],
                  tail_effect=True, sf=1, repulsion_coeff=1,
@@ -158,9 +154,10 @@ class Obstacle(State):
         self.has_moved = True
         self.is_dynamic = False
 
+        # Repulsion coefficient to actively move away from obstacles (if possible)
+        # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
         
-        # If
         # self.properties = {} # TODO: use kwargs
 
         Obstacle.id_counter += 1 # New obstacle created
@@ -175,8 +172,13 @@ class Obstacle(State):
     
     # TODO: create function wrapper for this... / Decorator
     # TODO: use loop for 2D array, in order to speed up for 'real' implementation!
+
+    def get_normal_direction(self, position, in_global_frame=False):
+        ''' Get normal direction to the surface. 
+        IMPORTANT: Based on convention normal.dot(reference)>0 . '''
+        raise NotImplemntedError("Implement to allow modulation.")
     
-    # def position_array_wrapper(self, func, position, *args, **kwargs):
+    
     def get_gamma(self, position, *args, **kwargs):
         ''' Get gamma value of obstacle '''
         if len(position.shape)==1:

@@ -798,33 +798,11 @@ class Polygon(Obstacle):
             # Mirror along position vector [back to original frame]
             normal_vector = normal_partPerpendicular2positionVec - normal_partParallel2positionVec
 
+        # Make normal vector point away from obstacle
+        normal_vector = (-1)*normal_vector
+        
         if normalize:
             normal_vector = normal_vector/LA.norm(normal_vector)
-
-        if False:# 
-            # TODO: remove DEBUGGING
-            # self.draw_reference_hull(normal_vector, position)
-            pos_abs = self.transform_relative2global(position)
-            pos_abs_temp = self.transform_relative2global(temp_position)
-            norm_abs = self.transform_relative2global_dir(normal_vector)
-            plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color='g')
-            plt.quiver(pos_abs_temp[0], pos_abs_temp[1], norm_abs[0], norm_abs[1], color='m')
-            ref_abs = self.get_reference_direction(position)
-            ref_abs = self.transform_relative2global_dir(ref_abs)
-            plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color='k')
-
-            plt.ion()
-            plt.show()
-
-        # TODO: remove if not needed
-        test_normal_vector = True
-        if test_normal_vector:
-            ref_dir = self.get_reference_direction(position)
-
-            if ref_dir.dot(normal_vector) > 0:
-                normal_vector = (-1)*normal_vector
-                warnings.warn("Had to flip. Adapt computation")
-        
 
         if in_global_frame: 
             normal_vector = self.transform_global2relative_dir(normal_vector)

@@ -41,31 +41,46 @@ class Visualization3dLevel():
         self.x_range, self.y_range, self.z_range = x_range, y_range, z_range
 
         
-    def vectorfield2d(self, save_figure=False):
-        if isinstance(self.z_range, (int, float)):
-            for n in range(len(self.obs)):
-                self.obs[n].draw_obstacle(numPoints=50, z_val=self.z_range) # 50 points resolution
-                # self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
+    def vectorfield2d(self, save_figure=False, attractor=None, z_value=None):
 
+        if attractor is None:
             pos_attractor = np.array([ 0.075, 0.075, 0.15])
-            
-            self.draw_2d_obstacles(z_val=self.z_range, save_figure=save_figure)
-            # self.draw_gamma_field(z_val=self.z_range)
-            self.draw_2d_vectorfield(z_val=0.15, pos_attractor=pos_attractor, num_grid=40, stream_plot=False)
-            # self.draw_2d_line(point1=[0.08, 0.0006], point2=[0.08, -0.0006], n_pos=10)
 
-            if False: # Compute only one Point
-                # position = np.array([0.075, 0.075, 0.15])
-                # position = np.array([-0.0167, -0.0501, 0.15])
-                position = np.array([0.01669, -0.04997, 0.15])
-                normal = self.obs[0].get_normal_direction(position)
-                Gamma =  self.obs[0].get_gamma(position, in_global_frame=True)
-                vel_init = linear_ds_max_vel(position, pos_attractor)
-                vel_modu =  obs_avoidance_interpolation_moving(position, vel_init, obs=self.obs)
-                import pdb; pdb.set_trace() ## DEBUG ##
-        else:
-            self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
-            print("NO DRAWING METHOD CHOSEN")
+
+        if z_value is None:
+            if not self.z_range is None:
+                z_value = self.z_range
+
+            else:
+                print("WARNING - NO DRAWING METHOD CHOSEN")
+                return 
+
+        for n in range(len(self.obs)):
+            # Create obstacle boundary
+            print('z val', z_value)
+            self.obs[n].draw_obstacle(numPoints=50, z_val=z_value) # 50 points resolution
+
+        # import pdb; pdb.set_trace()
+        # Plot obstacle
+        self.draw_2d_obstacles(z_val=z_value, save_figure=save_figure)
+
+        # print(z_value)
+        # import pdb; pdb.set_trace()
+        self.draw_2d_vectorfield(z_val=z_value, pos_attractor=pos_attractor, num_grid=40, stream_plot=False)
+
+        
+        if False: # Compute only one Point
+            # position = np.array([0.075, 0.075, 0.15])
+            # position = np.array([-0.0167, -0.0501, 0.15])
+            position = np.array([0.01669, -0.04997, 0.15])
+            normal = self.obs[0].get_normal_direction(position)
+            Gamma =  self.obs[0].get_gamma(position, in_global_frame=True)
+            vel_init = linear_ds_max_vel(position, pos_attractor)
+            vel_modu =  obs_avoidance_interpolation_moving(position, vel_init, obs=self.obs)
+            import pdb; pdb.set_trace() ## DEBUG ##
+    # else:
+        # self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
+        # print("NO DRAWING METHOD CHOSEN")
 
     
     def animate2d(self, x_init, attractor_position=np.array([0,0,0])):
@@ -73,14 +88,7 @@ class Visualization3dLevel():
         
 
     def draw_2d_obstacles(self, z_val=None, save_figure=False):
-        # Adjust dynamic center
-        # if automatic_reference_point:
-            # intersection_obs = obs_common_section(obs)
-            # dynamic_center_3d(obs, intersection_obs)
-
-        # if len(figHandle): 
-            # fig_ifd, ax_ifd = figHandle[0], figHandle[1]
-        # else:
+        ''' Draws one level of the obstacle'''
         
         self.fig, self.ax = plt.subplots(figsize=self.figureSize)
                 
@@ -88,12 +96,10 @@ class Visualization3dLevel():
         obs_polygon_sf = []
 
         for n in range(len(self.obs)):
-            # obs[n].draw_obstacle(z_val=z_val)
 
             x_obs_sf = self.obs[n].x_obs # todo include in obs_draw_ellipsoid
 
             plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
-            import pdb; pdb.set_trace()
 
             obs_polygon.append( plt.Polygon(self.obs[n].x_obs[:2, :].T, alpha=0.8, zorder=2))
 
@@ -107,8 +113,6 @@ class Visualization3dLevel():
                 boundary_polygon.set_color(np.array([176,124,124])/255.)
 
                 obs_polygon[n].set_color('white')
-                # obs_polygon[n].set_alpha(0.9)
-                # obs_polygon[n].set_zorder(-1)
 
             else:
                 if len(obstacleColor)==len(self.obs):
@@ -127,18 +131,11 @@ class Visualization3dLevel():
             
             self.ax.plot(self.obs[n].reference_point[0], self.obs[n].reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
                          
-            
-        
         plt.axis('equal')
         self.ax.set_xlim(self.x_range)
         self.ax.set_ylim(self.y_range)
-        
-        # position = np.array([-0.0126, -0.00411, 0])
-        # plt.plot(position[0], position[1], 'kx')
-        # normal_surface = self.obs[0].get_normal_direction(position)
-        # self.ax.quiver(position[0], position[1], normal_surface[0], normal_surface[1])
 
-
+        # import pdb; pdb.set_trace()
         
         if save_figure:
             inf_str =''.join(str(e) for e in self.obs[0].inflation_parameter)
@@ -151,7 +148,8 @@ class Visualization3dLevel():
         else:
             plt.ion()
             plt.show()
-            
+
+        # import pdb; pdb.set_trace()
         
 
     def draw_2d_vectorfield(self, z_val=0, num_grid=10, dim=3, pos_attractor=[0.1,0.1,0], stream_plot=True):
@@ -177,7 +175,7 @@ class Visualization3dLevel():
                 if Gammas[ix, iy]<1:
                     continue
 
-                vel_init[:, ix, iy] = linear_ds_max_vel(positions[:, ix, iy], pos_attractor)
+                vel_init[:, ix, iy] = get_linear_ds(positions[:, ix, iy], pos_attractor)
                 vel_modul[:, ix, iy] =  obs_avoidance_interpolation_moving(positions[:,ix,iy], vel_init[:, ix, iy], obs=self.obs, repulsive_obstacle=False)
                 vel_modul_stand[:, ix, iy] =  make_velocity_constant(vel_modul[:, ix, iy], positions[:,ix,iy], pos_attractor, constant_velocity=0.1, slowing_down_radius=0.01)
 
@@ -186,7 +184,7 @@ class Visualization3dLevel():
                 # print('vel modu', vel_modul[:, ix, iy])
                 # print('\n\n')
 
-            
+        import pdb; pdb.set_trace()
         # self.ax.quiver(positions[0, :, :].flatten(), positions[1, :, :].flatten(), normals_surface[0, :, :].flatten(), normals_surface[1, :, :].flatten(), color='b')
         # self.ax.quiver(positions[0, :, :].flatten(), positions[1, :, :].flatten(), vel_modul[0, :, :].flatten(), vel_modul[1, :, :].flatten(), color='b')
         # print('norm vel \n', np.round(LA.norm(vel_modul, axis=0), 2), )
