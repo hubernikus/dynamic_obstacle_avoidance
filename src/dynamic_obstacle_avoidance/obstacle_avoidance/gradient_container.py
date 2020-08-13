@@ -163,7 +163,7 @@ class GradientContainer(ObstacleContainer):
         intersecting_obs = get_intersection_cluster(self.intersection_matrix, self)
         self.assign_sibling_groups(intersecting_obs)
 
-        if False: # Repetition
+        if False: # Repetition -- TODO: remove
         # for cluster_intersecting in intersecting_obs:
             weight_obs = np.zeros(len(cluster_intersecting))
             ref_points_obs = np.zeros((self.dim, len(cluster_intersecting)))
@@ -193,7 +193,6 @@ class GradientContainer(ObstacleContainer):
 
         # Compare two (2) obstacles to each other
         n_com = 2
-
 
         # Iterate over all obstacles (but last element, because nothing to compare to)
         for ii in range(len(self)-1):
@@ -329,6 +328,7 @@ class GradientContainer(ObstacleContainer):
                 angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
                 if np.linalg.norm(angle) > pi:
                     angle[:] = 0
+                # TODO: more efficient surface derivative
                 surface_derivatives[:, ii] = obs.get_surface_derivative_angle_num(
                     angle, NullMatrix=NullMatrices[ii, :, :], in_global_frame=True)
             

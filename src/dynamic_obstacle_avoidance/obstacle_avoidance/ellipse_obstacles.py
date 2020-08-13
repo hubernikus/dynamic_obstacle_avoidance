@@ -229,9 +229,7 @@ class Ellipse(Obstacle):
 
 
     def get_normal_ellipse(self, position):
-        '''
-        Return normal to ellipse surface
-        '''
+        ''' Return normal to ellipse surface '''
         return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
     
 
