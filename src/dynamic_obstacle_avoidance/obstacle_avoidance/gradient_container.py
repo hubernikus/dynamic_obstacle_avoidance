@@ -18,8 +18,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import Obs
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
 
-from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
-from dynamic_obstacle_avoidance import settings
+# from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
+# from dynamic_obstacle_avoidance import settings
 
 # if not sys.version_info>(3,0): # Python 2
     # import pdb; pdb.set_trace()

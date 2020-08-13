@@ -770,7 +770,9 @@ class Ellipse(Obstacle):
         if (mag_ref_point and gamma>1):
             tt, tang_points = get_tangents2ellipse(edge_point=reference_point_temp, axes=self.axes_with_margin)
 
-            tang_points = np.flip(tang_points, axis=1)
+            tang_points[:, 0], tang_points[:, 1] = tang_points[:, 1], tang_points[:, 0]
+            # = np.flip(tang_points, axis=1)
+            
             if np.cross(tang_points[:, 0], tang_points[:, 1]) > 0: # TODO: remove 
                 tang_points = np.flip(tang_points, axis=1)
                 warnings.warn('Had to flip. Reverse tangent order [1]<-->[0]! ')
