@@ -48,29 +48,65 @@ class GradientContainer(ObstacleContainer):
         ''' Add new obstacle to the end of the container. '''
         # self._obstacle_list.append(value)
         
-        # if value.is_boundary:
-        #     if not self.index_wall is None:
-        #         warnings.warn("Two wall obstacles in container.")
-        #     self.index_wall = len(self._obstacle_list)-1
         if sys.version_info>(3,0): # Python 3
             super().append(value)
         else: # Python 2 compatibility
             super(ObstacleContainer, self).append(value)
-        
 
         if len(self)==1:
             self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=len(self))
         else:
             
-            self._boundary_reference_points = np.dstack(( np.zeros((self.dim, len(self), 1)), np.hstack((self._boundary_reference_points, np.zeros((self.dim, 1, len(self)-1))))  ))
+            self._boundary_reference_points = np.dstack((
+                np.zeros((self.dim, len(self), 1)),
+                np.hstack((self._boundary_reference_points, np.zeros((self.dim, 1, len(self)-1))))
+            ))
 
+            # Transfer 'special' distance matrix
             new_dist_matr = DistanceMatrix(n_obs=len(self))
-            for ii in range(len(self)-1):
-                for jj in range(ii+1, len(self)-1):
+
+            distance_matrix = self._distance_matrix.get_matrix()
+            distance_matrix = np.hstack(((-1)*np.ones((len(self), 1)), np.vstack((distance_matrix, (-1)*np.ones((1, len(self)-1)))) ))
+                
+            for ii in range(len(self)):
+                for jj in range(ii+1, len(self)):
+                    new_dist_matr[ii, jj] = distance_matrix[ii, jj]
+                    
+            self._distance_matrix = new_dist_matr
+
+    def __delitem__(self, key): # Compatibility with normal list.
+        ''' Remove obstacle from container list. '''
+        
+        if sys.version_info>(3,0): # Python 3
+            super().__delitem__(key)
+        else: # Python 2 compatibility
+            super(ObstacleContainer, self).append(value)
+            
+        # update boundary reference point & distance matrix
+        if len(self)==0:
+            self._boundary_reference_points = None
+            self._distance_matrix = None
+        else:
+            self._boundary_reference_points = np.delete(self._boundary_reference_points,
+                                                        (key), axis=1)
+            self._boundary_reference_points = np.delete(self._boundary_reference_points,
+                                                        (key), axis=2)
+            
+            # Transfer 'special' distance matrix
+            new_dist_matr = DistanceMatrix(n_obs=len(self))
+
+            distance_matrix = self._distance_matrix.get_matrix()
+            distance_matrix = np.delete(distance_matrix, (key), axis=0)
+            distance_matrix = np.delete(distance_matrix, (key), axis=1)
+            
+            new_dist_matr = DistanceMatrix(n_obs=len(self))
+            for ii in range(len(self)):
+                for jj in range(ii+1, len(self)):
                     new_dist_matr[ii, jj] = self._distance_matrix[ii, jj]
                     
             self._distance_matrix = new_dist_matr
+
 
     def get_distance(self, ii, jj=None):
         '''Distance between obstacles ii and jj'''
