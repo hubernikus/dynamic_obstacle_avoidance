@@ -15,24 +15,28 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Cuboi
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 
 def test_obstacle_container_appending():
+    ''' Appending one obstacle. '''
     
     obs = GradientContainer() # create empty obstacle list
     obs.append(Ellipse(
             axes_length=[2, 1.2],
             center_position=[0.0, 0.0],
             orientation=0./180*pi,
-    ))
+    ))                          # 
 
 
 def test_obstacle_container_deleting():
+    ''' Appending & deleting obstacles'''
     
     obs = GradientContainer() # create empty obstacle list
 
+    # Static obstacles at center
     obs.append(Cuboid(
         axes_length=np.array([2, 2.0]),
         center_position=np.array([1, 1.4]),
     ))
 
+    # Wall
     obs.append(Cuboid(
         axes_length=np.array([10.8, 10.2]),
         center_position=np.array([0, 0]),
@@ -72,10 +76,8 @@ def test_obstacle_container_deleting():
                 is_dynamic=True,
             ))
 
-
     
 if (__name__)=="__main__":
-
     test_obstacle_container_appending()
 
     test_obstacle_container_deleting()

@@ -33,6 +33,7 @@ class Polygon(Obstacle):
     but can be extended to more general obstacles
     '''
     def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
+                 # reference_point=None,
                  margin_absolut=0,
                  *args, **kwargs):
         
@@ -80,6 +81,9 @@ class Polygon(Obstacle):
 
         # self.hull_points = self.edge_points
         self.margin_absolut = margin_absolut
+
+        # if not reference_point is None:
+            # self.set_reference_point(reference_point, in_global_frame=False)
 
     @property
     def hull_edge(self):
@@ -529,12 +533,14 @@ class Polygon(Obstacle):
         OUTPUT
         RAISE ERROR:Function is partially defined for only the 2D case 
         '''
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
         if isinstance(position, list):
             position = np.array(position)
 
+        # print('xbpos', position)
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+        # print('pos', position)
+        
         multiple_positions = (len(position.shape)>1)
         if multiple_positions:
             n_points = position.shape[1]

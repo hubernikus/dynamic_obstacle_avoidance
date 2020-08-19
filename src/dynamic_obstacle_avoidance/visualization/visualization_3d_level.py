@@ -171,7 +171,9 @@ class Visualization3dLevel():
             for iy in range(num_grid):
                 positions[:, ix, iy] = [XX[ix, iy], YY[ix, iy], ZZ[ix, iy]]
                 
-                Gammas[ix, iy] =  self.obs[0].get_gamma(positions[:, ix, iy], in_global_frame=True)
+                Gammas[ix, iy] =  self.obs[0].get_gamma(positions[:, ix, iy], in_global_frame=False)
+                # print('pos = {} ---- gamma = {}'.format(positions[:, ix, iy], Gammas[ix, iy]))
+                # import pdb; pdb.set_trace()
                 if Gammas[ix, iy]<1:
                     continue
 
@@ -184,10 +186,13 @@ class Visualization3dLevel():
                 # print('vel modu', vel_modul[:, ix, iy])
                 # print('\n\n')
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
+        
         # self.ax.quiver(positions[0, :, :].flatten(), positions[1, :, :].flatten(), normals_surface[0, :, :].flatten(), normals_surface[1, :, :].flatten(), color='b')
         # self.ax.quiver(positions[0, :, :].flatten(), positions[1, :, :].flatten(), vel_modul[0, :, :].flatten(), vel_modul[1, :, :].flatten(), color='b')
         # print('norm vel \n', np.round(LA.norm(vel_modul, axis=0), 2), )
+
+        
         if stream_plot:
             self.ax.streamplot(positions[0, :, :], positions[1, :, :], vel_modul_stand[0, :, :], vel_modul_stand[1, :, :], color='b')
         else:
