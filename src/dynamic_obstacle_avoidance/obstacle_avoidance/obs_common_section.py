@@ -52,6 +52,15 @@ class DistanceMatrix():
         else:
             raise ValueError("Not two indexes given.")
 
+    def get_matrix(self):
+        ''' Get matrix as numpy-array.'''
+        matr = np.zeros((self._dim, self._dim))
+        for ix in range(self._dim):
+            for iy in range(ix+1, self._dim):
+                matr[ix, iy] = matr[iy, ix] = self[ix, iy]
+        return matr
+        
+
     def get_index(self, row, col):
         '''Returns the corresponding list index [ind] from matrix index [row, col]'''
         if row > np.abs(self._dim):

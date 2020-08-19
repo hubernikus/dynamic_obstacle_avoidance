@@ -72,7 +72,7 @@ class BaseContainer(object):
         ''' Add new elements to obstacles list. The wall obstacle is placed last.'''
         if self.contains_wall_obstacle:
             if value.is_boundary:
-                raise ("Two wall obstacles in container.")
+                raise RuntimeError("Obstacles container already has a wall!.")
             
             self._obstacle_list.insert(len(self._obstacle_list)-1, value)
         else:
@@ -80,6 +80,7 @@ class BaseContainer(object):
                 self.contains_wall_obstacle = True
             self._obstacle_list.append(value)
 
+            
     def __delitem__(self, key):
         '''Obstacle is not part of the workspace anymore.'''
 

@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=2.0):
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0):
     ''' Compute diagonal Matrix'''
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
@@ -31,16 +31,12 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
         delta_eigenvalue = 1./abs(Gamma)**(1/rho)
 
     eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
-    # eigenvalue_reference = 0.1
     
     if is_boundary:
-        # eigenvalue_tangent = 1
         eigenvalue_tangent = 1 + delta_eigenvalue            
     else:
         eigenvalue_tangent = 1 + delta_eigenvalue            
 
-    # return eigenvalue_reference, eigenvalue_tangent
-    # eigenvalue_reference, eigenvalue_tangent = calculate_eigenvalues(Gamma, is_boundary=is_boundary)
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 
 
@@ -102,7 +98,7 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
     E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
     '''
-
+    warnings.warn("Depreciated ---- remove")
     dim = obs.dim
     
     if hasattr(obs, 'rho'):
@@ -251,59 +247,6 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
     
     return np.mean(rad_surf_cone)
 
-# def get_radius(vec_ref2point, vec_cent2ref=[], a=[], obs=[]):
-#     dim = 2 # TODO higher dimensions
-
-#     if not np.array(vec_cent2ref).shape[0]:
-#         vec_cent2ref = np.array(obs.center_dyn) - np.array(obs.x0)
-        
-#     if not np.array(a).shape[0]:
-#         a = obs.a
-        
-#     if not LA.norm(vec_cent2ref): # center = ref
-#         return get_radius_ellipsoid(vec_ref2point, a)
-    
-#     dir_surf_cone = np.zeros((dim, 2))
-#     rad_surf_cone = np.zeros((2))
-
-#     if np.cross(vec_ref2point, vec_cent2ref) > 0:
-#         dir_surf_cone[:, 0] = vec_cent2ref
-#         rad_surf_cone[0] = get_radius_ellipsoid(dir_surf_cone[:, 0], a)-LA.norm(vec_cent2ref)
-        
-#         dir_surf_cone[:, 1] = -1*np.array(vec_cent2ref)
-#         rad_surf_cone[1] = get_radius_ellipsoid(dir_surf_cone[:, 1], a)+LA.norm(vec_cent2ref)
- 
-#     else:
-#         dir_surf_cone[:, 0] = -1*np.array(vec_cent2ref)
-#         rad_surf_cone[0] = get_radius_ellipsoid(dir_surf_cone[:, 0], a)+LA.norm(vec_cent2ref)
-        
-#         dir_surf_cone[:, 1] = vec_cent2ref
-#         rad_surf_cone[1] = get_radius_ellipsoid(dir_surf_cone[:, 1], a)-LA.norm(vec_cent2ref)
-    
-#     ang_tot = pi/2
-#     for ii in range(12): # n_iter
-#         rotMat = np.array([[np.cos(ang_tot), np.sin(ang_tot)],
-#                            [-np.sin(ang_tot), np.cos(ang_tot)]])
-
-#         vec_ref2dir = rotMat.dot(dir_surf_cone[:, 0])
-        
-#         vec_ref2dir /= LA.norm(vec_ref2dir) # nonzero value expected
-        
-#         rad_ref2 = get_radius_ellipsoid(vec_ref2dir, a)
-#         vec_ref2surf = rad_ref2*vec_ref2dir - vec_cent2ref
-
-#         if np.cross(vec_ref2surf, vec_ref2point)==0: # how likely is this lucky guess? 
-#             return LA.norm(vec_ref2surf)
-#         elif np.cross(vec_ref2surf, vec_ref2point) < 0:
-#             dir_surf_cone[:, 0] = vec_ref2dir
-#             rad_surf_cone[0] = LA.norm(vec_ref2surf)
-#         else:
-#             dir_surf_cone[:, 1] = vec_ref2dir
-#             rad_surf_cone[1] = LA.norm(vec_ref2surf)
-
-#         ang_tot /= 2.0
-#     return np.mean(rad_surf_cone)
-
 
 def findRadius(ob, direction, a = [], repetition = 6, steps = 10):
     # NOT SURE IF USEFULL -- NORMALLY x = Gamma*Rad
@@ -385,6 +328,35 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
     else:
         warnings.warn("Unkown weighting method.")
     return w
+
+
+def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
+    ''' Compute weights based on a distance measure (with no upper limit)'''
+    distMeas = np.array(distMeas)
+    n_points = distMeas.shape[0]
+    
+    critical_points = distMeas <= distMeas_lowerLimit
+    
+    if np.sum(critical_points): # at least one
+        if np.sum(critical_points)==1:
+            w = critical_points*1.0
+            return w
+        else:
+            # TODO: continuous weighting function
+            warnings.warn('Implement continuity of weighting function.')
+            w = critical_points*1./np.sum(critical_points)
+            return w
+        
+    if weightType == 'inverseGamma':
+        distMeas = distMeas - distMeas_lowerLimit
+        w = (1/distMeas)**weightPow
+        if np.sum(w)==0:
+            return w
+        w = w/np.sum(w) # Normalization
+    else:
+        warnings.warn("Unkown weighting method.")
+    return w
+
 
 
 def compute_R(d, th_r):
@@ -558,6 +530,9 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
 
 def get_reference_weight(distance, obs_reference_size=None, distance_min=0, distance_max=3, weight_pow=1):
     ''' Get a weight inverse proportinal to the distance'''
+
+    # TODO: based on inverse prop weight calculation
+    # weights = get_inverse_proprtional_weight(distance, distance_min, distance_max, weight_pow)
     weights_all = np.zeros(distance.shape)
 
     # if False:
@@ -585,12 +560,30 @@ def get_reference_weight(distance, obs_reference_size=None, distance_min=0, dist
     weight_ref_displacement = (1/(dist_temp+1-distance_min)
                                - 1/(distance_max+1-distance_min))
 
-    try:
-    # if True:
-        weights_all[ind_range] = weights*weight_ref_displacement
-    except:
-        import pdb; pdb.set_trace()
+    weights_all[ind_range] = weights*weight_ref_displacement
+    
     return weights_all
+
+def get_inverse_proprtional_weight(distance, distance_min=0, distance_max=3, weight_pow=1):
+    ''' Get a weight inverse proportinal to the distance'''
+    weights = np.zeros(distance.shape)
+
+    if any(np.logical_and(distance<=distance_min, distance>0)):
+        ind0 = (distance==0)
+        weights[ind0] = 1/np.sum(ind0)
+        return weights
+
+    ind_range = np.logical_and(distance>distance_min, distance<distance_max)
+    if not any(ind_range):
+        return weights
+
+    dist_temp = distance[ind_range]
+    weights[ind_range] = 1/(dist_temp-distance_min) - 1/(distance_max-distance_min)
+    weights[ind_range] = weights[ind_range]**weight_pow
+
+    # Normalize
+    weights = weights/np.sum(weights)
+    return weights
 
     
 def cut_planeWithEllispoid(reference_position, axes, plane):

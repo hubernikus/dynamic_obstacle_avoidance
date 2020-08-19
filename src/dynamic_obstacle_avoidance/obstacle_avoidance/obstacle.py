@@ -15,7 +15,7 @@ import numpy.linalg as LA
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 
 # TODO: remove after debugging/developping
 import matplotlib.pyplot as plt
@@ -24,28 +24,26 @@ __date__ =  "2019-10-15"
 __author__ = "Lukas Huber"
 __email__ =  "lukas.huber@epfl.ch"
 
-# import quaternion 
-
 visualize_debug = False
-
 
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
     """
-    # TODO -- enforce certain functions
     id_counter = 0
     active_counter = 0
     
     def __repr__(self):
         if self.is_boundary:
-            return "Wall <<{}>> is of Type: {}".format(self.name, type(self).__name__)
+            return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
         else:
-            return "Obstacle <<{}>> is of Type: {}".format(self.name, type(self).__name__)
+            return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
     def __init__(self, orientation=None, sigma=1,  center_position=[0,0],
                  tail_effect=True, sf=1, repulsion_coeff=1,
                  name=None,
+                 is_dynamic=False,
+                 # reference_point=None,
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
@@ -145,8 +143,11 @@ class Obstacle(State):
         self.ind_children = []
 
         # Relative Reference point // Dyanmic center
+        # if reference_point is None:
         self.reference_point = np.zeros(self.dim) # TODO remove and rename
         self.reference_point_is_inside = True
+        # else:
+            # self.set_reference_point(reference_point, in_global_frame=True)
 
         self.Gamma_ref = Gamma_ref
         self.is_boundary = is_boundary
@@ -156,11 +157,12 @@ class Obstacle(State):
 
         # Allows to track which obstacles need an update on the reference point search
         self.has_moved = True
-        self.is_dynamic = False
+        self.is_dynamic = is_dynamic
 
+        # Repulsion coefficient to actively move away from obstacles (if possible)
+        # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
         
-        # If
         # self.properties = {} # TODO: use kwargs
 
         Obstacle.id_counter += 1 # New obstacle created
@@ -172,16 +174,34 @@ class Obstacle(State):
     @property
     def dimension(self):
         return self.dim
+
+    @property
+    def repulsion_coeff(self):
+        return self._repulsion_coeff
+
+    @repulsion_coeff.setter
+    def repulsion_coeff(self, value):
+        # Coefficient > 1 are accepted;
+        # Good range is in [1, 2]
+        if value < 1.0:
+            warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
+            value = 1.0
+        self._repulsion_coeff = value
     
-    # TODO: create function wrapper for this... / Decorator
-    # TODO: use loop for 2D array, in order to speed up for 'real' implementation!
     
-    # def position_array_wrapper(self, func, position, *args, **kwargs):
+    
+    # TODO: use loop for 2D array, in order to speed up for 'on-robot' implementation!
+    
+    def get_normal_direction(self, position, in_global_frame=False):
+        ''' Get normal direction to the surface. 
+        IMPORTANT: Based on convention normal.dot(reference)>0 . '''
+        raise NotImplemntedError("Implement function in child-class of <Obstacle>.")
+    
+    
     def get_gamma(self, position, *args, **kwargs):
         ''' Get gamma value of obstacle '''
         if len(position.shape)==1:
             position = np.reshape(position, (self.dim, 1))
-            # import pdb; pdb.set_trace() ## DEBUG ##
 
             return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
             
@@ -191,20 +211,16 @@ class Obstacle(State):
         else:
             ValueError("Triple dimensional position are unexpected")
 
-    # def __del__(self):
-        # ''' Destructor '''
-        # Obstacle.active_counter -= 1
     
     def _get_gamma(self, position, reference_point=None, in_global_frame=False, gamma_type='proportional'):
         ''' Calculates the norm of the function.
         Position input has to be 2-dimensional array '''
 
-        # print('pos init', position)
         if in_global_frame:
             position = self.transform_global2relative(position)
             if not reference_point is None:
                 reference_point = self.transform_global2relative(reference_point)
-
+                
         if reference_point is None:
             reference_point = self.local_reference_point
         else:
@@ -884,9 +900,9 @@ class Obstacle(State):
             plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], 'k--')
         
     def get_reference_direction(self, position, in_global_frame=False, normalize=True):
+        ''' Get direction from 'position' to the reference point of the obstacle. 
+        The global frame is considered by the choice of the reference point. '''
         # Inherit
-        # if in_global_frame:
-            # position = self.transform_global2relative(position)
 
         if hasattr(self, 'reference_point') or hasattr(self,'center_dyn'):  # automatic adaptation of center
             ref_point = self.global_reference_point if in_global_frame else self.local_reference_point
@@ -903,12 +919,9 @@ class Obstacle(State):
                 if ref_norm>0:
                     reference_direction = reference_direction/ref_norm 
             else:
-                ref_norm = LA.norm(reference_direction, axis=0)
+                ref_nxorm = LA.norm(reference_direction, axis=0)
                 ind_nonzero = ref_norm>0
                 reference_direction[:, ind_nonzero] = reference_direction[:, ind_nonzero]/ref_norm[ind_nonzero]
-
-        # if in_global_frame:
-            # reference_direction = self.transform_global2relative_dir(reference_direction)
 
         return reference_direction
 

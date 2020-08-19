@@ -106,12 +106,11 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     for n in np.arange(N_obs)[ind_obs]:
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
-        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim, repulsion_coeff = obs[n].repulsion_coeff)
+        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff)
         # import pdb; pdb.set_trace()
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
             
-            
-
+        
     xd_obs = np.zeros((dim))
     
     for n in np.arange(N_obs)[ind_obs]:
@@ -119,7 +118,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             xd_w = np.cross(np.hstack(([0,0], obs[n].angular_velocity)),
                             np.hstack((x-np.array(obs[n].center_position),0)))
             xd_w = xd_w[0:2]
-        elif d==3:
+        elif dim==3:
             xd_w = np.cross(obs[n].orientation, x-obs[n].center_position)
         else:
             xd_w = np.zeros(dim)
@@ -140,11 +139,12 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     n = 0
     # plt.quiver(x[0], x[1], E_orth[0, 0, n], E_orth[1, 0, n])
 
-    # import pdb; pdb.set_trace()
+    
     for n in np.arange(N_obs)[ind_obs]:
-        if obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)<0:
+        if ((obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0)
+            or (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)>0)):
             # Only consider boundary when moving towards (normal direction)
-            # import pdb; pdb.set_trace()
+            # OR if the object has positive repulsion-coefficient (only consider it at front)
             xd_hat[:, n] = xd
             
         else:
