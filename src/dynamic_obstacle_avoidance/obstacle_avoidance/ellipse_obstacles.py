@@ -88,10 +88,12 @@ class Ellipse(Obstacle):
         
     @property
     def a(self): # TODO: remove
+        warnings.warn("Depreciated use 'axes_length' instead")
         return self.axes_length
 
     @a.setter # TODO:remove
     def a(self, value):
+        warnings.warn("Depreciated use 'axes_length' instead")
         self.axes_length = value
 
     @property
@@ -112,10 +114,12 @@ class Ellipse(Obstacle):
 
     @property
     def p(self): # TODO: remove
+        warnings.warn("Depreciated use 'curvature' instead")
         return self._curvature
 
     @p.setter
     def p(self, value): # TODO: remove
+        warnings.warn("Depreciated use 'curvature' instead")
         self.curvature = value
 
     @property
@@ -791,8 +795,5 @@ class Ellipse(Obstacle):
             for ii in range(self.normal_vector.shape[1]):
                 self.tangent_vector[:, ii] = [-self.normal_vector[1, ii],
                                               self.normal_vector[0, ii]]
-                
         else:
             self.n_planes = 0
-
-        

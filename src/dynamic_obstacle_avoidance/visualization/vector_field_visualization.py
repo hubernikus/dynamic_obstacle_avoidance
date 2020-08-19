@@ -139,8 +139,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             
             # automatic adaptation of center
             reference_point = obs[n].get_reference_point(in_global_frame=True)
-            
-            if not any(reference_point==None):
+
+            # import pdb; pdb.set_trace()
+            if not reference_point is None:
                 ax_ifd.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
                 # ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
                 if reference_point_number:
