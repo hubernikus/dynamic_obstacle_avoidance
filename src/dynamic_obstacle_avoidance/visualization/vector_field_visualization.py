@@ -65,7 +65,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, figHandle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, fig_and_ax_handle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True):
     
     dim = 2
 
@@ -93,8 +93,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
 
-    if len(figHandle): 
-        fig_ifd, ax_ifd = figHandle[0], figHandle[1] 
+    if len(fig_and_ax_handle): 
+        fig_ifd, ax_ifd = fig_and_ax_handle[0], fig_and_ax_handle[1] 
     else:
         fig_ifd, ax_ifd = plt.subplots(figsize=figureSize) 
         
@@ -149,9 +149,14 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 # add group, too
                 
             if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
-                col=[0.5,0,0.9]
+                # col=[0.5,0,0.9]
+                col = [255/255., 51/255., 51/255.]
                 fac=5 # scaling factor of velocity
-                ax_ifd.arrow(obs[n].center_position[0], obs[n].center_position[1], obs[n].xd[0]/fac, obs[n].xd[1]/fac, head_width=0.3, head_length=0.3, linewidth=10, fc=col, ec=col, alpha=1)
+                ax_ifd.arrow(obs[n].center_position[0], obs[n].center_position[1],
+                             obs[n].xd[0]/fac, obs[n].xd[1]/fac,
+                             # head_width=0.3, head_length=0.3, linewidth=10,
+                             head_width=0.1, head_length=0.1, linewidth=3,
+                             fc=col, ec=col, alpha=1)
 
     plt.gca().set_aspect('equal', adjustable='box')
 
@@ -294,13 +299,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 
             else:
                 res_ifd = ax_ifd.quiver(XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
-                # res_ifd = ax_ifd.quiver(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[0.8, 0.2, 0.2], zorder=0)
 
-    plt.ion()
-    plt.show()
+    plt.ion(); plt.show();
 
     if saveFigure:
-        # plt.savefig('figures/' + figName + '.eps', bbox_inches='tight')
         try:
             plt.savefig('figures/' + figName + '.png', bbox_inches='tight')
         except:

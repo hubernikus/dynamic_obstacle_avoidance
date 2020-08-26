@@ -1,27 +1,30 @@
+#!/USSR/bin/python3
 # coding: utf-8
+''' 
+Learn obstacles with different methods. 
+'''
+
+__author__ = "Lukas Huber"
+__date__ =  "2020-08-19"
+__email__ =  "lukas.huber@epfl.ch"
+
+import sys
+import warnings
 from math import sin, cos, pi, ceil
-import warnings, sys
+import time
 
 import numpy as np
 import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+import matplotlib.pyplot as plt # REMOVE AFTER DEVELOPMENT
 
-import matplotlib.pyplot as plt
+from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
 
-# from autograd import grad, grad # both needed??
-
 import sklearn
 from sklearn.cluster import DBSCAN
-
-import time
-
-# from sklearn import mixture
-# TODO higher dimensions
-# Store 'learning' within frames -- HOW TO?
 
 debug_viz = False
 
@@ -39,7 +42,7 @@ def get_obstacle_from_scan(sensor_data, center_dist_scaling=1.5,
         points_cartesian = sensor_data
 
     if input_is_polar:
-        ind_close = (LA.norm(points_cartesian, axis=0) < cutoff_distance)
+        ind_close = (np.linalg.norm(points_cartesian, axis=0) < cutoff_distance)
         magnitude = magnitude[ind_close]
         angle = angle[ind_close]
         points_cartesian = points_cartesian[:,ind_close]
@@ -101,6 +104,7 @@ class ObstacleFromLaser():
     
     def get_obstacle_from_scan(self, *args, **kwargs):
         self.obs_list = get_obstacle_from_scan(*args, **kwargs)
+        
 
 class ObstacleFromData(Obstacle):
     def __init__(self, *args, **kwargs):
@@ -122,12 +126,13 @@ class ObstacleFromData(Obstacle):
     
 class RegressionObstacle(ObstacleFromData):
     def __init__(self, center_position,
-                 surface_points,
                  *args,
+                 surface_points=None,
                  polar_surface_representation=True,
                  minimal_radius=0.01,
                  normalize=False,
                  learn_surface=False,
+                 is_boundary=False,
                  **kwargs):
         
         # super().__init__(*args, **kwargs)
@@ -149,18 +154,91 @@ class RegressionObstacle(ObstacleFromData):
         if learn_surface:
             self.learn_surface(epsilon=0.02, C=1, kernel_curvature=100)
 
-        # TODO remove/rename these 
-        self.th_r = 0
+        # TODO remove/rename these
+        self.orientation = 0
         self.rotMatrix = np.eye(self.dim)
-        self.w = 0
-        self.xd = 0
-        self.sigma = 1
+        # self.w = 0
+        # self.th_r = 0
+        self.angular_velocity = 0 # 
+        self.linear_velocity = np.array([0, 0])
+        # self.linear_velocity = 0
+        # self.sigma = 1
 
-        self.is_boundary = False
+        self.is_boundary = is_boundary
 
+
+        # Initial magnitudes & points
+        self.surface_angles = None
+        self.surface_magnitudes = None
+        
+
+    def set_surface_points(self, surface_points=None, angles=None, magnitudes=None, in_global_frame=True):
+        ''' Set surface angles&magnitude as either points OR angles&magnitudes. '''
+        if not surface_points is None:
+            if in_global_frame:
+                surface_points = self.transform_global2relative(surface_points)
+            self.surface_magnitudes = np.linalg.norm(surface_points, axis=0)
+            self.surface_angles = np.arctan2(surface_points[1, :], surface_points[0, :])
+            
+        elif not surface_points is None:
+            if in_global_frame:
+                raise ValueError("Angles can not be inputet in global frame")
+            self.surface_angles = angles
+            self.surface_magnitudes = magnitudes
+            
+        else:
+            raise ValueError("Not properly defined error.")
+
+    def reduce_angle_resolution(self, angular_resolution=1000):
+        ''' Down-sample points (check if not doubling at 2*pi) '''
+        int_angles = np.round(
+            self.surface_angles/(2*pi)*angular_resolution+angular_resolution/2.0, 0
+            )
+        # rounded_angles = rounded_angles*(2*pi)/angular_resolution
+        
+        angles = np.linspace(-pi, pi, angular_resolution)
+        magnitudes = np.zeros(angular_resolution)
+
+        index_nonzero = np.zeros(angles.shape, dtype=bool)
+        # TODO: check that values exist everywhere (otherwise delete)
+        for aa in range(angular_resoluion):
+            ind_in_range = (aa==ind_angles[aa])
+            magnitudes[aa] = np.min(self.surface_magnitudes[ind_in_range])
+
+            if not np.sum(ind_in_range):
+                index_nonzero[aa] = 0
+
+        # Remove points of list where  
+        self.surface_angles = angles[index_nonzero]
+        self.surface_magnitudes = surface_magnitudes[index_nonzero]
+        
+
+    def get_point_on_surface(self, position, in_global_frame=True):
+        ''' Get surface point value based on position. '''
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        angle = np.arctan2(surface_points[1], position[0])
+        mag = self.predict(angle)
+
+        position = mag * np.array([np.cos(angle), np.sin(angle)])
+
+        if in_global_frame:
+            position = self.transform_relative2global(position)
+        
+
+    def predict_singe(self, ):
+        # TODO
+        raise NotImplementedError("TODO")
+
+    
     def predict(self, angle, convert_to_relative=True):
+        ''' Get prediction value based on angle OR position'''
+            
         shape_angle = angle.shape
+        # TODO: include shape
         angle = np.reshape(angle, (-1, 1))
+        
         if convert_to_relative:
             angle_relative = self.convert_to_relative_angle(angle)
         
@@ -169,10 +247,12 @@ class RegressionObstacle(ObstacleFromData):
         return dist_origin2surf.reshape(shape_angle)
         
     def set_center_pos(self, center_position, reset_reference=True):
+        ''' Set center position and reset reference point.'''
         self.center_position = center_position
         self.reference_point = np.zeros(self.dim)
 
     def convert_to_relative_angle(self, angle):
+        ''' ??? '''
         # TODO -- use relative angle
         # OR use circular regression
                 
@@ -221,55 +301,28 @@ class RegressionObstacle(ObstacleFromData):
     def learn_surface(self,  regression_type="svr", epsilon=1.0, C=5, kernel='rbf', gamma=0.2, surface_points=None):
 
         if isinstance(surface_points, (list, np.ndarray)):
-            self.surface_points = np.squeeze(surface_points)
+            surface_points = np.squeeze(surface_points)
+            magnitude, angle = self.transform_cartesian2polar(surface_points, center_position=self.center_position)
 
-        magnitude, angle = self.transform_cartesian2polar(self.surface_points, center_position=self.center_position)
-
-        if False:
-            plt.figure()
-            plt.plot(angle, magnitude, '.')
-            plt.show()
-            
-            plt.figure()
-            plt.plot(self.surface_points[:,0], self.surface_points[:,1], '.')
-            plt.plot(self.center_position[0], self.center_position[1], '.')
-
-            
-        # angle = self.convert_to_relative_angle(angle)
-        
         if regression_type=="svr":
             self.kernel_curvature = gamma
             self.surface_regression = sklearn.svm.SVR(kernel="rbf", C=C, gamma=gamma, epsilon=epsilon)
             
             self.surface_regression.set_params(gamma="scale")
-            self.surface_regression.fit(angle.reshape(-1,1), magnitude.reshape(-1))
-
-            # if debug_viz:
-                # plt.figure()
-                # plt.plot(angle, magnitude, '.')
-                
+            self.surface_regression.fit(self.surface_angles.reshape(-1,1),
+                                        self.surface_magnitudes.reshape(-1))
+            
             # TODO get regression function
             # def surface_regression_predict(value):
                 # return self.surface_regression.predict(np.reshape(value,(-1,1)))
             # self.grad_surface = grad(surface_regression_predict)
-            print('n_points', self.surface_points.shape[0])
+            print('n_points', self.surface_angles.shape[0])
             print('center_position', self.center_position)
             print("n support vectors_", self.surface_regression.support_vectors_.shape[0])
 
         else:
             raise TypeError("Unkown regression type.")
 
-        if debug_viz:
-        # if True:
-            plt.figure()
-            plt.plot(angle, magnitude, '.')
-            ang_reg = np.linspace(-pi, pi, 100)
-            ang_reg = np.reshape(ang_reg, (-1, 1))
-            mag_reg = self.predict(ang_reg)
-            plt.plot(ang_reg, mag_reg, 'r')
-            plt.ylim(0, plt.gca().get_ylim()[1])
-
-    
     def get_normal_direction(self, position, relative_derivative_increment=1e-3, in_global_frame=False):
         position_abs = np.copy(position)
         
@@ -375,11 +428,13 @@ class RegressionObstacle(ObstacleFromData):
         
         return self.x_obs.T
 
-    
+
 class GaussianEllipseObstacle(ObstacleFromData):
+    '''Fit GMM on radial values '''
     def __init__(self, center_position, 
                  surface_points,
-                 points_per_component=15, radial_coordinates=False):
+                 points_per_component=15, radial_coordinates=False,
+                 fit_init=True):
 
         self.dim = center_position.shape[0]
         
@@ -440,7 +495,7 @@ class GaussianEllipseObstacle(ObstacleFromData):
 
 
 class PolygonWithLearnedSurface(Polygon):
-    # Currently only for boundary polygons with no points outside the free space
+    ''' Currently only for boundary polygons with no points outside the free space. '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

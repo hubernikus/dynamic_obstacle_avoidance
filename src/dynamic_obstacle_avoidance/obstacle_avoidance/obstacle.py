@@ -26,9 +26,11 @@ __email__ =  "lukas.huber@epfl.ch"
 
 visualize_debug = False
 
+# TODO: tidy up a bit...
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
+    This class defines obstacles to modulate the DS around it
     """
     id_counter = 0
     active_counter = 0
@@ -39,19 +41,19 @@ class Obstacle(State):
         else:
             return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
-    def __init__(self, orientation=None, sigma=1,  center_position=[0,0],
+    def __init__(self, orientation=None, sigma=1,  center_position=np.array([0,0]),
                  tail_effect=True, sf=1, repulsion_coeff=1,
                  name=None,
-                 is_dynamic=False,
+                 is_dynamic=False, is_deforming=False,
                  # reference_point=None,
                  # margin_absolut=0, 
                  x0=None, th_r=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
-                 Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1):
-                 # *args, **kwargs): # maybe random arguments
-        # This class defines obstacles to modulate the DS around it
-        # At current stage the function focuses on Ellipsoids, but can be extended to more general obstacles
+                 Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1,
+                 # *args, **kwargs # maybe random arguments
+                 ):
+        
         if name is None:
             self.name = "obstacle{}".format(Obstacle.id_counter)
         else:
@@ -156,14 +158,15 @@ class Obstacle(State):
         self.is_non_starshaped = False
 
         # Allows to track which obstacles need an update on the reference point search
-        self.has_moved = True
+        self.has_moved = True 
         self.is_dynamic = is_dynamic
+        self.is_deforming = is_deforming
 
         # Repulsion coefficient to actively move away from obstacles (if possible)
         # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
         
-        # self.properties = {} # TODO: use kwargs
+        # self.properties = {} # TODO (maybe): use kwargs for properties..
 
         Obstacle.id_counter += 1 # New obstacle created
         Obstacle.active_counter += 1
@@ -195,11 +198,10 @@ class Obstacle(State):
     def get_normal_direction(self, position, in_global_frame=False):
         ''' Get normal direction to the surface. 
         IMPORTANT: Based on convention normal.dot(reference)>0 . '''
-        raise NotImplemntedError("Implement function in child-class of <Obstacle>.")
-    
+        raise NotImplementedError("Implement function in child-class of <Obstacle>.")
     
     def get_gamma(self, position, *args, **kwargs):
-        ''' Get gamma value of obstacle '''
+        ''' Get gamma value of obstacle.'''
         if len(position.shape)==1:
             position = np.reshape(position, (self.dim, 1))
 
@@ -686,9 +688,9 @@ class Obstacle(State):
         
         if not in_global_frame:
             position = self.transform_relative2global(position)
-        
+            
         self.center_position = position
-
+        
 
     def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None, reset=False):
         ''' Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
@@ -742,7 +744,8 @@ class Obstacle(State):
         
         self.has_moved = True 
 
-    def are_lines_intersecting(self, direction_line, passive_line):
+    @staticmethod
+    def are_lines_intersecting(direction_line, passive_line):
         # TODO only return intersection point or None
         # solve equation line1['point_start'] + a*line1['direction'] = line2['point_end'] + b*line2['direction']
         connection_direction = np.array(direction_line['point_end']) - np.array(direction_line['point_start'])
@@ -759,20 +762,6 @@ class Obstacle(State):
                 if direction_factors[1]>=0 and LA.norm(direction_factors[1]*connection_passive) <= LA.norm(connection_passive):
 
                     return True, LA.norm(direction_factors[0]*connection_direction)
- 
-        if False: # show plot
-            dir_start = self.transform_relative2global(direction_line['point_start'])
-            dir_end = self.transform_relative2global(direction_line['point_end'])
-
-            pas_start = self.transform_relative2global(passive_line['point_start'])
-            pas_end = self.transform_relative2global(passive_line['point_end'])
-
-            plt.ion()
-            plt.plot([dir_start[0], dir_end[0]], [dir_start[1], dir_end[1]], 'g--')
-            plt.plot([pas_start[0], pas_end[0]], [pas_start[1], pas_end[1]], 'r--')
-            plt.show()
-            print('done intersections')
-
         return False, -1
 
 

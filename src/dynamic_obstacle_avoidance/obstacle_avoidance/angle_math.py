@@ -62,18 +62,25 @@ def angle_difference_abs(angle1, angle2):
         angle_diff = 2*pi-angle_diff
     return angle_diff
 
-def transform_polar2cartesian(magnitude, angle, center_position=[0,0], center_point=None):
+def transform_polar2cartesian(magnitude, angle, center_position=None, center_point=None):
+    ''' Transform 2d from polar- to cartesian coordinates.'''
     # Only 2D input
 
-    if not isinstance(center_point, type(None)):
+    if not center_point is None:
         # TODO remove center_position or center_position
         center_position = center_point
+
     magnitude = np.reshape(magnitude, (-1))
     angle = np.reshape(angle, (-1))
-    
-    # points = [r, phi]
-    points = (magnitude * np.vstack((np.cos(angle), np.sin(angle)))
-              + np.tile(center_position, (magnitude.shape[0],1)).T )
+
+    if center_position is None:
+        points = (magnitude * np.vstack((np.cos(angle), np.sin(angle)))
+                  + np.tile(center_position, (magnitude.shape[0],1)).T )
+    else:
+        # points = [r, phi]
+        points = (magnitude * np.vstack((np.cos(angle), np.sin(angle)))
+                  + np.tile(center_position, (magnitude.shape[0],1)).T )
+        
     return np.squeeze(points)
 
 
@@ -101,7 +108,7 @@ def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=T
     if len(points.shape)==1:
         points = points - center_position
                 
-        angle = np.arctan2(points[1], points[0])        
+        angle = np.arctan2(points[1], points[0])
     else:
         points = points - np.tile(center_position, (points.shape[1], 1)).T
         angle = np.arctan2(points[1,:], points[0,:])

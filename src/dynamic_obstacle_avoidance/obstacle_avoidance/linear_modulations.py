@@ -1,4 +1,4 @@
-'''
+ar'''
 Library for the Modulation of Linear Systems
 Copyright (c)2019 under GPU license
 '''

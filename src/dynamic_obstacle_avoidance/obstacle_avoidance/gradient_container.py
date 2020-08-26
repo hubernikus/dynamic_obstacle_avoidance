@@ -237,6 +237,19 @@ class GradientContainer(ObstacleContainer):
                 if not (self[ii].has_moved or self[jj].has_moved):
                     continue
 
+                # Speed up process for circular obstacles
+                if (isinstance(self[ii], CircularObstacle)
+                    and isinstance(self[jj], CircularObstacle)):
+                    
+                    dist, ref_point1, ref_point2 = self.get_boundary_reference_point_circular(
+                        self[ii], self[jj]
+                    )
+                    
+                    self.set_distance(ii, jj, dist)
+                    self.set_boundary_reference_point(ii, jj, ref_point1)
+                    self.set_boundary_reference_point(jj, ii, ref_point2)
+
+
                 center_dists = np.zeros((self.dim, n_com))
                 center_dists[:, 1] = self[ii].center_position-self[jj].center_position
                 
@@ -321,6 +334,37 @@ class GradientContainer(ObstacleContainer):
                     if dist <= 0:
                         # Distance==0, i.e. intersecting & ref_point1==ref_point2
                         self.intersection_matrix[ii, jj] = ref_point1
+
+    def get_boundary_reference_point_circular(self, obs0, obs1):
+        ''' Accelerated calculation for circles. 
+        Important assumption: obs0 is never boundry (last in list). '''
+
+        direction_center = obs1.center_position - obs0.center_position
+        dist_center = np.linalg.norm(direction_center)
+
+        if obs1.is_boundary:
+            direction_center = direction_center/dist_center
+            frac_boundary = 0.1
+            point1 = None
+            if dist_center > (obs1.radius_with_margin-obs0.radius_with_margin):
+                # Intersecting
+                point0 =  (-1)*(obs1.radius_with_margin+obs0.radius_with_margin*frac_boundary)*direction_center + obs1.center_position
+                dist = 0
+            else:
+                point0 = (-1)*obs0.radius_with_margin*direction_center + obs0.center_position
+                dist = (obs1.radius_with_margin-obs0.radius_with_margin) - dist_center
+        else:
+            if dist_center < (obs0.radius_with_margin+obs1.radius_with_margin):
+                # Intersecting
+                point0 = point1 = (obs0.center_position - obs1.center_position)/2.0
+                dist = 0
+            else:
+                direction_center = direction_center/dist_center
+                point0 = obs0.radius_with_margin*direction_center + obs0.center_position
+                point1 = (-1)*obs1.radius_with_margin*direction_center + obs1.center_position
+                dist = dist_center-(obs0.radius_with_margin+obs1.radius_with_margin)
+
+        return dist, point0, point1
                         
 
     def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-3, convergence_err=1e-3, max_it=100):

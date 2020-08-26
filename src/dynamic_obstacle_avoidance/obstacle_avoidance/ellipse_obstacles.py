@@ -28,6 +28,11 @@ import matplotlib.pyplot as plt
 
 visualize_debug = False
 
+# class Ellipse(EllipseObstacle):
+    # ''' Backwards compatibility. '''
+    # pass
+
+
 class Ellipse(Obstacle):
     ''' Ellipse type obstacle 
     Geometry specifi attributes are
@@ -40,7 +45,7 @@ class Ellipse(Obstacle):
                  margin_absolut=0,
                  hull_with_respect_to_reference=False,
                  *args, **kwargs):
-        
+
         if sys.version_info>(3,0):
             super().__init__(*args, **kwargs)
         else:
@@ -145,7 +150,10 @@ class Ellipse(Obstacle):
 
     @property
     def axes_with_margin(self):
-        return self.axes_length + self.margin_absolut
+        if self.is_boundary:
+            return self.axes_length - self.margin_absolut
+        else:
+            return self.axes_length + self.margin_absolut
     
     def get_minimal_distance(self):
         return np.min(self.a)
@@ -655,7 +663,15 @@ class Ellipse(Obstacle):
         if not multiple_positions:
             return Gamma[0] # 1x1-array to value
         return Gamma
-    
+
+
+    def update_deforming_obstacle(self, radius_new, position, orientation):
+        ''' Update an obstacle which can also deform '''
+        self.radius_old = copy.deepcopy(self.radius)
+        self.radius = radius_new
+
+        self.update_position_and_orientation(position=new_position, orientation=new_orientation)
+        
     
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
         '''
@@ -795,3 +811,31 @@ class Ellipse(Obstacle):
                                               self.normal_vector[0, ii]]
         else:
             self.n_planes = 0
+
+
+class CircularObstacle(Ellipse):
+    ''' Ellipse obstacle with equal axes'''
+    def __init__(self, radius=None, axes_length=None, *args, **kwargs):
+        if not radius is None:
+            axes_length = np.array([radius, radius])
+        elif not radius is None:
+            if radius.shape[0]==1:
+                axes_length = np.array([axes_length, axes_length])
+        else:
+            raise RuntimeError("No radius input.")
+            
+        if sys.version_info>(3,0):
+            super().__init__(axes_length=axes_length, *args, **kwargs)
+        else:
+            super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
+
+
+    # Axes length is equal to radius for an circular obtject
+    @property
+    def radius(self):
+        return self.axes_length[0]
+
+    @property
+    def radius_with_margin(self):
+        return self.axes_with_margin[0]
+
