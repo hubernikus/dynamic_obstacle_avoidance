@@ -14,6 +14,7 @@ import copy
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import CircularObstacle
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
@@ -143,17 +144,13 @@ class GradientContainer(ObstacleContainer):
         value = self[ii].transform_global2relative(value)
         self._boundary_reference_points[:, ii, jj] = value
     
-    def get_dynamic_reference_points(self, ii):
-        raise NotImplementedError("TODO!") # TODO:
-    
     def update_reference_points(self):
         """Update the reference point for all obstacles stored in (this) 
         container based on distance"""
 
         self.intersection_matrix = Intersection_matrix(len(self))
-        
         self.reset_reference_points()
-        self.update_boundary_reference_points(self)
+        self.update_boundary_reference_points()
 
         obs_reference_size = np.zeros(len(self))
 
@@ -189,17 +186,17 @@ class GradientContainer(ObstacleContainer):
                 
             else:
                 self[ii].set_reference_point(np.zeros(self[ii].dim), in_global_frame=False)
-
+                
         # TODO: create a more smooth transition between 'free' obstacles and 'clustered ones'
         # TODO: include the 'extended' hull as a deformation parameter
-        
-        # Combine reference points of obstacles in each cluster
-        intersection_err = 1e-9
-        
-        intersecting_obs = get_intersection_cluster(self.intersection_matrix, self)
-        self.assign_sibling_groups(intersecting_obs)
 
-        if False: # Repetition -- TODO: remove
+        # Combine reference points of obstacles in each cluster
+        intersecting_obs = get_intersection_cluster(self.intersection_matrix, self)
+        # self.assign_sibling_groups(intersecting_obs)
+
+        get_single_reference_point(self, intersecting_obs, self.intersection_matrix)
+
+        if False: # NOT USED ANYMORE (REMOVE)
         # for cluster_intersecting in intersecting_obs:
             weight_obs = np.zeros(len(cluster_intersecting))
             ref_points_obs = np.zeros((self.dim, len(cluster_intersecting)))
@@ -209,7 +206,7 @@ class GradientContainer(ObstacleContainer):
                 weight_obs[ii] = self[oo].get_reference_length()
 
             weight_obs = weight_obs/np.sum(weight_obs)
-
+            
             ref_point = np.sum(ref_points_obs * np.tile(weight_obs, (self.dim, 1)), axis=1)
             
             for oo in cluster_intersecting:
@@ -244,11 +241,18 @@ class GradientContainer(ObstacleContainer):
                     dist, ref_point1, ref_point2 = self.get_boundary_reference_point_circular(
                         self[ii], self[jj]
                     )
-                    
+
                     self.set_distance(ii, jj, dist)
                     self.set_boundary_reference_point(ii, jj, ref_point1)
-                    self.set_boundary_reference_point(jj, ii, ref_point2)
+                    if not ref_point2 is None:
+                        # Is a boundary with 'static reference point'
+                        self.set_boundary_reference_point(jj, ii, ref_point2)
 
+                    if dist <= 0:
+                        # Distance==0, i.e. intersecting & ref_point1==ref_point2
+                        self.intersection_matrix[ii, jj] = ref_point1
+                    # import pdb; pdb.set_trace()
+                    continue
 
                 center_dists = np.zeros((self.dim, n_com))
                 center_dists[:, 1] = self[ii].center_position-self[jj].center_position
@@ -348,7 +352,15 @@ class GradientContainer(ObstacleContainer):
             point1 = None
             if dist_center > (obs1.radius_with_margin-obs0.radius_with_margin):
                 # Intersecting
-                point0 =  (-1)*(obs1.radius_with_margin+obs0.radius_with_margin*frac_boundary)*direction_center + obs1.center_position
+                mag_displ = (obs1.radius_with_margin+obs0.radius_with_margin*frac_boundary)
+                if dist_center > mag_displ:
+                # if False:
+                    point0 = obs0.center_position
+                    # mag_displ = dist_center
+                    # point0 =  (-1)*mag_displ*direction_center + obs1.center_position
+                else:
+                    mag_displ = min(mag_displ, dist_center+obs0.radius_with_margin)
+                    point0 =  (-1)*mag_displ*direction_center + obs1.center_position
                 dist = 0
             else:
                 point0 = (-1)*obs0.radius_with_margin*direction_center + obs0.center_position
@@ -459,7 +471,6 @@ class GradientContainer(ObstacleContainer):
             angles = angles_new
             dist_magnitude = dist_magnitude_new
 
-
             if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
                 settings.boundary_ref_point_list.append(angles_new)
                 settings.dist_ref_points.append(dist_magnitude_new)
@@ -480,16 +491,6 @@ class GradientContainer(ObstacleContainer):
 
             reference_points[:, ii] = obs.get_local_radius_point(direction=dir0,
                                                                  in_global_frame=True)
-
-        if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
-            for obs, ii in zip([obs0, obs1], [0, 1]):
-                direction_angle = get_angle_space_inverse(
-                    angle, NullMatrix=NullMatrices[ii, :, :])
-                surface_points[:, ii] = obs.get_local_radius_point(
-                    direction=direction_angle, in_global_frame=True)
-            settings.position0.append(copy.deepcopy(surface_points[:, 0]))
-            settings.position1.append(copy.deepcopy(surface_points[:, 1]))
-                
 
         # Do gamma descent if objects are interesecting
         if is_intersecting:

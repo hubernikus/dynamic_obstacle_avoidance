@@ -320,6 +320,7 @@ class ObstacleContainer(BaseContainer):
         self.assign_sibling_groups(intersecting_obs)
 
     def assign_sibling_groups(self, intersecting_obs):
+        ''' Assign each obstacle to a group label & calculate corresponding label'''
         if True:
             self._family_label = np.ones(len(self))*(-1)
 

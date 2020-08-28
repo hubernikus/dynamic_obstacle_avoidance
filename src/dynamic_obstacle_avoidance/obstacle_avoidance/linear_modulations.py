@@ -1,4 +1,4 @@
-ar'''
+'''
 Library for the Modulation of Linear Systems
 Copyright (c)2019 under GPU license
 '''
@@ -18,7 +18,6 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-
 def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
@@ -33,8 +32,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     OUTPUT
     xd [dim]: modulated dynamical system at position x
     '''
-
-    # import pdb; pdb.set_trace()
 
     if not x is None:
         warnings.warn("Depreciated, don't use x as position argument.")
@@ -128,6 +125,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         #The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
         exp_weight = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
         xd_obs_n = exp_weight*(np.array(obs[n].linear_velocity) + xd_w)
+
+        if obs[n].is_deforming:
+            deformation_vel = obs[n].get_deformation_velocity(pos_relative[:, n])
+            xd_obs_n = exp_weight * deformation_vel
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
@@ -197,8 +198,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                     
                 xd_hat[:, n] = repulsive_velocity
 
-                # import pdb; pdb.set_trace()
-
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 
     xd_hat_normalized = np.zeros(xd_hat.shape)
@@ -211,7 +210,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) # points at the origin
         xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
         
-        total_weight = 1-weight_attr # Does this work
+        total_weight = 1-weight_attr # Does this work?!
     else:
         total_weight = 1
 
@@ -225,8 +224,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         xd_norm = np.linalg.norm(vel_final)
         if xd_norm > velocicity_max:
             vel_final = vel_final/xd_norm * velocicity_max
-
-    # import pdb; pdb.set_trace()
 
     # transforming back from object frame of reference to inertial frame of reference
     return vel_final

@@ -22,8 +22,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Circ
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import transform_polar2cartesian, transform_cartesian2polar
 
-
 def findCircle(pos_array) :
+    # NOT USED... REMOVE! // REPLACE
     '''Function to find the circle on 
     which the given three points lie '''
     x1, y1 = pos_array[0, 0], pos_array[1, 0]
@@ -158,34 +158,13 @@ class CrowdCircleContainer(GradientContainer):
 
         radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
         
-        # print('pos', self[-1].center_position)
-        # print('pos crowd', pos_crowd)
-
-        # 3 points define the circle
-        # surface_points = np.zeros((self._dim, 3))
-        # self.boundary_creator_obstacles = []
-
-        # for ii in range(surface_points.shape[1]):
-            # surface_points[:, ii] = pos_crowd[:, ind_sorted[ii+num_crowd_close]]
-
-            # self.boundary_creator_obstacles.append(CircularObstacle(
-                # center_position=surface_points[:, ii], orientation=0,
-                # radius=human_radius, margin_absolut=self.robot_margin)
-            # )
-        # center_wall, radius_wall = findCircle(surface_points)
-
-                # Check that the circle is not artificially large
-
         if radius_wall < human_radius:
             raise NotImplementedError("Collision with robot")
-            
-        # if radius_wall > 10: # Very large
-            # pass
-            # raise NotImplementedError("Implement maximum radius")
 
         if self.contains_wall_obstacle:
-            self[index_wall].update_deforming_obstacle(
-                position=center_wall, orientation=0, radius=radius_wall-human_radius)
+        # if False:
+            self[self.index_wall].update_deforming_obstacle(
+                position=center_wall, orientation=0, radius_new=radius_wall-human_radius)
         else:
             # Create new/first wall obstacle
             self.append(CircularObstacle(

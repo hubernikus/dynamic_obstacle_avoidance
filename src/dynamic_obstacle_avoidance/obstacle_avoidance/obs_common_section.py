@@ -101,6 +101,8 @@ class Intersection_matrix(DistanceMatrix):
         self._value_list = [None for ii in range(int((n_obs-1)*n_obs/2))]
         self._dim = n_obs
 
+    def __repr__(self):
+        return str(self.get_bool_matrix())
 
     def set(self, row, col, value):
         self[row, col] = value
@@ -123,7 +125,10 @@ class Intersection_matrix(DistanceMatrix):
         matr = np.zeros((space_dim, self._dim, self._dim))
         for col in range(self._dim):
             for row in range(col+1, self._dim):
-                if col!=row and not isinstance(self.get(row,col), bool):
+                if col==row:
+                    continue
+                val = self.get(row,col)
+                if not val is None and  not isinstance(self.get(row,col), bool):
                     matr[:, col, row] = matr[:, row, col] = self[row,col]
         return matr
 
@@ -157,7 +162,7 @@ def obs_common_section(obs):
     # at the moment only solution in two d is implemented
 
     # TODO: REMOVE ' depreciated
-    warnings.warn("This is depreciated and will be removed")
+    warnings.warn("This function depreciated and will be removed")
     
     N_obs = len(obs)
     # No intersection region 
@@ -477,13 +482,13 @@ def get_intersection_cluster(Intersections, obs, representation_type='single_poi
     return intersection_cluster_list
 
 
-def get_single_reference_point(obs, intersection_clusters, Intersections, dim, obstacle_weight=None):
+def get_single_reference_point(obs, intersection_clusters, Intersections, dim=None, obstacle_weight=None):
     """ Assign local reference points from intersection clusters."""
     
     # TODO: make applicable for all environments with
     if obstacle_weight is None:
         obstacle_weight = np.ones(len(obs))/len(obs)
-    
+
     # Iterate over the list of intersection clusters and find one common
     # reference point for each of the clusters
     for ii in range(len(intersection_clusters)):
@@ -507,18 +512,19 @@ def get_single_reference_point(obs, intersection_clusters, Intersections, dim, o
             for jj in intersection_clusters[ii]:
                 if jj == obs.index_wall:
                     continue
-                wall_intersection_points.shape[1] == 1
                     
                 if wall_intersection_points.shape[1] == 1:
                     obs[jj].set_reference_point(wall_intersection_points[:, 0], in_global_frame=True)
                 else:
-                    # TODO: use shortes hirarchy/graph-steps instead of Eucledian distance.
+                    # In case of severall interesections with wall; take the closest.
                     dist_intersection = np.linalg.norm(wall_intersection_points - np.tile(obs[jj].position, (wall_intersection_points.shape[1], 1)).T, axis=0)
                     obs[jj].set_reference_point(wall_intersection_points[:, np.argmin(dist_intersection)], in_global_frame=True)
-            
+
         else:
-            geometric_center = np.zeros(dim)
+            # No intersection with wall
+            geometric_center = np.zeros(obs.dim)
             total_weight = 0
+            
             # TODO: take intersection position mean
             for jj in intersection_clusters[ii]:
                 geometric_center += obstacle_weight[jj]*np.array(obs[jj].center_position)

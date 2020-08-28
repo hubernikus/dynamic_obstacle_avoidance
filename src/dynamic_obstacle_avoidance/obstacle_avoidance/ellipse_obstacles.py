@@ -5,16 +5,18 @@
 @author Lukas Huber 
 @email lukas.huber@epfl.ch
 '''
-
+import sys
+import copy
+import warnings
 import time
-import numpy as np
 from math import sin, cos, pi, ceil
-import warnings, sys
 
+import numpy as np
 import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+import matplotlib.pyplot as plt
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo, angle_difference_directional_2pi
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
@@ -23,15 +25,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import 
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
 
-import matplotlib.pyplot as plt
-# import quaternion
-
 visualize_debug = False
-
-# class Ellipse(EllipseObstacle):
-    # ''' Backwards compatibility. '''
-    # pass
-
 
 class Ellipse(Obstacle):
     ''' Ellipse type obstacle 
@@ -56,7 +50,7 @@ class Ellipse(Obstacle):
         elif not a is None:
             self.axes_length = np.array(a) # TODO: depreciated, remove
         else:
-            warning.warn("No axis length given!")
+            warnings.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
             
         if not curvature is None:
@@ -665,12 +659,6 @@ class Ellipse(Obstacle):
         return Gamma
 
 
-    def update_deforming_obstacle(self, radius_new, position, orientation):
-        ''' Update an obstacle which can also deform '''
-        self.radius_old = copy.deepcopy(self.radius)
-        self.radius = radius_new
-
-        self.update_position_and_orientation(position=new_position, orientation=new_orientation)
         
     
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
@@ -829,13 +817,62 @@ class CircularObstacle(Ellipse):
         else:
             super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
 
+        if self.is_deforming:
+            self.radius_old = copy.deepcopy(self.radius)
+
 
     # Axes length is equal to radius for an circular obtject
     @property
     def radius(self):
         return self.axes_length[0]
 
+    @radius.setter
+    def radius(self, value):
+        self.axes_length = np.ones(self.dim)*value
+
     @property
     def radius_with_margin(self):
         return self.axes_with_margin[0]
 
+    @property
+    def inflation_speed_radial(self):
+        # positive when expanding, negative when shrinking
+        return self._inflation_speed_radial
+
+    @inflation_speed_radial.setter
+    def inflation_speed_radial(self, value):
+        self._inflation_speed_radial = value
+    
+    def get_deformation_velocity(self, position, in_global_frame=False):
+        ''' Get relative velocity of a boundary point.
+        This is zero if the deformation would be pulling. '''
+
+        if in_global_frame:
+            raise NotImplementedError()
+        
+        norm_pos = np.linalg.norm(position)
+        if norm_pos: # nonzero
+            position = position/norm_pos
+
+        if self.is_boundary:
+            # Only consider when increasing
+            deformation_vel = min(self.inflation_speed_radial, 0)*position
+        else:
+            # Only consider when incrreasing
+            deformation_vel = max(self.inflation_speed_radial, 0)*position
+        return deformation_vel
+
+    def update_deforming_obstacle(self, radius_new, position, orientation, time_current=None):
+        ''' Update an obstacle which can also deform '''
+        if time_current is None:
+            time_current = time.time()
+            
+        dt = time_current - self.timestamp
+        
+        self.inflation_speed_radial = (self.radius-self.radius_old)/dt
+        self.radius_old = copy.deepcopy(self.radius)
+        self.radius = radius_new
+
+        self.update_position_and_orientation(position=position, orientation=orientation,
+                                             time_current=time_current)
+    

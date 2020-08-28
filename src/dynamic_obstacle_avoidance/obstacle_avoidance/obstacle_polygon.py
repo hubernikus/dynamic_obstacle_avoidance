@@ -3,17 +3,22 @@
 '''
 Polygon Obstacle
 '''
-
-import time
-import numpy as np
-import warnings, sys, copy
-
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between
-
 __author__ = "LukasHuber"
 __date__ =  "2020-02-28"
 __email__ =  "lukas.huber@epfl.ch"
+
+import time
+import warnings
+import sys
+import copy
+from math import pi
+import numpy as np
+
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between, angle_difference_directional
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_tangents2ellipse
+
 
 
 def is_one_point(point1, point2, margin=1e-9):
@@ -158,12 +163,12 @@ class Polygon(Obstacle):
         self.extend_hull_around_reference()
 
     def get_maximal_distance(self):
-        dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
     
     def get_minimal_distance(self):
-        dist_edges = LA.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
     
@@ -208,7 +213,7 @@ class Polygon(Obstacle):
 
                 normal_vector[:, ii] = np.cross(tangent_0, tangent_1)
 
-                norm_mag = LA.norm(normal_vector[:, ii])
+                norm_mag = np.linalg.norm(normal_vector[:, ii])
                 if norm_mag: # nonzero
                     normal_vector[:, ii]= normal_vector[:, ii]/norm_mag
         else:
@@ -285,7 +290,7 @@ class Polygon(Obstacle):
             self._boundary_points_with_margin  = np.hstack((self._boundary_points_with_margin, self._boundary_points_with_margin[:,0].reshape(2,1)))
             
         else:
-            dir_boundary_points = self._boundary_points/LA.norm(self._boundary_points, axis=0)
+            dir_boundary_points = self._boundary_points/np.linalg.norm(self._boundary_points, axis=0)
             if self.is_boundary:
                 self._boundary_points_with_margin = self._boundary_points - dir_boundary_points*self.margin_absolut
 
@@ -369,7 +374,7 @@ class Polygon(Obstacle):
             n_points = 1
             position = position.reshape((self.dim, n_points))
 
-        mag_position = LA.norm(position, axis=0)
+        mag_position = np.linalg.norm(position, axis=0)
 
         zero_mag = mag_position==0
         if np.sum(zero_mag):
@@ -403,13 +408,15 @@ class Polygon(Obstacle):
 
                         surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
                         
-                        dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
+                        dist2hull[jj], dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
 
                     # Gamma[jj] = mag_position[jj]/dist2hull
                     
             else:
+                # Obstacle has aboslut-margin
                 for jj in np.arange(n_points)[~zero_mag]:
-                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
+                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj],
+                                                         directions=self.edge_reference_points[:, :, 0])
 
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
@@ -420,11 +427,10 @@ class Polygon(Obstacle):
                         ind_high = ind_low
                         ind_low = (ind_high-1)%self.n_planes
 
-                    if is_one_point(self.edge_reference_points[:, ind_low, 0], self.edge_reference_points[:, ind_low, 1]): # one point
+                    if is_one_point(self.edge_reference_points[:, ind_low, 0],
+                                    self.edge_reference_points[:, ind_low, 1]): # one point
                         surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 0]
                         edge_point = self.edge_reference_points[:, ind_low, 0]
-                        # import pdb; pdb.set_trace()
-                        # a=1
 
                     else:
                         angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
@@ -436,7 +442,10 @@ class Polygon(Obstacle):
                                 ind_edge = ind_low
                             else:
                                 ind_edge = ind_low - (self.n_planes-self.n_planes_edge)
-                            pp = self.edge_points[:, ind_edge]
+                            try:
+                                pp = self.edge_points[:, ind_edge]
+                            except:
+                                import pdb; pdb.set_trace()     ##### DEBUG ##### 
 
                             AA = vv[0]*vv[0] + vv[1]* vv[1]
                             BB = -2*(vv[0]*pp[0] + vv[1]*pp[1])
@@ -458,7 +467,7 @@ class Polygon(Obstacle):
                             edge_point = self.edge_reference_points[:, ind_low, 1]
 
                     # Get distance to hull for both ifs
-                    dist2hull[jj], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
+                    dist2hull[jj], dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
 
                     # Gamma[jj] = mag_position[jj]/dist2hull
 
@@ -570,7 +579,7 @@ class Polygon(Obstacle):
             # TODO: remove
             is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
 
-            mag_position = LA.norm(position, axis=0)
+            mag_position = np.linalg.norm(position, axis=0)
 
             zero_mag = mag_position==0
             if np.sum(zero_mag):
@@ -588,8 +597,8 @@ class Polygon(Obstacle):
                 #         surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
 
                 #         matrix_ref_tang = np.vstack((position_dir[:, jj], -surface_dir)).T
-                #         if LA.matrix_rank(matrix_ref_tang)>1:
-                #             dist2hull[ii], dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
+                #         if np.linalg.matrix_rank(matrix_ref_tang)>1:
+                #             dist2hull[ii], dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
                 #         else:
                 #             dist2hull[ii] = -1
                 #             dist_tangent = -1
@@ -617,7 +626,7 @@ class Polygon(Obstacle):
 
                             surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
 
-                            dist2hull, dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
+                            dist2hull, dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
 
                         Gamma[jj] = mag_position[jj]/dist2hull
                         
@@ -667,7 +676,7 @@ class Polygon(Obstacle):
                                 surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 1]
                                 edge_point = self.edge_reference_points[:, ind_low, 1]
                             
-                        dist2hull, dist_tangent = LA.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
+                        dist2hull, dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
                         Gamma[jj] = mag_position[jj]/dist2hull
             else:
                 raise ValueError("Not defined for d=={}".format(self.dim))
@@ -677,11 +686,10 @@ class Polygon(Obstacle):
 
             delta_Gamma = np.min(distances2plane) - self.margin_absolut
             ind_outside = (distances2plane > 0)
-            delta_Gamma = (LA.norm(distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
+            delta_Gamma = (np.linalg.norm(distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
             normalization_factor = np.max(self.normalDistance2center)
             # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
             Gamma = 1 + delta_Gamma / normalization_factor
-            
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
         
@@ -695,7 +703,7 @@ class Polygon(Obstacle):
         if in_global_frame: 
             position = self.transform_global2relative(position)
         
-        mag_position = LA.norm(position)
+        mag_position = np.linalg.norm(position)
         if mag_position==0: # aligned with center, treat sepearately
             if self.is_boundary:
                 return np.ones(self.dim)/self.dim
@@ -734,15 +742,12 @@ class Polygon(Obstacle):
                 
             temp_edge_points = temp_edge_points[:, np.sort(index_unique)]
 
-        # temp_position = np.copy(temp_position)
-
         # distances2plane = self.get_distance_to_hullEdge(temp_position)
         distances2plane, normal_vectors = self.get_distances_and_normal_to_surfacePannels(temp_position, temp_edge_points)
 
         ind_outside = (distances2plane > 0)
 
         if not np.sum(ind_outside) : # zero value
-            # TODO solver in a more proper way
             return self.get_reference_direction(position)
 
         distance2plane = ind_outside*np.abs(distances2plane)
@@ -754,7 +759,6 @@ class Polygon(Obstacle):
             raise NotImplementedError("Under construction for d>2.")
         
         for ii in np.arange(temp_edge_points.shape[1])[ind_outside]:
-            
             # Calculate distance to agent-position
             # dir_tangent = (temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
             dir_tangent = (temp_edge_points[:, ii] - temp_edge_points[:, ii-1])
@@ -762,20 +766,20 @@ class Polygon(Obstacle):
 
             
             if dir_tangent.T.dot(position2edge) < 0:
-                distance2plane[ii] = LA.norm(position2edge)
+                distance2plane[ii] = np.linalg.norm(position2edge)
             else:
                 # dir_tangent = -(temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]] - temp_edge_points[:, ii])
                 dir_tangent = -(temp_edge_points[:, ii] - temp_edge_points[:, ii-1])
                 position2edge = temp_position - temp_edge_points[:, (ii+1)%temp_edge_points.shape[1]]
                 if dir_tangent.T.dot(position2edge) < 0:
-                    distance2plane[ii] = LA.norm(position2edge)
+                    distance2plane[ii] = np.linalg.norm(position2edge)
 
             # Get closest point
             # edge_points_temp = np.vstack((temp_edge_points[:,ii], temp_edge_points[:,(ii+1)%temp_edge_points.shape[1]])).T
             edge_points_temp = np.vstack((temp_edge_points[:,ii-1], temp_edge_points[:,ii])).T
 
             # Calculate angle to agent-position
-            ind_sort = np.argsort(LA.norm(np.tile(temp_position,(2,1)).T-edge_points_temp, axis=0))
+            ind_sort = np.argsort(np.linalg.norm(np.tile(temp_position,(2,1)).T-edge_points_temp, axis=0))
 
             tangent_line = edge_points_temp[:,ind_sort[1]] - edge_points_temp[:, ind_sort[0]]
             position_line = temp_position - edge_points_temp[:, ind_sort[0]]
@@ -808,7 +812,7 @@ class Polygon(Obstacle):
         normal_vector = (-1)*normal_vector
         
         if normalize:
-            normal_vector = normal_vector/LA.norm(normal_vector)
+            normal_vector = normal_vector/np.linalg.norm(normal_vector)
 
         if in_global_frame: 
             normal_vector = self.transform_global2relative_dir(normal_vector)
@@ -821,12 +825,13 @@ class Polygon(Obstacle):
         Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
         '''
-        
+
         dist_max = self.get_maximal_distance()*relative_hull_margin
         mag_ref_point = np.linalg.norm(self.reference_point)
 
-        # Reset number of planes
+        # Reset number of planes & outside-edge
         self.n_planes = self.n_planes_edge
+        self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
         
         if mag_ref_point:
             reference_point_temp = self.reference_point*(1 + dist_max/mag_ref_point)
@@ -834,13 +839,16 @@ class Polygon(Obstacle):
         if not self.reference_point_is_inside: # Reset boundaryies
             self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
 
+
+        # if self.name=="desk_wall":
+            # import pdb; pdb.set_trace()     ##### DEBUG #####
+            
         if (not self.is_boundary) and mag_ref_point and self.get_gamma(reference_point_temp)>1:
         # TODO add margin / here or somewhere else
             if not self.dim==2:
                 raise NotImplementedError("Not defined for d>2")
-            
+
             if self.margin_absolut:
-                self.n_planes = self.n_planes_edge
                 for pp in range(self.n_planes):
                     t0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes]
                     t1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
@@ -874,8 +882,6 @@ class Polygon(Obstacle):
 
                             qq = (pp+1)%self.n_planes
                             it_edge = pp
-                        # Correct for both?
-                        # for qq, ii in zip([(pp-1)%self.n_planes_edge, (pp+1)%self.n_planes_edge], [0,1]):
 
                         tt, tang_points = get_tangents2ellipse(edge_point=self.edge_reference_points[:, pp, 0], axes=[self.margin_absolut]*2, center_point=self.edge_points[:, it_edge])
 
@@ -913,31 +919,10 @@ class Polygon(Obstacle):
                             else:
                                 self.edge_reference_points[:, (pp), 1] = tang_points[:, 0]
                                 self.edge_reference_points[:, (pp+2)%self.n_planes, 0] = tang_points[:, 1]
-                            
-                            debugging_mode=False # TODO: remove
-                            if debugging_mode:
-                                plt.figure()
-                                points = np.zeros((self.dim, self.n_planes*2))
-
-                                it = 0
-                                for ii in range(self.n_planes):
-                                    for jj in range(2):
-                                        try:
-                                            points[:, it] = self.edge_reference_points[:, ii, jj]
-                                        except:
-                                            import pdb; pdb.set_trace() ## DEBUG ##
-                                        it+=1
-
-                                plt.plot(points[0, :], points[1, :])
-                                plt.ion()
-                                plt.show()
-
-                                import pdb; pdb.set_trace() ## DEBUG ##
-                                plt.close('all')
-                                
-                            import pdb; pdb.set_trace() ## DEBUG ##
                             break
-
+                        # debugging_mode=False # TODO: remove
+                        # if debugging_mode:
+                        
                     # Adapted normal
                     self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.hull_points)
                     
@@ -949,7 +934,7 @@ class Polygon(Obstacle):
 
                     vec_ref = reference_point_temp - self.edge_points[:, pp]
 
-                    ref_mag = LA.norm(reference_point_temp)
+                    ref_mag = np.linalg.norm(reference_point_temp)
 
                     if np.cross(vec_ref, n0) > 0:
                         if np.cross(vec_ref, n1) > 0:
@@ -968,13 +953,41 @@ class Polygon(Obstacle):
             self.reference_point_is_inside = False
             self.n_planes = self.edge_reference_points.shape[1]
         else:
-            self.edge_reference_points = self.edge_margin_points  # include margin
-            
+            self.edge_reference_points =  self.edge_margin_points  # include margin
+
             if not self.reference_point_is_inside:
                 self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
             self.reference_point_is_inside = True
             self.n_planes = self.n_planes_edge
             self.ind_edge_ref = None
+
+
+        if False:
+        # if self.name=="desk_wall" and self.edge_reference_points.shape[1]==6: ### DEBUG ####
+            import matplotlib.pyplot as plt
+            plt.figure()
+            points = np.zeros((self.dim, self.edge_reference_points.shape[1]*2))
+            it = 0
+            for ii in range(self.edge_reference_points.shape[1]):
+                for jj in range(2):
+                    try:
+                        points[:, it] = self.edge_reference_points[:, ii, jj]
+                    except:
+                        import pdb; pdb.set_trace() ## DEBUG ##
+                    it+=1
+
+            plt.plot(0, 0, 'r', marker='.')
+            plt.plot(self.reference_point[0], self.reference_point[1], 'r', marker='o')
+            plt.plot(self.edge_points[0, :], self.edge_points[1, :], 'b', marker='x')
+            plt.plot(points[0, :], points[1, :], 'k', marker='x')
+            plt.axis('equal')
+            plt.grid()
+            plt.ion()
+            plt.show()
+
+            import pdb; pdb.set_trace() ## DEBUG ##
+            plt.close('all')
+  
 
             
 class Cuboid(Polygon):
@@ -1003,5 +1016,5 @@ class Cuboid(Polygon):
             super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
 
     def get_reference_length(self):
-        return LA.norm(self.axes_length)/2.0 + self.margin_absolut
+        return np.linalg.norm(self.axes_length)/2.0 + self.margin_absolut
 

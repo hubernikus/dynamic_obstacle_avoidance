@@ -4,21 +4,15 @@ Basic class to represent obstacles
 '''
 
 import time
-import numpy as np
-from math import sin, cos, pi, ceil
 import warnings, sys
-
+import numpy as np
 import numpy.linalg as LA
-
-# import quaternion # numpy-quaternion 
-# import dynamic_obstacle_avoidance
+from math import sin, cos, pi, ceil
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 
-# TODO: remove after debugging/developping
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # TODO: remove after debugging!
 
 __date__ =  "2019-10-15"
 __author__ = "Lukas Huber"
@@ -161,6 +155,8 @@ class Obstacle(State):
         self.has_moved = True 
         self.is_dynamic = is_dynamic
         self.is_deforming = is_deforming
+        if self.is_deforming:
+            self.inflation_speed_radial = 0
 
         # Repulsion coefficient to actively move away from obstacles (if possible)
         # [1, infinity]
