@@ -59,50 +59,71 @@ def visualization_boundary_points_mixed_world():
     xAttractor=[5.0, 5.0]
     robot_margin = 0.6
     
-    obs = GradientContainer() # create empty obstacle list
-    obs.append(Polygon(
-        edge_points=[[ 0.0, 6.0, 6.0, 0.0],
-                     [0.0, 0.0, 5.5, 5.5]],
-        # center_position=[, 3.5],
-        orientation=0./180*pi,
-        margin_absolut=robot_margin,
-        is_boundary=True,
-    ))
+    obstacle_list = GradientContainer() # create empty obstacle list
     
-    obs.append(Cuboid(
-        axes_length=[1.6, 0.8],
-        center_position=[0.4, 3.0],
-        orientation=90./180*pi,
-        margin_absolut=robot_margin,
-        is_boundary=False,
-        name="desk_wall",
-    ))
+    obstacle_list.append(Polygon(
+            edge_points=[[ 0.0, 5.7, 5.7, 0.0],
+                         [-0.6,-0.6, 5.5, 5.5]],
+            # center_position=[3, 3.5],
+            orientation=0./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=True,
+        ))
 
-    obs.append(Ellipse(
-        axes_length=[0.2, 0.5],
-        center_position=[1.8, 2.5],
-        p=[1,1],
-        orientation=30./180*pi,
-        margin_absolut=robot_margin,
-        is_boundary=False,
-        name="human_puppet"
-    ))
+    # obstacle_list.append(Cuboid(
+            # axes_length=[5.7, 6.1],
+            # center_position=[5.7/2, 6.1/2],
+            # orientation=90./180*pi,
+            # margin_absolut=robot_margin,
+            # is_boundary=True
+        # ))
+
+    # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+
+
+    obstacle_list.append(Cuboid(
+            axes_length=[1.6, 0.8],
+            center_position=[0.4, 3.0],
+            orientation=90./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+        ))
+    
+    obstacle_list.append(Cuboid(
+            axes_length=[1.6, 1.6],
+            center_position=[3.4, 2.6],
+            orientation=0./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+            ))
+
+    obstacle_list.append(Ellipse(
+            axes_length=[0.3, 0.5],
+            center_position=[1.8, 3.0],
+            p=[1,1],
+            orientation=30./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+        ))
+
+    # return obstacle_list
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     Simulation_vectorFields(
-        x_range=x_lim, y_range=y_lim,  obs=obs, xAttractor=[6, 0],
+        x_range=x_lim, y_range=y_lim,  obs=obstacle_list, xAttractor=[6, 0],
         saveFigure=False, figName='linearSystem_boundaryCuboid', noTicks=False,
         draw_vectorField=False, reference_point_number=False, drawVelArrow=True,
         automatic_reference_point=True, point_grid=10,
         fig_and_ax_handle=(fig, ax)
     )
 
-    for ii in range(len(obs)):
-        for jj in range(len(obs)):
+    # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+    for ii in range(len(obstacle_list)):
+        for jj in range(len(obstacle_list)):
             if jj==ii:
                 continue
-            point = obs.get_boundary_reference_point(ii, jj)
+            point = obstacle_list.get_boundary_reference_point(ii, jj)
             ax.plot(point[0], point[1], 'r+', linewidth=18, markeredgewidth=4, markersize=13)
 
 

@@ -3,6 +3,7 @@
 '''
 Polygon Obstacle
 '''
+
 __author__ = "LukasHuber"
 __date__ =  "2020-02-28"
 __email__ =  "lukas.huber@epfl.ch"
@@ -19,12 +20,9 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_s
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_tangents2ellipse
 
-
-
 def is_one_point(point1, point2, margin=1e-9):
     ''' Check if it the two points coincide [1-norm] '''
     return np.sum(np.abs(point1-point2)) < 1e-9
-
 
 class Polygon(Obstacle):
     '''
@@ -40,17 +38,20 @@ class Polygon(Obstacle):
     def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
                  # reference_point=None,
                  margin_absolut=0,
+                 center_position=None,
                  *args, **kwargs):
-        
         self.edge_points = np.array(edge_points)
 
-        if (not 'center_position' in kwargs.keys()) or kwargs['center_position'] is None:
-            kwargs['center_position'] = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+        # print('center start', center_position)
+        if center_position is None:
+            center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+        kwargs['center_position'] = center_position
+
+        # print('center start', center_position)
 
         if ind_open is None:
             # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
             ind_open = []
-        
             
         if (sys.version_info > (3, 0)): # TODO: remove in future
             super().__init__(*args, **kwargs)
@@ -304,6 +305,7 @@ class Polygon(Obstacle):
         # self.x_obs = self._boundary_points.T # Surface points
         # self.x_obs_sf = x_obs_sf.T # Margin points
     def get_reference_length(self):
+        ''' Get a length which corresponds to the largest distance from the center of the obstacle. '''
         return np.min(np.linalg.norm(self.edge_points, axis=0)) + self.margin_absolut
 
     def get_distances_and_normal_to_surfacePannels(self, position, edge_points=None, in_global_frame=False):
@@ -358,10 +360,13 @@ class Polygon(Obstacle):
             surface_position = self.transform_relative2global(surface_position)
         return surface_position
 
+    
     def get_distance_to_hullEdge(self, position, in_global_frame=False):
         ''''
-        Distance along the reference-direction to the hull for a convex obstacle towards
+        Distance along the center-direction to the hull for a convex obstacle towards
         '''
+        # TODO: change to reference-direction? What would this imply?
+        
         if in_global_frame:
             position = self.transform_global2relative(position)    
         
@@ -378,7 +383,6 @@ class Polygon(Obstacle):
 
         zero_mag = mag_position==0
         if np.sum(zero_mag):
-            # if self.is_boundary:
             return -1
 
         dist2hull = np.ones(n_points)*(-1)
@@ -470,6 +474,7 @@ class Polygon(Obstacle):
                     dist2hull[jj], dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
 
                     # Gamma[jj] = mag_position[jj]/dist2hull
+                    # print('distances', dist2hull)
 
         if not multiple_positions:
             dist2hull = dist2hull[0]

@@ -65,7 +65,7 @@ class Obstacle(State):
         self.position = center_position
         self.center_position = self.position
         
-        self.x0 = center_position
+        self.x0 = center_position # REMOVE!
         
         self.dim = len(self.center_position) # Dimension of space
         self.d = len(self.center_position) # Dimension of space # TODO remove

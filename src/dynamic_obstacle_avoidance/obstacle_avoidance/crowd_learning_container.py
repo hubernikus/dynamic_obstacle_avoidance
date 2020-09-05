@@ -93,6 +93,7 @@ class CrowdCircleContainer(GradientContainer):
         # self.num_gmm = None
 
         self.robot_margin=0.3
+        self.human_radius=0.3
         self._dim = 2
 
         self.non_active_obstacles = None

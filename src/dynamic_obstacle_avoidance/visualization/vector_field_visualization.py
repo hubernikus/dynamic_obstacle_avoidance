@@ -36,6 +36,7 @@ def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
 
 def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
                      dim=2, dt=0.01, max_simu_step=300, convergence_margin=0.03):
+    ''' Plot streamlines. '''
     
     n_points = np.array(points_init).shape[1]
 
@@ -58,14 +59,105 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
             break
 
         it_count += 1
+
+    
     for j in range(n_points):
-        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4)
+        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4, color='r')
         ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13)
         
     # return x_pos
 
+
+
     
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=[], plotObstacle=True, plotStream=True, fig_and_ax_handle=[], alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True):
+def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True):
+    # plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel)
+
+    if not xAttractor is None:
+        ax.plot(xAttractor[0], xAttractor[1], 'k*',linewidth=18.0, markersize=18)
+
+    obs_polygon = []
+    obs_polygon_sf = []
+
+    for n in range(len(obs)):
+        x_obs = obs[n].boundary_points_global_closed
+        x_obs_sf = obs[n].boundary_points_margin_global_closed
+        plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
+
+        if obs[n].is_boundary:
+            outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
+                                       [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
+
+            boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-2)
+            boundary_polygon.set_color(np.array([176,124,124])/255.)
+            plt.gca().add_patch(boundary_polygon)
+
+            obs_polygon.append( plt.Polygon(x_obs.T, alpha=1.0, zorder=-1))
+            obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
+
+        else:
+            obs_polygon.append( plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
+
+            # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+            if obstacleColor is None:
+                # obstacleColor = 
+                obs_polygon[n].set_color(np.array([176,124,124])/255)
+            else:
+                obs_polygon[n].set_color(obstacleColor[n])
+            
+        obs_polygon_sf.append( plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
+        obs_polygon_sf[n].set_color([1,1,1])
+
+        plt.gca().add_patch(obs_polygon_sf[n])
+        plt.gca().add_patch(obs_polygon[n])
+
+        if show_obstacle_number:
+            ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
+
+        ax.plot(obs[n].center_position[0], obs[n].center_position[1], 'k.')
+
+        # automatic adaptation of center
+        reference_point = obs[n].get_reference_point(in_global_frame=True)
+
+        # import pdb; pdb.set_trace()
+        if not reference_point is None:
+            ax.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
+            # ax.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
+            if reference_point_number:
+                ax.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
+            # add group, too
+
+        if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
+            # col=[0.5,0,0.9]
+            col = [255/255., 51/255., 51/255.]
+            fac=5 # scaling factor of velocity
+            ax.arrow(obs[n].center_position[0], obs[n].center_position[1],
+                         obs[n].xd[0]/fac, obs[n].xd[1]/fac,
+                         # head_width=0.3, head_length=0.3, linewidth=10,
+                         head_width=0.1, head_length=0.1, linewidth=3,
+                         fc=col, ec=col, alpha=1)
+
+    plt.gca().set_aspect('equal', adjustable='box')
+
+    ax.set_xlim(x_range)
+    ax.set_ylim(y_range)
+
+    if noTicks:
+        plt.tick_params(axis='both', which='major',bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
+
+    if showLabel:
+        plt.xlabel(r'$\xi_1$', fontsize=16)
+        plt.ylabel(r'$\xi_2$', fontsize=16)
+
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tick_params(axis='both', which='minor', labelsize=12)
+
+
+    return 
+    
+
+
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True):
     
     dim = 2
 
@@ -93,99 +185,26 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
 
-    if len(fig_and_ax_handle): 
-        fig_ifd, ax_ifd = fig_and_ax_handle[0], fig_and_ax_handle[1] 
+
+    if fig_and_ax_handle is None:
+        fig, ax = plt.subplots(figsize=figureSize)
     else:
-        fig_ifd, ax_ifd = plt.subplots(figsize=figureSize) 
-        
-    if plotObstacle:
-        obs_polygon = []
-        obs_polygon_sf = []
+        fig, ax = fig_and_ax_handle
 
-        for n in range(len(obs)):
-            x_obs = obs[n].boundary_points_global_closed
-            x_obs_sf = obs[n].boundary_points_margin_global_closed
-            plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
-            
-            if obs[n].is_boundary:
-                outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
-                                           [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
-                
-                boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-2)
-                boundary_polygon.set_color(np.array([176,124,124])/255.)
-                plt.gca().add_patch(boundary_polygon)
+    if not plotObstacle:
+        warnings.warn('x_label & ticks not implemented')
+    
+    plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel)
 
-                obs_polygon.append( plt.Polygon(x_obs.T, alpha=1.0, zorder=-1))
-                obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
-
-            else:
-                obs_polygon.append( plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
-                
-                if len(obstacleColor)==len(obs):
-                    obs_polygon[n].set_color(obstacleColor[n])
-                else:
-                    obs_polygon[n].set_color(np.array([176,124,124])/255)
-            
-            obs_polygon_sf.append( plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
-            obs_polygon_sf[n].set_color([1,1,1])
-
-            plt.gca().add_patch(obs_polygon_sf[n])
-            plt.gca().add_patch(obs_polygon[n])
-
-            if show_obstacle_number:
-                ax_ifd.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
-            
-            ax_ifd.plot(obs[n].center_position[0], obs[n].center_position[1], 'k.')
-            
-            # automatic adaptation of center
-            reference_point = obs[n].get_reference_point(in_global_frame=True)
-
-            # import pdb; pdb.set_trace()
-            if not reference_point is None:
-                ax_ifd.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
-                # ax_ifd.annotate('{}'.format(obs[n].hirarchy), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
-                if reference_point_number:
-                    ax_ifd.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
-                # add group, too
-                
-            if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
-                # col=[0.5,0,0.9]
-                col = [255/255., 51/255., 51/255.]
-                fac=5 # scaling factor of velocity
-                ax_ifd.arrow(obs[n].center_position[0], obs[n].center_position[1],
-                             obs[n].xd[0]/fac, obs[n].xd[1]/fac,
-                             # head_width=0.3, head_length=0.3, linewidth=10,
-                             head_width=0.1, head_length=0.1, linewidth=3,
-                             fc=col, ec=col, alpha=1)
-
-    plt.gca().set_aspect('equal', adjustable='box')
-
-    ax_ifd.set_xlim(x_range)
-    ax_ifd.set_ylim(y_range)
-
-    if noTicks:
-        plt.tick_params(axis='both', which='major',bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
-
-    if showLabel:
-        plt.xlabel(r'$\xi_1$', fontsize=16)
-        plt.ylabel(r'$\xi_2$', fontsize=16)
-
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.tick_params(axis='both', which='minor', labelsize=12)
-
-    ax_ifd.plot(xAttractor[0],xAttractor[1], 'k*',linewidth=18.0, markersize=18)
-
-    # plt.ion()
-    # plt.show()
     # return 
     # Show certain streamlines
     if np.array(points_init).shape[0]:
-        plot_streamlines(points_init, ax_ifd, obs, xAttractor)
+        plot_streamlines(points_init, ax, obs, xAttractor)
 
     if not draw_vectorField:
         plt.ion()
         plt.show()
-        return fig_ifd, ax_ifd
+        return fig, ax
         # return
 
     start_time = time.time()
@@ -283,7 +302,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
 
-            strm = res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
+            strm = res_ifd = ax.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
             
         else:
             # Normalize
@@ -295,10 +314,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
-                res_ifd = ax_ifd.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
+                res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
                 
             else:
-                res_ifd = ax_ifd.quiver(XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
+                res_ifd = ax.quiver(XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
 
     plt.ion(); plt.show();
 
@@ -307,4 +326,4 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             plt.savefig('figures/' + figName + '.png', bbox_inches='tight')
         except:
             plt.savefig('../figures/' + figName + '.png', bbox_inches='tight')
-    return fig_ifd, ax_ifd
+    return fig, ax

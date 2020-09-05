@@ -41,9 +41,11 @@ class GradientContainer(ObstacleContainer):
         if len(self):
             self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=len(self))
+            # self._are_close_for_first_time = np.zeros((len(self), len(self)), dtype=bool)
         else:
             self._boundary_reference_points = None
             self._distance_matrix = None
+            # self._are_close_for_first_time = None
 
     def append(self, value): # Compatibility with normal list.
         ''' Add new obstacle to the end of the container. '''
@@ -54,10 +56,14 @@ class GradientContainer(ObstacleContainer):
         else: # Python 2 compatibility
             super(ObstacleContainer, self).append(value)
 
-        if len(self)==1:
+        # Always reset dist matrix
+        if True:
+        # if len(self)==1:
             self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=len(self))
+            # self._are_close_for_first_time = np.zeros()
         else:
+            # TODO: alternative for computational speed!
             
             self._boundary_reference_points = np.dstack((
                 np.zeros((self.dim, len(self), 1)),
@@ -67,7 +73,8 @@ class GradientContainer(ObstacleContainer):
             # Transfer 'special' distance matrix
             new_dist_matr = DistanceMatrix(n_obs=len(self))
 
-            distance_matrix = self._distance_matrix.get_matrix()
+            # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+            distance_matrix = self._distance_matrix.get_matrix() 
             distance_matrix = np.hstack(((-1)*np.ones((len(self), 1)), np.vstack((distance_matrix, (-1)*np.ones((1, len(self)-1)))) ))
                 
             for ii in range(len(self)):
@@ -75,6 +82,11 @@ class GradientContainer(ObstacleContainer):
                     new_dist_matr[ii, jj] = distance_matrix[ii, jj]
                     
             self._distance_matrix = new_dist_matr
+
+        # if len(self)>1:
+            # print('append dist', self.get_distance(0, 1))
+
+            # import pdb; pdb.set_trace()
 
     def __delitem__(self, key): # Compatibility with normal list.
         ''' Remove obstacle from container list. '''
@@ -190,6 +202,7 @@ class GradientContainer(ObstacleContainer):
         # TODO: create a more smooth transition between 'free' obstacles and 'clustered ones'
         # TODO: include the 'extended' hull as a deformation parameter
 
+        # import pdb; pdb.set_trace()     ##### DEBUG ##### 
         # Combine reference points of obstacles in each cluster
         intersecting_obs = get_intersection_cluster(self.intersection_matrix, self)
         # self.assign_sibling_groups(intersecting_obs)
@@ -263,9 +276,10 @@ class GradientContainer(ObstacleContainer):
                 else:
                     center_dists[:, 0] = (-1)*center_dists[:, 1]
                     
+                # import pdb; pdb.set_trace()     ##### DEBUG ##### 
                 if np.linalg.norm(center_dists[:, 0])>1e10 and not self.is_boundary:
                     # TODO: Check & Test this exception!
-                    self.set_distance(ii, jj, 0)
+                    self.set_distance(ii, jj, 0) # TODO: check if 0 or -1 ?
                     self.intersection_matrix[ii, jj] = self[ii].center_position
                     continue
                 
@@ -288,6 +302,7 @@ class GradientContainer(ObstacleContainer):
                     surf_points[:, 0] = self.get_boundary_reference_point(ii, jj)
                     surf_points[:, 1] = self.get_boundary_reference_point(jj, ii)
 
+                
                 # Check if any of the surface points is inside the other object
                 margin = 1e-4
                 if ((self[ii].get_gamma(surf_points[:, 1], in_global_frame=True)<=1+margin
@@ -295,7 +310,8 @@ class GradientContainer(ObstacleContainer):
                 ):
                     # The obstacle is intersecting
                     print("Touching initially -- Gamma Descent")
-
+                    
+                    # import pdb; pdb.set_trace()     ##### DEBUG ##### 
                     self[ii].get_gamma(surf_points[:, 1], in_global_frame=True)
 
                     reference_point = self.gamma_gradient_descent(
@@ -379,7 +395,7 @@ class GradientContainer(ObstacleContainer):
         return dist, point0, point1
                         
 
-    def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-3, convergence_err=1e-3, max_it=100):
+    def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-2, convergence_err=1e-3, max_it=100):
         ''' Find closest point of obstacles using gradient descent in direction space. 
         Gradient Descent is performed in the angle space of the obstacle. '''
         
@@ -400,7 +416,6 @@ class GradientContainer(ObstacleContainer):
         # Obstacles intersecting
         is_intersecting = False
 
-        
         # Check if step leads to convergence  (expensive but worth it)
         for obs, ii in zip([obs0, obs1], [0, 1]):
             angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
@@ -412,10 +427,8 @@ class GradientContainer(ObstacleContainer):
         dist_dir = (surface_points[:, 1] - surface_points[:, 0])
         dist_magnitude = np.linalg.norm(dist_dir)
 
-
         while not is_intersecting:
             # Gradient descent in the angle space of the obstacle
-
             for obs, ii in zip([obs0, obs1], [0, 1]):
                 angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
                 if np.linalg.norm(angle) > pi:
