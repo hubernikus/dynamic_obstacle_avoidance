@@ -92,7 +92,7 @@ class CrowdCircleContainer(GradientContainer):
         
         # self.num_gmm = None
 
-        self.robot_margin=0.3
+        self.robot_margin=robot_margin
         self._dim = 2
 
         self.non_active_obstacles = None
@@ -105,20 +105,26 @@ class CrowdCircleContainer(GradientContainer):
     # def dim(self, value):
         # self._dim = value
 
-    def update_step(self, crowd_list, human_radius=0.3, num_crowd_close=10, dist_far=5, max_center_displacement=2):
+    def update_step(self, crowd_list, human_radius=0.3, num_crowd_close=10, dist_far=10, max_center_displacement=2, agent_position=None):
         pos_crowd = np.zeros((self._dim, len(crowd_list) ))
         vel_crowd = np.zeros((self._dim, len(crowd_list) ))
 
         for ii in range(len(crowd_list)):
-            pos_crowd[:, ii] = [crowd_list[ii].position.x, crowd_list[ii].position.z]
-            vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.x,
-                                crowd_list[ii].velocity.linear.z] 
+            pos_crowd[:, ii] = [crowd_list[ii].position.z, -crowd_list[ii].position.x]
+            vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x] 
+                                
             # Rotation is neglected due to circular representation
 
-        magnitudes = np.linalg.norm(pos_crowd, axis=0)
+        # Relative distance to the agent of each obstacle
+        if agent_position is None:
+            magnitudes = np.linalg.norm(pos_crowd, axis=0)
+        else:
+            magnitudes = np.linalg.norm(pos_crowd - np.tile(agent_position, (pos_crowd.shape[1], 1)).T , axis=0)
 
         # Neglect far away obstacles (to speed up calculation)
         ind_close = (magnitudes<dist_far)
+        if np.sum(ind_close) < num_crowd_close:
+            import pdb; pdb.set_trace()
         pos_crowd = pos_crowd[:, ind_close]
         vel_crowd = vel_crowd[:, ind_close]
         magnitudes = magnitudes[ind_close]
@@ -143,6 +149,7 @@ class CrowdCircleContainer(GradientContainer):
                 linear_velocity=vel_crowd[:, ii], angular_velocity=0, 
                 radius=human_radius, margin_absolut=self.robot_margin)) # TODO: add robot margin
 
+        print('self. maring', self.robot_margin)
         # Only consider 'far' obstacles for the wall repulsion
         pos_crowd = pos_crowd[:, num_crowd_close:]
         magnitudes = magnitudes[num_crowd_close:]
@@ -151,10 +158,13 @@ class CrowdCircleContainer(GradientContainer):
         exp_repulsion = 1
         fac = np.exp(-exp_repulsion*magnitudes) / np.exp(self.robot_margin) # [1, 0]
         
-        center_wall = np.sum(np.tile(fac/magnitudes*(-1), (self.dim, 1)) * pos_crowd, axis=1)
-        mag_center = np.linalg.norm(center_wall)
+        rel_center_wall =  np.sum(np.tile(fac/magnitudes*(-1), (self.dim, 1)) 
+            * (pos_crowd - np.tile(agent_position, (pos_crowd.shape[1], 1)).T) , axis=1)
+
+        mag_center = np.linalg.norm(rel_center_wall)
         if mag_center>max_center_displacement:
-            center_wall = center_wall/mag_center*max_center_displacement
+            rel_center_wall = rel_center_wall/mag_center*max_center_displacement
+        center_wall = agent_position + rel_center_wall
 
         radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
         
