@@ -34,7 +34,7 @@ class GradientContainer(ObstacleContainer):
         if sys.version_info>(3,0): # Python 3
             super().__init__(obs_list)
         else: # Python 2 compatibility
-            super(ObstacleContainer, self).__init__(obs_list)
+            super(GradientContainer, self).__init__(obs_list)
 
         self._obstacle_is_updated = np.ones(self.number , dtype=bool)
 
@@ -54,7 +54,7 @@ class GradientContainer(ObstacleContainer):
         if sys.version_info>(3,0): # Python 3
             super().append(value)
         else: # Python 2 compatibility
-            super(ObstacleContainer, self).append(value)
+            super(GradientContainer, self).append(value)
 
         # Always reset dist matrix
         if True:
@@ -94,7 +94,7 @@ class GradientContainer(ObstacleContainer):
         if sys.version_info>(3,0): # Python 3
             super().__delitem__(key)
         else: # Python 2 compatibility
-            super(ObstacleContainer, self).append(value)
+            super(GradientContainer, self).__delitem__(key)
             
         # update boundary reference point & distance matrix
         if len(self)==0:

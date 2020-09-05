@@ -815,7 +815,8 @@ class CircularObstacle(Ellipse):
         if sys.version_info>(3,0):
             super().__init__(axes_length=axes_length, *args, **kwargs)
         else:
-            super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
+            super(CircularObstacle, self).__init__(axes_length=axes_length, *args, **kwargs)
+            # super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
 
         if self.is_deforming:
             self.radius_old = copy.deepcopy(self.radius)

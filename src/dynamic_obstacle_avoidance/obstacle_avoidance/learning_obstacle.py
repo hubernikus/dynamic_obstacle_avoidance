@@ -126,13 +126,13 @@ class ObstacleFromData(Obstacle):
     
 class RegressionObstacle(ObstacleFromData):
     def __init__(self, center_position,
-                 *args,
                  surface_points=None,
                  polar_surface_representation=True,
                  minimal_radius=0.01,
                  normalize=False,
                  learn_surface=False,
                  is_boundary=False,
+                 *args,
                  **kwargs):
         
         # super().__init__(*args, **kwargs)

@@ -205,7 +205,7 @@ class ObstacleContainer(BaseContainer):
         if sys.version_info>(3,0):
             super().__init__(obs_list)
         else: # Python 2
-            super(BaseContainer, self).__init__(obs_list) # works for python < 3.0?!
+            super(ObstacleContainer, self).__init__(obs_list) # works for python < 3.0?!
 
         self._family_label = None
         self._unique_families = None
