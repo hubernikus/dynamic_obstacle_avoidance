@@ -32,7 +32,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     OUTPUT
     xd [dim]: modulated dynamical system at position x
     '''
-
+    
     if not x is None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x

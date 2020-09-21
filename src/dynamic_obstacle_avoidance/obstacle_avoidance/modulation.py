@@ -35,8 +35,12 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
     if is_boundary:
         eigenvalue_tangent = 1 + delta_eigenvalue            
     else:
-        eigenvalue_tangent = 1 + delta_eigenvalue            
+        eigenvalue_tangent = 1 + delta_eigenvalue
 
+    # Decreasing velocity in order to reach zero on surface
+    eigenvalue_tangent = 1 - 1./abs(Gamma)**5
+    # print('test --- changed this')
+    
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 
 
@@ -144,7 +148,7 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     import pdb; pbd.set_trace()
     D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary,
                                 repulsion_coeff = obs.repulsion_coeff)
-
+    
     return E, D, Gamma, E_orth
 
 

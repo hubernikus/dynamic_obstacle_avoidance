@@ -160,6 +160,10 @@ class GradientContainer(ObstacleContainer):
         """Update the reference point for all obstacles stored in (this) 
         container based on distance"""
 
+        # No commen reference point
+        if len(self)==0:
+            return
+
         self.intersection_matrix = Intersection_matrix(len(self))
         self.reset_reference_points()
         self.update_boundary_reference_points()

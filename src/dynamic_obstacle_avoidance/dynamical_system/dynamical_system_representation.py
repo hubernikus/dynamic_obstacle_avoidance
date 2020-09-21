@@ -66,7 +66,7 @@ def linearAttractor(x, x0=None):
     
     return xd
 
-def linearAttractor_const(x, x0 = 'default', v_ref=0, velConst=0.3, distSlow=0.01):
+def linearAttractor_const(x, x0='default', v_ref=0, velConst=0.3, distSlow=1.0):
     # change initial value for n dimensions
     # TODO -- constant velocity // maximum velocity
     
