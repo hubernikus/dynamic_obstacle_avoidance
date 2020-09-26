@@ -18,7 +18,7 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None):
+def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
@@ -103,7 +103,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     for n in np.arange(N_obs)[ind_obs]:
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
-        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff)
+        D[:, :, n] = compute_diagonal_matrix(
+            Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff,
+            tangent_eigenvalue_isometric=tangent_eigenvalue_isometric)
         # import pdb; pdb.set_trace()
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
             

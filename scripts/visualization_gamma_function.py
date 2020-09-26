@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 
 options = [0]
 
-n_resolution = 20
+n_resolution = 30
 saveFigures=False
 
 ########################################################################
@@ -49,12 +49,49 @@ def visualize_simple_ellipse(n_resolution=n_resolution):
         is_boundary=False
     ))
 
-    fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False, normalize_vectors=False, dynamicalSystem=linearAttractor_const)
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const)
+
+
+def visualize_intersecting_ellipse(n_resolution=n_resolution):
+    obs = GradientContainer() # create empty obstacle list
+    x_lim = [-0.6, 5.1]
+    y_lim = [-2.1, 2.1]
+
+    xAttractor=[0, 0]
+
+    obs.append(Ellipse(
+        axes_length=[0.8, 0.4],
+        center_position=[2.0, 0.5],
+        p=[1,1],
+        orientation=20./180*pi,
+        margin_absolut=0.5,
+        is_boundary=False
+    ))
+
+    obs.append(Ellipse(
+        axes_length=[0.8, 0.4],
+        center_position=[2.0, -0.5],
+        p=[1,1],
+        orientation=-40./180*pi,
+        margin_absolut=0.5,
+        is_boundary=False
+    ))
+
+
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        figureSize=(6,5),
+        reference_point_number=False
+    )
+
 
 
 if (__name__)=="__main__":
-    
-    visualize_simple_ellipse()
+    # visualize_simple_ellipse()
+    visualize_intersecting_ellipse()
 
 
 # Run function
