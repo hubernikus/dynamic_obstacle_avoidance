@@ -5,6 +5,20 @@ Script which creates a variety of examples of local modulation of a vector field
 
 '''
 
+import sys
+import os
+
+# Command to automatically reload libraries -- in ipython before exectureion
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Add obstacle avoidance without 'setting' up
+# directory_path = rospack.get_path('qolo_modulation')
+directory_path = "/home/lukas/Code/ObstacleAvoidance/dynamic_obstacle_avoidance/"
+path_avoidance = os.path.join(directory_path, "src")
+if not path_avoidance in sys.path:
+    sys.path.append(path_avoidance)
+
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
@@ -14,11 +28,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 __author__ =  "LukasHuber"
 __email__ = "lukas.huber@epfl.ch"
 __date__ =  "2018-02-15"
-
-
-# Command to automatically reload libraries -- in ipython before exectureion
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 ########################################################################
@@ -79,7 +88,6 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
         is_boundary=False
     ))
 
-
     fig_mod, ax_mod = Simulation_vectorFields(
         x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
         normalize_vectors=False, dynamicalSystem=linearAttractor_const,
@@ -88,10 +96,9 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
     )
 
 
-
 if (__name__)=="__main__":
-    # visualize_simple_ellipse()
-    visualize_intersecting_ellipse()
+    visualize_simple_ellipse()
+    # visualize_intersecting_ellipse()
 
 
 # Run function

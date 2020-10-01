@@ -70,7 +70,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
 
 
     
-def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True):
+def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, ):
     # plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel)
 
     if not xAttractor is None:
@@ -157,7 +157,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     
 
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True, tangent_eigenvalue_isometric=True):
     
     dim = 2
 
