@@ -111,7 +111,6 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
     
-
     # Check if there was correct placement of reference point
     # Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
 
