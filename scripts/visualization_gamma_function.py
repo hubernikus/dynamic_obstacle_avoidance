@@ -2,7 +2,6 @@
 
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
-
 '''
 
 import sys
@@ -43,24 +42,72 @@ saveFigures=False
 
 
 def visualize_simple_ellipse(n_resolution=n_resolution):
+    n_resolution = 10
+    
     obs = GradientContainer() # create empty obstacle list
     x_lim = [-0.6, 5.1]
     y_lim = [-2.1, 2.1]
 
     xAttractor=[0, 0]
+    save_figure = True
+    figsize = (6,5)
 
     obs.append(Ellipse(
-        axes_length=[0.4, 0.4],
-        center_position=[2.0, 0.0],
+        axes_length=[1.0, 1.0],
+        center_position=[2.5, 0.0],
         p=[1,1],
         orientation=0./180*pi,
-        margin_absolut=0.5,
-        is_boundary=False
+        margin_absolut=0.0,
+        is_boundary=False,
+        has_sticky_surface=False,
+        reactivity=1,
+        tail_effect=True,
     ))
-
+    
+    
     fig_mod, ax_mod = Simulation_vectorFields(
-        x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=save_figure, figName='circular_sticky_surface',
+        noTicks=False, draw_vectorField=True,
+        automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        figureSize=figsize,
+        reference_point_number=False, showLabel=False,
         normalize_vectors=False, dynamicalSystem=linearAttractor_const)
+
+
+    obs.has_sticky_surface=False
+    
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=save_figure, figName='circular_nonsticky_surface',
+        noTicks=False, draw_vectorField=True,
+        automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        figureSize=figsize,
+        reference_point_number=False, showLabel=False,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const)
+    
+    MAX_SPEED = 3.0
+    
+    # pos  = np.array([1, 1])
+    # xd_init = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
+    # xd_mod = obs_avoidance_interpolation_moving(pos, xd_init, obs)
+    # print('pos', pos)
+    # print('xd init', xd_init)
+    # print('xd init mag', np.linalg.norm(xd_init))
+    # print('xd mod', xd_mod)
+    # print('xd mod mag', np.linalg.norm(xd_mod))
+
+    # pos  = np.array([2.5-1+2.5, 1])
+    # xd_init = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
+    # xd_mod = obs_avoidance_interpolation_moving(pos, xd_init, obs)
+    # print('pos', pos)
+    # print('xd init', xd_init)
+    # print('xd init mag', np.linalg.norm(xd_init))
+    # print('xd mod', xd_mod)
+    # print('xd mod mag', np.linalg.norm(xd_mod))
+
+    # import pdb; pdb.set_trace()
+
 
 
 def visualize_intersecting_ellipse(n_resolution=n_resolution):
@@ -69,6 +116,10 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
     y_lim = [-2.1, 2.1]
 
     xAttractor=[0, 0]
+    figure_size = (5, 3.0)
+    n_resolution = 15
+    saveFigures=True
+    
 
     obs.append(Ellipse(
         axes_length=[0.8, 0.4],
@@ -85,20 +136,39 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
         p=[1,1],
         orientation=-40./180*pi,
         margin_absolut=0.5,
-        is_boundary=False
+        is_boundary=False,
+        reactivity=1,
     ))
 
     fig_mod, ax_mod = Simulation_vectorFields(
-        x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='linearSystem_boundaryCuboid', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=saveFigures, figName='intersecting_ellipses_sticky_surfaces',
+        noTicks=True,
+        draw_vectorField=True,  automatic_reference_point=True,
+        point_grid=n_resolution, show_streamplot=False,
         normalize_vectors=False, dynamicalSystem=linearAttractor_const,
-        figureSize=(6,5),
-        reference_point_number=False
+        figureSize=figure_size,
+        reference_point_number=False, showLabel=False,
+    )
+
+    for oo in range(len(obs)):
+        obs[oo].has_sticky_surface=False
+
+    
+    # Why does 'automatic reference point' create a mess?
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=saveFigures, figName='intersecting_ellipses_nonsticky_surfaces',
+        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=False,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        figureSize=figure_size,
+        reference_point_number=False, showLabel=False,
     )
 
 
 if (__name__)=="__main__":
-    visualize_simple_ellipse()
-    # visualize_intersecting_ellipse()
+    # visualize_simple_ellipse(n_resolution=20)
+    visualize_intersecting_ellipse()
 
 
 # Run function

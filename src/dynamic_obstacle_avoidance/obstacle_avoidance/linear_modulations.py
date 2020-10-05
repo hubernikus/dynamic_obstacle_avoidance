@@ -32,7 +32,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     OUTPUT
     xd [dim]: modulated dynamical system at position x
     '''
-    
+
     if not x is None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
@@ -105,7 +105,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
         D[:, :, n] = compute_diagonal_matrix(
             Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff,
-            tangent_eigenvalue_isometric=tangent_eigenvalue_isometric)
+            tangent_eigenvalue_isometric=tangent_eigenvalue_isometric,
+            rho=obs[n].reactivity,
+            
+        )
         # import pdb; pdb.set_trace()
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
@@ -123,6 +126,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             # raise ValueError('NOT implemented for d={}'.format(d))
             warnings.warn('Angular velocity is not defined for={}'.format(d))
 
+        
         linear_velocity = obs[n].linear_velocity
         velocity_only_in_normal_direction = True
         if velocity_only_in_normal_direction:
@@ -185,23 +189,14 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             if not evaluate_in_global_frame:
                 xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
 
-        # Limit maximum magnitude
-        eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**1
-        mag = np.linalg.norm(xd_hat[:, n])
-        xd_hat[:, n] = xd_hat[:, n]/mag*xd_norm * eigenvalue_magnitude
-
-        # print('D matr')
-        # print(D[:, :, n])
-        # print("")
-
-        # print('xd_hat', xd_hat[:, n])
-
-        # print('modu matrix')
-        # print(E[:,:,n].dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])))
-        # print('real inverse')
-        # print(E[:,:,n].dot(D[:,:,n]).dot(LA.inv(E[:,:,n])))
-
-        # import pdb; pdb.set_trace()            
+        # import pdb; pdb.set_trace()
+        if obs[n].has_sticky_surface:
+            xd_relative_norm = np.linalg.norm(xd)
+            if xd_relative_norm:
+                # Limit maximum magnitude
+                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**1
+                mag = np.linalg.norm(xd_hat[:, n])
+                xd_hat[:, n] = xd_hat[:, n]/mag*xd_relative_norm * eigenvalue_magnitude
                 
         if repulsive_obstacle:
         # if False:

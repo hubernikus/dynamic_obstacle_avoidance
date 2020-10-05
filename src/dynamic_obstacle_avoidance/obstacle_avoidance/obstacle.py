@@ -36,7 +36,9 @@ class Obstacle(State):
             return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
     def __init__(self, orientation=None, sigma=1,  center_position=np.array([0,0]),
-                 tail_effect=True, sf=1, repulsion_coeff=1,
+                 tail_effect=True, has_sticky_surface=True,
+                 sf=1, repulsion_coeff=1,
+                 reactivity=1,
                  name=None,
                  is_dynamic=False, is_deforming=False,
                  # reference_point=None,
@@ -57,7 +59,9 @@ class Obstacle(State):
         # self.delta_margin = delta_margin
         
         self.sigma = sigma
+        
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
+        self.has_sticky_surface = has_sticky_surface
 
         # Obstacle attitude
         if not x0 is None:
@@ -161,6 +165,7 @@ class Obstacle(State):
         # Repulsion coefficient to actively move away from obstacles (if possible)
         # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
+        self.reactivity =  reactivity
         
         # self.properties = {} # TODO (maybe): use kwargs for properties..
 

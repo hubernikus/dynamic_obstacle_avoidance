@@ -219,7 +219,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
 
     
-    ########## START REMOVE ##########
+    ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
     # N_x = N_y = 1
     # XX = np.zeros((N_x, N_y))
@@ -227,10 +227,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [-0.38, 18.1]
-    pos2 = [0.06, 18.13]
+    pos1 = [4.0, -0.1]
+    pos2 = [4.0, 0.1]
     
-
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
 
@@ -244,6 +243,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         
         XX[ix, iy] = x_sample[ii]
         YY[ix, iy] = y_sample[ii]
+        
     ########## STOP REMOVE ###########
     
     if attractingRegion: # Forced to attracting Region
