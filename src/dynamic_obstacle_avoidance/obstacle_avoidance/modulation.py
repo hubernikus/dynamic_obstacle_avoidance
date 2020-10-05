@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0):
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=10, repulsion_coeff=1.0, tangent_eigenvalue_isometric=False, tangent_power=5):
     ''' Compute diagonal Matrix'''
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
@@ -31,12 +31,15 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
         delta_eigenvalue = 1./abs(Gamma)**(1/rho)
 
     eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
-    
-    if is_boundary:
-        eigenvalue_tangent = 1 + delta_eigenvalue            
-    else:
-        eigenvalue_tangent = 1 + delta_eigenvalue            
 
+    if tangent_eigenvalue_isometric:
+        eigenvalue_tangent = 1 + delta_eigenvalue
+    else:
+        # Decreasing velocity in order to reach zero on surface
+        eigenvalue_tangent = 1 - 1./abs(Gamma)**tangent_power
+        # print('low gammas gamma={} /// e_tang={} / eigt_ref={}'.format(
+        #    round(Gamma, 2), round(eigenvalue_tangent, 2), round(eigenvalue_reference, 2)))
+        
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 
 
@@ -108,7 +111,6 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
     
-
     # Check if there was correct placement of reference point
     # Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
 
@@ -144,7 +146,7 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     import pdb; pbd.set_trace()
     D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary,
                                 repulsion_coeff = obs.repulsion_coeff)
-
+    
     return E, D, Gamma, E_orth
 
 
@@ -330,6 +332,35 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
     return w
 
 
+def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
+    ''' Compute weights based on a distance measure (with no upper limit)'''
+    distMeas = np.array(distMeas)
+    n_points = distMeas.shape[0]
+    
+    critical_points = distMeas <= distMeas_lowerLimit
+    
+    if np.sum(critical_points): # at least one
+        if np.sum(critical_points)==1:
+            w = critical_points*1.0
+            return w
+        else:
+            # TODO: continuous weighting function
+            warnings.warn('Implement continuity of weighting function.')
+            w = critical_points*1./np.sum(critical_points)
+            return w
+        
+    if weightType == 'inverseGamma':
+        distMeas = distMeas - distMeas_lowerLimit
+        w = (1/distMeas)**weightPow
+        if np.sum(w)==0:
+            return w
+        w = w/np.sum(w) # Normalization
+    else:
+        warnings.warn("Unkown weighting method.")
+    return w
+
+
+
 def compute_R(d, th_r):
     if th_r == 0:
         rotMatrix = np.eye(d)
@@ -501,6 +532,9 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
 
 def get_reference_weight(distance, obs_reference_size=None, distance_min=0, distance_max=3, weight_pow=1):
     ''' Get a weight inverse proportinal to the distance'''
+
+    # TODO: based on inverse prop weight calculation
+    # weights = get_inverse_proprtional_weight(distance, distance_min, distance_max, weight_pow)
     weights_all = np.zeros(distance.shape)
 
     # if False:
@@ -528,12 +562,30 @@ def get_reference_weight(distance, obs_reference_size=None, distance_min=0, dist
     weight_ref_displacement = (1/(dist_temp+1-distance_min)
                                - 1/(distance_max+1-distance_min))
 
-    try:
-    # if True:
-        weights_all[ind_range] = weights*weight_ref_displacement
-    except:
-        import pdb; pdb.set_trace()
+    weights_all[ind_range] = weights*weight_ref_displacement
+    
     return weights_all
+
+def get_inverse_proprtional_weight(distance, distance_min=0, distance_max=3, weight_pow=1):
+    ''' Get a weight inverse proportinal to the distance'''
+    weights = np.zeros(distance.shape)
+
+    if any(np.logical_and(distance<=distance_min, distance>0)):
+        ind0 = (distance==0)
+        weights[ind0] = 1/np.sum(ind0)
+        return weights
+
+    ind_range = np.logical_and(distance>distance_min, distance<distance_max)
+    if not any(ind_range):
+        return weights
+
+    dist_temp = distance[ind_range]
+    weights[ind_range] = 1/(dist_temp-distance_min) - 1/(distance_max-distance_min)
+    weights[ind_range] = weights[ind_range]**weight_pow
+
+    # Normalize
+    weights = weights/np.sum(weights)
+    return weights
 
     
 def cut_planeWithEllispoid(reference_position, axes, plane):

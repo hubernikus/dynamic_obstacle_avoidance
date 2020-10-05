@@ -1,20 +1,22 @@
-#!/USSR/bin/python3
+#!/USSR/bin/python3LocalCrowd
 
 '''
 @date 2019-10-15
 @author Lukas Huber 
 @email lukas.huber@epfl.ch
 '''
-
+import sys
+import copy
+import warnings
 import time
-import numpy as np
 from math import sin, cos, pi, ceil
-import warnings, sys
 
+import numpy as np
 import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+import matplotlib.pyplot as plt
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo, angle_difference_directional_2pi
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
@@ -22,9 +24,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
-
-import matplotlib.pyplot as plt
-# import quaternion
 
 visualize_debug = False
 
@@ -40,7 +39,7 @@ class Ellipse(Obstacle):
                  margin_absolut=0,
                  hull_with_respect_to_reference=False,
                  *args, **kwargs):
-        
+
         if sys.version_info>(3,0):
             super().__init__(*args, **kwargs)
         else:
@@ -51,7 +50,7 @@ class Ellipse(Obstacle):
         elif not a is None:
             self.axes_length = np.array(a) # TODO: depreciated, remove
         else:
-            warning.warn("No axis length given!")
+            warnings.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
             
         if not curvature is None:
@@ -88,10 +87,12 @@ class Ellipse(Obstacle):
         
     @property
     def a(self): # TODO: remove
+        warnings.warn("Depreciated use 'axes_length' instead")
         return self.axes_length
 
     @a.setter # TODO:remove
     def a(self, value):
+        warnings.warn("Depreciated use 'axes_length' instead")
         self.axes_length = value
 
     @property
@@ -112,10 +113,12 @@ class Ellipse(Obstacle):
 
     @property
     def p(self): # TODO: remove
+        warnings.warn("Depreciated use 'curvature' instead")
         return self._curvature
 
     @p.setter
     def p(self, value): # TODO: remove
+        warnings.warn("Depreciated use 'curvature' instead")
         self.curvature = value
 
     @property
@@ -141,7 +144,10 @@ class Ellipse(Obstacle):
 
     @property
     def axes_with_margin(self):
-        return self.axes_length + self.margin_absolut
+        if self.is_boundary:
+            return self.axes_length - self.margin_absolut
+        else:
+            return self.axes_length + self.margin_absolut
     
     def get_minimal_distance(self):
         return np.min(self.a)
@@ -653,7 +659,9 @@ class Ellipse(Obstacle):
         if not multiple_positions:
             return Gamma[0] # 1x1-array to value
         return Gamma
-    
+
+
+        
     
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
         '''
@@ -793,8 +801,83 @@ class Ellipse(Obstacle):
             for ii in range(self.normal_vector.shape[1]):
                 self.tangent_vector[:, ii] = [-self.normal_vector[1, ii],
                                               self.normal_vector[0, ii]]
-                
         else:
             self.n_planes = 0
 
+
+class CircularObstacle(Ellipse):
+    ''' Ellipse obstacle with equal axes'''
+    def __init__(self, radius=None, axes_length=None, *args, **kwargs):
+        if not radius is None:
+            axes_length = np.array([radius, radius])
+        elif not radius is None:
+            if radius.shape[0]==1:
+                axes_length = np.array([axes_length, axes_length])
+        else:
+            raise RuntimeError("No radius input.")
+            
+        if sys.version_info>(3,0):
+            super().__init__(axes_length=axes_length, *args, **kwargs)
+        else:
+            super(CircularObstacle, self).__init__(axes_length=axes_length, *args, **kwargs)
+            # super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
+
+        if self.is_deforming:
+            self.radius_old = copy.deepcopy(self.radius)
+
+
+    # Axes length is equal to radius for an circular obtject
+    @property
+    def radius(self):
+        return self.axes_length[0]
+
+    @radius.setter
+    def radius(self, value):
+        self.axes_length = np.ones(self.dim)*value
+
+    @property
+    def radius_with_margin(self):
+        return self.axes_with_margin[0]
+
+    @property
+    def inflation_speed_radial(self):
+        # positive when expanding, negative when shrinking
+        return self._inflation_speed_radial
+
+    @inflation_speed_radial.setter
+    def inflation_speed_radial(self, value):
+        self._inflation_speed_radial = value
+    
+    def get_deformation_velocity(self, position, in_global_frame=False):
+        ''' Get relative velocity of a boundary point.
+        This is zero if the deformation would be pulling. '''
+
+        if in_global_frame:
+            raise NotImplementedError()
         
+        norm_pos = np.linalg.norm(position)
+        if norm_pos: # nonzero
+            position = position/norm_pos
+
+        if self.is_boundary:
+            # Only consider when increasing
+            deformation_vel = min(self.inflation_speed_radial, 0)*position
+        else:
+            # Only consider when incrreasing
+            deformation_vel = max(self.inflation_speed_radial, 0)*position
+        return deformation_vel
+
+    def update_deforming_obstacle(self, radius_new, position, orientation, time_current=None):
+        ''' Update an obstacle which can also deform '''
+        if time_current is None:
+            time_current = time.time()
+            
+        dt = time_current - self.timestamp
+        
+        self.inflation_speed_radial = (self.radius-self.radius_old)/dt
+        self.radius_old = copy.deepcopy(self.radius)
+        self.radius = radius_new
+
+        self.update_position_and_orientation(position=position, orientation=orientation,
+                                             time_current=time_current)
+    

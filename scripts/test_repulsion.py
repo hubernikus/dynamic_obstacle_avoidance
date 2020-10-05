@@ -121,7 +121,6 @@ def get_outside_enviornment_lshape_hack(robot_margin=0.6):
 
 
 
-
 if (__name__)=="__main__":
     num_resolution=80
     saveFigures=False

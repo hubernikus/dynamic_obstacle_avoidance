@@ -18,8 +18,7 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-
-def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None):
+def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
@@ -33,9 +32,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     OUTPUT
     xd [dim]: modulated dynamical system at position x
     '''
-
-    # import pdb; pdb.set_trace()
-
+    
     if not x is None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
@@ -106,11 +103,12 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     for n in np.arange(N_obs)[ind_obs]:
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
-        D[:, :, n] = compute_diagonal_matrix(Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff)
+        D[:, :, n] = compute_diagonal_matrix(
+            Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff,
+            tangent_eigenvalue_isometric=tangent_eigenvalue_isometric)
         # import pdb; pdb.set_trace()
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
-            
-        
+
     xd_obs = np.zeros((dim))
     
     for n in np.arange(N_obs)[ind_obs]:
@@ -125,9 +123,24 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             # raise ValueError('NOT implemented for d={}'.format(d))
             warnings.warn('Angular velocity is not defined for={}'.format(d))
 
+        linear_velocity = obs[n].linear_velocity
+        velocity_only_in_normal_direction = True
+        if velocity_only_in_normal_direction:
+            lin_vel_normal = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
+            if lin_vel_normal[0]>0 and not obs[n].is_boundary:
+                # Obstacle is moving towards the agent
+                linear_velocity = E_orth[:, 0, n] * lin_vel_normal[0]
+            else:
+                linear_velocity = np.zeros(lin_vel_normal.shape[0])
+
+
         #The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
         exp_weight = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
-        xd_obs_n = exp_weight*(np.array(obs[n].linear_velocity) + xd_w)
+        xd_obs_n = exp_weight*(np.array(linear_velocity) + xd_w)
+
+        if obs[n].is_deforming:
+            deformation_vel = obs[n].get_deformation_velocity(pos_relative[:, n])
+            xd_obs_n = exp_weight * deformation_vel
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
@@ -138,11 +151,12 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     n = 0
     # plt.quiver(x[0], x[1], E_orth[0, 0, n], E_orth[1, 0, n])
-
     
     for n in np.arange(N_obs)[ind_obs]:
-        if ((obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0)
-            or (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)>0)):
+        if (
+            # (obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or
+            (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)>0)
+            ):
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
             xd_hat[:, n] = xd
@@ -156,16 +170,38 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
             # Modulation with M = E @ D @ E^-1
             xd_trafo = LA.pinv(E[:,:,n]).dot(xd_temp)
-            
-            if not obs[n].tail_effect and xd_trafo[0]>0:
-                xd_hat[:, n] = xd
-            else:
-                xd_hat[:, n] = E[:,:,n].dot(D[:,:,n]).dot(xd_trafo)
-            
-                if not evaluate_in_global_frame:
-                    xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
-                
-                    
+
+            if (not obs[n].tail_effect and 
+                # xd_trafo[0]>0
+                 ((xd_trafo[0]>0 and not obs[n].is_boundary) or
+                  (xd_trafo[0]<0 and obs[n].is_boundary))
+                 ):
+                #xd_hat[:, n] = xd
+                D[0, 0, n] = 1 # No effect in 'radial direction'
+
+
+            xd_hat[:, n] = E[:,:,n].dot(D[:,:,n]).dot(xd_trafo)
+        
+            if not evaluate_in_global_frame:
+                xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
+
+        # Limit maximum magnitude
+        eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**1
+        mag = np.linalg.norm(xd_hat[:, n])
+        xd_hat[:, n] = xd_hat[:, n]/mag*xd_norm * eigenvalue_magnitude
+
+        # print('D matr')
+        # print(D[:, :, n])
+        # print("")
+
+        # print('xd_hat', xd_hat[:, n])
+
+        # print('modu matrix')
+        # print(E[:,:,n].dot(D[:,:,n]).dot(LA.pinv(E[:,:,n])))
+        # print('real inverse')
+        # print(E[:,:,n].dot(D[:,:,n]).dot(LA.inv(E[:,:,n])))
+
+        # import pdb; pdb.set_trace()            
                 
         if repulsive_obstacle:
         # if False:
@@ -197,8 +233,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                     
                 xd_hat[:, n] = repulsive_velocity
 
-                # import pdb; pdb.set_trace()
-
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 
     xd_hat_normalized = np.zeros(xd_hat.shape)
@@ -211,7 +245,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) # points at the origin
         xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
         
-        total_weight = 1-weight_attr # Does this work
+        total_weight = 1-weight_attr # Does this work?!
     else:
         total_weight = 1
 
@@ -222,11 +256,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     vel_final = vel_final + xd_obs
     if not velocicity_max is None:
+        # IMPLEMENT MAXIMUM VELOCITY
         xd_norm = np.linalg.norm(vel_final)
         if xd_norm > velocicity_max:
             vel_final = vel_final/xd_norm * velocicity_max
-
-    # import pdb; pdb.set_trace()
 
     # transforming back from object frame of reference to inertial frame of reference
     return vel_final

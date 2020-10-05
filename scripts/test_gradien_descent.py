@@ -1,35 +1,157 @@
 #!/USSR/bin/python3
 '''
-Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
+Tests and visualizes different dynamic boundary things. 
 '''
-
 __author__ = "LukasHuber"
 __date__ = "2018-02-15"
 
-# Command to automatically reload libraries -- in ipython before exectureion
+from math import pi
+
 import numpy as np
 import matplotlib.pyplot as plt
  
-# Custom libraries
+from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import CircularObstacle, Ellipse
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Cuboid, Polygon
+from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields  #
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 
-from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
-from dynamic_obstacle_avoidance import settings
+def visualization_boundary_reference_point():
+    LocalCrowd = GradientContainer()
+    # LocalCrowd.append(
+        # CircularObstacle(center_position=np.array([-0.2, 1.9]), radius=1.5, margin_absolut=0.3))
+    LocalCrowd.append(
+        CircularObstacle(center_position=np.array([2.4, -1.2]), radius=1.5, margin_absolut=0.3))
+    LocalCrowd.append(
+        CircularObstacle(center_position=np.array([0.1, 0.07]), radius=5,
+                                       is_boundary=True, margin_absolut=0.7))
+                                       
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    Simulation_vectorFields(
+        x_range=[-5.5, 5.5], y_range=[-5.5, 5.5],  obs=LocalCrowd, xAttractor=[6, 0],
+        saveFigure=False, figName='linearSystem_boundaryCuboid', noTicks=False,
+        draw_vectorField=False, reference_point_number=False, drawVelArrow=True,
+        automatic_reference_point=True, point_grid=10,
+        fig_and_ax_handle=(fig, ax)
+    )
 
-########################################################################
+    for ii in range(len(LocalCrowd)):
+        for jj in range(len(LocalCrowd)):
+            if jj==ii:
+                continue
+            point = LocalCrowd. get_boundary_reference_point(ii, jj)
+            ax.plot(point[0], point[1], 'r+', linewidth=18, markeredgewidth=4, markersize=13)
 
-# Chose the option you want to run as a number in the option list (integer from -2 to 10)
-options = [0]
-N_resol = 10
-saveFigures=False
+    import pdb; pdb.set_trace()     ##### DEBUG #####
 
-########################################################################
+
+
+def visualization_boundary_points_mixed_world():
+    from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
+    from dynamic_obstacle_avoidance import settings
+
+    if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
+            settings.init()
+        
+    x_lim, y_lim = [-0.5, 6.5], [-0.5, 6.0]
+    
+    xAttractor=[5.0, 5.0]
+    robot_margin = 0.6
+    
+    obstacle_list = GradientContainer() # create empty obstacle list
+    
+    obstacle_list.append(Polygon(
+            edge_points=[[ 0.0, 5.7, 5.7, 0.0],
+                         [-0.6,-0.6, 5.5, 5.5]],
+            # center_position=[3, 3.5],
+            orientation=0./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=True,
+        ))
+
+    # obstacle_list.append(Cuboid(
+            # axes_length=[5.7, 6.1],
+            # center_position=[5.7/2, 6.1/2],
+            # orientation=90./180*pi,
+            # margin_absolut=robot_margin,
+            # is_boundary=True
+        # ))
+
+    # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+
+
+    obstacle_list.append(Cuboid(
+            axes_length=[1.6, 0.8],
+            center_position=[0.4, 3.0],
+            orientation=90./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+        ))
+    
+    obstacle_list.append(Cuboid(
+            axes_length=[1.6, 1.6],
+            center_position=[3.4, 2.6],
+            orientation=0./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+            ))
+
+    obstacle_list.append(Ellipse(
+            axes_length=[0.3, 0.5],
+            center_position=[1.8, 3.0],
+            p=[1,1],
+            orientation=30./180*pi,
+            margin_absolut=robot_margin,
+            is_boundary=False
+        ))
+
+    # return obstacle_list
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    Simulation_vectorFields(
+        x_range=x_lim, y_range=y_lim,  obs=obstacle_list, xAttractor=[6, 0],
+        saveFigure=False, figName='linearSystem_boundaryCuboid', noTicks=False,
+        draw_vectorField=False, reference_point_number=False, drawVelArrow=True,
+        automatic_reference_point=True, point_grid=10,
+        fig_and_ax_handle=(fig, ax)
+    )
+
+    # import pdb; pdb.set_trace()     ##### DEBUG ##### 
+    for ii in range(len(obstacle_list)):
+        for jj in range(len(obstacle_list)):
+            if jj==ii:
+                continue
+            point = obstacle_list.get_boundary_reference_point(ii, jj)
+            ax.plot(point[0], point[1], 'r+', linewidth=18, markeredgewidth=4, markersize=13)
+
+
+    if 'DEBUG_FLAG' in globals() and DEBUG_FLAG:
+        # import pdb; pdb.set_trace()
+        # global settings.boundary_ref_point_list
+
+        settings.position0 = np.array(settings.position0)
+        plt.plot(settings.position0[:, 0], settings.position0[:, 1], marker='x')
+
+        settings.position1 = np.array(settings.position1)
+        plt.plot(settings.position1[:, 0], settings.position1[:, 1], marker='x')
+
+        # import pdb; pdb.set_trace()
+
+        settings.boundary_ref_point_list = np.array(settings.boundary_ref_point_list)
+        plt.figure()
+        plt.plot(settings.dist_ref_points)
+
+        plt.figure()
+        plt.plot(settings.boundary_ref_point_list[:, 0],
+                 settings.boundary_ref_point_list[:, 1])
+
+            
 
 def main(options=[0], N_resol=100, saveFigures=False):
+    from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
+    from dynamic_obstacle_avoidance import settings
     if -1 in options:
         obs = GradientContainer() # create empty obstacle list
         x_lim, y_lim = [-3, 3],[-2, 2]
@@ -299,8 +421,17 @@ def main(options=[0], N_resol=100, saveFigures=False):
                 plt.plot(boundary_ref_point[0], boundary_ref_point[1],
                          'r+', linewidth=18, markeredgewidth=4, markersize=13)
 
+        plt.ion()
+        plt.show()
+        import pdb; pdb.set_trace()     ##### DEBUG ##### 
+        
 if (__name__)=="__main__":
-    main(options=options, N_resol=N_resol, saveFigures=saveFigures)
+    print('voila')
+    # visualization_boundary_reference_point()
+    visualization_boundary_points_mixed_world()
+    
+    # main(options=options, N_resol=N_resol, saveFigures=saveFigures)
+    
 
 # Run function
 
