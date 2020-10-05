@@ -413,6 +413,8 @@ class Ellipse(Obstacle):
         center_ellipse: Center of ellipse '''
 
 
+        # print('direction', direction)
+        # print('axes', self.axes_with_margin)
         # import pdb; pdb.set_trace()
         if in_global_frame:
             direction = self.transform_global2relative_dir(direction)

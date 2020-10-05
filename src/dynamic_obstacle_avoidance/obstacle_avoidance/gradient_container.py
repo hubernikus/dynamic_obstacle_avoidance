@@ -62,8 +62,10 @@ class GradientContainer(ObstacleContainer):
             self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=len(self))
         else:
-            
-            self._boundary_reference_points = np.dstack(( np.zeros((self.dim, len(self), 1)), np.hstack((self._boundary_reference_points, np.zeros((self.dim, 1, len(self)-1))))  ))
+            self._boundary_reference_points = np.dstack((
+                np.zeros((self.dim, len(self), 1)),
+                np.hstack((self._boundary_reference_points, 
+                           
 
             new_dist_matr = DistanceMatrix(n_obs=len(self))
             for ii in range(len(self)-1):
@@ -71,6 +73,17 @@ class GradientContainer(ObstacleContainer):
                     new_dist_matr[ii, jj] = self._distance_matrix[ii, jj]
                     
             self._distance_matrix = new_dist_matr
+
+    def __delitem__(self, key):
+        # TODO: make a list of obstacle pointers
+        if sys.version_info>(3,0): # Python 3
+            super().__delitem__(value)
+        else: # Python 2 compatibility
+            super(ObstacleContainer, self).__delitem__(value)
+
+        
+
+        
 
     def get_distance(self, ii, jj=None):
         '''Distance between obstacles ii and jj'''
