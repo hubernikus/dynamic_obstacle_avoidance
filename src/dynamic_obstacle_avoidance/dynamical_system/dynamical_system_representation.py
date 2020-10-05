@@ -18,18 +18,17 @@ def get_linear_ds(position, attractor=None):
     else:
         return attractor-position
 
-def linear_ds_max_vel(position, attractor=np.array([0,0]), max_vel=0.5, slow_down_region=0.5):
+def linear_ds_max_vel(position, attractor=np.array([0,0]), vel_max=0.5, slow_down_region=0.5):
     ''' Linear Dynamical System with decreasing velocity close to the attractor,
     but constant (maximal) velocity, everywhere else.'''
     velocity = attractor-position
 
-    distance = np.linalg.norm(attractor-position)
+    mag_velocity = distance = np.linalg.norm(velocity)
     if distance < slow_down_region:
-        max_vel = max_vel*distance/slow_down_region
-        
-    norm_vel = velocity
-    if norm_vel>max_vel:
-        velocity = velocity/norm_vel*max_vel
+        velocity = velocity*vel_max/slow_down_region
+    else:
+        # Reference velocity
+           velocity = velocity/mag_velocity*vel_max
 
     return velocity
 
@@ -66,11 +65,11 @@ def linearAttractor(x, x0=None):
     
     return xd
 
-def linearAttractor_const(x, x0='default', v_ref=0, velConst=0.3, distSlow=1.0):
+def linearAttractor_const(x, x0, vel_max=0, velConst=0.3, distSlow=1.0):
     # change initial value for n dimensions
     # TODO -- constant velocity // maximum velocity
     
-    dx = x0-x + v_ref
+    dx = x0-x + vel_max
     dx_mag = np.sqrt(np.sum(dx**2))
     
     dx = min(velConst, 1/dx_mag*velConst)*dx

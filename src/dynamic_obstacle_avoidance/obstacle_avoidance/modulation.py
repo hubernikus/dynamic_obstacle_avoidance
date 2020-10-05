@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=False, tangent_power=5):
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=10, repulsion_coeff=1.0, tangent_eigenvalue_isometric=False, tangent_power=5):
     ''' Compute diagonal Matrix'''
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
@@ -37,6 +37,8 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
     else:
         # Decreasing velocity in order to reach zero on surface
         eigenvalue_tangent = 1 - 1./abs(Gamma)**tangent_power
+        # print('low gammas gamma={} /// e_tang={} / eigt_ref={}'.format(
+        #    round(Gamma, 2), round(eigenvalue_tangent, 2), round(eigenvalue_reference, 2)))
         
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 

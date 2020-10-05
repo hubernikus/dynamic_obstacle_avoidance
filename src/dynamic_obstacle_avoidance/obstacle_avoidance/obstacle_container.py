@@ -140,6 +140,23 @@ class BaseContainer(object):
     def list(self):
         return self._obstacle_list
 
+    @property
+    def has_environment(self):
+        return bool(len(self))
+
+    @property
+    def has_wall(self):
+        return self.has_environment and self._obstacle_list[-1].is_boundary 
+
+    def delete_boundary(self):
+        boundary_succesfully_deleted = False
+
+        if self.has_wall:
+            del self._obstacle_list[-1]
+
+            boundary_succesfully_deleted = True
+        
+        return boundary_succesfully_deleted
 
 class LearningContainer(BaseContainer):
     def __init__(self, obs_list=None):

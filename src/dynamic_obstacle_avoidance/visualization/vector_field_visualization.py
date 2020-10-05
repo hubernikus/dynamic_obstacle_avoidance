@@ -157,7 +157,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     
 
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor = np.array(([0,0])), saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7],obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor,draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=False):
     
     dim = 2
 
@@ -227,8 +227,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [1.70, 0]
-    pos2 = [1.90, 0]
+    pos1 = [-0.38, 18.1]
+    pos2 = [0.06, 18.13]
     
 
     x_sample_range = [pos1[0], pos2[0]]
@@ -246,7 +246,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         YY[ix, iy] = y_sample[ii]
     ########## STOP REMOVE ###########
     
-
     if attractingRegion: # Forced to attracting Region
         def obs_avoidance_temp(x, xd, obs):
             return obs_avoidance_func(x, xd, obs, xAttractor)
@@ -259,19 +258,17 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     xd_mod  = np.zeros((2,N_x,N_y))
 
     indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
-
-    # import pdb; pdb.set_trace()
     
     for ix in range(N_x):
         for iy in range(N_y):
             if not indOfNoCollision[ix, iy]:
                 continue
-            
             pos = np.array([XX[ix,iy],YY[ix,iy]])
-            # print('pos', pos)
-            # import pdb; pdb.set_trace()
 
-            xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
+            #xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
+            MAX_SPEED = 3.0
+            xd_init[:,ix,iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
+
             # print('pos', pos)
             xd_mod[:,ix,iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
 

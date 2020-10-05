@@ -105,7 +105,22 @@ class CrowdCircleContainer(GradientContainer):
     # def dim(self, value):
         # self._dim = value
 
-    def update_step(self, crowd_list, human_radius=0.3, num_crowd_close=10, dist_far=10, max_center_displacement=2, agent_position=None):
+    def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, max_center_displacement=2, agent_position=None):
+        ''' Update the obstacle list based on the crowd-input. '''
+
+         # Remove existing crowd obstacles
+        it = 0
+        while(it<len(self)):
+            if self[it].is_boundary:
+                it+=1
+            else:
+                del self[it]
+
+        # Check if there are obstacles in crowd
+        if len(crowd_list)==0:
+            self.delete_boundary()
+            return
+
         pos_crowd = np.zeros((self._dim, len(crowd_list) ))
         vel_crowd = np.zeros((self._dim, len(crowd_list) ))
 
@@ -124,7 +139,15 @@ class CrowdCircleContainer(GradientContainer):
         # Neglect far away obstacles (to speed up calculation)
         ind_close = (magnitudes<dist_far)
         if np.sum(ind_close) < num_crowd_close:
-            import pdb; pdb.set_trace()
+            # Remove the boundary, very simple environment close obstacles
+            self.delete_boundary()
+
+            num_crowd_close = np.sum(ind_close)
+
+            # No close obstacle
+            if num_crowd_close==0: 
+                return
+
         pos_crowd = pos_crowd[:, ind_close]
         vel_crowd = vel_crowd[:, ind_close]
         magnitudes = magnitudes[ind_close]
@@ -135,21 +158,18 @@ class CrowdCircleContainer(GradientContainer):
         vel_crowd = vel_crowd[:, ind_sorted]
         magnitudes = magnitudes[ind_sorted]
 
-        # Remove existing crowd obstacles
-        it = 0
-        while(it<len(self)):
-            if self[it].is_boundary:
-                it+=1
-            else:
-                del self[it]
-
+    
         for ii in range(num_crowd_close):
             self.append(CircularObstacle(
                 center_position=pos_crowd[:, ii], orientation=0,
-                linear_velocity=vel_crowd[:, ii], angular_velocity=0, 
+                linear_velocity=vel_crowd[:, ii], angular_velocity=0,
+                tail_effect=False, 
                 radius=human_radius, margin_absolut=self.robot_margin)) # TODO: add robot margin
 
-        print('self. maring', self.robot_margin)
+        if num_crowd_close==np.sum(ind_close):
+            # No 'artificial wall'
+            return
+        print('self. margin', self.robot_margin)
         # Only consider 'far' obstacles for the wall repulsion
         pos_crowd = pos_crowd[:, num_crowd_close:]
         magnitudes = magnitudes[num_crowd_close:]
@@ -166,7 +186,11 @@ class CrowdCircleContainer(GradientContainer):
             rel_center_wall = rel_center_wall/mag_center*max_center_displacement
         center_wall = agent_position + rel_center_wall
 
-        radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
+        try:
+            radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
+        except:
+            import pdb; pdb.set_trace()
+            print('debug')
         
         if radius_wall < human_radius:
             raise NotImplementedError("Collision with robot")
@@ -180,7 +204,8 @@ class CrowdCircleContainer(GradientContainer):
             self.append(CircularObstacle(
                 center_position=center_wall, orientation=0, radius=radius_wall-human_radius,
                 margin_absolut=self.robot_margin,
-                is_boundary=True, is_deforming=True))
+                is_boundary=True, is_deforming=True,
+                tail_effect=False))
         # Return
 
 
