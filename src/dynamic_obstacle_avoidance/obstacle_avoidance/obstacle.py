@@ -14,13 +14,12 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
 
 import matplotlib.pyplot as plt # TODO: remove after debugging!
 
-__date__ =  "2019-10-15"
+__date__ = "2019-10-15"
 __author__ = "Lukas Huber"
-__email__ =  "lukas.huber@epfl.ch"
+__email__ = "lukas.huber@epfl.ch"
 
 visualize_debug = False
 
-# TODO: tidy up a bit...
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 

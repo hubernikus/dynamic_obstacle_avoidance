@@ -23,7 +23,7 @@ class TrackedPedestrian(Ellipse):
     ''' Recognized the pedestrian using a tracker. 
     It remembers the original position to later 'interpolate' the actual one. '''
     def __init__(self,
-                 axes_length=[1.0, 1.0],
+                 axes_length=[0.3, 0.3],
                  *args, **kwargs):
 
         kwargs['axes_length'] = axes_length
