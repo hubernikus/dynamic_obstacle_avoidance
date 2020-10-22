@@ -1,4 +1,4 @@
-#!/USSR/bin/python3
+# !/USSR/bin/python3
 
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
@@ -13,10 +13,11 @@ import matplotlib.pyplot as plt
 
 # Add obstacle avoidance without 'setting' up
 # directory_path = rospack.get_path('qolo_modulation')
-directory_path = "/home/lukas/Code/ObstacleAvoidance/dynamic_obstacle_avoidance/"
-path_avoidance = os.path.join(directory_path, "src")
-if not path_avoidance in sys.path:
-    sys.path.append(path_avoidance)
+# directory_path = "/home/lukas/Code/ObstacleAvoidance/dynamic_obstacle_avoidance/"
+# path_avoidance = os.path.join(directory_path, "src")
+# if not path_avoidance in sys.path:
+    # sys.path.append(path_avoidance)
+
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -165,6 +166,124 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
         reference_point_number=False, showLabel=False,
     )
 
+    
+def visualize_repulsive_cube(
+        robot_margin=0.35,
+        n_resolution=40,
+        save_figure=False,
+):
+    x_lim = [-2, 6]
+    y_lim = [-2, 2]
+
+    figure_size = (15, 6.0)
+    pos_attractor = [-1, 0]
+    
+    
+    obs = GradientContainer() # create empty obstacle list
+
+    obs.append(Polygon(
+          edge_points=[[-1.8, 5.4, 5.4, -1.8],
+                       [-1.8,-1.8, 1.8, 1.8]],
+        center_position=[3.0, -1],
+        orientation=0./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=True,
+    ))
+
+    obs.append(Cuboid(
+        axes_length=[0.4, 0.4],
+        center_position=[2.0, -0.0],
+        orientation=90./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=False,
+        repulsion_coeff=2.0
+    ))
+
+
+    obs.append(Cuboid(
+        axes_length=[0.4, 0.4],
+        center_position=[2.0, -0.0],
+        orientation=90./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=False,
+        repulsion_coeff=5.0
+    ))
+
+
+    # obs.append(Polygon(
+    #     edge_points=[[-1.8, 5.4, 5.4, -1.8],
+    #                  [-1.8,-1.8, 1.8, 1.8]],
+    #     # center_position=[3.0, -1],
+    #     orientation=0./180*pi,
+    #     margin_absolut=robot_margin,
+    #     is_boundary=True,
+    #     tail_effect=False,
+    # ))
+
+    # obs.append(Cuboid(
+    #     axes_length=[0.4, 0.4],
+    #     center_position=[2.0, 0.0],
+    #     orientation=0./180*pi,
+    #     margin_absolut=robot_margin,
+    #     is_boundary=False,
+    #     repulsion_coeff=2.0,
+    #     tail_effect=False,
+    # ))
+
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
+        saveFigure=False, figName='repulsive_cube_in_hallway',
+        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        figureSize=figure_size,
+        reference_point_number=False, showLabel=False,
+    )
+
+
+def visualize_nonrepulsive_cube(
+        robot_margin=0.35,
+        n_resolution=20,
+        save_figure=False,
+):
+    x_lim = [-2, 6]
+    y_lim = [-2, 2]
+
+    figure_size = (15, 6.0)
+    pos_attractor = [-1, 0]
+    
+    
+    obs = GradientContainer() # create empty obstacle list
+    obs.append(Polygon(
+        edge_points=[[-1.8, 5.4, 5.4, -1.8],
+                     [-1.8,-1.8, 1.8, 1.8]],
+        # center_position=[3.0, -1],
+        orientation=0./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=True,
+        tail_effect=False,
+    ))
+
+    obs.append(Cuboid(
+        axes_length=[0.4, 0.4],
+        center_position=[2.0, 0.0],
+        orientation=0./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=False,
+        repulsion_coeff=1.0,
+        tail_effect=False,
+    ))
+
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
+        saveFigure=False, figName='nonrepulsive_cube_in_hallway',
+        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        figureSize=figure_size,
+        reference_point_number=False, showLabel=False,
+    )
+    # import pdb; pdb.set_trace()
+
+
 
 
     
@@ -247,8 +366,11 @@ def visualize_repulsive_field(n_resolution=n_resolution):
 if (__name__)=="__main__":
     # visualize_simple_ellipse(n_resolution=20)
     # visualize_intersecting_ellipse()
+    
     visualize_repulsive_field()
 
 
+    visualize_repulsive_cube()
+    visualize_nonrepulsive_cube()
 # Run function
 

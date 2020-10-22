@@ -32,7 +32,7 @@ def get_outside_enviornment_simplified(robot_margin = 0.6):
 
     obs.append(Cuboid(
         axes_length=[0.4, 0.4],
-        center_position=[3.0, 0.0],
+        center_position=[3.0, -0.5],
         orientation=90./180*pi,
         margin_absolut=robot_margin,
         is_boundary=False,
@@ -126,16 +126,16 @@ if (__name__)=="__main__":
     saveFigures=False
 
     x_lim = [-0.3, 4.5]
-    y_lim = [-0.5, 4.5]
+    y_lim = [-2.5, 0.5]
 
     xAttractor=[3.5, 1.0]
 
     robot_margin = 0.3
 
     # obs = get_outside_enviornment(robot_margin)
-    # obs = get_outside_enviornment_simplified(robot_margin)
+    obs = get_outside_enviornment_simplified(robot_margin)
     # obs = get_outside_enviornment_lshape(robot_margin)
-    obs = get_outside_enviornment_lshape_hack(robot_margin)
+    # obs = get_outside_enviornment_lshape_hack(robot_margin)
 
     vectorfield = True
     if vectorfield:
