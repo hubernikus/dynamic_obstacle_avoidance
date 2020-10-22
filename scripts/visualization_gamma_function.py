@@ -127,7 +127,7 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
         p=[1,1],
         orientation=20./180*pi,
         margin_absolut=0.5,
-        is_boundary=False
+        is_boundary=False,
     ))
 
     obs.append(Ellipse(
@@ -166,9 +166,88 @@ def visualize_intersecting_ellipse(n_resolution=n_resolution):
     )
 
 
+
+    
+def visualize_repulsive_field(n_resolution=n_resolution):
+    obs = GradientContainer() # create empty obstacle list
+    x_lim = [-0.6, 5.1]
+    y_lim = [-2.1, 2.1]
+    # x_lim = [-1.3, 10.2]
+    # y_lim = [-4.1, 04.1]
+
+    xAttractor=[0, 0]
+    # figure_size = (5, 3.0)
+    figure_size = (10, 6.0)
+    
+    n_resolution = 50
+    saveFigures=True
+
+    robot_margin=0.6
+
+    obs.append(Polygon(
+        edge_points=[[-0.5, 5.0, 5.0, -0.5],
+                     [-0.6, -0.6, 5.5, 5.5]],
+        center_position=[5, 3.5],
+        orientation=0./180*pi,
+        margin_absolut=robot_margin,
+        has_sticky_surface=True,
+        is_boundary=True,
+    ))
+
+
+    obs.append(Ellipse(
+        axes_length=[0.8, 0.4],
+        center_position=[2.0, 0.5],
+        p=[1,1],
+        orientation=20./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=False,
+        repulsion_coeff=2.0,
+        has_sticky_surface=True,
+        tail_effect=True,
+    ))
+
+    # obs.append(Ellipse(
+        # axes_length=[0.8, 0.4],
+        # center_position=[2.0, -0.5],
+        # p=[1,1],
+        # orientation=-40./180*pi,
+        # margin_absolut=0.5,
+        # is_boundary=False,
+        # reactivity=1,
+    # ))
+
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=saveFigures, figName='intersecting_ellipses_sticky_surfaces',
+        noTicks=True,
+        draw_vectorField=True,  automatic_reference_point=True,
+        point_grid=n_resolution, show_streamplot=True,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        figureSize=figure_size,
+        reference_point_number=False, showLabel=False,
+    )
+
+    # for oo in range(len(obs)):
+        # obs[oo].has_sticky_surface=False
+
+    
+    # Why does 'automatic reference point' create a mess?
+    # fig_mod, ax_mod = Simulation_vectorFields(
+        # x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        # saveFigure=saveFigures, figName='intersecting_ellipses_nonsticky_surfaces',
+        # noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=False,
+        # normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        # figureSize=figure_size,
+        # reference_point_number=False, showLabel=False,
+    # )
+
+
+
 if (__name__)=="__main__":
     # visualize_simple_ellipse(n_resolution=20)
-    visualize_intersecting_ellipse()
+    # visualize_intersecting_ellipse()
+    visualize_repulsive_field()
 
 
 # Run function
