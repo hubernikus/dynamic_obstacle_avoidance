@@ -233,7 +233,21 @@ class Ellipse(Obstacle):
         
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
+    def get_gamma(self, position, in_global_frame=False):
+        ''' Gamma of ellipse 3d'''
 
+        if self.dim==2:
+            if sys.version_info>(3,0):
+                super().__init__(position, in_global_frame=in_global_frame)
+            else:
+                super(Ellipse, self).__init__(position, in_global_frame=in_global_frame)
+
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+            
+        return np.sum((np.abs(position)/self.axes_length)**(2*self.p))
+
+    
     def get_normal_ellipse(self, position):
         ''' Return normal to ellipse surface '''
         return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
@@ -512,14 +526,10 @@ class Ellipse(Obstacle):
         Get radius of ellipse in direction of position from the reference point
         '''
         # TODO: extend for actual relative center
-
         if relative_center is None:
             relative_center = np.zeros(self.dim)
 
-        # try:
         direction = position-relative_center
-        # except:
-            # import pdb; pdb.set_trace()
             
         intersection = self.get_intersection_with_surface(
             relative_center, direction, only_positive_direction=True)
@@ -736,14 +746,35 @@ class Ellipse(Obstacle):
             self.boundary_points_margin_local = boundary_points_margin
 
         if self.dim==3:
-            a = a+self.margin_absolut
-            boundary_points_margin = np.hstack((
-                boundary_points_margin,
-                np.vstack((a[0]*np.cos(phi)*np.cos(theta),
-                           a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1])),
-                           a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) )) ))
+            # a = a+self.margin_absolut
+            # boundary_points_margin = []
+            # boundary_points_margin = np.hstack((
+            #     boundary_points_margin,
+            #     np.vstack((a[0]*np.cos(phi)*np.cos(theta),
+            #                a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1])),
+            #                a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) )) ))
                 
-            self.boundary_points_margin_local = boundary_points_margin
+            # self.boundary_points_margin_local = boundary_points_margin
+            # self.boundary_points_margin_local = boundary_points_margin
+            axes_length = self.axes_length
+
+            # Set of all spherical angles:
+            n_u = int(np.floor(np.sqrt(numPoints)))
+            n_v = int(np.ceil(numPoints/n_u))
+            
+            u = np.linspace(0, 2 * np.pi, n_u)
+            v = np.linspace(0, np.pi, n_v)
+
+            self.boundary_points_local = []
+            
+            # Cartesian coordinates that correspond to the spherical angles:
+            # (this is the equation of an ellipsoid):
+            # self.boundary_points
+            self.boundary_points_local.append(axes_length[0] * np.outer(np.cos(u), np.sin(v)))
+            self.boundary_points_local.append(axes_length[1] * np.outer(np.sin(u), np.sin(v)))
+            self.boundary_points_local.append(axes_length[2] * np.outer(np.ones_like(u), np.cos(v)))
+
+            return self.transform_relative2global(self.boundary_points_local)
         
         return self.transform_relative2global(self._boundary_points_margin)
 

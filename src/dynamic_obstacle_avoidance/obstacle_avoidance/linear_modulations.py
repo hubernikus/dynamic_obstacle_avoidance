@@ -83,7 +83,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     # pos_relative = pos_relative[:, ind_obs]
     # N_obs = np.sum(ind_obs)
-    
+
     if N_attr:
         d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
         weight = compute_weights(np.hstack((Gamma, [d_a])), N_obs+N_attr)
@@ -109,7 +109,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             rho=obs[n].reactivity,
             
         )
-        # import pdb; pdb.set_trace()
+        
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
     xd_obs = np.zeros((dim))
@@ -125,7 +125,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             xd_w = np.zeros(dim)
             # raise ValueError('NOT implemented for d={}'.format(d))
             warnings.warn('Angular velocity is not defined for={}'.format(d))
-
         
         linear_velocity = obs[n].linear_velocity
         velocity_only_in_normal_direction = True
@@ -256,6 +255,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         if xd_norm > velocicity_max:
             vel_final = vel_final/xd_norm * velocicity_max
 
+    # import pdb; pdb.set_trace()
     # transforming back from object frame of reference to inertial frame of reference
     return vel_final
 
