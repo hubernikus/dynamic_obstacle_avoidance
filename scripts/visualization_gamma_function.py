@@ -106,7 +106,7 @@ def visualize_intersecting_ellipse(
         p=[1,1],
         orientation=20./180*pi,
         margin_absolut=0.5,
-        is_boundary=False
+        is_boundary=False,
     ))
 
     obs.append(Ellipse(
@@ -485,11 +485,11 @@ def visualize_edge_boundary(
 
 
 
-    
+
 if (__name__)=="__main__":
     plt.ion()
     # visualize_simple_ellipse(n_resolution=20)
-    
+
     # visualize_intersecting_ellipse(save_figures=True, n_resolution=20)
     
     # visualize_repulsive_cube(n_resolution=100, save_figure=True)

@@ -218,6 +218,8 @@ class Obstacle(State):
         ''' Calculates the norm of the function.
         Position input has to be 2-dimensional array '''
 
+        import pdb; pdb.set_trace() 
+
         if in_global_frame:
             position = self.transform_global2relative(position)
             if not reference_point is None:
@@ -243,8 +245,9 @@ class Obstacle(State):
         # With respect to center. Is this ok?
         radius = self._get_local_radius(position[:, ind_nonzero])
 
-        # import pdb; pdb.set_trace() 
-        
+        import pdb; pdb.set_trace()
+
+                
         if gamma_type=='proportional':
             gamma[ind_nonzero] = dist_position[ind_nonzero]/radius[ind_nonzero]
             if self.is_boundary:
@@ -344,11 +347,17 @@ class Obstacle(State):
             
         return norm_derivs
 
-
     
-    def transform_global2relative(self, position): 
+    def transform_global2relative(self, position):
+        ''' Transform a position from the global frame of reference 
+        to the obstacle frame of reference'''
         if not position.shape[0]==self.dim:
             raise ValueError("Wrong position dimensions")
+
+        if self.dim > 2:
+            warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
+            return position
+            # raise NotImplementedError("Rotation for dimensions {} need to be implemented".format(self.dim))
             
         if len(position.shape)==1:
             return self.rotMatrix.T.dot(position - np.array(self.center_position))
@@ -359,8 +368,15 @@ class Obstacle(State):
             raise ValueError("Unexpected position-shape")
 
     def transform_relative2global(self, position):
+        ''' Transform a position from the obstacle frame of reference 
+        to the global frame of reference'''
         if not isinstance(position, (list, np.ndarray)):
             raise TypeError('Position={} is of type {}'.format(position, type(position)))
+
+        if self.dim > 2:
+             warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
+             return position
+            # raise NotImplementedError("Rotation for dimensions {} need to be implemented".format(self.dim))
 
         if isinstance(position, (list)):
             position = np.array(position)
