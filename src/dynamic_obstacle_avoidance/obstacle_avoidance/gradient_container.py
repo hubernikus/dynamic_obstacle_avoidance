@@ -275,7 +275,7 @@ class GradientContainer(ObstacleContainer):
                     
                     dist, ref_point1, ref_point2 = self.get_boundary_reference_point_circular(
                         self[ii], self[jj]
-                    )
+                    )           
 
                     self.set_distance(ii, jj, dist)
                     self.set_boundary_reference_point(ii, jj, ref_point1)

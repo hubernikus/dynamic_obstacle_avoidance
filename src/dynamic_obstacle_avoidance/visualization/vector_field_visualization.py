@@ -12,13 +12,123 @@ import numpy as np
 from numpy import pi
 import copy
 import time
+import os
 
 import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib.collections import LineCollection
+
+# Visualize qolo
+from scipy import ndimage
+import matplotlib.image as mpimg
 
 __author__ = "Lukas Huber"
 __date__ =  "2018-02-15"
 __email__ = "lukas.huber@epfl.ch"
+
+
+def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, dt=0.01, convergence_margin=1e-4, fig_and_ax_handle=None, normalize_magnitude=True, line_color=None, min_value=0, max_value=None):
+
+    if fig_and_ax_handle is None:
+        fig, ax = plt.subplots()
+    else:
+        fig, ax = fig_and_ax_handle
+        # import pdb; pdb.set_trace()
+    
+    dim = 2 # 2-D problem
+    if (len(points_init.shape)==1):
+        points_init = np.array([points_init]).T
+
+    n_points = points_init.shape[1]
+    for j in range(n_points):
+        x_pos = np.zeros((dim, max_simu_step+1))
+        x_pos[:, 0] = points_init[:, j]
+
+        it_count = 0
+        
+        for it_count in range(max_simu_step):
+            x_pos[:, it_count+1] = obs_avoidance_rk4(
+                dt, x_pos[:, it_count], obs, x0=attractorPos,
+                obs_avoidance=obs_avoidance_interpolation_moving)
+
+            # xd = linear_ds_max_vel(x_pos[:, it_count], attractorPos, vel_max=3.0)
+            # x_pos[:, it_count+1] = obs_avoidance_interpolation_moving(x_pos[:, it_count], xd=xd, obs=obs)*dt + x_pos[:, it_count]
+
+            # import pdb; pdb.set_trace()
+
+            # Check convergence
+            if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos) < convergence_margin):
+                
+                x_pos = x_pos[:, :it_count+2]
+                
+                print("Convergence reached after {} iterations.".format(it_count))
+                break
+
+            if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count]) < convergence_margin):
+                x_pos = x_pos[:, :it_count+2]
+                
+                print("Stopping at local minimum after {} iterations.".format(it_count))
+                break
+
+            it_count += 1
+
+        if line_color is None:
+            magnitude = np.linalg.norm(x_pos[:, :-1] - x_pos[:, 1:], axis=0)
+            if normalize_magnitude:
+                magnitude = magnitude/magnitude.max()
+                min_value, max_value = 0, 1
+            else:
+                if min_value is None:
+                    max_value = magnitude.max()
+
+                if max_value is None:
+                    min_value = magnitude.min()
+
+            points = x_pos.T.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+            # plt.plot(x_pos[0, :], x_pos[1, :])
+            norm = plt.Normalize(min_value, max_value)
+            lc = LineCollection(segments, cmap='jet', norm=norm)
+
+            # Set the values used for colormapping
+            lc.set_array(magnitude)
+            lc.set_linewidth(2)
+            line = ax.add_collection(lc)
+            plt.axis('equal')
+
+            if False:
+                fig.colorbar(line, ax=ax)
+        else:
+            line = plt.plot(x_pos[0, :], x_pos[1, :], color=line_color, linewidth=3)
+            # line.set_linewidth(2)
+            
+
+        # return 
+    
+        arr_img = mpimg.imread(os.path.join('../data', 'Qolo_T_CB_top_bumper.png'))
+    
+        length_x = 1.2
+        length_y = (1.0)*arr_img.shape[0]/arr_img.shape[1] * length_x
+
+        dx0 = x_pos[0, 1] - x_pos[0, 0]
+        dy0 = x_pos[1, 1] - x_pos[1, 0]
+        rot = np.arctan2(dy0, dx0) 
+        # rot = np.arctan2(dy0, dx0) 
+        # rot = pi/2.0
+        # import pdb; pdb.set_trace()
+        arr_img_rotated = ndimage.rotate(arr_img, rot*180.0/pi, cval=255)
+    
+        length_x_rotated = (np.abs(np.cos(rot))*length_x + np.abs(np.sin(rot))*length_y)
+    
+        length_y_rotated = (np.abs(np.sin(rot))*length_x + np.abs(np.cos(rot))*length_y)
+
+        # ax.imshow(arr_img_rotated, extent=[-2, 4, -2, 4])
+        ax.imshow(arr_img_rotated, extent=[
+            x_pos[0, 0]-length_x_rotated/2.0, x_pos[0, 0]+length_x_rotated/2.0,
+            x_pos[1, 0]-length_y_rotated/2.0, x_pos[1, 0]+length_y_rotated/2.0 ], zorder=-2)
+
+    return line
 
 
 def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
@@ -37,7 +147,7 @@ def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
 def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
                      dim=2, dt=0.01, max_simu_step=300, convergence_margin=0.03):
     ''' Plot streamlines. '''
-    
+    # 
     n_points = np.array(points_init).shape[1]
 
     x_pos = np.zeros((dim, max_simu_step+1, n_points))
@@ -82,21 +192,21 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     for n in range(len(obs)):
         x_obs = obs[n].boundary_points_global_closed
         x_obs_sf = obs[n].boundary_points_margin_global_closed
-        plt.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
+        ax.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
 
         if obs[n].is_boundary:
             outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
                                        [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
 
-            boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-2)
-            boundary_polygon.set_color(np.array([176,124,124])/255.)
-            plt.gca().add_patch(boundary_polygon)
+            boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-4)
+            boundary_polygon.set_color(np.array([176, 124, 124])/255.)
+            ax.add_patch(boundary_polygon)
 
-            obs_polygon.append( plt.Polygon(x_obs.T, alpha=1.0, zorder=-1))
-            obs_polygon[n].set_color(np.array([1.0,1.0,1.0]))
+            obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
+            obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append( plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
 
             # import pdb; pdb.set_trace()     ##### DEBUG ##### 
             if obstacleColor is None:
@@ -105,11 +215,14 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
             else:
                 obs_polygon[n].set_color(obstacleColor[n])
             
-        obs_polygon_sf.append( plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
-        obs_polygon_sf[n].set_color([1,1,1])
+        obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
+        obs_polygon_sf[n].set_color([1, 1, 1])
 
-        plt.gca().add_patch(obs_polygon_sf[n])
-        plt.gca().add_patch(obs_polygon[n])
+        # plt.gca().add_patch(obs_polygon_sf[n])
+        # plt.gca().add_patch(obs_polygon[n])
+        ax.add_patch(obs_polygon_sf[n])
+        ax.add_patch(obs_polygon[n])
+
 
         if show_obstacle_number:
             ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
@@ -140,7 +253,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
                          head_width=0.1, head_length=0.1, linewidth=3,
                          fc=col, ec=col, alpha=1)
 
-    plt.gca().set_aspect('equal', adjustable='box')
+    ax.set_aspect('equal', adjustable='box')
 
     ax.set_xlim(x_range)
     ax.set_ylim(y_range)
@@ -154,7 +267,6 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
 
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.tick_params(axis='both', which='minor', labelsize=12)
-
 
     return 
     
@@ -230,8 +342,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [4.0, -0.1]
-    pos2 = [4.0, 0.1]
+    pos1 = [2.02854, -1.4017]
+    pos2 = [2.02854, -1.8]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -242,23 +354,23 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ii = 0
     for ii in range(n_samples):
         iy = (ii+it_start) % N_y
-        ix = int((ii+it_start) /N_x)
+        ix = int((ii+it_start) / N_x)
         
         XX[ix, iy] = x_sample[ii]
         YY[ix, iy] = y_sample[ii]
         
     ########## STOP REMOVE ###########
     
-    if attractingRegion: # Forced to attracting Region
+    if attractingRegion:      # Forced to attracting Region
         def obs_avoidance_temp(x, xd, obs):
             return obs_avoidance_func(x, xd, obs, xAttractor)
         
-        obs_avoidance= obs_avoidance_temp
+        obs_avoidance = obs_avoidance_temp
     else:
         obs_avoidance = obs_avoidance_func
         
-    xd_init = np.zeros((2,N_x,N_y))
-    xd_mod  = np.zeros((2,N_x,N_y))
+    xd_init = np.zeros((2, N_x, N_y))
+    xd_mod = np.zeros((2, N_x, N_y))
 
     indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
     
@@ -270,12 +382,11 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
             #xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
             MAX_SPEED = 3.0
-            xd_init[:,ix,iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
+            xd_init[:, ix, iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
 
             # print('pos', pos)
-            xd_mod[:,ix,iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
+            xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
 
-            # import pdb; pdb.set_trace()
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 

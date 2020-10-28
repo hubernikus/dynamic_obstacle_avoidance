@@ -236,7 +236,8 @@ class Ellipse(Obstacle):
 
     def get_normal_ellipse(self, position):
         ''' Return normal to ellipse surface '''
-        return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
+        # return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
+        return (2*self.p/self.axes_with_margin*(position/self.axes_with_margin)**(2*self.p-1))
     
 
     def get_angle2referencePatch(self, position, max_angle=pi, in_global_frame=False):
@@ -660,9 +661,6 @@ class Ellipse(Obstacle):
             return Gamma[0] # 1x1-array to value
         return Gamma
 
-
-        
-    
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
         '''
         Creates points for obstacle and obstacle margin

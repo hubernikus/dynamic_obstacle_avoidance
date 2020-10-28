@@ -138,7 +138,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 linear_velocity = np.zeros(lin_vel_normal.shape[0])
 
 
-        #The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
+        # The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
         exp_weight = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
         xd_obs_n = exp_weight*(np.array(linear_velocity) + xd_w)
 
@@ -154,12 +154,13 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     xd_hat_magnitude = np.zeros((N_obs))
 
     n = 0
-    # plt.quiver(x[0], x[1], E_orth[0, 0, n], E_orth[1, 0, n])
+    # plt.quiver(x[0], x[1], E_orth[0, 0, n], E_orth[1, 0, n], color='r')
+    # plt.quiver(x[0], x[1], E_orth[0, 1, n], E_orth[1, 1, n], color='g')
     
     for n in np.arange(N_obs)[ind_obs]:
         if (
             # (obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or
-            (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)>0)
+            (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)<0)
             ):
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
@@ -173,18 +174,17 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 xd_temp = np.copy(xd)
 
             # Modulation with M = E @ D @ E^-1
-            xd_trafo = LA.pinv(E[:,:,n]).dot(xd_temp)
+            xd_trafo = LA.pinv(E[:, :, n]).dot(xd_temp)
 
-            if (not obs[n].tail_effect and 
+            if (not obs[n].tail_effect and
                 # xd_trafo[0]>0
-                 ((xd_trafo[0]>0 and not obs[n].is_boundary) or
-                  (xd_trafo[0]<0 and obs[n].is_boundary))
-                 ):
-                #xd_hat[:, n] = xd
-                D[0, 0, n] = 1 # No effect in 'radial direction'
+                ((xd_trafo[0]>0 and not obs[n].is_boundary) or
+                 (xd_trafo[0]<0 and obs[n].is_boundary))
+            ):
+                # xd_hat[:, n] = xd
+                D[0, 0, n] = 1       # No effect in 'radial direction'
 
-
-            xd_hat[:, n] = E[:,:,n].dot(D[:,:,n]).dot(xd_trafo)
+            xd_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(xd_trafo)
         
             if not evaluate_in_global_frame:
                 xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])

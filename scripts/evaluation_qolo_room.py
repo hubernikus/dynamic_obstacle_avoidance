@@ -23,7 +23,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 from scipy import ndimage
 from scipy import misc
 
-qolo_img  = misc.imread("/home/crowdbot/qolo_ws/src/qolo_modulation/data/Qolo_T_CB_top_bumper.JPG")
+# qolo_img  = misc.imread("/home/crowdbot/qolo_ws/src/qolo_modulation/data/Qolo_T_CB_top_bumper.JPG")
 
 
 # Environment Setup
