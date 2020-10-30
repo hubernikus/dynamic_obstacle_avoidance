@@ -61,7 +61,7 @@ def test_gamma_proportional():
 
 def test_normal_direction():
     ''' Normal has to point alongside reference'''
-    obs =DynamicBoundariesPolygon(is_surgery_setup=True)
+    obs = DynamicBoundariesPolygon(is_surgery_setup=True)
 
     # Check 10 random points
     x_range = [obs.x_min, obs.x_max]

@@ -70,7 +70,9 @@ class Polygon(Obstacle):
             self.ind_tiles = indeces_of_tiles
             self.n_planes = indeces_of_tiles.shape[0]
             self.n_planes_edge = self.n_planes
+            
             # TODO: How hard would it be to find flexible tiles?
+            
         else:
             raise NotImplementedError("Not yet implemented for dimensions higher than 3")
         

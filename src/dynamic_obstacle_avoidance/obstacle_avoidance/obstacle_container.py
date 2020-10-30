@@ -37,7 +37,7 @@ class BaseContainer(object):
 
         self.contains_wall_obstacle = False
         
-        if isinstance(obs_list, list):
+        if isinstance(obs_list, (list, BaseContainer)):
             for ii in range(len(obs_list)):
                 self.append(obs_list[ii])
                     # if not self.index_wall is None:

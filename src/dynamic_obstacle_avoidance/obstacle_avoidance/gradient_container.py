@@ -20,8 +20,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import Obs
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
 
-from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
-from dynamic_obstacle_avoidance import settings
+# from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
+# from dynamic_obstacle_avoidance import settings
 
 # if not sys.version_info>(3,0): # Python 2
     # import pdb; pdb.set_trace()
@@ -102,13 +102,22 @@ class GradientContainer(ObstacleContainer):
             self._boundary_reference_points = None
             self._distance_matrix = None
         else:
+            # <<<<<<< 
+            # self._boundary_reference_points = np.dstack((
+                # np.zeros((self.dim, len(self), 1)),
+                # np.hstack((self._boundary_reference_points, 
+                           # (key), axis=2))
+            # ))
+                          
+                           # =======
             self._boundary_reference_points = np.delete(self._boundary_reference_points,
                                                         (key), axis=1)
             self._boundary_reference_points = np.delete(self._boundary_reference_points,
                                                         (key), axis=2)
             
             # Transfer 'special' distance matrix
-            new_dist_matr = DistanceMatrix(n_obs=len(self))
+            # new_dist_matr = DistanceMatrix(n_obs=len(self))
+                           # >>>>>>> 7bcc7bf213d16f25843989ed351d3fd8756a4a32
 
             distance_matrix = self._distance_matrix.get_matrix()
             distance_matrix = np.delete(distance_matrix, (key), axis=0)
@@ -121,6 +130,15 @@ class GradientContainer(ObstacleContainer):
                     
             self._distance_matrix = new_dist_matr
 
+    # <<<<<<< HEAD
+    # def __delitem__(self, key):
+    #     # TODO: make a list of obstacle pointers
+    #     if sys.version_info>(3,0): # Python 3
+    #         super().__delitem__(value)
+    #     else: # Python 2 compatibility
+    #         super(ObstacleContainer, self).__delitem__(value)
+    # =======
+    # >>>>>>> 7bcc7bf213d16f25843989ed351d3fd8756a4a32
 
     def get_distance(self, ii, jj=None):
         '''Distance between obstacles ii and jj'''
@@ -261,7 +279,7 @@ class GradientContainer(ObstacleContainer):
                     
                     dist, ref_point1, ref_point2 = self.get_boundary_reference_point_circular(
                         self[ii], self[jj]
-                    )
+                    )           
 
                     self.set_distance(ii, jj, dist)
                     self.set_boundary_reference_point(ii, jj, ref_point1)

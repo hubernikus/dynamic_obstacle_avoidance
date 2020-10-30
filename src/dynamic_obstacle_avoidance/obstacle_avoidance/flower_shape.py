@@ -68,20 +68,23 @@ class StarshapedFlower(Obstacle):
         angular_coordinates = np.linspace(0,2*pi, n_curve_points)
         radius_angle = self.get_radius_of_angle(angular_coordinates)
 
-        if self.dim==2:
-            direction = np.vstack(( np.cos(angular_coordinates), np.sin(angular_coordinates) ))
+        if self.dim == 2:
+            direction = np.vstack((np.cos(angular_coordinates), np.sin(angular_coordinates)))
 
-        self.x_obs = (radius_angle * direction)
-        self.x_obs_sf = (radius_angle * self.sf * direction)
+        x_obs = (radius_angle * direction)
+        x_obs_sf = (radius_angle * self.sf * direction)
 
-        if self.orientation: # nonzero
-            for jj in range(self.x_obs.shape[1]):
-                self.x_obs[:, jj] = self.rotMatrix.dot(self.x_obs[:, jj]) + np.array([self.center_position])
-            for jj in range(self.x_obs_sf.shape[1]):
-                self.x_obs_sf[:,jj] = self.rotMatrix.dot(self.x_obs_sf[:, jj]) + np.array([self.center_position])
+        if self.orientation:      # nonzero
+            for jj in range(x_obs.shape[1]):
+                x_obs[:, jj] = self.rotMatrix.dot(x_obs[:, jj]) + np.array([self.center_position])
+            for jj in range(x_obs_sf.shape[1]):
+                x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
 
-        self.x_obs = self.x_obs.T
-        self.x_obs_sf = self.x_obs_sf.T
+        # self.x_obs = self.x_obs.T
+        # self.x_obs_sf = self.x_obs_sf.T
+        self.boundary_points_local = x_obs
+        self.boundary_points_margin_local = x_obs_sf
+        
 
 
     def get_gamma(self, position, in_global_frame=False, norm_order=2):
