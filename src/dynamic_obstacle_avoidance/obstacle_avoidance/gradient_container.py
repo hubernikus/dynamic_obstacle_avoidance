@@ -11,6 +11,7 @@ __email__ =  "lukas.huber@epfl.ch"
 import warnings, sys
 import numpy as np
 import copy
+import time # TODO comment
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
@@ -166,7 +167,10 @@ class GradientContainer(ObstacleContainer):
 
         self.intersection_matrix = Intersection_matrix(len(self))
         self.reset_reference_points()
+        now = time.time()
         self.update_boundary_reference_points()
+        delta_t = time.time() - now
+        print("calculation time: {}ms".format(delta_t))
 
         obs_reference_size = np.zeros(len(self))
 

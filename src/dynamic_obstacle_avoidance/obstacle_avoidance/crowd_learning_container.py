@@ -88,7 +88,7 @@ class CrowdCircleContainer(GradientContainer):
         if sys.version_info>(3,0):
             super().__init__(obs_list)
         else: # Python 2
-            super(GradientContainer, self).__init__(obs_list) # works for python < 3.0?!
+            super(CrowdCircleContainer, self).__init__(obs_list) # works for python < 3.0?!
         
         # self.num_gmm = None
 
@@ -105,19 +105,21 @@ class CrowdCircleContainer(GradientContainer):
     # def dim(self, value):
         # self._dim = value
 
-    def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, max_center_displacement=2, agent_position=None):
+    def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, 
+                    max_center_displacement=2, agent_position=None, automatic_outer_boundary=True):
         ''' Update the obstacle list based on the crowd-input. '''
 
          # Remove existing crowd obstacles
         it = 0
         while(it<len(self)):
-            if self[it].is_boundary:
-                it+=1
-            else:
+            if hasattr(self[it], 'is_human') and self[it].is_human:
                 del self[it]
+            else:
+                it += 1
+                
 
         # Check if there are obstacles in crowd
-        if len(crowd_list)==0:
+        if len(crowd_list)==0 and automatic_outer_boundary:
             self.delete_boundary()
             return
 
@@ -139,8 +141,10 @@ class CrowdCircleContainer(GradientContainer):
         # Neglect far away obstacles (to speed up calculation)
         ind_close = (magnitudes<dist_far)
         if np.sum(ind_close) < num_crowd_close:
-            # Remove the boundary, very simple environment close obstacles
-            self.delete_boundary()
+
+            if automatic_outer_boundary:
+                # Remove the boundary, very simple environment close obstacles
+                self.delete_boundary()
 
             num_crowd_close = np.sum(ind_close)
 
@@ -160,15 +164,18 @@ class CrowdCircleContainer(GradientContainer):
 
     
         for ii in range(num_crowd_close):
-            self.append(CircularObstacle(
+            human_obs = CircularObstacle(
                 center_position=pos_crowd[:, ii], orientation=0,
                 linear_velocity=vel_crowd[:, ii], angular_velocity=0,
                 tail_effect=False, 
-                radius=human_radius, margin_absolut=self.robot_margin)) # TODO: add robot margin
+                radius=human_radius, margin_absolut=self.robot_margin)
+            human_obs.is_human = True
+            self.append(human_obs) # TODO: add robot margin
 
-        if num_crowd_close==np.sum(ind_close):
-            # No 'artificial wall'
+        if num_crowd_close==np.sum(ind_close) or automatic_outer_boundary:
+            # No 'artificial wall' is created
             return
+
         print('self. margin', self.robot_margin)
         # Only consider 'far' obstacles for the wall repulsion
         pos_crowd = pos_crowd[:, num_crowd_close:]
@@ -186,11 +193,7 @@ class CrowdCircleContainer(GradientContainer):
             rel_center_wall = rel_center_wall/mag_center*max_center_displacement
         center_wall = agent_position + rel_center_wall
 
-        try:
-            radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
-        except:
-            import pdb; pdb.set_trace()
-            print('debug')
+        radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
         
         if radius_wall < human_radius:
             raise NotImplementedError("Collision with robot")
@@ -235,7 +238,8 @@ class CrowdLearningContainer(BaseContainer):
         self._dim = value
 
 
-    def update_step(self,  lidar_data=None, laser_data=None, cutoff_distance=5, max_displacement=2.0, angular_resolution=1000, exp_repulsion=3):
+    def update_step(self,  lidar_data=None, laser_data=None, cutoff_distance=5, max_displacement=2.0, 
+        angular_resolution=1000, exp_repulsion=3):
         ''' Input: lidar or obstacle data in 'obstacle frame of reference'''
         
         # Remove z-information / make_2d
