@@ -233,19 +233,24 @@ class Ellipse(Obstacle):
         
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
-    def get_gamma(self, position, in_global_frame=False):
+    def get_gamma(self, position, in_global_frame=False, gamma_type=None):
         ''' Gamma of ellipse 3d'''
 
-        if self.dim==2:
-            if sys.version_info>(3,0):
-                super().__init__(position, in_global_frame=in_global_frame)
-            else:
-                super(Ellipse, self).__init__(position, in_global_frame=in_global_frame)
+        # WHY WAS THIS ACTIVE?!?!
+        # if self.dim==2:
+            # if sys.version_info>(3,0):
+                # super().__init__(position, in_global_frame=in_global_frame)
+            # else:
+                # super(Ellipse, self).__init__(position, in_global_frame=in_global_frame)
+
+        if not gamma_type is None:
+            # TODO: remove at some stage...
+            warnings.warn("Gamma type not implemented for ellipse obstacle.")
 
         if in_global_frame:
             position = self.transform_global2relative(position)
             
-        return np.sum((np.abs(position)/self.axes_length)**(2*self.p))
+        return np.sum((np.abs(position)/self.axes_with_margin)**(2*self.p))
 
     
     def get_normal_ellipse(self, position):
@@ -541,8 +546,6 @@ class Ellipse(Obstacle):
             dist = np.linalg.norm(intersection-relative_center)
         return dist
 
-
-    
     def _get_local_radius(self, position, relative_center=None):
         # TODO: test for margin / reference point
         # TODO: improve speed
@@ -802,10 +805,13 @@ class Ellipse(Obstacle):
         
         if mag_ref_point:
             reference_point_temp = self.reference_point*(1 + dist_max/mag_ref_point)
-            gamma = self.get_gamma(reference_point_temp, np.zeros(self.dim))
-        
+            # gamma = self.get_gamma(reference_point_temp, np.zeros(self.dim))
+            gamma = self.get_gamma(reference_point_temp)
+
         if (mag_ref_point and gamma>1):
-            tt, tang_points = get_tangents2ellipse(edge_point=reference_point_temp, axes=self.axes_with_margin)
+            # import pdb; pdb.set_trace()
+            tt, tang_points = get_tangents2ellipse(edge_point=reference_point_temp,
+                                                   axes=self.axes_with_margin)
 
             tang_points[:, 0], tang_points[:, 1] = tang_points[:, 1], tang_points[:, 0]
             # = np.flip(tang_points, axis=1)
@@ -876,6 +882,9 @@ class CircularObstacle(Ellipse):
     @inflation_speed_radial.setter
     def inflation_speed_radial(self, value):
         self._inflation_speed_radial = value
+
+    def _get_local_radius(self, *args, **kwargs):
+        return self.radius_with_margin
     
     def get_deformation_velocity(self, position, in_global_frame=False):
         ''' Get relative velocity of a boundary point.

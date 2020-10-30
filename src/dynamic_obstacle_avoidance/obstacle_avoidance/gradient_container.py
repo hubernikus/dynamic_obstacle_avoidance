@@ -130,16 +130,6 @@ class GradientContainer(ObstacleContainer):
                     
             self._distance_matrix = new_dist_matr
 
-    # <<<<<<< HEAD
-    # def __delitem__(self, key):
-    #     # TODO: make a list of obstacle pointers
-    #     if sys.version_info>(3,0): # Python 3
-    #         super().__delitem__(value)
-    #     else: # Python 2 compatibility
-    #         super(ObstacleContainer, self).__delitem__(value)
-    # =======
-    # >>>>>>> 7bcc7bf213d16f25843989ed351d3fd8756a4a32
-
     def get_distance(self, ii, jj=None):
         '''Distance between obstacles ii and jj'''
         dist = self._distance_matrix[ii, jj]
@@ -188,7 +178,8 @@ class GradientContainer(ObstacleContainer):
         now = time.time()
         self.update_boundary_reference_points()
         delta_t = time.time() - now
-        print("calculation time: {}ms".format(delta_t))
+        print("calculation time for num_obs={} is: {}ms".format(
+            len(self), delta_t))
 
         obs_reference_size = np.zeros(len(self))
 
@@ -210,11 +201,12 @@ class GradientContainer(ObstacleContainer):
                     distances[jj] = self.get_distance(ii, jj)
 
             weights = get_reference_weight(distances, obs_reference_size)
-                
+
+            # print('weights', np.round(weights, 2))
             if np.sum(weights):
                 reference_point = np.zeros(self[ii].dim)
                 for jj in range(len(self)):
-                    if ii==jj:
+                    if ii==jj or weights[jj]:
                         continue
                     
                     ref = self.get_boundary_reference_point(ii, jj)
@@ -255,7 +247,7 @@ class GradientContainer(ObstacleContainer):
         self.reset_obstacles_have_moved()
 
         
-    def update_boundary_reference_points(self, max_it=100, convergence_err=1e-3, contact_err=1e-3, step_size=2):
+    def update_boundary_reference_points(self, max_it=100, convergence_err=1e-3, contact_err=1e-3, step_size=2, mult_consideration_dist=3, need_for_speed=True):
         ''' Boundary reference point refers to the closest point on the obstacle surface 
         to another obstacle. '''
         
@@ -268,16 +260,27 @@ class GradientContainer(ObstacleContainer):
 
         # Iterate over all obstacles (but last element, because nothing to compare to)
         for ii in range(len(self)-1):
+            size_ii = self[ii].get_reference_length()
             for jj in range(ii+1, len(self)):
                 # Only update if either of the obstacles has 'moved/updated' previously
                 if not (self[ii].has_moved or self[jj].has_moved):
                     continue
 
+                # Check if exeeds maximal distance
+                size_jj = self[ii].get_reference_length()
+                dist_ii2jj = np.linalg.norm(self[ii].center_position-self[jj].center_position)
+
+                # Don't calculate if obstacles are too far away from each other
+                if dist_ii2jj-(size_ii+size_jj) > max(size_ii, size_jj)*mult_consideration_dist:
+                    # print("Too far away")
+                    continue
+
                 # Speed up process for circular obstacles
-                if (isinstance(self[ii], CircularObstacle)
-                    and isinstance(self[jj], CircularObstacle)):
+                if ((isinstance(self[ii], CircularObstacle)
+                    and isinstance(self[jj], CircularObstacle))
+                    or need_for_speed):
                     
-                    dist, ref_point1, ref_point2 = self.get_boundary_reference_point_circular(
+                    dist, ref_point1, ref_point2 = self.get_boundary_reference_point_simplified(
                         self[ii], self[jj]
                     )           
 
@@ -381,42 +384,57 @@ class GradientContainer(ObstacleContainer):
                         # Distance==0, i.e. intersecting & ref_point1==ref_point2
                         self.intersection_matrix[ii, jj] = ref_point1
 
-    def get_boundary_reference_point_circular(self, obs0, obs1):
+    def get_boundary_reference_point_simplified(self, obs0, obs1):
         ''' Accelerated calculation for circles. 
         Important assumption: obs0 is never boundry (last in list). '''
 
         direction_center = obs1.center_position - obs0.center_position
         dist_center = np.linalg.norm(direction_center)
 
+        rad_point_obs0 = obs0.get_local_radius_point(direction=direction_center, in_global_frame=True)
+        rad_point_obs1 = obs1.get_local_radius_point(direction=-direction_center, in_global_frame=True)
+        # rad_obs0 = obs1.get_local_radius(obs1.center_position)
+        # rad_obs1 = obs1.get_local_radius(obs0.center_position)
+        rad_obs0 = np.linalg.norm(rad_point_obs0-obs0.center_position)
+        rad_obs1 = np.linalg.norm(rad_point_obs1-obs1.center_position)
+
+        # import pdb; pdb.set_trace()
+        # if obs0.is_boundary:
+            # warnings.warn("Unexpected boundary index")
+            # if obs1.is_boundary:
+                # raise 
+            # obs0, obs1 = obs1, obs0
+
         if obs1.is_boundary:
+            # Only object1 can be boundary
             direction_center = direction_center/dist_center
             frac_boundary = 0.1
             point1 = None
-            if dist_center > (obs1.radius_with_margin-obs0.radius_with_margin):
+            if dist_center > (rad_obs1-rad_obs0):
                 # Intersecting
-                mag_displ = (obs1.radius_with_margin+obs0.radius_with_margin*frac_boundary)
+                mag_displ = (rad_obs1+rad_obs0*frac_boundary)
                 if dist_center > mag_displ:
                 # if False:
                     point0 = obs0.center_position
                     # mag_displ = dist_center
                     # point0 =  (-1)*mag_displ*direction_center + obs1.center_position
                 else:
-                    mag_displ = min(mag_displ, dist_center+obs0.radius_with_margin)
+                    mag_displ = min(mag_displ, dist_center+rad_obs0)
                     point0 =  (-1)*mag_displ*direction_center + obs1.center_position
                 dist = 0
             else:
-                point0 = (-1)*obs0.radius_with_margin*direction_center + obs0.center_position
-                dist = (obs1.radius_with_margin-obs0.radius_with_margin) - dist_center
+                point0 = (-1)*rad_obs0*direction_center + obs0.center_position
+                dist = (rad_obs1-rad_obs0) - dist_center
         else:
-            if dist_center < (obs0.radius_with_margin+obs1.radius_with_margin):
+            if dist_center < (rad_obs0+rad_obs1):
                 # Intersecting
                 point0 = point1 = (obs0.center_position - obs1.center_position)/2.0
                 dist = 0
             else:
                 direction_center = direction_center/dist_center
-                point0 = obs0.radius_with_margin*direction_center + obs0.center_position
-                point1 = (-1)*obs1.radius_with_margin*direction_center + obs1.center_position
-                dist = dist_center-(obs0.radius_with_margin+obs1.radius_with_margin)
+                point0 = rad_obs0*direction_center + obs0.center_position
+                point1 = (-1)*rad_obs1*direction_center + obs1.center_position
+                dist = dist_center-(rad_obs0+rad_obs1)
 
         return dist, point0, point1
                         
@@ -453,6 +471,7 @@ class GradientContainer(ObstacleContainer):
         dist_dir = (surface_points[:, 1] - surface_points[:, 0])
         dist_magnitude = np.linalg.norm(dist_dir)
 
+        t_start_graddescent = time.time()
         while not is_intersecting:
             # Gradient descent in the angle space of the obstacle
             for obs, ii in zip([obs0, obs1], [0, 1]):
@@ -522,7 +541,6 @@ class GradientContainer(ObstacleContainer):
                 print("Maximum {} iterations reached".format(it_count))
                 break
 
-
         reference_points = np.zeros((dim, 2))
         for obs, ii in zip((obs0, obs1), [0, 1]):
             angle = angles[ii*(dim-1):(ii+1)*(dim-1)]
@@ -531,6 +549,9 @@ class GradientContainer(ObstacleContainer):
             reference_points[:, ii] = obs.get_local_radius_point(direction=dir0,
                                                                  in_global_frame=True)
 
+        delta_t = time.time() - t_start_graddescent
+        print("Grad descent with dt={}s".format(delta_t))
+              
         # Do gamma descent if objects are interesecting
         if is_intersecting:
             reference_point = self.gamma_gradient_descent(

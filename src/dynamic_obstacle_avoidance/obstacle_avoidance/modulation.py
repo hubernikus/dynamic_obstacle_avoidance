@@ -530,7 +530,8 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
         
     return tangent_vectors, tangent_points
 
-def get_reference_weight(distance, obs_reference_size=None, distance_min=0, distance_max=3, weight_pow=1):
+def get_reference_weight(distance, obs_reference_size=None,
+                         distance_min=0, distance_max=3, weight_pow=1):
     ''' Get a weight inverse proportinal to the distance'''
 
     # TODO: based on inverse prop weight calculation
