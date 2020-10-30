@@ -812,8 +812,9 @@ class Ellipse(Obstacle):
             # import pdb; pdb.set_trace()
             tt, tang_points = get_tangents2ellipse(edge_point=reference_point_temp,
                                                    axes=self.axes_with_margin)
-
-            tang_points[:, 0], tang_points[:, 1] = tang_points[:, 1], tang_points[:, 0]
+            
+            # tang_points[:, 0], tang_points[:, 1] = tang_points[:, 1], tang_points[:, 0]
+            tang_points = np.flip(tang_points, axis=1)
             # = np.flip(tang_points, axis=1)
             
             if np.cross(tang_points[:, 0], tang_points[:, 1]) > 0: # TODO: remove 
@@ -823,7 +824,6 @@ class Ellipse(Obstacle):
 
             self.edge_reference_points = np.zeros((self.dim, 2, 2))
             self.edge_reference_points[:, self.ind_edge_ref, :] = np.tile(reference_point_temp,(2, 1)).T
-                
             
             self.edge_reference_points[:, self.ind_edge_tang, :] = tang_points
 
@@ -836,6 +836,7 @@ class Ellipse(Obstacle):
             for ii in range(self.normal_vector.shape[1]):
                 self.tangent_vector[:, ii] = [-self.normal_vector[1, ii],
                                               self.normal_vector[0, ii]]
+
         else:
             self.n_planes = 0
 
