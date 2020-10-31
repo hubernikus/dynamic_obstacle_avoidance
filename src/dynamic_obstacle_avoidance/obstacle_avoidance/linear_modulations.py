@@ -146,7 +146,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             xd_obs_n = exp_weight * deformation_vel
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
-
+    
+    # import pdb; pdb.set_trace()
     xd = xd-xd_obs #computing the relative velocity with respect to the obstacle
     
     xd_hat = np.zeros((dim, N_obs))
@@ -193,7 +194,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             xd_relative_norm = np.linalg.norm(xd)
             if xd_relative_norm:
                 # Limit maximum magnitude
-                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**1
+                sticky_surface_power=3
+                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**sticky_surface_power
                 mag = np.linalg.norm(xd_hat[:, n])
                 xd_hat[:, n] = xd_hat[:, n]/mag*xd_relative_norm * eigenvalue_magnitude
                 
@@ -229,6 +231,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 
+    # import pdb; pdb.set_trace()
     xd_hat_normalized = np.zeros(xd_hat.shape)
     ind_nonzero = (xd_hat_magnitude>0)
     if np.sum(ind_nonzero):
@@ -242,8 +245,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         total_weight = 1-weight_attr # Does this work?!
     else:
         total_weight = 1
-
-    weighted_direction = get_directional_weighted_sum(null_direction=xd_normalized, directions=xd_hat_normalized, weights=weight, total_weight=total_weight)
+    #import pdb; pdb.set_trace()
+    weighted_direction = get_directional_weighted_sum(null_direction=xd_normalized, 
+        directions=xd_hat_normalized, weights=weight, total_weight=total_weight)
 
     xd_magnitude = np.sum(xd_hat_magnitude*weight)
     vel_final = xd_magnitude*weighted_direction.squeeze()

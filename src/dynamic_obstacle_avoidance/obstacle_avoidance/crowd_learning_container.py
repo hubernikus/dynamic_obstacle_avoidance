@@ -172,7 +172,7 @@ class CrowdCircleContainer(GradientContainer):
             human_obs.is_human = True
             self.append(human_obs) # TODO: add robot margin
 
-        if num_crowd_close==np.sum(ind_close) or automatic_outer_boundary:
+        if num_crowd_close==np.sum(ind_close) or not automatic_outer_boundary:
             # No 'artificial wall' is created
             return
 

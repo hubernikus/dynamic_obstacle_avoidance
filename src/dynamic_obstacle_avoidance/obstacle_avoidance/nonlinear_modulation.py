@@ -191,15 +191,6 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
                 weight_sliding = slider_angle*weight_counter_obstacle + (1-slider_angle)*1
 
                 weight_obs_product *= weight_sliding
-            #
-            # TODO REMOVE THIS (START)
-            #
-            # TODO REMOVE THIS AFTER DEBUG
-            #
-            import pdb; pdb.set_trace() ## DEBUG ##
-            
-            # weight_obs_product = 1 
-            # TODO REMOVE THIS (END)
             
             
             if Gamma[o] <= 1: # Any point inside the obstacle is mapped to the center

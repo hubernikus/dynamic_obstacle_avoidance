@@ -577,10 +577,15 @@ class Polygon(Obstacle):
 
             if np.sum(ind_nonzero):
                 mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
-                Gamma[ind_nonzero] = mag_position / dist2hulledge[ind_nonzero]
+                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
+                if self.is_boundary:
+                    Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
+                else:
+                    Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.get_maximal_distance() + 1
 
             if self.is_boundary:
-                Gamma = self.get_boundaryGamma(Gamma)
+                pow_boundary_gamma=2
+                Gamma = self.get_boundaryGamma(Gamma)**pow_boundary_gamma
 
         elif False: # original "proportional"
             # TODO: remove
