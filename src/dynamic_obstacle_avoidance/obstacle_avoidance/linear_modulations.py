@@ -191,13 +191,26 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
         # import pdb; pdb.set_trace()
         if obs[n].has_sticky_surface:
-            xd_relative_norm = np.linalg.norm(xd)
-            if xd_relative_norm:
-                # Limit maximum magnitude
-                sticky_surface_power=3
-                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**sticky_surface_power
+            xd_norm = np.linalg.norm(xd)
+            
+            if xd_norm:    # Nonzero
+                # Normalize xd_hat
                 mag = np.linalg.norm(xd_hat[:, n])
-                xd_hat[:, n] = xd_hat[:, n]/mag*xd_relative_norm * eigenvalue_magnitude
+                if mag:    # nonzero
+                    xd_hat[:, n] = xd_hat[:, n]/mag
+                                    
+                # Limit maximum magnitude with respect to the tangent value
+                sticky_surface_power = 2
+                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**sticky_surface_power
+
+                # import pdb; pdb.set_trace()
+                xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
+                
+                tang_vel = np.abs(E_orth[:, :, n].T.dot(xd_temp)[0])
+                eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1)
+                # print('eig vel', eigenvalue_magnitude)
+                
+                xd_hat[:, n] = xd_hat[:, n]*xd_norm * eigenvalue_magnitude
                 
         if repulsive_obstacle:
         # if False:

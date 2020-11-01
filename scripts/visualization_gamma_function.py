@@ -97,7 +97,7 @@ def visualize_intersecting_ellipse(
 
     xAttractor=[0, 0]
     figsize = (5, 3.0)
-    point_init = np.array([4.5, -0.3])
+    point_init = np.array([4.5, -0.9])
 
     obs = GradientContainer()
     obs.append(Ellipse(
@@ -490,7 +490,7 @@ if (__name__)=="__main__":
     plt.ion()
     # visualize_simple_ellipse(n_resolution=20)
 
-    # visualize_intersecting_ellipse(save_figures=True, n_resolution=20)
+    visualize_intersecting_ellipse(save_figures=False, n_resolution=20)
     
     # visualize_repulsive_cube(n_resolution=100, save_figure=True)
     

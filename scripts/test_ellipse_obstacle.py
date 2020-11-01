@@ -14,6 +14,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import Gra
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse, CircularObstacle
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
+
 def test_normal_ellipse():
     ''' Normal has to point alongside reference'''
     obs = Ellipse(
@@ -108,7 +109,6 @@ def visualization_circular_reference_point_outside():
     obs_list = GradientContainer()
     obs_list.append(obs)
     
-
     Simulation_vectorFields(
         x_range=[-3, 3], y_range=[-3, 3],
         point_grid=0,
@@ -116,11 +116,9 @@ def visualization_circular_reference_point_outside():
         draw_vectorField=False,
         automatic_reference_point=False,        
     )
-        
-    
 
     
-if (__name__)=="__main__":
+if (__name__) == "__main__":
     # test_normal_ellipse()
 
     # visualize_ellipse_with_ref_point_inside()
