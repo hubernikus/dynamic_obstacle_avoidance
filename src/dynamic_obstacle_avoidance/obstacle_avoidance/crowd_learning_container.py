@@ -116,7 +116,8 @@ class CrowdCircleContainer(GradientContainer):
                 del self[it]
             else:
                 it += 1
-                
+
+        # import pdb; pdb.set_trace()
 
         # Check if there are obstacles in crowd
         if len(crowd_list)==0 and automatic_outer_boundary:
@@ -141,7 +142,6 @@ class CrowdCircleContainer(GradientContainer):
         # Neglect far away obstacles (to speed up calculation)
         ind_close = (magnitudes<dist_far)
         if np.sum(ind_close) < num_crowd_close:
-
             if automatic_outer_boundary:
                 # Remove the boundary, very simple environment close obstacles
                 self.delete_boundary()
@@ -161,7 +161,6 @@ class CrowdCircleContainer(GradientContainer):
         pos_crowd = pos_crowd[:, ind_sorted]
         vel_crowd = vel_crowd[:, ind_sorted]
         magnitudes = magnitudes[ind_sorted]
-
     
         for ii in range(num_crowd_close):
             human_obs = CircularObstacle(
@@ -169,7 +168,13 @@ class CrowdCircleContainer(GradientContainer):
                 linear_velocity=vel_crowd[:, ii], angular_velocity=0,
                 tail_effect=False, 
                 radius=human_radius, margin_absolut=self.robot_margin)
+
+            # TODO include in CircularObstacle / crowd-obstacle
             human_obs.is_human = True
+            
+            human_obs.sigma = 7 # exponential weight for veloctiy reduction
+            human_obs.reactivity = 3 # veloctiy reduction
+            
             self.append(human_obs) # TODO: add robot margin
 
         if num_crowd_close==np.sum(ind_close) or not automatic_outer_boundary:

@@ -278,7 +278,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     # Numerical hull of ellipsoid 
     for n in range(len(obs)): 
-        obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
+        obs[n].draw_obstacle(numPoints=50) # 50 points resolution
 
     # Adjust dynamic center
     if automatic_reference_point:
@@ -311,6 +311,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     
     plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference)
 
+    # import pdb; pdb.set_trace()
     # return 
     # Show certain streamlines
     if np.array(points_init).shape[0]:
@@ -342,8 +343,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     n_samples = 0
     
-    pos1 = [2.02854, -1.4017]
-    pos2 = [2.02854, -1.8]
+    pos1 = [-5.0, 2.5]
+    pos2 = [5.0, 2.5]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -360,7 +361,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         YY[ix, iy] = y_sample[ii]
         
     ########## STOP REMOVE ###########
-    
+    # import pdb; pdb.set_trace()
     if attractingRegion:      # Forced to attracting Region
         def obs_avoidance_temp(x, xd, obs):
             return obs_avoidance_func(x, xd, obs, xAttractor)
@@ -385,7 +386,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             xd_init[:, ix, iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
 
             # print('pos', pos)
-            xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs) # DEBUGGING: remove
+            xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs)     # DEBUGGING: remove
 
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
@@ -409,10 +410,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     print('Average time: {} ms'.format(np.round((end_time-start_time)/(n_calculations)*1000),5) )
     print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
+    # import pdb; pdb.set_trace()
     if plotStream:
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
-
             strm = res_ifd = ax.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
             
         else:
@@ -433,6 +434,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     plt.ion(); plt.show();
 
+    # import pdb; pdb.set_trace()
+    
     if saveFigure:
         try:
             plt.savefig('figures/' + figName + '.png', bbox_inches='tight')

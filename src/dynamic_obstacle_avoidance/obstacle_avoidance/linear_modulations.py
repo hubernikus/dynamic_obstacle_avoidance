@@ -39,9 +39,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     else:
         x = position
 
-    # print('position', position)
-    N_obs = len(obs) #number of obstacles
-    if not N_obs: # No obstacle
+    N_obs = len(obs)       # number of obstacles
+    if not N_obs:          # No obstacle
         return xd
 
     dim = obs[0].dimension
@@ -107,7 +106,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             Gamma[n], dim, repulsion_coeff=obs[n].repulsion_coeff,
             tangent_eigenvalue_isometric=tangent_eigenvalue_isometric,
             rho=obs[n].reactivity,
-            
         )
         
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
@@ -125,30 +123,40 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             xd_w = np.zeros(dim)
             # raise ValueError('NOT implemented for d={}'.format(d))
             warnings.warn('Angular velocity is not defined for={}'.format(d))
+
+        weight_angular = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
         
         linear_velocity = obs[n].linear_velocity
-        velocity_only_in_normal_direction = True
-        if velocity_only_in_normal_direction:
-            lin_vel_normal = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
-            if lin_vel_normal[0]>0 and not obs[n].is_boundary:
+        velocity_only_in_positive_normal_direction = True
+        if velocity_only_in_positive_normal_direction:
+            lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
+            if lin_vel_local[0]<0 and not obs[n].is_boundary:
                 # Obstacle is moving towards the agent
-                linear_velocity = E_orth[:, 0, n] * lin_vel_normal[0]
+                # lin_vel_local[0] = 0
+                # linear_velocity = E_orth[:, :, n].dot(lin_vel_local)
+                # import pdb; pdb.set_trace()
+                linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:
-                linear_velocity = np.zeros(lin_vel_normal.shape[0])
+                linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
 
+            weight_linear = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
+            # linear_velocity = weight_linear*linear_velocity
 
+        xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
+        
         # The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
-        exp_weight = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
-        xd_obs_n = exp_weight*(np.array(linear_velocity) + xd_w)
-
+        
         if obs[n].is_deforming:
             deformation_vel = obs[n].get_deformation_velocity(pos_relative[:, n])
-            xd_obs_n = exp_weight * deformation_vel
+            xd_obs_n += exp_weight * deformation_vel
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
+        
+    xd = xd-xd_obs      # Computing the relative velocity with respect to the obstacle
     
-    # import pdb; pdb.set_trace()
-    xd = xd-xd_obs #computing the relative velocity with respect to the obstacle
+    # get_relative_velocity = True
+    # if get_relative_velocity:
+        # return xd_obs
     
     xd_hat = np.zeros((dim, N_obs))
     xd_hat_magnitude = np.zeros((N_obs))
