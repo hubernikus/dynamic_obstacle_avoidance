@@ -272,7 +272,9 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     
 
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None):
+
+    # TODO: gamma ditance does not fit as paramtere here (since not visual)...
 
     dim = 2
 
@@ -386,7 +388,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             xd_init[:, ix, iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
 
             # print('pos', pos)
-            xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs)     # DEBUGGING: remove
+            xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs,
+            gamma_distance=gamma_distance)     # DEBUGGING: remove
 
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])

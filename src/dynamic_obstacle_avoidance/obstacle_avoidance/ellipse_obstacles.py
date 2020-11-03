@@ -233,7 +233,7 @@ class Ellipse(Obstacle):
         
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
-    def get_gamma(self, position, in_global_frame=False, gamma_type=None):
+    def get_gamma(self, position, in_global_frame=False, gamma_type=None, gamma_distance=None):
         ''' Gamma of ellipse 3d'''
 
         # WHY WAS THIS ACTIVE?!?!
@@ -249,8 +249,14 @@ class Ellipse(Obstacle):
 
         if in_global_frame:
             position = self.transform_global2relative(position)
+
+        if (not gamma_type=="proportional" or gamma_distance is not None
+            or self.gamma_distance is not None):
+            warnings.warn("Implement linear gamma type.")
             
-        return np.sum((np.abs(position)/self.axes_with_margin)**(2*self.p))
+        Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.p))
+            
+        return Gamma
 
     
     def get_normal_ellipse(self, position):

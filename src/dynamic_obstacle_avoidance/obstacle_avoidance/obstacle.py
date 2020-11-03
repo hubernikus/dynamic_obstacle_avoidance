@@ -46,6 +46,7 @@ class Obstacle(State):
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1,
+                 gamma_distance=None,
                  # *args, **kwargs # maybe random arguments
                  ):
         
@@ -164,7 +165,10 @@ class Obstacle(State):
         # Repulsion coefficient to actively move away from obstacles (if possible)
         # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
-        self.reactivity =  reactivity
+        self.reactivity = reactivity
+
+        # Distance which decides over 'proportional' factor for gamma
+        self.gamma_distance = gamma_distance
         
         # self.properties = {} # TODO (maybe): use kwargs for properties..
 

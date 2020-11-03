@@ -179,7 +179,7 @@ class Polygon(Obstacle):
         '''
         Calculate Normal Distance and Distance to Edge points
         '''
-
+        
         #TODO: is distance to surface still needed
         if isinstance(edge_points, type(None)):
             edge_points = self.edge_points
@@ -542,7 +542,7 @@ class Polygon(Obstacle):
         return normal_vector
 
 
-    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional"):
+    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional", gamma_distance=None):
         ''' 
         Get distance-measure from surface of the obstacle.
         INPUT: position: list or array of position
@@ -552,10 +552,8 @@ class Polygon(Obstacle):
         if isinstance(position, list):
             position = np.array(position)
 
-        # print('xbpos', position)
         if in_global_frame:
             position = self.transform_global2relative(position)
-        # print('pos', position)
         
         multiple_positions = (len(position.shape)>1)
         if multiple_positions:
@@ -566,132 +564,43 @@ class Polygon(Obstacle):
 
         Gamma = np.zeros(n_points)
         Gamma_new = np.zeros(n_points)
-        if gamma_type=="proportional":
+
+        if self.gamma_distance is not None:
+            gamma_distance = self.gamma_distance
+
+        if gamma_distance is not None:
+            # Proportionally reduce gamma distance with respect to paramter
+            dist2hulledge = self.get_distance_to_hullEdge(position)
+            ind_nonzero = dist2hulledge>0
+            
+            if np.sum(ind_nonzero):
+                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
+                
+                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
+                if self.is_boundary:
+                    mag_position = (dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
+
+                Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.gamma_distance + 1
+        
+            
+        elif gamma_type=="proportional":
             # TODO: extend rule to include points with Gamma < 1 for both cases
             # dist2hull = np.ones(self.edge_points.shape[1])*(-1)
- 
             dist2hulledge = self.get_distance_to_hullEdge(position)
-            # import pdb; pdb.set_trace() ## DEBUG ##
-            
-            ind_nonzero = dist2hulledge>0
 
+            ind_nonzero = dist2hulledge>0
+            
             if np.sum(ind_nonzero):
                 mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
                 # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
-                if self.is_boundary:
-                    Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
-                else:
-                    Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.get_maximal_distance() + 1
+                # if self.is_boundary:
+                Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
+                # else:
+                    # Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.get_maximal_distance() + 1
 
             if self.is_boundary:
                 pow_boundary_gamma=2
                 Gamma = self.get_boundaryGamma(Gamma)**pow_boundary_gamma
-
-        elif False: # original "proportional"
-            # TODO: remove
-            is_intersectingSurfaceTile = np.zeros(self.edge_points.shape[1], dtype=bool)
-
-            mag_position = np.linalg.norm(position, axis=0)
-
-            zero_mag = mag_position==0
-            if np.sum(zero_mag):
-                if self.is_boundary:
-                    Gamma[zero_mag] = sys.float_info.max
-                    
-            dist2hull = self.get_distance_to_hullEdge(position)
-            
-            if self.dim==2:
-                # TODO -- speed up!!!
-                position_dir = position / mag_position
-                # for jj in np.arange(n_points)[~zero_mag]: 
-                #     for ii in range(self.edge_points.shape[1]):
-                #         # Use self.are_lines_intersecting() function
-                #         surface_dir = (self.edge_points[:, (ii+1)%self.edge_points.shape[1]] - self.edge_points[:, ii])
-
-                #         matrix_ref_tang = np.vstack((position_dir[:, jj], -surface_dir)).T
-                #         if np.linalg.matrix_rank(matrix_ref_tang)>1:
-                #             dist2hull[ii], dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ii], rcond=-1)[0]
-                #         else:
-                #             dist2hull[ii] = -1
-                #             dist_tangent = -1
-                #         dist_tangent = np.round(dist_tangent, 10)
-                #         is_intersectingSurfaceTile[ii] = (dist_tangent>=0) & (dist_tangent<=1)
-
-                #     Gamma[jj] = mag_position[jj]/np.min(dist2hull[((dist2hull>0) & is_intersectingSurfaceTile)])
-                if not self.margin_absolut:
-                    for jj in np.arange(n_points)[~zero_mag]:
-                        angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_points)
-                        magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
-
-                        # angle_to_reference = np.arccos(ref)
-                        ind_low = np.argmin(np.abs(magnitude_angles))
-
-                        if magnitude_angles[ind_low]==0:
-                            dist2hull = np.linalg.norm(self.edge_points[:, ind_low])
-
-                        else:
-                            if angle_to_reference[0, ind_low] < 0:
-                                ind_high = (ind_low+1)%self.n_planes
-                            else:
-                                ind_high = ind_low
-                                ind_low = (ind_high-1)%self.n_planes
-
-                            surface_dir = self.edge_points[:, ind_high]-self.edge_points[:, ind_low]
-
-                            dist2hull, dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, self.edge_points[:, ind_low], rcond=-1)[0]
-
-                        Gamma[jj] = mag_position[jj]/dist2hull
-                        
-                else:
-                    for jj in np.arange(n_points)[~zero_mag]:
-                        
-                        angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
-                                                             
-
-                        magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
-                        
-                        ind_low = np.argmin(np.abs(magnitude_angles))
-                        if angle_to_reference[0, ind_low] <= 0:
-                            ind_high = (ind_low+1)%self.n_planes
-                        else:
-                            ind_high = ind_low
-                            ind_low = (ind_high-1)%self.n_planes
-
-                        if not np.sum(np.abs(self.edge_reference_points[:, ind_low, 0]-self.edge_reference_points[:, ind_low, 1])): # one point
-                            surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 0]
-                            edge_point = self.edge_reference_points[:, ind_low, 0]
-                            
-                        else:
-                            angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
-                            
-                            if angle_hull_double_low>0:
-                                # Solve quadratic equation to get intersection with (partial-) circl
-                                vv = position_dir[:, jj] # normalized
-                                if self.reference_point_is_inside or ind_low<self.ind_edge_ref:
-                                    ind_edge = ind_low
-                                else:
-                                    ind_edge = ind_low - (self.n_planes-self.n_planes_edge)
-                                pp = self.edge_points[:, ind_edge]
-                                
-                                AA = vv[0]*vv[0] + vv[1]* vv[1]
-                                BB = -2*(vv[0]*pp[0] + vv[1]*pp[1])
-                                CC = pp[0]*pp[0] + pp[1]*pp[1] \
-                                    - self.margin_absolut*self.margin_absolut
-                                D_sqrt = np.sqrt(BB*BB - 4*AA*CC)
-
-                                ref_magnitude = np.array([(-BB+D_sqrt), (-BB-D_sqrt)])/(2*AA)
-                                dist2hull = np.max(ref_magnitude)
-                                
-                                Gamma[jj] = mag_position[jj]/dist2hull
-                                continue
-                            else:
-                                surface_dir = self.edge_reference_points[:, ind_high, 0]-self.edge_reference_points[:, ind_low, 1]
-                                edge_point = self.edge_reference_points[:, ind_low, 1]
-                            
-                        dist2hull, dist_tangent = np.linalg.lstsq(np.vstack((position_dir[:, jj], -surface_dir)).T, edge_point, rcond=-1)[0]
-                        Gamma[jj] = mag_position[jj]/dist2hull
-            else:
-                raise ValueError("Not defined for d=={}".format(self.dim))
 
         elif gamma_type=="norm2":
             distances2plane = self.get_distance_to_hullEdge(position)

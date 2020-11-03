@@ -1,5 +1,4 @@
 #!/USSR/bin/python3
-
 """
 @date 2019-10-15
 @author Lukas Huber 

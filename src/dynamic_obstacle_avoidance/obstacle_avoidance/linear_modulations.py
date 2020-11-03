@@ -18,7 +18,7 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True):
+def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
@@ -72,11 +72,19 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     for n in range(N_obs):
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
+    Gamma_proportional = np.zeros((N_obs))
+    for n in range(N_obs):
+        Gamma_proportional[n] = obs[n].get_gamma(pos_relative[:, n],
+                                                 in_global_frame=evaluate_in_global_frame,
+                                                 gamma_distance=gamma_distance,
+        )
+    # Gamma_proportional = np.copy(Gamma)
+
     if zero_vel_inside:
         if any(Gamma < 1):
             return np.zeros(dim)
 
-    ind_obs = Gamma<cut_off_gamma
+    ind_obs = (Gamma<cut_off_gamma)
     if any(~ind_obs):
         return xd
 
@@ -85,14 +93,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     if N_attr:
         d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
-        weight = compute_weights(np.hstack((Gamma, [d_a])), N_obs+N_attr)
+        weight = compute_weights(np.hstack((Gamma_proportional, [d_a])), N_obs+N_attr)
     else:
-        weight = compute_weights(Gamma, N_obs)
-
-    # Linear and angular roation of velocity
-    # TODO: transform to global/relative frame!
-    xd_dx_obs = np.zeros((dim, N_obs))
-    xd_w_obs = np.zeros((dim, N_obs))  #velocity due to the rotation of the obstacle
+        weight = compute_weights(Gamma_proportional, N_obs)
 
     # Modulation matrices
     E = np.zeros((dim, dim, N_obs))
@@ -110,6 +113,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
+    # Linear and angular roation of velocity
     xd_obs = np.zeros((dim))
     
     for n in np.arange(N_obs)[ind_obs]:
@@ -124,7 +128,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             # raise ValueError('NOT implemented for d={}'.format(d))
             warnings.warn('Angular velocity is not defined for={}'.format(d))
 
-        weight_angular = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
+        weight_angular = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
         
         linear_velocity = obs[n].linear_velocity
         velocity_only_in_positive_normal_direction = True
@@ -139,7 +143,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             else:
                 linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
 
-            weight_linear = np.exp(-1/obs[n].sigma*(np.max([Gamma[n],1])-1))
+            weight_linear = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
             # linear_velocity = weight_linear*linear_velocity
 
         xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
@@ -154,16 +158,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         
     xd = xd-xd_obs      # Computing the relative velocity with respect to the obstacle
     
-    # get_relative_velocity = True
-    # if get_relative_velocity:
-        # return xd_obs
-    
     xd_hat = np.zeros((dim, N_obs))
     xd_hat_magnitude = np.zeros((N_obs))
 
     n = 0
-    # plt.quiver(x[0], x[1], E_orth[0, 0, n], E_orth[1, 0, n], color='r')
-    # plt.quiver(x[0], x[1], E_orth[0, 1, n], E_orth[1, 1, n], color='g')
     
     for n in np.arange(N_obs)[ind_obs]:
         if (
@@ -209,7 +207,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                                     
                 # Limit maximum magnitude with respect to the tangent value
                 sticky_surface_power = 2
-                eigenvalue_magnitude = 1 - 1./abs(Gamma[n])**sticky_surface_power
+                eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
 
                 # import pdb; pdb.set_trace()
                 xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
@@ -252,7 +250,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
 
-    # import pdb; pdb.set_trace()
     xd_hat_normalized = np.zeros(xd_hat.shape)
     ind_nonzero = (xd_hat_magnitude>0)
     if np.sum(ind_nonzero):
@@ -266,7 +263,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         total_weight = 1-weight_attr # Does this work?!
     else:
         total_weight = 1
-    #import pdb; pdb.set_trace()
+
     weighted_direction = get_directional_weighted_sum(null_direction=xd_normalized, 
         directions=xd_hat_normalized, weights=weight, total_weight=total_weight)
 
@@ -274,14 +271,14 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     vel_final = xd_magnitude*weighted_direction.squeeze()
 
     vel_final = vel_final + xd_obs
+    
     if not velocicity_max is None:
-        # IMPLEMENT MAXIMUM VELOCITY
+        # IMPLEMENT MAXIMUM VELOCITY / Not needed with sticky boundary
         xd_norm = np.linalg.norm(vel_final)
         if xd_norm > velocicity_max:
             vel_final = vel_final/xd_norm * velocicity_max
 
-    # import pdb; pdb.set_trace()
-    # transforming back from object frame of reference to inertial frame of reference
+    # Transforming back from object frame of reference to inertial frame of reference
     return vel_final
 
 
