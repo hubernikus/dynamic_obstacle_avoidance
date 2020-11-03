@@ -178,8 +178,8 @@ class GradientContainer(ObstacleContainer):
         now = time.time()
         self.update_boundary_reference_points()
         delta_t = time.time() - now
-        print("calculation time for num_obs={} is: {}ms".format(
-            len(self), delta_t))
+        # print("calculation time for num_obs={} is: {}ms".format(
+        #    len(self), delta_t))
 
         obs_reference_size = np.zeros(len(self))
 
