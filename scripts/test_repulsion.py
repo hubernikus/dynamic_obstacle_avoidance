@@ -120,9 +120,39 @@ def get_outside_enviornment_lshape_hack(robot_margin=0.6):
     return obs
 
 
+def get_attracting_cirlce(margin_absolut=0):
+    obs = GradientContainer() # create empty obstacle list
+
+    obs.append(Cuboid(
+        axes_length=[0.4, 0.4],
+        center_position=[0.0, 0.0],
+        orientation=0./180*pi,
+        margin_absolut=robot_margin,
+        is_boundary=False,
+        # repulsion_coeff=-2.0,
+        repulsion_coeff=-2.0,
+        tail_effect=False,
+        name="center_cube",
+        has_sticky_surface=False,
+    ))
+        
+    # obs.append(CircularObstacle(
+    #     radius=0.5,
+    #     center_position=[1.5, -0.0],
+    #     orientation=0./180*pi,
+    #     margin_absolut=margin_absolut,
+    #     is_boundary=False,
+    #     repulsion_coeff=2.0,
+    #     tail_effect=False,
+    #     name="center_cube",
+    # ))
+
+    return obs
+
+
 
 if (__name__)=="__main__":
-    num_resolution=80
+    num_resolution = 30
     saveFigures=False
 
     x_lim = [-0.3, 4.5]
@@ -133,9 +163,15 @@ if (__name__)=="__main__":
     robot_margin = 0.3
 
     # obs = get_outside_enviornment(robot_margin)
-    obs = get_outside_enviornment_simplified(robot_margin)
+    # obs = get_outside_enviornment_simplified(robot_margin)
     # obs = get_outside_enviornment_lshape(robot_margin)
     # obs = get_outside_enviornment_lshape_hack(robot_margin)
+
+
+    xAttractor = np.array([2.5, 0])
+    x_lim, y_lim = [-2.0, 3.5], [-2.1, 2.1]
+    # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
+    obs = get_attracting_cirlce(robot_margin)
 
     vectorfield = True
     if vectorfield:
@@ -148,17 +184,20 @@ if (__name__)=="__main__":
         # )
 
         fig_mod, ax_mod = Simulation_vectorFields(
-            x_lim, y_lim, obs=obs, xAttractor=xAttractor, point_grid=num_resolution
+            x_lim, y_lim, obs=obs, xAttractor=xAttractor, point_grid=num_resolution,
+            show_streamplot=False, noTicks=False,
+            vector_field_only_outside=False,
         )
 
     else:
         # Specific value
-        position = np.array([1.06, 1.07])
+        # position = np.array([1.06, 1.07])
+        position = np.array([0.0, 0.5])
 
         ds_init = linearAttractor(position, x0=xAttractor)
         ds_mod = obs_avoidance_interpolation_moving(position, ds_init, obs)
 
         print('ds_mod', ds_mod)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
 # Run function

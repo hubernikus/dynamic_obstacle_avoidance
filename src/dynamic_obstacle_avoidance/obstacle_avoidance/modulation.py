@@ -20,17 +20,20 @@ import matplotlib.pyplot as plt
 
 
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5):
+def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
     ''' Compute diagonal Matrix'''
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
     
-    if Gamma<=1: # point inside the obstacle
+    if Gamma<=1 and treat_obstacle_special: # point inside the obstacle
         delta_eigenvalue = 1 
     else:
         delta_eigenvalue = 1./abs(Gamma)**(1/rho)
 
     eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
+
+    # print('eigenvalue_reference', eigenvalue_reference)
+    # import pdb; pdb.set_trace()
 
     if tangent_eigenvalue_isometric:
         eigenvalue_tangent = 1 + delta_eigenvalue

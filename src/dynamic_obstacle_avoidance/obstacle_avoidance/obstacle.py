@@ -190,9 +190,9 @@ class Obstacle(State):
     def repulsion_coeff(self, value):
         # Coefficient > 1 are accepted;
         # Good range is in [1, 2]
-        if value < 1.0:
-            warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
-            value = 1.0
+        # if value < 1.0:
+            # warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
+            # value = 1.0
         self._repulsion_coeff = value
     
     

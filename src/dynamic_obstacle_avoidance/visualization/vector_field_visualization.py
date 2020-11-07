@@ -272,7 +272,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     
 
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=True, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True):
 
     # TODO: gamma ditance does not fit as paramtere here (since not visual)...
 
@@ -375,8 +375,11 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     xd_init = np.zeros((2, N_x, N_y))
     xd_mod = np.zeros((2, N_x, N_y))
 
-    indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
-    
+    if vector_field_only_outside:
+        indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
+    else:
+        indOfNoCollision = np.ones((N_x, N_y))
+        
     for ix in range(N_x):
         for iy in range(N_y):
             if not indOfNoCollision[ix, iy]:

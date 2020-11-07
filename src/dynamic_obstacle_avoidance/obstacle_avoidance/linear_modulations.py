@@ -18,7 +18,7 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=True, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
+def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
@@ -68,6 +68,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             # Move to obstacle centered frame
             pos_relative[:, n] = obs[n].transform_global2relative(position) 
 
+    # Two (Gamma) weighting functions lead to better behavior when agent &
+    # obstacle size differs largely. 
     Gamma = np.zeros((N_obs))
     for n in range(N_obs):
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
@@ -162,16 +164,26 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     xd_hat_magnitude = np.zeros((N_obs))
 
     n = 0
+
+    # plt.quiver(position[0], position[1], E[0, 0, 0], E[1, 0, 0], color="green")
+    # plt.quiver(position[0], position[1], E[0, 1, 0], E[1, 1, 0], color="red")
+    # plt.annotate('{}'.format(np.round(Gamma[n], 2)), xy=position, textcoords='data', size=16, weight="bold")
+    # plt.annotate('{}'.format(np.round(D[0, 0, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
+    # plt.annotate('{}'.format(np.round(D[1, 1, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
+                 
+    
     
     for n in np.arange(N_obs)[ind_obs]:
         if (
             # (obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or
             (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)<0)
+                # and False
             ):
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
             xd_hat[:, n] = xd
             
+                
         else:
             # Matrix inversion cost between O(n^2.373) - O(n^3)
             if not evaluate_in_global_frame:
@@ -182,20 +194,25 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             # Modulation with M = E @ D @ E^-1
             xd_trafo = LA.pinv(E[:, :, n]).dot(xd_temp)
 
-            if (not obs[n].tail_effect and
+            if obs[n].repulsion_coeff<0:
+                # Negative Repulsion Coefficient at the back of an obstacle
+                if E_orth[:, 0, n].T.dot(xd)<0:
+                    # import pdb; pdb.set_trace()
+                    # Adapt in reference direction
+                    D[0, 0, n] = 2-D[0, 0, n]
+
+            elif (not obs[n].tail_effect and
                 # xd_trafo[0]>0
                 ((xd_trafo[0]>0 and not obs[n].is_boundary) or
                  (xd_trafo[0]<0 and obs[n].is_boundary))
             ):
-                # xd_hat[:, n] = xd
                 D[0, 0, n] = 1       # No effect in 'radial direction'
 
             xd_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(xd_trafo)
-        
+
             if not evaluate_in_global_frame:
                 xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
 
-        # import pdb; pdb.set_trace()
         if obs[n].has_sticky_surface:
             xd_norm = np.linalg.norm(xd)
             
@@ -207,20 +224,22 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                                     
                 # Limit maximum magnitude with respect to the tangent value
                 sticky_surface_power = 2
+                
+                # Treat inside obstacle as on the surface
+                Gamma_mag = max(Gamma_proportional[n], 1)
                 eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
 
-                # import pdb; pdb.set_trace()
                 xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
                 
                 tang_vel = np.abs(E_orth[:, :, n].T.dot(xd_temp)[0])
-                eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1)
-                # print('eig vel', eigenvalue_magnitude)
+                
+                eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1) if tang_vel else 0
                 
                 xd_hat[:, n] = xd_hat[:, n]*xd_norm * eigenvalue_magnitude
-                
+
         if repulsive_obstacle:
-        # if False:
-            # Move away from center in case of a collision
+            # Emergency move away from center in case of a collision
+            # Not the cleanest solution...
             if Gamma[n] < (1+repulsive_gammaMargin): 
                 repulsive_power = 5
                 repulsive_factor = 5
@@ -279,6 +298,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             vel_final = vel_final/xd_norm * velocicity_max
 
     # Transforming back from object frame of reference to inertial frame of reference
+    # plt.quiver(position[0], position[1], vel_final[0], vel_final[1], color="blue")
+    # import pdb; pdb.set_trace()
     return vel_final
 
 
