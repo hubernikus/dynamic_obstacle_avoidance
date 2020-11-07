@@ -345,6 +345,10 @@ class Ellipse(Obstacle):
 
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector)
+
+        # Invert normal direction to be consistent!
+        if self.dim==2:
+            normal_vector = (-1)*normal_vector
             
         return normal_vector
 
