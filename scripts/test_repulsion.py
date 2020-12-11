@@ -157,11 +157,43 @@ def get_attracting_cirlce(margin_absolut=0):
 
     return obs
 
+def get_repulsive_cirlce(margin_absolut=0):
+    obs = GradientContainer() # create empty obstacle list
+
+        
+    obs.append(CircularObstacle(
+        radius=0.2,
+        center_position=[0.0, 0.0],
+        orientation=0./180*pi,
+        margin_absolut=margin_absolut,
+        is_boundary=False,
+        repulsion_coeff=2.0,
+        # tail_effect=False,
+        has_sticky_surface=False,
+        name="center_cube",
+    ))
+    return obs
+
+def get_repulsive_ellipse(margin_absolut=0):
+    obs = GradientContainer() # create empty obstacle list
+        
+    obs.append(Ellipse(
+        axes_length=[0.3, 0.4],
+        center_position=[0.0, 0.0],
+        orientation=0./180*pi,
+        margin_absolut=margin_absolut,
+        is_boundary=False,
+        repulsion_coeff=2.0,
+        # tail_effect=False,
+        has_sticky_surface=False,
+        name="center_cube",
+    ))
+    return obs
 
 
 if (__name__)=="__main__":
     num_resolution = 30
-    saveFigures=False
+    saveFigures=True
 
     x_lim = [-0.3, 4.5]
     y_lim = [-2.5, 0.5]
@@ -175,12 +207,31 @@ if (__name__)=="__main__":
     # obs = get_outside_enviornment_lshape(robot_margin)
     # obs = get_outside_enviornment_lshape_hack(robot_margin)
 
+    if True:
+        xAttractor = np.array([2.5, 0])
+        x_lim, y_lim = [-2.0, 3.5], [-2.1, 2.1]
+        # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
+        obs = get_repulsive_ellipse(robot_margin)
+        fig_name = "attracting_circle"
+    
 
-    xAttractor = np.array([2.5, 0])
-    x_lim, y_lim = [-2.0, 3.5], [-2.1, 2.1]
-    # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
-    obs = get_attracting_cirlce(robot_margin)
-    # obs = get_attracting_square(robot_margin)
+    if False:
+        xAttractor = np.array([2.5, 0])
+        x_lim, y_lim = [-2.0, 3.5], [-2.1, 2.1]
+        # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
+        obs = get_repulsive_cirlce(robot_margin)
+        fig_name = "attracting_circle"
+    
+    if False:
+        xAttractor = np.array([2.5, 0])
+        x_lim, y_lim = [-2.0, 3.5], [-2.1, 2.1]
+        # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
+        obs = get_attracting_cirlce(robot_margin)
+        fig_name = "attracting_circle"
+
+    if False:
+        obs = get_attracting_square(robot_margin)
+        fig_name = "repulsive_square"
     
 
     vectorfield = True
@@ -195,8 +246,10 @@ if (__name__)=="__main__":
 
         fig_mod, ax_mod = Simulation_vectorFields(
             x_lim, y_lim, obs=obs, xAttractor=xAttractor, point_grid=num_resolution,
+            figName=fig_name,
             show_streamplot=False, noTicks=False,
             vector_field_only_outside=False,
+            saveFigure=saveFigures,
         )
 
     else:

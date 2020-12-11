@@ -106,10 +106,11 @@ class CrowdCircleContainer(GradientContainer):
         # self._dim = value
 
     def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, 
-                    max_center_displacement=2, agent_position=None, automatic_outer_boundary=True):
+                    max_center_displacement=2, agent_position=None, automatic_outer_boundary=True,
+                    lidar_input=None):
         ''' Update the obstacle list based on the crowd-input. '''
 
-         # Remove existing crowd obstacles
+        # Remove existing crowd obstacles
         it = 0
         while(it<len(self)):
             if hasattr(self[it], 'is_human') and self[it].is_human:
@@ -177,40 +178,52 @@ class CrowdCircleContainer(GradientContainer):
             
             self.append(human_obs) # TODO: add robot margin
 
-        if num_crowd_close==np.sum(ind_close) or not automatic_outer_boundary:
+        if ((num_crowd_close==np.sum(ind_close) or not automatic_outer_boundary)
+            and lidar_input is None):
             # No 'artificial wall' is created
             return
 
-        print('self. margin', self.robot_margin)
-        # Only consider 'far' obstacles for the wall repulsion
-        pos_crowd = pos_crowd[:, num_crowd_close:]
-        magnitudes = magnitudes[num_crowd_close:]
+        if lidar_input is None:
+            print('self. margin', self.robot_margin)
+            # Only consider 'far' obstacles for the wall repulsion
+            pos_crowd = pos_crowd[:, num_crowd_close:]
+            magnitudes = magnitudes[num_crowd_close:]
+        else:
+            pos_crowd = lidar_input
+            magnitudes = np.linalg.norm(pos_crowd -
+                                        np.tile(agent_position, (pos_crowd.shape[1], 1)).T, axis=0)
 
         # Caluclate repulsion force of center
-        exp_repulsion = 1
-        fac = np.exp(-exp_repulsion*magnitudes) / np.exp(self.robot_margin) # [1, 0]
+        exp_repulsion = 1.5
+        fac = np.exp(-exp_repulsion*magnitudes) / np.exp(self.robot_margin)     # [1, 0]
         
-        rel_center_wall =  np.sum(np.tile(fac/magnitudes*(-1), (self.dim, 1)) 
-            * (pos_crowd - np.tile(agent_position, (pos_crowd.shape[1], 1)).T) , axis=1)
+        rel_center_wall = np.sum(np.tile(fac/magnitudes*(-1), (self.dim, 1)) 
+            * (pos_crowd - np.tile(agent_position, (pos_crowd.shape[1], 1)).T), axis=1)
 
         mag_center = np.linalg.norm(rel_center_wall)
-        if mag_center>max_center_displacement:
+        if mag_center > max_center_displacement:
             rel_center_wall = rel_center_wall/mag_center*max_center_displacement
         center_wall = agent_position + rel_center_wall
 
-        radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
-        
-        if radius_wall < human_radius:
-            raise NotImplementedError("Collision with robot")
+        if lidar_input is None:
+            radius_wall = np.linalg.norm(pos_crowd[:, 0] - center_wall)
 
+            if radius_wall < human_radius:
+                raise NotImplementedError("Collision with robot")
+            radius_wall = radius_wall-human_radius
+        else:
+            radius_wall = np.min(
+                np.linalg.norm(pos_crowd-np.tile(center_wall, (pos_crowd.shape[1], 1)).T, axis=0)
+                ) 
+        
         if self.contains_wall_obstacle:
         # if False:
             self[self.index_wall].update_deforming_obstacle(
-                position=center_wall, orientation=0, radius_new=radius_wall-human_radius)
+                position=center_wall, orientation=0, radius_new=radius_wall)
         else:
             # Create new/first wall obstacle
             self.append(CircularObstacle(
-                center_position=center_wall, orientation=0, radius=radius_wall-human_radius,
+                center_position=center_wall, orientation=0, radius=radius_wall,
                 margin_absolut=self.robot_margin,
                 is_boundary=True, is_deforming=True,
                 tail_effect=False))

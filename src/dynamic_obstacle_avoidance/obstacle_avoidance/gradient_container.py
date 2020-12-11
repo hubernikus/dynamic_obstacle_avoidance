@@ -263,8 +263,8 @@ class GradientContainer(ObstacleContainer):
             size_ii = self[ii].get_reference_length()
             for jj in range(ii+1, len(self)):
                 # Only update if either of the obstacles has 'moved/updated' previously
-                if not (self[ii].has_moved or self[jj].has_moved):
-                    continue
+                # if not (self[ii].has_moved or self[jj].has_moved):
+                    # continue
 
                 # Check if exeeds maximal distance
                 size_jj = self[ii].get_reference_length()
@@ -592,7 +592,7 @@ class GradientContainer(ObstacleContainer):
     def derivative_gamma_sum(self, position, obs0, obs1, grad_pow=4,
                              delta_dist=1e-6, gamma_type="proportional"):
         ''' Derive a function based on gamma to find a reasonable center 
-        which lies strictly inside the obstacles'''
+        which lies strictly inside the obstacles. '''
         dim = obs0.dim
 
         derivative = np.zeros(dim)
@@ -612,9 +612,7 @@ class GradientContainer(ObstacleContainer):
             # print('gamma0_high', gamma_high, '--- gamma0_low', gamma_high)
             # print('mean gamma', (gamma_high+gamma_low)/2.0)
             
-            
             gamma_high = obs1.get_gamma(position+delta, in_global_frame=True, gamma_type=gamma_type)
-                                        
             
             gamma_low = obs1.get_gamma(position-delta, in_global_frame=True, gamma_type=gamma_type)
 
@@ -640,7 +638,8 @@ class GradientContainer(ObstacleContainer):
             # TODO: cost function which enforces it to lie inside!
             # return 1/(1-gamma+margin)
             return np.abs(gamma)**3
-        
+
+
 # BUGS to solve:
 #    - far-far away, the automatic-extension of the hull of the ellipse does not work
 #    - Gradient descent change function

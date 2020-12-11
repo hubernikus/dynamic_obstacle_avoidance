@@ -6,7 +6,6 @@ Test normal formation
 '''
 
 # TODO: TEST on: moving general creation, moving, gamma values, obstacle container
-
 import numpy as np
 from math import pi
 
@@ -74,11 +73,47 @@ def test_three_intersecting_circles():
         obs=obs_list,
         automatic_reference_point=False,        
     )
+
+
+
+def test_two_intersecting_ellipses():
+    ''' Appending one obstacle. '''
+    
+    obs_list = GradientContainer() # create empty obstacle list
+    obs_list.append(Ellipse(
+            axes_length=np.array([1, 2]),
+            center_position=[-1.2, 0.0],
+            orientation=-40./180*pi,
+    ))                          #
+
+    obs_list.append(Ellipse(
+            axes_length=np.array([1, 2]),
+            center_position=[1.5, 0.0],
+            orientation=40./180*pi,
+    ))                          #
+
+    # obs_list.append(CircularObstacle(
+            # radius=1.0,
+            # center_position=[1.2, 1.5],
+            # orientation=0./180*pi,
+    # ))                          #
+
+    obs_list.update_reference_points()
+    
+    Simulation_vectorFields(
+        x_range=[-4, 4], y_range=[-4, 4],
+        point_grid=0,
+        obs=obs_list,
+        automatic_reference_point=False,        
+    )
+
     
 
 if (__name__)=="__main__":
-    test_two_intersecting_circles()
+    # test_two_intersecting_circles()
 
-    test_three_intersecting_circles()
+    # test_three_intersecting_circles()
+
+    test_two_intersecting_ellipses()
 
     print("Selected tests complete.")

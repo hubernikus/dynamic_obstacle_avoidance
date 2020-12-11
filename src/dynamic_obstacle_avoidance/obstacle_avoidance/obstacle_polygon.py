@@ -580,7 +580,7 @@ class Polygon(Obstacle):
                 if self.is_boundary:
                     mag_position = (dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
 
-                Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.gamma_distance + 1
+                Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/gamma_distance + 1
         
             
         elif gamma_type=="proportional":

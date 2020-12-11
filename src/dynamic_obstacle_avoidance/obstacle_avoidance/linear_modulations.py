@@ -134,6 +134,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         
         linear_velocity = obs[n].linear_velocity
         velocity_only_in_positive_normal_direction = True
+        
         if velocity_only_in_positive_normal_direction:
             lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
             if lin_vel_local[0]<0 and not obs[n].is_boundary:
@@ -153,8 +154,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         # The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
         
         if obs[n].is_deforming:
+            weight_deform = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n], 1])-1))
             deformation_vel = obs[n].get_deformation_velocity(pos_relative[:, n])
-            xd_obs_n += exp_weight * deformation_vel
+            xd_obs_n += weight_deform * deformation_vel
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
         
