@@ -1,3 +1,5 @@
+#!/USSR/bin/python3
+
 '''
 Library for the Modulation of Linear Systems
 Copyright (c)2019 under GPU license
@@ -7,7 +9,7 @@ from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 
 __author__ = "Lukas Huber"
-__date__ =  "2019-11-29"
+__date__ = "2019-11-29"
 __info__ = "Obstacle avoidance for star-shaped obstacle in linear DS"
 
 import matplotlib.pyplot as plt
@@ -17,6 +19,7 @@ import numpy.linalg as LA
 
 import warnings
 import sys
+
 
 def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
     '''
@@ -33,7 +36,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     xd [dim]: modulated dynamical system at position x
     '''
 
-    if not x is None:
+    if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
     else:
@@ -49,10 +52,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     if xd_norm:
         xd_normalized = xd/xd_norm
     else:
-        return xd # Trivial solution
+        return xd      # Trivial solution
 
-    if type(attractor)==str:
-        if attractor=='default': # Define attractor position
+    if type(attractor) == str:
+        if attractor == 'default':       # Define attractor position
             attractor = np.zeros((d))
             N_attr = 1
         else:
@@ -69,7 +72,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             pos_relative[:, n] = obs[n].transform_global2relative(position) 
 
     # Two (Gamma) weighting functions lead to better behavior when agent &
-    # obstacle size differs largely. 
+    # obstacle size differs largely.
     Gamma = np.zeros((N_obs))
     for n in range(N_obs):
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
@@ -79,14 +82,18 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         Gamma_proportional[n] = obs[n].get_gamma(pos_relative[:, n],
                                                  in_global_frame=evaluate_in_global_frame,
                                                  gamma_distance=gamma_distance,
-        )
+                                                 )
+
     # Gamma_proportional = np.copy(Gamma)
 
-    if zero_vel_inside:
-        if any(Gamma < 1):
-            return np.zeros(dim)
+    # Worst case of being at the center
+    if any(Gamma == 0):
+        return np.zeros(dim)
 
-    ind_obs = (Gamma<cut_off_gamma)
+    if zero_vel_inside and any(Gamma < 1):
+        return np.zeros(dim)
+
+    ind_obs = (Gamma < cut_off_gamma)
     if any(~ind_obs):
         return xd
 
@@ -94,7 +101,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     # N_obs = np.sum(ind_obs)
 
     if N_attr:
-        d_a = LA.norm(x - np.array(attractor)) # Distance to attractor
+        d_a = LA.norm(x - np.array(attractor))        # Distance to attractor
         weight = compute_weights(np.hstack((Gamma_proportional, [d_a])), N_obs+N_attr)
     else:
         weight = compute_weights(Gamma_proportional, N_obs)
@@ -112,8 +119,11 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             tangent_eigenvalue_isometric=tangent_eigenvalue_isometric,
             rho=obs[n].reactivity,
         )
-        
+
+        # try: # TODO: remove after debugging
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
+        # except:
+            # import pdb; pdb.set_trace() 
 
     # Linear and angular roation of velocity
     xd_obs = np.zeros((dim))

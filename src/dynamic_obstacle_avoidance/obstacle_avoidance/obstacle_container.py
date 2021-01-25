@@ -55,6 +55,7 @@ class BaseContainer(object):
 
     def __getitem__(self, key):
         ''' List-like or dictionarry-like access to obstacle'''
+        # TODO: can this be done more efficiently?
         if isinstance(key, (str)):
             for ii in range(len(self._obstacle_list)):
                 if self._obstacle_list[ii].name == key:

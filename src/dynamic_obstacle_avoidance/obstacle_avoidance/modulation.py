@@ -9,15 +9,14 @@ import numpy as np
 import numpy.linalg as LA
 from numpy import pi
 
-from math import cos, sin
+# from math import cos, sin
 
 import warnings
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-import matplotlib.pyplot as plt
-
+# import matplotlib.pyplot as plt
 
 
 def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
@@ -25,7 +24,8 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
     
-    if Gamma<=1 and treat_obstacle_special: # point inside the obstacle
+    if Gamma <= 1 and treat_obstacle_special:
+        # Point inside the obstacle
         delta_eigenvalue = 1 
     else:
         delta_eigenvalue = 1./abs(Gamma)**(1/rho)
@@ -48,6 +48,7 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
 
 def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
     ''' Compute decomposition matrix and orthogonal matrix to basis'''
+    
     normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
 

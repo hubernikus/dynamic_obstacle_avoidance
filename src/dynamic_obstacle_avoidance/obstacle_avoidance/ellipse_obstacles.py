@@ -255,7 +255,7 @@ class Ellipse(Obstacle):
             warnings.warn("Implement linear gamma type.")
             
         Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.p))
-            
+
         return Gamma
 
     
@@ -852,7 +852,7 @@ class Ellipse(Obstacle):
 
 
 class CircularObstacle(Ellipse):
-    ''' Ellipse obstacle with equal axes'''
+    ''' Ellipse obstacle with equal axes '''
     def __init__(self, radius=None, axes_length=None, *args, **kwargs):
         if not radius is None:
             axes_length = np.array([radius, radius])
