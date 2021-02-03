@@ -47,7 +47,16 @@ class MetricEvaluator():
         metrics = self.evaluate_metrics()
         self.store_to_file(value=metrics, filename=self.file_name)
 
-    def evaluate_metrics(self,  dt= None):
+    def import_from_file(self, filename):
+        ''' Import fil from json'''
+        if filename[-4:]==".json":
+            
+
+            pass
+        else:
+            raise "Unexpected filename detected"
+
+    def evaluate_metrics(self,  dt=None):
         ''' Evaluate the metrics based on the safed position & velocity. '''
 
         self.position_list = np.array(self.position_list).T
