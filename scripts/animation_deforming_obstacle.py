@@ -47,8 +47,8 @@ import sensor_msgs.point_cloud2 as pc2
 
 # Add obstacle avoidance without 'setting' up
 # directory_path = rospack.get_path('qolo_modulation')
-path_avoidance = os.path.join("/home/lukas/catkin_ws/src/qolo_modulation",
-                              "scripts")
+path_avoidance = os.path.join("/home/lukas/catkin_ws/src/qolo_modulation","scripts")
+                              
 if not path_avoidance in sys.path:
     sys.path.append(path_avoidance)
     # pass
@@ -138,8 +138,16 @@ class QoloAnimator():
 
         if True:
         # try:
+            working_directory = os.getcwd()
+            img_qolo_name = 'data/Qolo_T_CB_top_bumper.png'
+            
+            if working_directory[-8:]=='/scripts':
+                image_path = os.path.join(working_directory, '..', img_qolo_name)
+            else:
+                image_path = os.path.join(working_directory, img_qolo_name)
+                
             #arr_img = mpimg.imread(os.path.join(bag_dir, 'qolo_t_cb_top_bumper.png'))
-            arr_img = mpimg.imread(os.path.join('../data/Qolo_T_CB_top_bumper.png'))
+            arr_img = mpimg.imread(image_path)
             length_x = 1.4
             length_y = (1.0)*arr_img.shape[0]/arr_img.shape[1] * length_x
             plt_qolo = True

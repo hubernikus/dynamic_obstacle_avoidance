@@ -130,7 +130,7 @@ class CrowdCircleContainer(GradientContainer):
 
         for ii in range(len(crowd_list)):
             pos_crowd[:, ii] = [crowd_list[ii].position.z, -crowd_list[ii].position.x]
-            vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x] 
+            vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x]
                                 
             # Rotation is neglected due to circular representation
 

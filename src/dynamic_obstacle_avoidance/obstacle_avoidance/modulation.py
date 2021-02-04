@@ -28,7 +28,7 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
         # Point inside the obstacle
         delta_eigenvalue = 1 
     else:
-        delta_eigenvalue = 1./abs(Gamma)**(1/rho)
+        delta_eigenvalue = 1./abs(Gamma)**(1./rho)
 
     eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
 
