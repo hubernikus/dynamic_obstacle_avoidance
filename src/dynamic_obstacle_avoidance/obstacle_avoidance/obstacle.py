@@ -710,7 +710,7 @@ class Obstacle(State):
             position = self.transform_relative2global(position)
             
         self.center_position = position
-        
+
 
     def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None, reset=False):
         ''' Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
@@ -784,7 +784,7 @@ class Obstacle(State):
                     return True, LA.norm(direction_factors[0]*connection_direction)
         return False, -1
 
-
+    
     def get_obstacle_radius(self, position, in_global_frame=False, Gamma=None): # Inherit
         # TODO: remove since looping...
         if in_global_frame:
@@ -795,8 +795,8 @@ class Obstacle(State):
         dist_to_center = LA.norm(position)
 
         return dist_to_center/Gamma
-    
 
+    
     def get_reference_point(self, in_global_frame=False): # Inherit
         if in_global_frame:
             return self.transform_relative2global(self.reference_point)
@@ -811,7 +811,6 @@ class Obstacle(State):
 
         Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
         '''
-
         if isinstance(Gamma, (float, int)):
             if Gamma <= Gamma_ref:
                 return sys.float_info.max

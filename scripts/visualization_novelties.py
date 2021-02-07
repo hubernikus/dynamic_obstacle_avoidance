@@ -5,9 +5,11 @@ Script which creates a variety of examples of local modulation of a vector field
 
 import sys
 import os
+import warnings
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
@@ -20,7 +22,10 @@ from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
+from dynamic_obstacle_avoidance.visualization.animation_qolo import DynamicAnimationQOLO
+
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.flower_shape import StarshapedFlower
@@ -372,6 +377,9 @@ def visualize_edge_obstacle(
         n_resolution=20,
         save_figure=False,
         point_init=np.array([0.5, -2.0]),
+        dynamic_simulation=False,
+        static_simulation=False,
+
 ):
     plt.close('all')
     
@@ -409,20 +417,33 @@ def visualize_edge_obstacle(
         # name="center_cube",
     ))
 
-    fig = plt.figure(figsize=figsize)
-    ax = plt.subplot(1, 1, 1)
+    
+    if static_simulation:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.subplot(1, 1, 1)
 
-    line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
+        line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
 
-    Simulation_vectorFields(
-        x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
-        saveFigure=save_figure, figName="edge_obstacles_several",
-        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
-        figureSize=figsize,
-        reference_point_number=False, showLabel=False,
-        fig_and_ax_handle=(fig, ax),
-    )
+        Simulation_vectorFields(
+            x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
+            saveFigure=save_figure, figName="edge_obstacles_several",
+            noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
+            normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+            figureSize=figsize,
+            reference_point_number=False, showLabel=False,
+            fig_and_ax_handle=(fig, ax),
+        )
+        
+    elif dynamic_simulation:
+        SimulationHandler = DynamicAnimationQOLO(
+            obstacle_list=obs, attractor_position=pos_attractor,
+            x_lim=x_lim, y_lim=y_lim,
+            position_init=point_init
+        )
+        SimulationHandler.run_dynamic_animation(scale_qolo=0.5)
+    else:
+        warnings.warn('No simulation type chosen.')
+            
 
 
 def visualize_edge_boundary(
@@ -430,6 +451,8 @@ def visualize_edge_boundary(
         n_resolution=20,
         save_figure=False,
         point_init=np.array([2.5, -2.0]),
+        dynamic_simulation=False,
+        static_simulation=False,
 ):
     plt.close('all')
     
@@ -468,23 +491,81 @@ def visualize_edge_boundary(
         name="center_cube",
     ))
 
-    fig = plt.figure(figsize=figsize)
-    ax = plt.subplot(1, 1, 1)
+    if static_simulation:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.subplot(1, 1, 1)
 
-    line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
+        line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
 
-    Simulation_vectorFields(
-        x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
-        saveFigure=save_figure, figName="sharp_boundary_with_obstacle",
-        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
-        figureSize=figsize,
-        reference_point_number=False, showLabel=False,
-        fig_and_ax_handle=(fig, ax),
+        Simulation_vectorFields(
+            x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
+            saveFigure=save_figure, figName="sharp_boundary_with_obstacle",
+            noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
+            normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+            figureSize=figsize,
+            reference_point_number=False, showLabel=False,
+            fig_and_ax_handle=(fig, ax),
+        )
+    elif dynamic_simulation:
+
+        SimulationHandler = DynamicAnimationQOLO(
+            obstacle_list=obs, attractor_position=pos_attractor,
+            x_lim=x_lim, y_lim=y_lim,
+            position_init=point_init
+        )
+        SimulationHandler.run_dynamic_animation(scale_qolo=0.8, des_speed=0.5)
+
+    else:
+        warnings.warn("No simulation type chosen")
+
+        
+def visualize_dynamic_boundary(
+        robot_margin=0.35,
+        n_resolution=20,
+        save_figure=False,
+        point_init=np.array([0, -3.5]),
+        dynamic_simulation=False,
+        static_simulation=False,
+        pos_attractor=[-4.0, 0.0],
+        x_lim=[-6.1, 6.1],
+        y_lim=[-6.1, 6.1],
+        # x_lim=[-2.0, 2.0],
+        # y_lim=[-2.0, 2.0],
+        figsize=(5.5, 4.5),
+):
+
+    obs_list = GradientContainer()
+
+    def temp_func(arg):
+        return 
+    
+    obs_list.append(
+        StarshapedFlower(
+            radius_mean=4.2,
+            radius_magnitude=0,
+            is_boundary=True,
+            is_deforming=True,
+            property_functions={'radius_magnitude': (lambda arg: (1.0-np.cos(arg*1.0))*0.8)},
+            # property_functions={'radius_magnitude': temp_func},
+            time_now=0,
+        )
     )
+    
+    plt.close('all')
 
-
-
+    SimulationHandler = DynamicAnimationQOLO(
+        obstacle_list=obs_list, attractor_position=pos_attractor,
+        x_lim=x_lim, y_lim=y_lim,
+        position_init=point_init
+    )
+    
+    SimulationHandler.run_dynamic_animation(scale_qolo=0.8, des_speed=0.8,
+                                            dt_simulation=0.03,
+                                            show_plot_vectorfield=True,
+                                            # show_plot_vectorfield=False,
+    )
+    
+    
 
 if (__name__)=="__main__":
     plt.ion()
@@ -492,17 +573,21 @@ if (__name__)=="__main__":
 
     # visualize_intersecting_ellipse(save_figures=False, n_resolution=20)
     
-    visualize_repulsive_cube(n_resolution=100, save_figure=True)
+    # visualize_repulsive_cube(n_resolution=100, save_figure=True)
     
     # visualize_circular_boundary(n_resolution=100, save_figure=True)
 
     # visualize_starshaped_boundary(n_resolution=100, save_figure=True)
 
-    # visualize_edge_obstacle(n_resolution=100, save_figure=True)
+    # visualize_edge_obstacle(n_resolution=10, save_figure=False, static_simulation=True)
+    # visualize_edge_obstacle(n_resolution=10, save_figure=False, dynamic_simulation=True)
     
-    # visualize_edge_boundary(n_resolution=100, save_figure=True)
+    # visualize_edge_boundary(n_resolution=50, save_figure=False, static_simulation=True)
+    # visualize_edge_boundary(n_resolution=10, save_figure=False, dynamic_simulation=True)
 
     # visualize_edge_boundary(n_resolution=100, save_figure=True)
+
+    visualize_dynamic_boundary(save_figure=False, dynamic_simulation=True)
     
 # Run function
 

@@ -6,15 +6,14 @@
 '''
 
 import time
-import numpy as np
-from math import sin, cos, pi, ceil
-import warnings, sys
+import warnings
+import sys
+import copy
 
-import numpy.linalg as LA
+import numpy as np
 
 
 # import quaternion # numpy-quaternion 
-
 # import dynamic_obstacle_avoidance
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
@@ -34,21 +33,62 @@ import matplotlib.pyplot as plt
 visualize_debug = False
 
 class StarshapedFlower(Obstacle):
-    def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4,
+    def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4, time_now=None,
+                 property_functions={},
                  *args, **kwargs):
         if sys.version_info>(3,0):
             super().__init__(*args, **kwargs)
         else:
             super(StarshapedFlower, self).__init__(*args, **kwargs)
 
+        self.property_dict = {'radius_magnitude': radius_magnitude,
+                              'radius_mean': radius_mean,
+                              'number_of_edges': number_of_edges,}
+        
+        
         # Object Specific Paramters
-        self.radius_magnitude=radius_magnitude
-        self.radius_mean=radius_mean
+        # self.radius_magnitude=radius_magnitude
+        # self.radius_mean=radius_mean
 
-        self.number_of_edges=number_of_edges
+        # self.number_of_edges=number_of_edges
 
         self.is_convex = False # What for?
-        
+
+        if self.is_deforming:
+            self.property_functions = property_functions
+            
+            if time_now is None:
+                self.time_now = time.time()
+            else:
+                self.time_now = time_now
+                
+            # Duplicate list
+            self.update_deforming_obstacle(self.time_now)
+
+    @property
+    def radius_magnitude(self):
+        return self.property_dict['radius_magnitude']
+
+    @radius_magnitude.setter
+    def radius_magnitude(self, value):
+        self.property_dict['radius_magnitude'] = value
+
+    @property
+    def radius_mean(self):
+        return self.property_dict['radius_mean']
+
+    @radius_mean.setter
+    def radius_mean(self, value):
+        self.property_dict['radius_mean'] = value
+
+    @property
+    def number_of_edges(self):
+        return self.property_dict['number_of_edges']
+
+    @number_of_edges.setter
+    def number_of_edges(self, value):
+        self.property_dict['number_of_edges'] = value
+    
 
     def get_radius_of_angle(self, angle, in_global_frame=False):
         if in_global_frame:
@@ -84,18 +124,71 @@ class StarshapedFlower(Obstacle):
         # self.x_obs_sf = self.x_obs_sf.T
         self.boundary_points_local = x_obs
         self.boundary_points_margin_local = x_obs_sf
-        
 
-
-    def get_gamma(self, position, in_global_frame=False, norm_order=2):
-        if not type(position)==np.ndarray:
-            position = np.array(position)
-
-        # Rename
+    def get_local_radius_point(self, position, in_global_frame=False):
+        ''' Get radius from local radius point.'''
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        mag_position = LA.norm(position)
+        direction = np.arctan2(position[1], position[0])
+        radius = self.get_radius_of_angle(direction)
+
+        surface_point = 1.0*radius/np.linalg.norm(position) * position
+
+        if in_global_frame:
+            surface_point = self.transform_relative2global(surface_point)
+
+        return surface_point
+            
+
+    def get_deformation_velocity(self, position, in_global_frame=False):
+        ''' Get numerical evaluation of velocity '''
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        dt = (self.time_now-self.time_old)
+        
+        if not dt: # == 0
+            warnings.warn('No time passed to evaluate defomration velocity.')
+            return np.zeros(2)
+
+        radius_point = self.get_local_radius_point(position)
+
+        # Evaluate for last point!
+        self.property_dict_temp = self.property_dict
+        self.property_dict = self.property_dict_old
+        radius_point_old = self.get_local_radius_point(position)
+
+        # Reset to previous
+        self.property_dict = self.property_dict_temp
+
+        # Return numerical differentiation
+        vel_surface = (radius_point - radius_point_old)/dt
+
+        if in_global_frame:
+            vel_surface = self.transform_relative2global_dir(vel_surface)
+            
+        return vel_surface
+
+    def update_deforming_obstacle(self, time_now):
+        ''' Update values. '''
+        self.time_old = self.time_now
+        self.time_now = time_now
+        
+        self.property_dict_old = copy.deepcopy(self.property_dict)
+        
+        for key in self.property_functions.keys():
+            self.property_dict[key] = self.property_functions[key](time_now)
+            
+
+    def get_gamma(self, position, in_global_frame=False, norm_order=2, gamma_distance=None):
+        if not type(position)==np.ndarray:
+            position = np.array(position)
+
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        mag_position = np.linalg.norm(position)
         if mag_position==0:
             if self.is_boundary:
                 return sys.float_info.max
@@ -110,6 +203,9 @@ class StarshapedFlower(Obstacle):
         if self.is_boundary:
             Gamma = 1/Gamma
 
+        if (gamma_distance is not None):
+            warnings.warn("Implement linear gamma type.")
+        
         return Gamma
 
 
@@ -117,7 +213,7 @@ class StarshapedFlower(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        mag_position = LA.norm(position)
+        mag_position = np.linalg.norm(position)
         if not mag_position:
             return np.ones(self.dim)/self.dim # just return one direction
 
@@ -131,7 +227,7 @@ class StarshapedFlower(Obstacle):
             - derivative_radius_of_angle*np.cos(direction) + radius*np.sin(direction)]))
 
         if normalize:
-            mag_vector = LA.norm(normal_vector)
+            mag_vector = np.linalg.norm(normal_vector)
             if mag_vector: #nonzero
                 normal_vector = normal_vector/mag_vector
                 

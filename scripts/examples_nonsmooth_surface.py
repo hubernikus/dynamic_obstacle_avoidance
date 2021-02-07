@@ -241,12 +241,15 @@ def main(options=[], N_resol=100, saveFigures=False):
             
             fig_mod, ax_mod = Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='noonsmooth_several_obstacles', noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=N_resol, show_streamplot=True, points_init=points_init, figureSize=(25.,10), showLabel=False)
 
-            
+
 if (__name__==("__main__")):
-    if len(sys.argv) > 1 and sys.argv[1]!='-i':
+    if False:
+    # if len(sys.argv) > 1 and sys.argv[1] != '-i':
         N_resol = int(sys.argv[1])
+        
         if len(sys.argv) > 2:
             options = [float(sys.argv[2])]
+            
             if len(sys.argv) > 3:
                 saveFigures = bool(sys.argv[3])
 

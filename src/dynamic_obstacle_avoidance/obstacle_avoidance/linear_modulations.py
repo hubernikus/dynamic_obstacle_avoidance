@@ -149,9 +149,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
             if lin_vel_local[0]<0 and not obs[n].is_boundary:
                 # Obstacle is moving towards the agent
-                # lin_vel_local[0] = 0
-                # linear_velocity = E_orth[:, :, n].dot(lin_vel_local)
-                # import pdb; pdb.set_trace()
                 linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:
                 linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
@@ -165,8 +162,19 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         
         if obs[n].is_deforming:
             weight_deform = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n], 1])-1))
-            deformation_vel = obs[n].get_deformation_velocity(pos_relative[:, n])
-            xd_obs_n += weight_deform * deformation_vel
+            vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
+
+            if velocity_only_in_positive_normal_direction:
+                vel_deformation_local = E_orth[:, :, n].T.dot(vel_deformation)
+                if ((vel_deformation_local[0]<0 and not obs[n].is_boundary)
+                    or (vel_deformation_local[0]>0 and obs[n].is_boundary)):
+                    vel_deformation = np.zeros(vel_deformation.shape[0])
+                    
+                else:
+                    vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
+                    pass
+                
+            xd_obs_n += weight_deform * vel_deformation
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
         
@@ -177,7 +185,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     n = 0
 
-    # plt.quiver(position[0], position[1], E[0, 0, 0], E[1, 0, 0], color="green")
+    # plt.quiver(position[0], position[1], vel_deformation[0], vel_deformation[1], color="green")
     # plt.quiver(position[0], position[1], E[0, 1, 0], E[1, 1, 0], color="red")
     # plt.annotate('{}'.format(np.round(Gamma[n], 2)), xy=position, textcoords='data', size=16, weight="bold")
     # plt.annotate('{}'.format(np.round(D[0, 0, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
