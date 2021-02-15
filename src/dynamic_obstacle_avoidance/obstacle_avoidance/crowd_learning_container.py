@@ -255,9 +255,13 @@ class CrowdLearningContainer(BaseContainer):
     def dim(self, value):
         self._dim = value
 
+    def udpate_step_real(self, lidar_data=None, laser_data=None, cutoff_distance=5, max_displacement=2.0, angular_resolution=1000, exp_repulsion=3):
 
-    def update_step(self,  lidar_data=None, laser_data=None, cutoff_distance=5, max_displacement=2.0, 
-        angular_resolution=1000, exp_repulsion=3):
+        import pdb; pdb.set_trace()
+        
+
+    def update_step(self,  lidar_data=None, laser_data=None, cutoff_distance=5, max_displacement=2.0, angular_resolution=1000, exp_repulsion=3):
+                    
         ''' Input: lidar or obstacle data in 'obstacle frame of reference'''
         
         # Remove z-information / make_2d
