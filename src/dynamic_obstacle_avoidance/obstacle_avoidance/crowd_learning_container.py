@@ -17,7 +17,7 @@ from math import sqrt
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import BaseContainer
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.learning_obstacle import RegressionObstacle
+# from dynamic_obstacle_avoidance.obstacle_avoidance.learning_obstacle import RegressionObstacle
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import CircularObstacle
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import transform_polar2cartesian, transform_cartesian2polar
@@ -176,12 +176,13 @@ class CrowdCircleContainer(GradientContainer):
                 linear_velocity=vel_crowd[:, ii], angular_velocity=0,
                 tail_effect=False, 
                 radius=human_radius, margin_absolut=self.robot_margin)
+            
 
             # TODO include in CircularObstacle / crowd-obstacle
             human_obs.is_human = True
             
-            human_obs.sigma = 7 # exponential weight for veloctiy reduction
-            human_obs.reactivity = 3 # veloctiy reduction
+            human_obs.sigma = 4      # Exponential weight for veloctiy reduction
+            human_obs.reactivity = 2     # Veloctiy reduction
             
             self.append(human_obs) # TODO: add robot margin
 
