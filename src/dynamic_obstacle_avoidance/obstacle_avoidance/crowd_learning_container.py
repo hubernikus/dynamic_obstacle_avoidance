@@ -107,7 +107,7 @@ class CrowdCircleContainer(GradientContainer):
 
     def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, 
                     max_center_displacement=2, agent_position=None, automatic_outer_boundary=True,
-                    lidar_input=None):
+                    lidar_input=None, is_simulation=True):
         ''' Update the obstacle list based on the crowd-input. '''
 
         # Remove existing crowd obstacles
@@ -128,9 +128,16 @@ class CrowdCircleContainer(GradientContainer):
         pos_crowd = np.zeros((self._dim, len(crowd_list) ))
         vel_crowd = np.zeros((self._dim, len(crowd_list) ))
 
-        for ii in range(len(crowd_list)):
-            pos_crowd[:, ii] = [crowd_list[ii].position.z, -crowd_list[ii].position.x]
-            vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x]
+        if is_simulation:
+            for ii in range(len(crowd_list)):
+                pos_crowd[:, ii] = [crowd_list[ii].position.z, -crowd_list[ii].position.x]
+                vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x]
+        else:
+            for ii in range(len(crowd_list)):
+                pos_crowd[:, ii] = [crowd_list[ii].pose.pose.position.x, crowd_list[ii].pose.pose.position.y]
+                vel_crowd[:, ii] = [crowd_list[ii].twist.twist.linear.x, crowd_list[ii].twist.twist.linear.y]
+                
+                
                                 
             # Rotation is neglected due to circular representation
 
@@ -217,7 +224,6 @@ class CrowdCircleContainer(GradientContainer):
                 ) 
         
         if self.contains_wall_obstacle:
-        # if False:
             self[self.index_wall].update_deforming_obstacle(
                 position=center_wall, orientation=0, radius_new=radius_wall)
         else:
@@ -228,8 +234,7 @@ class CrowdCircleContainer(GradientContainer):
                 is_boundary=True, is_deforming=True,
                 tail_effect=False))
         # Return
-
-
+        
 
 class CrowdLearningContainer(BaseContainer):
     def __init__(self, obs_list=None, robot_margin=0):
@@ -294,22 +299,20 @@ class CrowdLearningContainer(BaseContainer):
         self[self.index_wall].set_surface_points(points, in_global_frame=True)
         # self[self.index_wall].reduce_angle_resolution()
         self[self.index_wall].learn_surface()
-                    
+
+        
     def learn_wall(self):
         pass
 
-
+    
     def evaluate_wall(self,):
         # TODO: when evaluating old obstacles; include the motion of the robot
         pass
-        
-        
+
+    
     def evaluation(self):
         pass
 
-
-
-    
 
 class LearningContainer(BaseContainer):
     def __init__(self, obs_list=None):
