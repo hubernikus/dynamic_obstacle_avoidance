@@ -1,10 +1,13 @@
 **/*.pyc
 **/*~
 **/*#
+**/*~
 **/*.egg-info/*
-# test*
+
+
 figures/**
 **/*.bag
+
 # scripts/*.png
 # scripts/*.pdf
 # scripts/*.gif
