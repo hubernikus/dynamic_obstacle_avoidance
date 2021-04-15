@@ -35,7 +35,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     OUTPUT
     xd [dim]: modulated dynamical system at position x
     '''
-
     if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
@@ -95,6 +94,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     ind_obs = (Gamma < cut_off_gamma)
     if any(~ind_obs):
+        warning.warn('Exceeding cut-off gamma. Stopping modulation.')
         return xd
 
     # pos_relative = pos_relative[:, ind_obs]

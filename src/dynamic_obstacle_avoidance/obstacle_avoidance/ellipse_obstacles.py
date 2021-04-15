@@ -1,4 +1,4 @@
-#!/USSR/bin/python3LocalCrowd
+#!/USSR/bin/python3
 
 '''
 @date 2019-10-15
@@ -536,6 +536,11 @@ class Ellipse(Obstacle):
 
         return intersections
 
+    def get_local_radius_ellipse(self, position, in_global_frame=False, relative_center=None):
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+        return self._get_local_radius_ellipse(position, relative_center)
+    
 
     def _get_local_radius_ellipse(self, position, relative_center=None):
         '''

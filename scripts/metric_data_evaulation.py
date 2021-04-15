@@ -56,6 +56,13 @@ def import_data():
                 print(filename)
                 print("")
                 continue
+            
+        if data['duration'] < 30:
+            print("Found file out of range")
+            print(filename)
+            print("")
+            continue
+            
 
     
         for key in data.keys():
@@ -120,21 +127,22 @@ plt.errorbar(num_peops, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blu
 num_peops, value_mean, value_var = get_mean_and_variance_at_speeds(
     dict_metrics['duration'][neg_dir], dict_metrics['num_people'][neg_dir])
 
-num_peops, value_mean, value_var = get_mean_and_variance_at_speeds(
-    dict_metrics['duration'][neg_dir], dict_metrics['num_people'][neg_dir])
-
-
 plt.errorbar(num_peops, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
 
 plt.xlabel('Number of people in Crowd')
 plt.ylabel('Distance Travelled by Robot [m]')
 
+plt.figure()
+
 
 plt.figure()
 # plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir], color='b')
-plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir], color='b')
+plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir],
+            color='b', label='Positive Direction')
 
-plt.scatter(dict_metrics['num_people'][neg_dir], dict_metrics['duration'][neg_dir], color='r')
+plt.scatter(dict_metrics['num_people'][neg_dir], dict_metrics['duration'][neg_dir], 
+            color='r', label='Negative Direction')
+plt.legend()
 
 # plt.subplots(4,1,2)
 

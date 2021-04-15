@@ -367,8 +367,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
             # print('pos', pos)
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs,
-            gamma_distance=gamma_distance)     # DEBUGGING: remove
-
+            # gamma_distance=gamma_distance # DEBUGGING: remove
+            )     
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
@@ -412,6 +412,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             else:
                 quiver_factor=1.0
 
+                if not normalize_vectors:
+                    normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
+                    ind_nonZero = normVel>0
                 # Only display non-collision quiver-arrows
                 ind_flatten = ind_nonZero.flatten()
                 XX = XX.flatten()[ind_flatten]

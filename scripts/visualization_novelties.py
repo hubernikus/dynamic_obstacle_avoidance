@@ -565,9 +565,52 @@ def visualize_dynamic_boundary(
                                             # show_plot_vectorfield=False,
     )
     
-    
 
-if (__name__)=="__main__":
+def visualize_crowd_scene(
+        n_resolution=10,
+        save_figure=True
+):
+    obs = GradientContainer() # create empty obstacle list
+    x_lim = [-0.6, 4.1]
+    y_lim = [-2.1, 2.1]
+
+    xAttractor= [0.0, 0.0]
+    
+    figsize = (6, 5)
+
+    obs.append(
+        CircularObstacle(
+            center_position=[2.0, 0.0],
+            tail_effect=False, 
+            radius=0.35,
+            margin_absolut=0.4,
+            is_boundary=False,
+            has_sticky_surface=False,
+            reactivity=1,
+    ))
+
+    obs[-1].sigma = 3      # Exponential weight for veloctiy reduction
+    obs[-1].reactivity = 3     # Veloctiy reduction
+
+    fig = plt.figure(figsize=figsize)
+    fig, ax = plt.subplots()
+    
+    plt_speed_line_and_qolo(points_init=np.array([3.5, 0.2]), attractorPos=xAttractor, obs=obs, fig_and_ax_handle=(fig, ax))
+
+    fig_mod, ax_mod = Simulation_vectorFields(
+        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        saveFigure=save_figure, figName='circular_sticky_surface',
+        noTicks=False, draw_vectorField=True,
+        automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
+        figureSize=figsize,
+        reference_point_number=False, showLabel=False,
+        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        fig_and_ax_handle=(fig, ax)
+        )
+
+
+
+if (__name__) == "__main__":
     plt.ion()
     # visualize_simple_ellipse(n_resolution=20)
 
@@ -587,7 +630,11 @@ if (__name__)=="__main__":
 
     # visualize_edge_boundary(n_resolution=100, save_figure=True)
 
-    visualize_dynamic_boundary(save_figure=False, dynamic_simulation=True)
+    # visualize_dynamic_boundary(save_figure=False, dynamic_simulation=True)
+
+    visualize_crowd_scene(n_resolution=20)
+
+    
     
 # Run function
 
