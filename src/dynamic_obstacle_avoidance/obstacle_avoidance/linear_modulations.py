@@ -233,6 +233,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             if not evaluate_in_global_frame:
                 xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
 
+        # import pdb; pdb.set_trace()
         if obs[n].has_sticky_surface:
             xd_norm = np.linalg.norm(xd)
             
@@ -247,7 +248,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 
                 # Treat inside obstacle as on the surface
                 Gamma_mag = max(Gamma_proportional[n], 1)
-                eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
+                if abs(Gamma_proportional[n]) < 1:
+                    eigenvalue_magnitude = 0
+                else:
+                    eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
 
                 xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
                 
@@ -256,6 +260,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1) if tang_vel else 0
                 
                 xd_hat[:, n] = xd_hat[:, n]*xd_norm * eigenvalue_magnitude
+        # import pdb; pdb.set_trace()
 
         if repulsive_obstacle:
             # Emergency move away from center in case of a collision
@@ -319,7 +324,10 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     # Transforming back from object frame of reference to inertial frame of reference
     # plt.quiver(position[0], position[1], vel_final[0], vel_final[1], color="blue")
-    # import pdb; pdb.set_trace()
+    # if np.linalg.norm(vel_final) > 10:
+        # Error check
+        # import pdb; pdb.set_trace()
+        
     return vel_final
 
 

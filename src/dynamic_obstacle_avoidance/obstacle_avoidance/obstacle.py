@@ -402,12 +402,14 @@ class Obstacle(State):
             raise ValueError("Unexpected position-shape")
         
     def transform_relative2global_dir(self, direction):
+        ''' Transform a direction, velocity or relative position to the global-frame '''
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return direction
         return self.rotMatrix.dot(direction)
 
     def transform_global2relative_dir(self, direction):
+        ''' Transform a direction, velocity or relative position to the obstacle-frame '''
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return direction

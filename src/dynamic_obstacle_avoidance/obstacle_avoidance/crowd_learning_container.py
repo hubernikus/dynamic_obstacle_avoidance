@@ -132,15 +132,22 @@ class CrowdCircleContainer(GradientContainer):
             for ii in range(len(crowd_list)):
                 pos_crowd[:, ii] = [crowd_list[ii].position.z, -crowd_list[ii].position.x]
                 vel_crowd[:, ii] = [crowd_list[ii].velocity.linear.z, -crowd_list[ii].velocity.linear.x]
+                # Check for simulation-jumping
+                vel_max = 5
+                for ind_it in range(2):
+                    if abs(vel_crowd[ind_it, ii]) > vel_max:
+                        vel_crowd[ind_it, ii] = 0
+                        warnings.warn('Simulation-jump detected. Agent velocity set to zero')
+
         else:
+            # Different message type on real robot
             for ii in range(len(crowd_list)):
                 pos_crowd[:, ii] = [crowd_list[ii].pose.pose.position.x, crowd_list[ii].pose.pose.position.y]
-                vel_crowd[:, ii] = [crowd_list[ii].twist.twist.linear.x, crowd_list[ii].twist.twist.linear.y]
+                # Don't get velocity from tracker at current stage
+                # vel_crowd[:, ii] = [crowd_list[ii].twist.twist.linear.x, crowd_list[ii].twist.twist.linear.y]
                 
                 
-                                
-            # Rotation is neglected due to circular representation
-
+        # Rotation is neglected due to circular representation
         # Relative distance to the agent of each obstacle
         if agent_position is None:
             magnitudes = np.linalg.norm(pos_crowd, axis=0)
@@ -181,9 +188,10 @@ class CrowdCircleContainer(GradientContainer):
             # TODO include in CircularObstacle / crowd-obstacle
             human_obs.is_human = True
             
-            human_obs.sigma = 4      # Exponential weight for veloctiy reduction
-            human_obs.reactivity = 2     # Veloctiy reduction
-            
+            human_obs.sigma = 7 # exponential weight for veloctiy reduction
+            human_obs.reactivity = 3 # veloctiy reduction
+            human_obs.repulsion_coeff = 1.5
+
             self.append(human_obs) # TODO: add robot margin
 
         if ((num_crowd_close==np.sum(ind_close) or not automatic_outer_boundary)
