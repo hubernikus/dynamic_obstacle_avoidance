@@ -107,7 +107,7 @@ class CrowdCircleContainer(GradientContainer):
 
     def update_step(self, crowd_list, human_radius=0.35, num_crowd_close=10, dist_far=10, 
                     max_center_displacement=2, agent_position=None, automatic_outer_boundary=True,
-                    lidar_input=None, is_simulation=True):
+                    lidar_input=None, is_simulation=True, FLAG_DETECTOR_STATIC=False):
         ''' Update the obstacle list based on the crowd-input. '''
 
         # Remove existing crowd obstacles
@@ -140,13 +140,15 @@ class CrowdCircleContainer(GradientContainer):
                         warnings.warn('Simulation-jump detected. Agent velocity set to zero')
 
         else:
-            # Different message type on real robot
+            # Different message types on real robot
+            # if FLAG_DETECTOR_STATIC:
+                # import pdb; pdb.set_trace()
+            # else:
             for ii in range(len(crowd_list)):
                 pos_crowd[:, ii] = [crowd_list[ii].pose.pose.position.x, crowd_list[ii].pose.pose.position.y]
-                # Don't get velocity from tracker at current stage
-                # vel_crowd[:, ii] = [crowd_list[ii].twist.twist.linear.x, crowd_list[ii].twist.twist.linear.y]
-                
-                
+                    # Don't get velocity from tracker at current stage
+                    # vel_crowd[:, ii] = [crowd_list[ii].twist.twist.linear.x, crowd_list[ii].twist.twist.linear.y]
+        
         # Rotation is neglected due to circular representation
         # Relative distance to the agent of each obstacle
         if agent_position is None:
