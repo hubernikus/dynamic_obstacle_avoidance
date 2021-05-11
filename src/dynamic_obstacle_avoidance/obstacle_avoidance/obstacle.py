@@ -9,6 +9,10 @@ import numpy as np
 import numpy.linalg as LA
 from math import sin, cos, pi, ceil
 
+from functools import lru_cache
+# from functools import cache     # Store all values(?)
+# from functools import cached_property    # Store property [pyhton 3 only]
+
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
 
@@ -19,6 +23,7 @@ __author__ = "Lukas Huber"
 __email__ = "lukas.huber@epfl.ch"
 
 visualize_debug = False
+
 
 class Obstacle(State):
     """ 
@@ -34,7 +39,7 @@ class Obstacle(State):
         else:
             return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
-    def __init__(self, orientation=None, sigma=1,  center_position=np.array([0,0]),
+    def __init__(self, orientation=None, sigma=1,  center_position=np.array([0, 0]),
                  tail_effect=True, has_sticky_surface=True,
                  sf=1, repulsion_coeff=1,
                  reactivity=1,
@@ -63,21 +68,24 @@ class Obstacle(State):
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
 
-        # Obstacle attitude
+        # Obstacle attitude / 
         if not x0 is None:
-            center_position = x0 # TODO remove and rename
+            center_position = x0        # TODO remove and rename
         self.position = center_position
         self.center_position = self.position
         
-        self.x0 = center_position # REMOVE!
+        self.x0 = center_position       # TODO: REMOVE!
+
+        # Dimension of space
+        self.dim = len(self.center_position)
         
-        self.dim = len(self.center_position) # Dimension of space
-        self.d = len(self.center_position) # Dimension of space # TODO remove
+        # Dimension of space 
+        self.d = len(self.center_position)      # TODO remove
 
         if orientation is None:
-            if self.dim==2:
+            if self.dim == 2:
                 orientation = 0
-            if self.dim==3:
+            if self.dim == 3:
                 orientation = np.zeros(3)
                 
             if not th_r is None:
@@ -87,12 +95,12 @@ class Obstacle(State):
         self.orientation = orientation
 
         self.rotMatrix = []
-        self.compute_R() # Compute Rotation Matrix
+        self.compute_R()      # Compute Rotation Matrix
 
-        self.resolution = 0 #Resolution of drawing
+        self.resolution = 0      # Resolution of drawing
 
-        self._boundary_points = None # Numerical drawing of obstacle boundarywq
-        self._boundary_points_margin = None # Obstacle boundary plus margin!
+        self._boundary_points = None      # Numerical drawing of obstacle boundarywq
+        self._boundary_points_margin = None     # Obstacle boundary plus margin!
 
         self.timeVariant = timeVariant
         if self.timeVariant:
@@ -103,9 +111,9 @@ class Obstacle(State):
         
         if angular_velocity is None:
             if w is None:
-                if self.dim==2:
+                if self.dim == 2:
                     angular_velocity = 0
-                elif self.dim==3:
+                elif self.dim == 3:
                     angular_velocity = np.zeros(self.dim)
                 else:
                     import pdb; pdb.set_trace();
@@ -152,13 +160,15 @@ class Obstacle(State):
         self.Gamma_ref = Gamma_ref
         self.is_boundary = is_boundary
 
-        self.is_convex = False # Needed?
+        self.is_convex = False        # Needed?
         self.is_non_starshaped = False
 
         # Allows to track which obstacles need an update on the reference point search
         self.has_moved = True 
         self.is_dynamic = is_dynamic
+        
         self.is_deforming = is_deforming
+            
         if self.is_deforming:
             self.inflation_speed_radial = 0
 
@@ -169,10 +179,10 @@ class Obstacle(State):
 
         # Distance which decides over 'proportional' factor for gamma
         self.gamma_distance = gamma_distance
-        
+
         # self.properties = {} # TODO (maybe): use kwargs for properties..
 
-        Obstacle.id_counter += 1 # New obstacle created
+        Obstacle.id_counter += 1  # New obstacle created
         Obstacle.active_counter += 1
 
     def __del__(self):
@@ -195,15 +205,14 @@ class Obstacle(State):
             # value = 1.0
         self._repulsion_coeff = value
     
-    
-    
     # TODO: use loop for 2D array, in order to speed up for 'on-robot' implementation!
-    
     def get_normal_direction(self, position, in_global_frame=False):
         ''' Get normal direction to the surface. 
         IMPORTANT: Based on convention normal.dot(reference)>0 . '''
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
-    
+
+    # Store five previous values
+    @lru_cache(maxsize=5)
     def get_gamma(self, position, *args, **kwargs):
         ''' Get gamma value of obstacle.'''
         if len(position.shape)==1:
@@ -216,7 +225,6 @@ class Obstacle(State):
                               
         else:
             ValueError("Triple dimensional position are unexpected")
-
     
     def _get_gamma(self, position, reference_point=None, in_global_frame=False, gamma_type='proportional'):
         ''' Calculates the norm of the function.
@@ -480,7 +488,7 @@ class Obstacle(State):
     @orientation.setter
     def orientation(self, value):
         if isinstance(value, list) and self.dim==3:
-            self._orientation = np.array(value) # TODO: change to quaternion
+            self._orientation = np.array(value) # MAYBE: change to quaternion
         else:
             self._orientation = value
 
@@ -494,7 +502,6 @@ class Obstacle(State):
     @th_r.setter
     def th_r(self, value): # TODO: will be removed since outdated
         self.orientation = value # setter
-
 
     @property
     def position(self):
@@ -880,8 +887,7 @@ class Obstacle(State):
         weights_all = np.zeros(angles.shape)
         weights_all[nonzero_ind] = weights 
         return weights_all
-
-    
+            
     def get_distance_weight(self, distance, power=1, distance_min=0):
         ind_positiveDistance = (distance>0)
 

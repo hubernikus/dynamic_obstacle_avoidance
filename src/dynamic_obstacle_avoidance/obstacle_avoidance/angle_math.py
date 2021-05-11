@@ -12,9 +12,20 @@ __author__ = "Lukas Huber"
 __date__ = "2019-11-15"
 __email__ = "lukas.huber@epfl.ch"
 
+# TODO: optimize for speed. Cython?
+
+def angle_is_between(angle_test, angle_low, angle_high):
+    ''' Verify if angle_test is in between angle_low & angle_high '''
+    delta_low = angle_difference_directional(angle_test, angle_low)
+    delta_high = angle_difference_directional(angle_high, angle_test)
+
+    return (delta_low > 0 and delta_high > 0)
+
+
 def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
     ''' Verify if angle_test is in between angle_low & angle_high
-    Values are between [0, 2pi]. An absolute margin seems appropriate '''
+    Values are between [0, 2pi]. 
+    Margin to account for numerical errors. '''
     delta_low = angle_difference_directional_2pi(angle_test, angle_low)
     delta_high = angle_difference_directional_2pi(angle_high, angle_test)
 

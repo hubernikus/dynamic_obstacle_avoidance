@@ -64,11 +64,12 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     if evaluate_in_global_frame:
         pos_relative = np.tile(position, (N_obs, 1)).T
+        
     else:
         pos_relative = np.zeros((dim, N_obs))
         for n in range(N_obs):
             # Move to obstacle centered frame
-            pos_relative[:, n] = obs[n].transform_global2relative(position) 
+            pos_relative[:, n] = obs[n].transform_global2relative(position)
 
     # Two (Gamma) weighting functions lead to better behavior when agent &
     # obstacle size differs largely.
@@ -76,14 +77,16 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     for n in range(N_obs):
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
+        if obs[n].is_boundary:
+            warnings.warn('Artificially increasing boundary influence.')
+            # Gamma[n] = pow(Gamma[n], 1.0/3.0)
+
     Gamma_proportional = np.zeros((N_obs))
     for n in range(N_obs):
         Gamma_proportional[n] = obs[n].get_gamma(pos_relative[:, n],
                                                  in_global_frame=evaluate_in_global_frame,
                                                  gamma_distance=gamma_distance,
                                                  )
-
-    # Gamma_proportional = np.copy(Gamma)
 
     # Worst case of being at the center
     if any(Gamma == 0):
@@ -94,11 +97,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     ind_obs = (Gamma < cut_off_gamma)
     if any(~ind_obs):
-        warning.warn('Exceeding cut-off gamma. Stopping modulation.')
+        warnings.warn('Exceeding cut-off gamma. Stopping modulation.')
         return xd
-
-    # pos_relative = pos_relative[:, ind_obs]
-    # N_obs = np.sum(ind_obs)
 
     if N_attr:
         d_a = LA.norm(x - np.array(attractor))        # Distance to attractor
@@ -110,7 +110,6 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     E = np.zeros((dim, dim, N_obs))
     D = np.zeros((dim, dim, N_obs))
     E_orth = np.zeros((dim, dim, N_obs))
-    # M = np.zeros((dim, dim, N_obs))
 
     for n in np.arange(N_obs)[ind_obs]:
         # x_t = obs[n].transform_global2relative(x) # Move to obstacle centered frame
@@ -120,10 +119,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
             rho=obs[n].reactivity,
         )
 
-        # try: # TODO: remove after debugging
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
-        # except:
-            # import pdb; pdb.set_trace() 
 
     # Linear and angular roation of velocity
     xd_obs = np.zeros((dim))
@@ -158,26 +154,25 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
         xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
         
-        # The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
-        
+        # The Exponential term is very helpful as it help to avoid
+        # the crazy rotation of the robot due to the rotation of the object
         if obs[n].is_deforming:
             weight_deform = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n], 1])-1))
             vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
 
             if velocity_only_in_positive_normal_direction:
                 vel_deformation_local = E_orth[:, :, n].T.dot(vel_deformation)
-                if ((vel_deformation_local[0]<0 and not obs[n].is_boundary)
-                    or (vel_deformation_local[0]>0 and obs[n].is_boundary)):
+                if ((vel_deformation_local[0] > 0 and not obs[n].is_boundary)
+                    or (vel_deformation_local[0] < 0 and obs[n].is_boundary)):
                     vel_deformation = np.zeros(vel_deformation.shape[0])
                     
                 else:
                     vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
-                    pass
                 
             xd_obs_n += weight_deform * vel_deformation
         
         xd_obs = xd_obs + xd_obs_n*weight[n]
-        
+
     xd = xd-xd_obs      # Computing the relative velocity with respect to the obstacle
     
     xd_hat = np.zeros((dim, N_obs))
@@ -190,20 +185,15 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     # plt.annotate('{}'.format(np.round(Gamma[n], 2)), xy=position, textcoords='data', size=16, weight="bold")
     # plt.annotate('{}'.format(np.round(D[0, 0, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
     # plt.annotate('{}'.format(np.round(D[1, 1, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
-                 
-    
     
     for n in np.arange(N_obs)[ind_obs]:
-        if (
-            # (obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or
-            (obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)<0)
-                # and False
+        if ((obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)<0)
+            # or(obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or 
             ):
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
             xd_hat[:, n] = xd
-            
-                
+
         else:
             # Matrix inversion cost between O(n^2.373) - O(n^3)
             if not evaluate_in_global_frame:
@@ -219,22 +209,24 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 if E_orth[:, 0, n].T.dot(xd)<0:
                     # import pdb; pdb.set_trace()
                     # Adapt in reference direction
-                    D[0, 0, n] = 2-D[0, 0, n]
+                    D[0, 0, n] = 2 - D[0, 0, n]
 
+            # xd_trafo[0]>0
             elif (not obs[n].tail_effect and
-                # xd_trafo[0]>0
-                ((xd_trafo[0]>0 and not obs[n].is_boundary) or
-                 (xd_trafo[0]<0 and obs[n].is_boundary))
-            ):
+                  ((xd_trafo[0] > 0 and not obs[n].is_boundary)
+                   or (xd_trafo[0] < 0 and obs[n].is_boundary)
+                  )):
                 D[0, 0, n] = 1       # No effect in 'radial direction'
 
             xd_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(xd_trafo)
 
             if not evaluate_in_global_frame:
                 xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
-
-        # import pdb; pdb.set_trace()
-        if obs[n].has_sticky_surface:
+            # import pdb; pdb.set_trace()
+            
+        if False:
+        # if obs[n].has_sticky_surface:
+            # TODO: review sticky surface feature [!]
             xd_norm = np.linalg.norm(xd)
             
             if xd_norm:    # Nonzero
@@ -249,18 +241,27 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 # Treat inside obstacle as on the surface
                 Gamma_mag = max(Gamma_proportional[n], 1)
                 if abs(Gamma_proportional[n]) < 1:
+                # if abs(Gamma_mag) < 1:
                     eigenvalue_magnitude = 0
                 else:
                     eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
+                    # eigenvalue_magnitude = 1 - 1./abs(Gamma_mag)**sticky_surface_power
 
-                xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
+                if not evaluate_in_global_frame:
+                    xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
+                else:
+                    xd_temp = xd_hat[:, n]
                 
                 tang_vel = np.abs(E_orth[:, :, n].T.dot(xd_temp)[0])
                 
                 eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1) if tang_vel else 0
-                
+
                 xd_hat[:, n] = xd_hat[:, n]*xd_norm * eigenvalue_magnitude
-        # import pdb; pdb.set_trace()
+                
+                if not evaluate_in_global_frame:
+                    xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
+
+                # import pdb; pdb.set_trace()
 
         if repulsive_obstacle:
             # Emergency move away from center in case of a collision
@@ -275,21 +276,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 if not obs[n].is_boundary:
                     repulsive_speed *= (-1)
                     
-                # xd_hat[:,n] += R[:,:,n] .dot(E[:, 0, n]) * repulsive_velocity
-                # x_t = R[:,:,n].T.dot(x-obs[n].center_position)
                 pos_rel = obs[n].get_reference_direction(position, in_global_frame=True)
-
-                # norm_xt = np.linalg.norm(pos_rel)
                 
-                # if (norm_xt): # nonzero
                 repulsive_velocity = pos_rel*repulsive_speed
-                # else:
-                    # repulsive_velocity = np.zeros(dim)
-                    # repulsive_velocity[0] = 1*repulsive_speed
-
-                # if obs[n].is_boundary:
-                    # repulsive_velocity = (-1)*repulsive_velocity
-                    
                 xd_hat[:, n] = repulsive_velocity
 
         xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
@@ -300,7 +289,7 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         xd_hat_normalized[:, ind_nonzero] = xd_hat[:, ind_nonzero]/np.tile(xd_hat_magnitude[ind_nonzero], (dim, 1))
 
     if N_attr:
-        # IMPLEMENT PROPERLY & TEST
+        # TODO: implement properly & test
         k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) # points at the origin
         xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
         
@@ -327,7 +316,9 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     # if np.linalg.norm(vel_final) > 10:
         # Error check
         # import pdb; pdb.set_trace()
-        
+
+    # import pdb; pdb.set_trace()
+    
     return vel_final
 
 

@@ -170,15 +170,22 @@ def main(options=[], N_resol=100, saveFigures=False):
 
 
 if (__name__)=="__main__":
-    if len(sys.argv) > 1:
-        options = sys.argv[1]
+    argv_copy = copy.deepcopy(sys.argv)
+    
+    if argv_copy[2] == '-i':
+        del argv_copy[2]
+        del argv_copy[1]
+        
+    if len(argv_copy) > 1:
+        options = argv_copy[1]
 
-    if len(sys.argv) > 2:
-        N_resol = sys.argv[2]
+    if len(argv_copy) > 2:
+        N_resol = argv_copy[2]
 
-    if len(sys.argv) > 3:
-        saveFigures = sys.argv[3]
+    if len(argv_copy) > 3:
+        saveFigures = argv_copy[3]
 
+    # options = [0,1,2,3,4,5]
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
 
     # input("\nPress enter to continue...")

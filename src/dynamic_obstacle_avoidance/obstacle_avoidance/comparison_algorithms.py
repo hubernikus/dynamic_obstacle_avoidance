@@ -24,12 +24,12 @@ import sys
 def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   factor_repulsion=0.1,
                                   min_distance=0.001,
-                                  constant_gain_repulsion=1.0, limit_distance_repulsion=2.0,
+                                  constant_gain_repulsion=2.0, limit_distance_repulsion=2.0,
                                   virtual_mass_time_factor=1.0,
                                   evaluate_with_relative_minimum=True,
                                   ):
     ''' Potential field method. 
-    Based on: khatib1986real
+    Based on: kahtib1986real
     Not that the artificial potential field algorithm is acting in the force space.'''
 
     # Trivial enrionment check
@@ -43,11 +43,24 @@ def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
     obs_position = np.array([oo.center_position for oo in obs]).T
     dir_obstacles = np.tile(position, (obs_position.shape[1], 1)).T - obs_position
 
-    dist_to_center = np.linalg.norm(dir_obstacles, axis=0)
+    # dist_to_center = np.linalg.norm(dir_obstacles, axis=0)
 
-    local_radius = np.array([oo.get_local_radius_ellipse(position, in_global_frame=True) for oo in obs]).T
+    # local_radius = np.array([oo.get_local_radius_ellipse(position, in_global_frame=True) for oo in obs]).T
 
-    dist_to_obstacles = dist_to_center - local_radius
+    # dist_to_obstacles = dist_to_center - local_radius
+    
+    dist_to_obstacles = np.zeros(len(obs))
+    for oo in range(len(obs)):
+        gamma = obs[oo].get_gamma(position, in_global_frame=True)
+        dist_to_ref = np.linalg.norm(obs[oo].global_reference_point - position)
+        
+        # if obs[oo].is_boundary:
+            # gamma = 1.0/gamma
+            # dist_to_obstacles[oo] = dist_to_ref*(1-gamma)
+        # else:    
+        dist_to_obstacles[oo] = dist_to_ref*(gamma-1)
+
+        # import pdb; pdb.set_trace()
     
     # Cut-off at minimum distance
     if evaluate_with_relative_minimum:
@@ -60,13 +73,20 @@ def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
     repulsive_dir = np.array([oo.get_normal_direction(position, in_global_frame=True)
                               for oo in obs]).T
 
-    repulsive_velocity = (-1)*repulsive_dir * np.tile((repulsive_velocity), (dir_obstacles.shape[0], 1))
-                                              
+    repulsive_velocity = (-1) * repulsive_dir * np.tile((repulsive_velocity), (dir_obstacles.shape[0], 1))
+
+    for oo in range(len(obs)):
+        if obs[oo].is_boundary:
+            # pass
+            repulsive_velocity[:, oo] = repulsive_velocity[:, oo]*(-1)
+        
     repulsive_velocity = np.sum(repulsive_velocity, axis=1)
 
+    # import pdb; pdb.set_trace()
     velocity = velocity + repulsive_velocity
     # velocity = repulsive_velocity
-    # print('velocity mag', np.linalg.norm(velocity))
+    
+    # print('velocity', np.linalg.norm(velocity))
     return velocity
 
 
@@ -125,6 +145,16 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
     Gamma = np.zeros((N_obs))
     for n in range(N_obs):
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
+
+    ind_sort = np.argsort(Gamma)
+    ind_sort = np.flip(ind_sort)
+    Gamma = Gamma[ind_sort]
+    pos_relative = pos_relative[:, ind_sort]
+    # Create obstacle list
+    obs_container = obs
+    obs = []
+    for oo in range(len(obs_container)):
+        obs.append(obs_container[ind_sort[oo]])
 
     Gamma_proportional = np.zeros((N_obs))
     for n in range(N_obs):
@@ -190,7 +220,7 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
         xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
         
         # The Exponential term is very helpful as it help to avoid the crazy rotation of the robot due to the rotation of the object
-        
+
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
     # Computing the relative velocity with respect to the obstacle
@@ -211,6 +241,7 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
 
         if not evaluate_in_global_frame:
             xd_hat = obs[n].transform_relative2global_dir(xd_hat)
+
 
     # import pdb; pdb.set_trace()
     vel_final = xd_hat

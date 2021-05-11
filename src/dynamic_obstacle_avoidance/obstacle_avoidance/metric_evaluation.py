@@ -1,5 +1,4 @@
 # !/usr/bin/env python3
-
 '''
 Class to evaluate different metrics during evaluatin
 '''
@@ -11,9 +10,22 @@ import numpy as np
 import json
 import yaml
 
+import warnings
+
+def filter_moving_average(input_array, width, axis=1):
+    ''' Along axis=0. '''
+    if len(input_array.shape) == 1:
+        return np.convolve(input_array, np.ones(width), 'valid') / width
+    
+    output_array = np.zeros((input_array.shape[0], input_array.shape[1] - width + 1))
+    for dd in range(input_array.shape[0]):
+        output_array[dd, :] = np.convolve(input_array[dd, :], np.ones(width), 'valid') / width
+        
+    return output_array
+
 
 class MetricEvaluator():
-    def __init__(self, position=None, velocity=None, time=None, closest_dist=None, file_name=None):
+    def __init__(self, position=None, velocity=None, crowd_density=None, time=None, closest_dist=None, file_name=None, **kwargs):
 
         # Initialize Metric measures
         self._acceleration_squared = []
@@ -26,6 +38,11 @@ class MetricEvaluator():
         self.closest_dist = [] if closest_dist is None else [closest_dist]
         
         self.time_list = [] if time is None else [time]
+
+        # TODO: more 'metrics' as general data_list
+        self.data_lists = {}
+        for key in kwargs.keys():
+            self.data_lists[key] = [kwargs[key]]
 
         self.file_name = file_name
 
@@ -57,11 +74,20 @@ class MetricEvaluator():
         self.closestdist_list = [] if closest_dist is None else [closest_dist]
         self.time_list = [] if time is None else [time]
 
+        for key in self.args_list.keys():
+            self.args_list[key] = []
+
         self.converged = True
         
-    def update_list(self, position, velocity, closest_dist=None, time=None):
+    def update_list(self, position, velocity, closest_dist=None, time=None, **kwargs):
         self.position_list.append(position)
         self.velocity_list.append(velocity)
+
+        for key in kwargs.keys():
+            if key in self.args_list:
+                self.data_lists[key].append(kwargs[key])
+            else:
+                self.data_lists[key] = [kwargs[key]]
 
         if closest_dist is not None:
             self.closestdist_list.append(closest_dist)
@@ -101,6 +127,9 @@ class MetricEvaluator():
             'time': self.time_list,
         }
 
+        # Add general lists
+        storage.update(self.data_lists)
+
         return storage
 
     def import_data_from_file(self, filename, evaluate_and_return_metrics=True):
@@ -109,11 +138,21 @@ class MetricEvaluator():
         if filename[-5:]==".json":
             with open(filename, 'r') as ff:
                 data = json.load(ff)
-                
+
                 self.position_list = data['position']
+                data.pop('position')
+                
                 self.velocity_list = data['velocity']
+                data.pop('velocity')
+                
                 self.closestdist_list = data['closestdist']
+                data.pop('closestdist')
+                
                 self.time_list = data['time']
+                data.pop('time')
+
+                # General/special data
+                self.data_lists = data
 
         else:
             warnings.warn("Unexpected filename detected")
@@ -121,31 +160,36 @@ class MetricEvaluator():
 
         if evaluate_and_return_metrics:
             return self.evaluate_metrics()
-
-    def evaluate_metrics(self, dt=None):
+    
+    def evaluate_metrics(self, delta_time=None):
         ''' Evaluate the metrics based on the safed position & velocity. '''
-
-        if not len(self.position_list):
-            # Emtpy list -- no datapoints yet.
-            return
+        
+        if len(self.position_list) <= 1:
+            # Emtpy or 1D list -- not enough datapoints
+            print('Returning empty list due to insufficient recording')
+            return {}
 
         self.position_list = np.array(self.position_list).T
         self.velocity_list = np.array(self.velocity_list).T
-        self.closestdist_list = np.array(self.closestdist_list).T
-        self.time_list = np.array(self.time_list)
 
-        # Assumption of constant time-gap
-        delta_time = (self.time_list[1]-self.time_list[0])
-        
         metrics = {}
-
-        # Duration
-        metrics['duration'] = self.time_list[-1] - self.time_list[0]
+        
+        # Assumption of constant time-gap
+        if hasattr(self, 'time_list') and len(self.time_list):
+            self.time_list = np.array(self.time_list)
+            
+            if delta_time is None:
+                delta_time = (self.time_list[1]-self.time_list[0])
+        
+            # Duration
+            metrics['duration'] = self.time_list[-1] - self.time_list[0]
 
         # Closest Distance
-        metrics['closest_dist'] = {}
-        metrics['closest_dist']['mean'] = np.mean(self.closestdist_list)
-        metrics['closest_dist']['variance'] = np.var(self.closestdist_list)
+        if hasattr(self, 'closestdist_list'):
+            self.closestdist_list = np.array(self.closestdist_list).T
+            metrics['closest_dist'] = {}
+            metrics['closest_dist']['mean'] = np.mean(self.closestdist_list)
+            metrics['closest_dist']['variance'] = np.var(self.closestdist_list)
 
         # Distance
         metrics['distance'] = np.sum(
@@ -161,21 +205,23 @@ class MetricEvaluator():
                              
             linear_velocity = np.linalg.norm(velocity_list, axis=0)
 
+            # Filter velocity
+            linear_velocity = filter_moving_average(linear_velocity, width=30)
+
         else:
             velocity_list = self.velocity_list
             
         metrics['linear_velocity'] = {}
         metrics['linear_velocity']['mean'] = np.mean(linear_velocity)
-        metrics['linear_velocity']['variance'] = np.var(linear_velocity)
-
+        metrics['linear_velocity']['std'] = np.std(linear_velocity)
 
         # Angular Velocity
         orientation = np.arctan(velocity_list[:, 1], velocity_list[:, 0])
         angular_velocity = (orientation[1:] - orientation[:-1]) / delta_time
         
         metrics['angular_velocity'] = {}
-        metrics['angular_velocity']['mean'] = np.mean(linear_velocity)
-        metrics['angular_velocity']['variance'] = np.var(linear_velocity)
+        metrics['angular_velocity']['mean'] = np.mean(angular_velocity)
+        metrics['angular_velocity']['variance'] = np.var(angular_velocity)
         
         # Acceleration
         acceleration = (velocity_list[:, 1:] - velocity_list[:, :-1]) / delta_time
@@ -190,6 +236,12 @@ class MetricEvaluator():
         # Evaluate main direction of velocity
         mean_vel = np.mean(velocity_list, axis=1)
         metrics['direction'] = np.copysign(1, mean_vel[1])
+
+        # General metrics
+        for key in self.data_lists.keys():
+            metrics[key] = {}
+            metrics[key]['mean'] = np.mean(self.data_lists[key])
+            metrics[key]['variance'] = np.var(self.data_lists[key])
 
         return metrics
 

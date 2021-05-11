@@ -13,6 +13,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 # Import custom libraries
 from dynamic_obstacle_avoidance.obstacle_avoidance.metric_evaluation import MetricEvaluator
@@ -27,6 +28,7 @@ def import_data():
     import_directory = os.path.join(global_directory, 'data', 'metrics_recording')
     all_recordings = os.listdir(import_directory)
 
+    # Take random one to get all the keys & construct the dictionary
     data = MainEvaluator.import_data_from_file(
         filename=os.path.join(import_directory, all_recordings[1]))
     
@@ -92,7 +94,7 @@ def convert_to_numpy(data):
     return data
 
 
-def get_mean_and_variance_at_speeds(value_list, crowd_density):
+def get_mean_and_variance_at_speeds(value_list, crowd_density, simulator_area=10*50):
     ''' Get the mean and variance from list '''
     crowd_sizes = np.sort(np.unique(crowd_density))
     mean_value = np.zeros(crowd_sizes.shape)
@@ -105,10 +107,11 @@ def get_mean_and_variance_at_speeds(value_list, crowd_density):
 
         mean_value[ii] = np.mean(value_list[value_ind])
         variance_value[ii] = np.var(value_list[value_ind])
-
         
         ii += 1
-    return crowd_sizes, mean_value, variance_value
+
+    crowd_density = crowd_sizes / simulator_area * 1000
+    return crowd_density, mean_value, variance_value
 
 dict_metrics = import_data()
 
@@ -118,31 +121,99 @@ pos_dir = (dict_metrics['direction'] > 0.0)
 neg_dir = (dict_metrics['direction'] < 0.0)
 
 # pos_dir = np.arange(pos_dir.shape[0], dtype=int)[pos_dir]
+subplot_it = 0
+# n_plots = 4
+# plt.figure(figsize=(5, 4))
 
-plt.figure()
-num_peops, value_mean, value_var = get_mean_and_variance_at_speeds(
-    dict_metrics['duration'][pos_dir], dict_metrics['num_people'][pos_dir])
-plt.errorbar(num_peops, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
+# subplot_it += 1
+# plt.subplot(n_plots, 1, subplot_it)
+plt.close('all')
+fig, ax = plt.subplots(figsize=(5, 4))
 
-num_peops, value_mean, value_var = get_mean_and_variance_at_speeds(
-    dict_metrics['duration'][neg_dir], dict_metrics['num_people'][neg_dir])
+subplot_it += 1
+plt.subplot(n_plots, 1, subplot_it)
+# import pdb; pdb.set_trace()
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics['distance'][pos_dir], dict_metrics['num_people'][pos_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
 
-plt.errorbar(num_peops, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics['distance'][neg_dir], dict_metrics['num_people'][neg_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+plt.xscale('log')
+plt.xticks(ticks=[])
+# plt.grid('True')
+# plt.xlabel('Acceleration in Crowd')
+plt.ylabel('D [m]')
 
-plt.xlabel('Number of people in Crowd')
-plt.ylabel('Distance Travelled by Robot [m]')
+subplot_it += 1
+plt.subplot(n_plots, 1, subplot_it)
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics['linear_velocity']['mean'][pos_dir], dict_metrics['num_people'][pos_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
 
-plt.figure()
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics['linear_velocity']['mean'][neg_dir], dict_metrics['num_people'][neg_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+plt.xscale('log')
+# plt.xlabel('Acceleration in Crowd')
+plt.xticks(ticks=[])
+plt.ylabel('V [m/s] \n (Mean)')
 
 
-plt.figure()
+subplot_it += 1
+plt.subplot(n_plots, 1, subplot_it)
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    np.sqrt(dict_metrics['linear_velocity']['variance'][pos_dir]), dict_metrics['num_people'][pos_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
+
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    np.sqrt(dict_metrics['linear_velocity']['variance'][neg_dir]), dict_metrics['num_people'][neg_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+plt.xscale('log')
+# plt.xlabel('Acceleration in Crowd')
+plt.xticks(ticks=[])
+plt.ylabel('V [m/s] \n (Std.)')
+
+
+subplot_it += 1
+ax = plt.subplot(n_plots, 1, subplot_it)
+metric_type = 'duration'
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics[metric_type][pos_dir], dict_metrics['num_people'][pos_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
+
+crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+    dict_metrics[metric_type][neg_dir], dict_metrics['num_people'][neg_dir])
+plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+plt.xscale('log')
+# plt.xticks(ticks=crowd_density.tolist())
+ax.set_xticks(crowd_density.tolist())
+ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+# plt.xlabel('Number of people in Crowd')
+plt.ylabel('T [s]')
+
+# subplot_it += 1
+# plt.subplot(n_plots, 1, subplot_it)
+# crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+#     dict_metrics['acceleration']['mean'][pos_dir], dict_metrics['num_people'][pos_dir])
+# plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='blue')
+
+# crowd_density, value_mean, value_var = get_mean_and_variance_at_speeds(
+#     dict_metrics['acceleration']['mean'][neg_dir], dict_metrics['num_people'][neg_dir])
+# plt.errorbar(crowd_density, value_mean, yerr=np.sqrt(value_var), fmt='o', color='red')
+# plt.ylabel('Acceleration [m/s2]')
+plt.xlabel(r'Crowd Density [Agents / 1000 $m^2$]')
+plt.savefig('figures/' + 'simulation_evaluation' + '.png', bbox_inches='tight')
+
+# plt.figure()
 # plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir], color='b')
-plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir],
-            color='b', label='Positive Direction')
+# plt.scatter(dict_metrics['num_people'][pos_dir], dict_metrics['duration'][pos_dir],
+            # color='b', label='Positive Direction')
 
-plt.scatter(dict_metrics['num_people'][neg_dir], dict_metrics['duration'][neg_dir], 
-            color='r', label='Negative Direction')
-plt.legend()
+# plt.scatter(dict_metrics['num_people'][neg_dir], dict_metrics['duration'][neg_dir], 
+            # color='r', label='Negative Direction')
+# plt.legend()
 
 # plt.subplots(4,1,2)
 
@@ -150,7 +221,4 @@ plt.legend()
 
 # plt.subplots(4,1,4)
 
-
 plt.show()
-
-

@@ -22,7 +22,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_tangent
 
 def is_one_point(point1, point2, margin=1e-9):
     ''' Check if it the two points coincide [1-norm] '''
-    return np.sum(np.abs(point1-point2)) < 1e-9
+    return np.isclose(point1, point2, rtol=1e-9)
+    # return np.sum(np.abs(point1-point2)) < 1e-9
 
 class Polygon(Obstacle):
     '''
@@ -60,6 +61,8 @@ class Polygon(Obstacle):
 
         if absolute_edge_position:
             self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
+
+        # print('edge points', edge_points)
         
         if self.dim==2:
             self.n_planes_edge = self.edge_points.shape[1]
@@ -558,6 +561,7 @@ class Polygon(Obstacle):
         multiple_positions = (len(position.shape)>1)
         if multiple_positions:
             n_points = position.shape[1]
+            
         else:
             n_points = 1
             position = position.reshape((self.dim, n_points))
@@ -625,11 +629,11 @@ class Polygon(Obstacle):
             position = self.transform_global2relative(position)
         
         mag_position = np.linalg.norm(position)
-        if mag_position==0: # aligned with center, treat sepearately
+        if mag_position == 0:      # aligned with center, treat sepearately
             if self.is_boundary:
                 return np.ones(self.dim)/self.dim
             else:
-                return np.ones(self.dim)/self.dim #
+                return np.ones(self.dim)/self.dim 
 
         if self.is_boundary:
             # Child and Current Class have to call Polygon
@@ -817,7 +821,6 @@ class Polygon(Obstacle):
                         self.edge_reference_points[:, qq, 1] = tang_points[:, 0] \
                                                                if np.cross(tt[:, 0], tt[:, 1]) < 0 \
                                                                   else tang_points[:, 1]
-                        
                         break
                     
                     elif np.cross(vec_ref, t1) < 0:
@@ -862,11 +865,14 @@ class Polygon(Obstacle):
                             self.edge_reference_points = copy.deepcopy(self.edge_points)
                             self.edge_reference_points[:, pp] = reference_point_temp
                         else:
-                            self.edge_reference_points = np.hstack((
-                                self.edge_reference_points[:, :pp],
-                                np.reshape(self.reference_point, (self.dim,1)),
-                                self.edge_reference_points[:, pp:]))
-
+                            # try:
+                            if True:
+                                self.edge_reference_points = np.hstack((
+                                    self.edge_reference_points[:, :pp],
+                                    np.reshape(self.reference_point, (self.dim, 1)),
+                                    self.edge_reference_points[:, pp:]))
+                            # except:
+                                # import pdb; pdb.set_trace()
                         break
                     
                 self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_reference_points)
@@ -908,34 +914,46 @@ class Polygon(Obstacle):
 
             import pdb; pdb.set_trace() ## DEBUG ##
             plt.close('all')
-  
 
-            
+
 class Cuboid(Polygon):
-    def __init__(self, axes_length=[1,1], margin_absolut=0, *args, **kwargs):
+    def __init__(self, axes_length=[1, 1], margin_absolut=0, expansion_speed_axes=None, *args, **kwargs):
         '''
         This class defines obstacles to modulate the DS around it
         At current stage the function focuses on Ellipsoids, 
         but can be extended to more general obstacles
         '''
         self.axes_length = np.array(axes_length)
-        
-        self.dim = self.axes_length.shape[0] # Dimension of space
 
-        if not self.dim==2:
-            raise ValueError("Cuboid not yet defined for dimensions= {}".format(dim))
-
-        edge_points = np.zeros((self.dim, 4))
-        edge_points[:,2] = self.axes_length/2.0*np.array([1,1])
-        edge_points[:,3] = self.axes_length/2.0*np.array([-1,1])
-        edge_points[:,0] = self.axes_length/2.0*np.array([-1,-1])
-        edge_points[:,1] = self.axes_length/2.0*np.array([1,-1])
-
-        if sys.version_info>(3,0):
-            super().__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
+        if expansion_speed_axes is None:
+            self.expansion_speed_axes = None
+            is_deforming = False
         else:
-            super(Cuboid, self).__init__(*args, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
+            self.expansion_speed_axes = np.array(expansion_speed_axes)
+            is_deforming = True
+
+        self.dim = self.axes_length.shape[0] # Dimension of space
+        
+        if not self.dim == 2:
+            raise ValueError("Cuboid not yet defined for dimensions= {}".format(self.dim))
+        
+        edge_points = np.zeros((self.dim, 4))
+        edge_points[:, 2] = self.axes_length/2.0 * np.array([1, 1])
+        edge_points[:, 3] = self.axes_length/2.0 * np.array([-1, 1])
+        edge_points[:, 0] = self.axes_length/2.0 * np.array([-1, -1])
+        edge_points[:, 1] = self.axes_length/2.0 * np.array([1, -1])
+
+        if sys.version_info > (3, 0):
+            super().__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
+
+        else:
+            super(Cuboid, self).__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
 
     def get_reference_length(self):
         return np.linalg.norm(self.axes_length)/2.0 + self.margin_absolut
+
+    def update_deforming_obstacle(self, delta_time):
+        self.axes_length = self.axes_length + self.expansion_speed_axes*delta_time
+
+        self.draw_obstacle()
 

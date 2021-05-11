@@ -1,6 +1,8 @@
+#!/USSR/bin/python3
 '''
 Obstacle Avoidance Algorithm script with vecotr field
 '''
+
 from dynamic_obstacle_avoidance.dynamical_system import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
@@ -86,19 +88,23 @@ def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, d
             points = x_pos.T.reshape(-1, 1, 2)
             segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
-            norm = plt.Normalize(min_value, max_value)
+            # norm = plt.Normalize(min_value, max_value)
+            norm = ax.Normalize(min_value, max_value)
             lc = LineCollection(segments, cmap='jet', norm=norm)
 
             # Set the values used for colormapping
             lc.set_array(magnitude)
             lc.set_linewidth(2)
             line = ax.add_collection(lc)
-            plt.axis('equal')
+            # ax.axis('equal')
+            ax.axis('equal')
 
             if False:
                 fig.colorbar(line, ax=ax)
         else:
-            line = plt.plot(x_pos[0, :], x_pos[1, :], color=line_color, linewidth=3)
+            # line = plt.plot(x_pos[0, :], x_pos[1, :], color=line_color, linewidth=3)
+            # line = ax.plot(x_pos[0, :], x_pos[1, :], color=line_color, linewidth=3, zorder=6)
+            line = ax.plot(x_pos[0, :], x_pos[1, :], color=line_color, linewidth=3)
         
         arr_img = mpimg.imread(os.path.join('data', 'Qolo_T_CB_top_bumper.png'))
     
@@ -163,7 +169,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     
     for j in range(n_points):
         ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4, color='r')
-        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13)
+        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13, zorder=5)
         
     # return x_pos
 
@@ -172,7 +178,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     ''' Plot all obstacles & attractors '''
 
     if not xAttractor is None:
-        ax.plot(xAttractor[0], xAttractor[1], 'k*',linewidth=18.0, markersize=18)
+        ax.plot(xAttractor[0], xAttractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
 
     obs_polygon = []
     obs_polygon_sf = []
@@ -186,7 +192,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
             outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
                                        [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
 
-            boundary_polygon = plt.Polygon(outer_boundary, alpha=0.8, zorder=-4)
+            boundary_polygon = plt.Polygon(outer_boundary, alpha=1.0, zorder=-4)
             boundary_polygon.set_color(np.array([176, 124, 124])/255.)
             ax.add_patch(boundary_polygon)
 
@@ -276,7 +282,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # Numerical hull of ellipsoid 
     for n in range(len(obs)): 
         obs[n].draw_obstacle(numPoints=50) # 50 points resolution 
-
 
     if fig_and_ax_handle is None:
         fig, ax = plt.subplots(figsize=figureSize)
@@ -376,7 +381,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
         res_init = ax_init.streamplot(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[(0.3,0.3,0.3)])
         
-        ax_init.plot(xAttractor[0], xAttractor[1], 'k*')
+        ax_init.plot(xAttractor[0], xAttractor[1], 'k*', zorder=5)
         plt.gca().set_aspect('equal', adjustable='box')
 
         plt.xlim(x_range)
@@ -407,7 +412,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
-                res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=0)
+                res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=3)
                 
             else:
                 quiver_factor=1.0
@@ -421,10 +426,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 YY = YY.flatten()[ind_flatten]
                 dx1_noColl = dx1_noColl.flatten()[ind_flatten]
                 dx2_noColl = dx2_noColl.flatten()[ind_flatten]
-                
+
                 res_ifd = ax.quiver(XX, YY,
                                     dx1_noColl*quiver_factor, dx2_noColl*quiver_factor,
-                                    color=streamColor, zorder=0)
+                                    color=streamColor, zorder=3)
 
     plt.show()
 

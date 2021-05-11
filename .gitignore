@@ -4,9 +4,11 @@
 **/*~
 **/*.egg-info/*
 
-
 figures/**
+data/**
 **/*.bag
+
+
 
 # scripts/*.png
 # scripts/*.pdf

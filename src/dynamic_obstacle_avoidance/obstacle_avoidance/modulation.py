@@ -607,6 +607,9 @@ def cut_lineWithEllipse(line_points, axes):
 def get_intersectionWithEllipse(*args, **kwargs):
     raise NotImplementedError("Use function integrated in Ellipse-Class.")
     # return Ellipse.get_intersectionWith(*args, **kwargs)
+
+def get_circle_and_ellipse():
+    pass
     
 
 

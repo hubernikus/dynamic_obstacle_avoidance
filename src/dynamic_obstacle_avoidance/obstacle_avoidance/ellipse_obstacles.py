@@ -1,7 +1,6 @@
 #!/USSR/bin/python3
-
 '''
-@date 2019-10-15
+date 2021-04-29
 @author Lukas Huber 
 @email lukas.huber@epfl.ch
 '''
@@ -14,7 +13,7 @@ from math import sin, cos, pi, ceil
 import numpy as np
 import numpy.linalg as LA
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt     # TODO remove for production
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
@@ -31,19 +30,28 @@ class Ellipse(Obstacle):
     ''' Ellipse type obstacle 
     Geometry specifi attributes are
     axes_length: 
-    curvature: float / array (list)
-    '''
+    curvature: float / array (list) '''
+    
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
                  margin_absolut=0,
+                 is_deforming=False,
+                 expansion_speed_axes=None,
                  hull_with_respect_to_reference=False,
                  *args, **kwargs):
 
-        if sys.version_info>(3,0):
-            super().__init__(*args, **kwargs)
+        if expansion_speed_axes is None:
+            is_deforming = is_deforming
         else:
-            super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
+            is_deforming = True
+            
+        if sys.version_info > (3, 0):
+            super().__init__(*args, is_deforming=is_deforming, **kwargs)
+        else:      # works for python < 3.0?!
+            super(Ellipse, self).__init__(*args, is_deforming=is_deforming, **kwargs) 
+
+        self.expansion_speed_axes = expansion_speed_axes
         
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
@@ -110,6 +118,22 @@ class Ellipse(Obstacle):
     @axes_length.setter
     def axes_length(self, value):
         self._axes_length = value
+
+    @property
+    def expansion_speed_axes(self):
+        return self._expansion_speed_axes
+
+    @expansion_speed_axes.setter
+    def expansion_speed_axes(self, value):
+        if value is None:
+            self._expansion_speed_axes = value
+            return
+        
+        value = np.array(value)
+        
+        if not value.shape == (self.dim,):
+            raise TypeError("Wrong Expansion Type should be and array of length {}".format(self.dim))
+        self._expansion_speed_axes = value
 
     @property
     def p(self): # TODO: remove
@@ -294,7 +318,6 @@ class Ellipse(Obstacle):
             angle2refencePatch[ii] = self.get_angle2dir(position_line, tangent_line)
 
         return angle2refencePatch
-    
 
     def get_normal_direction(self, position, in_global_frame=False, normalize=True):
         if in_global_frame:
@@ -420,10 +443,30 @@ class Ellipse(Obstacle):
         else:
             raise NotImplementedError("Implement for d>2")
         
-
     def get_local_radius_point(self, direction, in_global_frame=False):
         return self.get_intersection_with_surface(direction=direction, in_global_frame=in_global_frame, only_positive_direction=True)
-    
+
+    def get_deformation_velocity(self, position, in_global_frame=True, delta_time=0.01):
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        if not np.linalg.norm(position): # zero vector
+            return np.zeros(position.shape)
+
+        axes_backup = copy.deepcopy(self.axes_length)
+        
+        # Numerical evaluation for simplicity
+        point0 = self.get_local_radius_point(position)
+        self.axes_length = self.axes_length + self.expansion_speed_axes * delta_time
+        point1 = self.get_local_radius_point(position)
+
+        # Reset axes
+        self.axes_length = axes_backup
+
+        surface_vel = (point1 - point0)/delta_time
+        if in_global_frame:
+            surface_vel = self.transform_relative2global_dir(surface_vel)
+        return surface_vel
 
     def get_local_normal_direction(self, direction, in_global_frame=False):
         if in_global_frame:
@@ -824,7 +867,6 @@ class Ellipse(Obstacle):
             gamma = self.get_gamma(reference_point_temp)
 
         if (mag_ref_point and gamma>1):
-            # import pdb; pdb.set_trace()
             tt, tang_points = get_tangents2ellipse(edge_point=reference_point_temp,
                                                    axes=self.axes_with_margin)
             
@@ -835,7 +877,6 @@ class Ellipse(Obstacle):
             if np.cross(tang_points[:, 0], tang_points[:, 1]) > 0: # TODO: remove 
                 tang_points = np.flip(tang_points, axis=1)
                 warnings.warn('Had to flip. Reverse tangent order [1]<-->[0]! ')
-                # TODO: remove if no warning ever shows up...
 
             self.edge_reference_points = np.zeros((self.dim, 2, 2))
             self.edge_reference_points[:, self.ind_edge_ref, :] = np.tile(reference_point_temp,(2, 1)).T
@@ -851,9 +892,14 @@ class Ellipse(Obstacle):
             for ii in range(self.normal_vector.shape[1]):
                 self.tangent_vector[:, ii] = [-self.normal_vector[1, ii],
                                               self.normal_vector[0, ii]]
-
         else:
             self.n_planes = 0
+
+    def update_deforming_obstacle(self, delta_time):
+        ''' Update step. '''
+        self.axes_length = self.axes_length + self.expansion_speed_axes*delta_time
+        
+        self.draw_obstacle()
 
 
 class CircularObstacle(Ellipse):
@@ -875,7 +921,6 @@ class CircularObstacle(Ellipse):
 
         if self.is_deforming:
             self.radius_old = copy.deepcopy(self.radius)
-
 
     # Axes length is equal to radius for an circular obtject
     @property
@@ -934,4 +979,3 @@ class CircularObstacle(Ellipse):
 
         self.update_position_and_orientation(position=position, orientation=orientation,
                                              time_current=time_current)
-    

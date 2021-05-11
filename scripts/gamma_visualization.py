@@ -130,7 +130,6 @@ def main(n_resol=20, *args, **kwargs):
 
         obs[-1].set_reference_point(np.array([3, 0]), in_global_frame=False)
 
-
     if 3 in cases:
         obs.append( Ellipse(
             center_position=[2.0, 0.0],
@@ -145,7 +144,6 @@ def main(n_resol=20, *args, **kwargs):
             # margin_absolut=1.0,
             margin_absolut=0.5,
             orientation=30*pi/180))
-
         
         # x_lim = [-2, 4]
         # y_lim = [-3., 3]
@@ -154,13 +152,13 @@ def main(n_resol=20, *args, **kwargs):
         y_lim = [-1.5, 1]
 
     if 4 in cases:
-        obs.append( Ellipse(
+        obs.append(Ellipse(
             center_position=[0.0, 0.0],
             axes_length=[0.8, 1.2],
             # margin_absolut=1.0,
             margin_absolut=0.5,
             orientation=30*pi/180,
-            linear_velocity=[0.0, 0]
+            linear_velocity=np.array([0.0, 0]),
         ))
 
         obs.append( Ellipse(
@@ -175,8 +173,6 @@ def main(n_resol=20, *args, **kwargs):
 
         x_lim = [-2, 4]
         y_lim = [-3., 3]
-
-
 
     if 5 in cases:
         obs.append( Ellipse(
