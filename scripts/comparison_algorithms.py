@@ -203,10 +203,10 @@ class ObstacleAvoidanceAgent():
         self.velocity = self.avoidance_function(self.position, initial_velocity, obstacle_list)
 
         vel_mag = np.linalg.norm(self.velocity)
-        if vel_mag > initial_vel_mag:        # nonzero
+        if vel_mag > initial_vel_mag:        # Too fast
             self.velocity = self.velocity / vel_mag * initial_vel_mag
 
-        if vel_mag < vel_min_margin:      # Local minima
+        if vel_mag < vel_min_margin:      # Nonzero with margin (Local minima)
             print('Agent velocity is zero. Stopping exectuion.')
             self.is_in_local_minma = True
 
@@ -775,9 +775,10 @@ def compare_algorithms_plot():
 def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=False):
     ''' Create Figure with several stopping times. '''
     it_plot = 0
-    fig, ax = plt.subplots(figsize=(14, 5), num=fig_num)
+    # fig, ax = plt.subplots(figsize=(14, 5), num=fig_num)
+    fig, ax = plt.subplots(figsize=(7, 3), num=fig_num)
 
-    n_cols = 4
+    n_cols = 3
     n_rows = 1
     
     np.random.seed(rand_seed_0)
@@ -790,6 +791,7 @@ def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=F
     stop_time = 10
     ax = plt.subplot(n_rows, n_cols, it_plot)
     compare_algorithms_random(max_it=50, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
+    ax_middle = ax
     
     it_plot += 1
     np.random.seed(rand_seed_0)
@@ -797,7 +799,11 @@ def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=F
     ax = plt.subplot(n_rows, n_cols, it_plot)
     line_labels = compare_algorithms_random(max_it=100, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
 
-    plt.legend(handles=line_labels, bbox_to_anchor=(1.05, 1), loc='upper left')
+    # plt.legend(handles=line_labels, bbox_to_anchor=(1.05, 1), loc='upper left')
+    # plt.legend(handles=line_labels, bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    ax_middle.legend(handles=line_labels, loc='upper center',
+                     bbox_to_anchor=(0.5, -0.05),fancybox=False, shadow=False, ncol=3)
 
     if save_figure:
         plt.savefig('figures/' + 'subplot_comparison' + '.png', bbox_inches='tight')

@@ -20,7 +20,6 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-
 def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   factor_repulsion=0.1,
                                   min_distance=0.001,
@@ -29,7 +28,7 @@ def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   evaluate_with_relative_minimum=True,
                                   ):
     ''' Potential field method. 
-    Based on: kahtib1986real
+    Based on: khatib1986real
     Not that the artificial potential field algorithm is acting in the force space.'''
 
     # Trivial enrionment check

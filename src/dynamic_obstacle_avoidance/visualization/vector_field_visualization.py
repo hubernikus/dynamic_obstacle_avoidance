@@ -174,7 +174,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False):
+def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--'):
     ''' Plot all obstacles & attractors '''
 
     if not xAttractor is None:
@@ -186,12 +186,17 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     for n in range(len(obs)):
         x_obs = obs[n].boundary_points_global_closed
         x_obs_sf = obs[n].boundary_points_margin_global_closed
-        ax.plot(x_obs_sf[0, :], x_obs_sf[1, :], 'k--')
+        ax.plot(x_obs_sf[0, :], x_obs_sf[1, :], color='k', linestyle=border_linestyle)
 
         if obs[n].is_boundary:
-            outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
-                                       [y_range[0], y_range[0], y_range[1], y_range[1]]]).T
-
+            outer_boundary = None
+            if hasattr(obs[n], 'global_outer_edge_points'):
+                outer_boundary = obs[n].global_outer_edge_points
+                
+            if outer_boundary is None:
+                outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
+                                           [y_range[0], y_range[0], y_range[1], y_range[1]]])
+            outer_boundary = outer_boundary.T
             boundary_polygon = plt.Polygon(outer_boundary, alpha=1.0, zorder=-4)
             boundary_polygon.set_color(np.array([176, 124, 124])/255.)
             ax.add_patch(boundary_polygon)
@@ -258,7 +263,7 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     return 
     
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
     ''' 
     Draw obstacle and vectorfield. Several parameters and defaults 
     allow easy customization of plot.
@@ -277,7 +282,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         obs.update_reference_points()
         dt = time.time() - tt
 
-        print("Time for dynamic_center: {}ms".format(np.round(dt*1000, 2)))
+        if print_info:
+            print("Time for dynamic_center: {}ms".format(np.round(dt*1000, 2)))
 
     # Numerical hull of ellipsoid 
     for n in range(len(obs)): 
@@ -291,7 +297,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if not plotObstacle:
         warnings.warn('x_label & ticks not implemented')
     
-    plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference)
+    plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
 
     # Show certain streamlines
     if np.array(points_init).shape[0]:
@@ -321,10 +327,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # XX = np.zeros((N_x, N_y))
     # YY = np.zeros((N_x, N_y))
     it_start = 0
-    n_samples = 0
-    
-    pos1 = [-5.0, 2.5]
-    pos2 = [5.0, 2.5]
+    n_samples = 5
+
+    pos1 = [4.38, -4.52]
+    pos2 = [4.40, -4.52]
+    # pos1 = [-5.0, 2.5]
+    # pos2 = [5.0, 2.5]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -390,11 +398,11 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     end_time = time.time()
 
-    # print('Number of points: {}'.format(point_grid*point_grid))
     n_calculations = np.sum(indOfNoCollision)
-    print('Number of free points: {}'.format(n_calculations))
-    print('Average time: {} ms'.format(np.round((end_time-start_time)/(n_calculations)*1000),5) )
-    print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
+    if print_info:
+        print('Number of free points: {}'.format(n_calculations))
+        print('Average time: {} ms'.format(np.round((end_time-start_time)/(n_calculations)*1000),5) )
+        print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
     if plotStream:
         if colorCode:

@@ -1,8 +1,6 @@
 #!/USSR/bin/python3
-
-'''
-Library for the Modulation of Linear Systems
-Copyright (c)2019 under GPU license
+''' Library for the Modulation of Linear Systems
+Copyright (c) 2019 under GPU license
 '''
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -20,8 +18,7 @@ import numpy.linalg as LA
 import warnings
 import sys
 
-
-def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
+def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
     '''
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
@@ -41,17 +38,23 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
     else:
         x = position
 
-    N_obs = len(obs)       # number of obstacles
-    if not N_obs:          # No obstacle
-        return xd
+    if xd is not None:
+        warnings.warn('xd is depriciated. Use <<initial_velocity>> instead.')
+        initial_velocity = xd
+
+    # number of obstacles
+    N_obs = len(obs)       
+    if not N_obs:
+        # No obstacle
+        return initial_velocity
 
     dim = obs[0].dimension
 
-    xd_norm = np.linalg.norm(xd)
-    if xd_norm:
-        xd_normalized = xd/xd_norm
+    initial_velocity_norm = np.linalg.norm(initial_velocity)
+    if initial_velocity_norm:
+        initial_velocity_normalized = initial_velocity/initial_velocity_norm
     else:
-        return xd      # Trivial solution
+        return initial_velocity      # Trivial solution
 
     if type(attractor) == str:
         if attractor == 'default':       # Define attractor position
@@ -78,15 +81,18 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
         Gamma[n] = obs[n].get_gamma(pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
         if obs[n].is_boundary:
-            warnings.warn('Artificially increasing boundary influence.')
-            # Gamma[n] = pow(Gamma[n], 1.0/3.0)
+            pass
+        # warnings.warn('Not... Artificially increasing boundary influence.')
+        # Gamma[n] = pow(Gamma[n], 1.0/3.0)
+        # else:
+        # pass
 
     Gamma_proportional = np.zeros((N_obs))
     for n in range(N_obs):
         Gamma_proportional[n] = obs[n].get_gamma(pos_relative[:, n],
                                                  in_global_frame=evaluate_in_global_frame,
                                                  gamma_distance=gamma_distance,
-                                                 )
+        )
 
     # Worst case of being at the center
     if any(Gamma == 0):
@@ -97,8 +103,8 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
 
     ind_obs = (Gamma < cut_off_gamma)
     if any(~ind_obs):
-        warnings.warn('Exceeding cut-off gamma. Stopping modulation.')
-        return xd
+        # warnings.warn('Exceeding cut-off gamma. Stopping modulation.')
+        return initial_velocity
 
     if N_attr:
         d_a = LA.norm(x - np.array(attractor))        # Distance to attractor
@@ -168,98 +174,91 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                     
                 else:
                     vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
-                
+                    
             xd_obs_n += weight_deform * vel_deformation
-        
+            
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
-    xd = xd-xd_obs      # Computing the relative velocity with respect to the obstacle
+    relative_velocity = initial_velocity - xd_obs      # Computing the relative velocity with respect to the obstacle
     
-    xd_hat = np.zeros((dim, N_obs))
-    xd_hat_magnitude = np.zeros((N_obs))
+    relative_velocity_hat = np.zeros((dim, N_obs))
+    relative_velocity_hat_magnitude = np.zeros((N_obs))
 
     n = 0
-
-    # plt.quiver(position[0], position[1], vel_deformation[0], vel_deformation[1], color="green")
-    # plt.quiver(position[0], position[1], E[0, 1, 0], E[1, 1, 0], color="red")
-    # plt.annotate('{}'.format(np.round(Gamma[n], 2)), xy=position, textcoords='data', size=16, weight="bold")
-    # plt.annotate('{}'.format(np.round(D[0, 0, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
-    # plt.annotate('{}'.format(np.round(D[1, 1, 0], 2)), xy=position, textcoords='data', size=16, weight="bold")
-    
     for n in np.arange(N_obs)[ind_obs]:
-        if ((obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(xd)<0)
-            # or(obs[n].is_boundary and E_orth[:, 0, n].T.dot(xd)>0) or 
+        if ((obs[n].repulsion_coeff>1 and E_orth[:, 0, n].T.dot(relative_velocity)<0)
+            # or(obs[n].is_boundary and E_orth[:, 0, n].T.dot(relative_velocity)>0) or 
             ):
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
-            xd_hat[:, n] = xd
+            relative_velocity_hat[:, n] = relative_velocity
 
         else:
             # Matrix inversion cost between O(n^2.373) - O(n^3)
             if not evaluate_in_global_frame:
-                xd_temp = obs[n].transform_global2relative_dir(xd)
+                relative_velocity_temp = obs[n].transform_global2relative_dir(relative_velocity)
             else:
-                xd_temp = np.copy(xd)
+                relative_velocity_temp = np.copy(relative_velocity)
 
             # Modulation with M = E @ D @ E^-1
-            xd_trafo = LA.pinv(E[:, :, n]).dot(xd_temp)
+            relative_velocity_trafo = np.linalg.pinv(E[:, :, n]).dot(relative_velocity_temp)
 
             if obs[n].repulsion_coeff<0:
                 # Negative Repulsion Coefficient at the back of an obstacle
-                if E_orth[:, 0, n].T.dot(xd)<0:
+                if E_orth[:, 0, n].T.dot(relative_velocity)<0:
                     # import pdb; pdb.set_trace()
                     # Adapt in reference direction
                     D[0, 0, n] = 2 - D[0, 0, n]
 
-            # xd_trafo[0]>0
+            # relative_velocity_trafo[0]>0
             elif (not obs[n].tail_effect and
-                  ((xd_trafo[0] > 0 and not obs[n].is_boundary)
-                   or (xd_trafo[0] < 0 and obs[n].is_boundary)
+                  ((relative_velocity_trafo[0] > 0 and not obs[n].is_boundary)
+                   or (relative_velocity_trafo[0] < 0 and obs[n].is_boundary)
                   )):
                 D[0, 0, n] = 1       # No effect in 'radial direction'
 
-            xd_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(xd_trafo)
+            relative_velocity_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(relative_velocity_trafo)
 
             if not evaluate_in_global_frame:
-                xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
-            # import pdb; pdb.set_trace()
-            
+                relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(relative_velocity_hat[:, n])
+                # import pdb; pdb.set_trace()
+
+        # TODO: review sticky surface feature [!]
         if False:
-        # if obs[n].has_sticky_surface:
-            # TODO: review sticky surface feature [!]
-            xd_norm = np.linalg.norm(xd)
+            # if obs[n].has_sticky_surface:
+            relative_velocity_norm = np.linalg.norm(relative_velocity)
             
-            if xd_norm:    # Nonzero
-                # Normalize xd_hat
-                mag = np.linalg.norm(xd_hat[:, n])
+            if relative_velocity_norm:    # Nonzero
+                # Normalize relative_velocity_hat
+                mag = np.linalg.norm(relative_velocity_hat[:, n])
                 if mag:    # nonzero
-                    xd_hat[:, n] = xd_hat[:, n]/mag
-                                    
+                    relative_velocity_hat[:, n] = relative_velocity_hat[:, n]/mag
+                    
                 # Limit maximum magnitude with respect to the tangent value
                 sticky_surface_power = 2
                 
                 # Treat inside obstacle as on the surface
                 Gamma_mag = max(Gamma_proportional[n], 1)
                 if abs(Gamma_proportional[n]) < 1:
-                # if abs(Gamma_mag) < 1:
+                    # if abs(Gamma_mag) < 1:
                     eigenvalue_magnitude = 0
                 else:
                     eigenvalue_magnitude = 1 - 1./abs(Gamma_proportional[n])**sticky_surface_power
                     # eigenvalue_magnitude = 1 - 1./abs(Gamma_mag)**sticky_surface_power
 
                 if not evaluate_in_global_frame:
-                    xd_temp = obs[n].transform_global2relative_dir(xd_hat[:, n])
+                    relative_velocity_temp = obs[n].transform_global2relative_dir(relative_velocity_hat[:, n])
                 else:
-                    xd_temp = xd_hat[:, n]
-                
-                tang_vel = np.abs(E_orth[:, :, n].T.dot(xd_temp)[0])
+                    relative_velocity_temp = relative_velocity_hat[:, n]
+                    
+                tang_vel = np.abs(E_orth[:, :, n].T.dot(relative_velocity_temp)[0])
                 
                 eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1) if tang_vel else 0
 
-                xd_hat[:, n] = xd_hat[:, n]*xd_norm * eigenvalue_magnitude
+                relative_velocity_hat[:, n] = relative_velocity_hat[:, n]*relative_velocity_norm * eigenvalue_magnitude
                 
                 if not evaluate_in_global_frame:
-                    xd_hat[:, n] = obs[n].transform_relative2global_dir(xd_hat[:, n])
+                    relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(relative_velocity_hat[:, n])
 
                 # import pdb; pdb.set_trace()
 
@@ -272,53 +271,68 @@ def obs_avoidance_interpolation_moving(position, xd, obs=[], attractor='none', w
                 repulsive_gamma = (1+repulsive_gammaMargin)
                 
                 repulsive_speed =  ((repulsive_gamma/Gamma[n])**repulsive_power-
-                                       repulsive_gamma)*repulsive_factor
+                                    repulsive_gamma)*repulsive_factor
                 if not obs[n].is_boundary:
                     repulsive_speed *= (-1)
                     
                 pos_rel = obs[n].get_reference_direction(position, in_global_frame=True)
                 
                 repulsive_velocity = pos_rel*repulsive_speed
-                xd_hat[:, n] = repulsive_velocity
+                relative_velocity_hat[:, n] = repulsive_velocity
 
-        xd_hat_magnitude[n] = np.sqrt(np.sum(xd_hat[:,n]**2))
+        relative_velocity_hat_magnitude[n] = np.sqrt(np.sum(relative_velocity_hat[:,n]**2))
 
-    xd_hat_normalized = np.zeros(xd_hat.shape)
-    ind_nonzero = (xd_hat_magnitude>0)
+    relative_velocity_hat_normalized = np.zeros(relative_velocity_hat.shape)
+    ind_nonzero = (relative_velocity_hat_magnitude>0)
     if np.sum(ind_nonzero):
-        xd_hat_normalized[:, ind_nonzero] = xd_hat[:, ind_nonzero]/np.tile(xd_hat_magnitude[ind_nonzero], (dim, 1))
+        relative_velocity_hat_normalized[:, ind_nonzero] = relative_velocity_hat[:, ind_nonzero]/np.tile(relative_velocity_hat_magnitude[ind_nonzero], (dim, 1))
 
     if N_attr:
         # TODO: implement properly & test
-        k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) # points at the origin
-        xd_hat_magnitude = np.hstack((xd_hat_magnitude, LA.norm((xd))*np.ones(N_attr) ))
+        # points at the origin
+        k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) 
+        relative_velocity_hat_magnitude = np.hstack((relative_velocity_hat_magnitude, LA.norm((relative_velocity))*np.ones(N_attr) ))
         
-        total_weight = 1-weight_attr # Does this work?!
+        total_weight = 1 - weight_attr 
     else:
         total_weight = 1
 
-    weighted_direction = get_directional_weighted_sum(null_direction=xd_normalized, 
-        directions=xd_hat_normalized, weights=weight, total_weight=total_weight)
+    weighted_direction = get_directional_weighted_sum(null_direction=initial_velocity_normalized, 
+                                                      directions=relative_velocity_hat_normalized, weights=weight, total_weight=total_weight)
 
-    xd_magnitude = np.sum(xd_hat_magnitude*weight)
-    vel_final = xd_magnitude*weighted_direction.squeeze()
+    relative_velocity_magnitude = np.sum(relative_velocity_hat_magnitude*weight)
+    vel_final = relative_velocity_magnitude*weighted_direction.squeeze()
 
     vel_final = vel_final + xd_obs
     
-    if not velocicity_max is None:
+    if velocicity_max is not None:
         # IMPLEMENT MAXIMUM VELOCITY / Not needed with sticky boundary
-        xd_norm = np.linalg.norm(vel_final)
-        if xd_norm > velocicity_max:
-            vel_final = vel_final/xd_norm * velocicity_max
-
+        velocity_norm = np.linalg.norm(vel_final)
+        if velocity_norm > velocicity_max:
+            vel_final = vel_final/velocity_norm * velocicity_max
+            
     # Transforming back from object frame of reference to inertial frame of reference
-    # plt.quiver(position[0], position[1], vel_final[0], vel_final[1], color="blue")
-    # if np.linalg.norm(vel_final) > 10:
-        # Error check
-        # import pdb; pdb.set_trace()
-
-    # import pdb; pdb.set_trace()
-    
+    if False:
+        print(f'{initial_velocity=}')
+        print(f'{relative_velocity=}')
+        E0 = E[:, :, 0]
+        D0 = D[:, :, 0]
+        print(f'{E0=}')
+        print(f'{D0=}')
+        print(f'{vel_final=}')
+        
+        plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'ko')
+        plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'k+')
+        
+        plt.quiver(position[0], position[1], E0[0, 0], E0[1, 0], color='blue', label='Reference')
+        plt.quiver(position[0], position[1], E0[0, 1], E0[1, 1], color='red', label='Tangent')
+        
+        plt.legend()
+        plt.ion()
+        plt.show()
+        
+        breakpoint()
+        
     return vel_final
 
 

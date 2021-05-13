@@ -16,7 +16,7 @@ from functools import lru_cache
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
 
-import matplotlib.pyplot as plt # TODO: remove after debugging!
+import matplotlib.pyplot as plt     # TODO: remove after debugging!
 
 __date__ = "2019-10-15"
 __author__ = "Lukas Huber"
@@ -898,7 +898,6 @@ class Obstacle(State):
         # weights[~ind_positiveDistance] = 0
         return weights
 
-    
     def draw_reference_hull(self, normal_vector, position):
         pos_abs = self.transform_relative2global(position)
         norm_abs = self.transform_relative2global_dir(normal_vector)
