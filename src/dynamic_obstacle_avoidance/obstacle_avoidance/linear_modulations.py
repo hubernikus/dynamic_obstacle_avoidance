@@ -1,3 +1,6 @@
+#
+#
+
 #!/USSR/bin/python3
 ''' Library for the Modulation of Linear Systems
 Copyright (c) 2019 under GPU license
@@ -313,13 +316,13 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
             
     # Transforming back from object frame of reference to inertial frame of reference
     if False:
-        print(f'{initial_velocity=}')
-        print(f'{relative_velocity=}')
-        E0 = E[:, :, 0]
-        D0 = D[:, :, 0]
-        print(f'{E0=}')
-        print(f'{D0=}')
-        print(f'{vel_final=}')
+        # print(f'{initial_velocity=}')
+        # print(f'{relative_velocity=}')
+        # E0 = E[:, :, 0]
+        # D0 = D[:, :, 0]
+        # print(f'{E0=}')
+        # print(f'{D0=}')
+        # print(f'{vel_final=}')
         
         plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'ko')
         plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'k+')
