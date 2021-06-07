@@ -1,6 +1,9 @@
 #!/USSR/bin/python3
+""" Script to show lab environment on computer """
 
-''' Script to show lab environment on computer '''
+__author__ = "LukasHuber"
+__date__ = "2020-01-15"
+__email__ = "lukas.huber@epfl.ch"
 
 import warnings
 import copy
@@ -20,11 +23,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import obs
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import linear_ds_max_vel
 from dynamic_obstacle_avoidance.obstacle_avoidance.metric_evaluation import MetricEvaluator
-
-__author__ = "LukasHuber"
-__date__ = "2020-01-15"
-__email__ = "lukas.huber@epfl.ch"
-
 
 plt.close('all')
 plt.ion()
@@ -96,7 +94,7 @@ class DynamicEllipse(Ellipse):
         self.line_handle = None
         
     def update_step(self, time_step=0.1, acceleration_rand=0.1, expansion_acc_rand=0.1):
-        ''' Update velocity & expansion.'''
+        """ Update velocity & expansion."""
         
         # Random walk for velocity
         # print('linear_velocity', self.linear_velocity) 
@@ -252,7 +250,7 @@ class ObstacleAvoidanceAgent():
     
 
 def position_is_in_free_space(position, obstacle_list):
-    ''' Check for all obstacles if position is intersecting. '''
+    """ Check for all obstacles if position is intersecting. """
     for obs in obstacle_list:
         gamma = obs.get_gamma(position, in_global_frame=True)
 
@@ -263,7 +261,7 @@ def position_is_in_free_space(position, obstacle_list):
 
 
 def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5, dim=2, visualize_scene=True, random_seed=None, fig_and_ax_handle=None, fig_num=None, plot_last_image=False, show_legend=True):
-    ''' Compare the algorithms with a random environment setup. '''
+    """ Compare the algorithms with a random environment setup. """
     
     if random_seed is not None:
         np.random.seed(random_seed)
@@ -525,7 +523,7 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
 
 
 def multiple_random_runs(num_runs=2):
-    ''' What is happening. '''
+    """ What is happening. """
     # First one just to get a 'default-metric'
     num_agent_type = 3
     
@@ -718,7 +716,7 @@ def evaluation_metrics(metrics):
     # pass
     
 def compare_algorithms_plot():
-    ''' '''
+    """ """
     # create empty obstacle list
     obs = GradientContainer() 
 
@@ -773,7 +771,7 @@ def compare_algorithms_plot():
 
 
 def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=False):
-    ''' Create Figure with several stopping times. '''
+    """ Create Figure with several stopping times. """
     it_plot = 0
     # fig, ax = plt.subplots(figsize=(14, 5), num=fig_num)
     fig, ax = plt.subplots(figsize=(7, 3), num=fig_num)

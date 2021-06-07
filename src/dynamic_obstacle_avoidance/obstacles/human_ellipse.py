@@ -3,9 +3,6 @@
 Script to create human specific pedestrian obstacle descriptions.
 '''
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-
 __date__ = "2019-10-15"
 __author__ =  "Lukas Huber"
 __mail__ =  "lukas.huber@epfl.ch"
@@ -18,6 +15,8 @@ import warnings, sys
 import numpy.linalg as LA
 # import matplotlib.pyplot as plt
 
+from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from dynamic_obstacle_avoidance.obstacles import Ellipse
 
 class TrackedPedestrian(Ellipse):
     ''' Recognized the pedestrian using a tracker. 

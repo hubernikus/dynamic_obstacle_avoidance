@@ -24,7 +24,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 import matplotlib.pyplot as plt
 

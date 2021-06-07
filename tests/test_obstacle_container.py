@@ -10,9 +10,8 @@ Test normal formation
 import numpy as np
 from math import pi
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Cuboid
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
+from dynamic_obstacle_avoidance.obstacles import Ellipse,Cuboid
+from dynamic_obstacle_avoidance.obstacles import GradientContainer
 
 def test_obstacle_container_appending():
     ''' Appending one obstacle. '''
@@ -79,7 +78,6 @@ def test_obstacle_container_deleting():
     
 if (__name__)=="__main__":
     test_obstacle_container_appending()
-
     test_obstacle_container_deleting()
 
     print("Selected tests complete.")

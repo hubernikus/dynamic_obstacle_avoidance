@@ -15,17 +15,14 @@ import time # TODO comment
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import CircularObstacle
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
+from dynamic_obstacle_avoidance.obstacles import CircularObstacle
+from dynamic_obstacle_avoidance.obstacles import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
 
-# from dynamic_obstacle_avoidance.settings import DEBUG_FLAG
-# from dynamic_obstacle_avoidance import settings
-
-# if not sys.version_info>(3,0): # Python 2
-    # import pdb; pdb.set_trace()
-    # import itertools.zip as izip
+# BUGS / IMPROVEMENTS:
+#    - far-far away, the automatic-extension of the hull of the ellipse does not work
+#    - Gradient descent change function
 
 
 class GradientContainer(ObstacleContainer):
@@ -640,6 +637,3 @@ class GradientContainer(ObstacleContainer):
             return np.abs(gamma)**3
 
 
-# BUGS to solve:
-#    - far-far away, the automatic-extension of the hull of the ellipse does not work
-#    - Gradient descent change function

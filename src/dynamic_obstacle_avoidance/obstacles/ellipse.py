@@ -12,8 +12,7 @@ from math import sin, cos, pi, ceil
 
 import numpy as np
 import numpy.linalg as LA
-
-import matplotlib.pyplot as plt     # TODO remove for production
+import matplotlib.pyplot as plt     # TODO: remove for production
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
@@ -22,7 +21,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 visualize_debug = False
 

@@ -15,7 +15,7 @@ import copy
 from math import pi
 import numpy as np
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between, angle_difference_directional
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_tangents2ellipse
@@ -358,11 +358,9 @@ class Polygon(Obstacle):
             surface_position = self.transform_relative2global(surface_position)
         return surface_position
 
-    
     def get_distance_to_hullEdge(self, position, in_global_frame=False):
-        ''''
-        Distance along the center-direction to the hull for a convex obstacle towards
-        '''
+        """ Distance along the center-direction to the hull for a convex obstacle towards
+        """
         # TODO: change to reference-direction? What would this imply?
         
         if in_global_frame:

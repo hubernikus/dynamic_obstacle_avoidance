@@ -1,8 +1,8 @@
 #!/usr/bin/python3
-'''
+"""
 Angle math for python
 Helper function for directional & angle evaluations
-'''
+"""
 
 import numpy as np
 import warnings
@@ -15,7 +15,7 @@ __email__ = "lukas.huber@epfl.ch"
 # TODO: optimize for speed. Cython?
 
 def angle_is_between(angle_test, angle_low, angle_high):
-    ''' Verify if angle_test is in between angle_low & angle_high '''
+    """ Verify if angle_test is in between angle_low & angle_high """
     delta_low = angle_difference_directional(angle_test, angle_low)
     delta_high = angle_difference_directional(angle_high, angle_test)
 
@@ -23,9 +23,9 @@ def angle_is_between(angle_test, angle_low, angle_high):
 
 
 def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
-    ''' Verify if angle_test is in between angle_low & angle_high
+    """ Verify if angle_test is in between angle_low & angle_high
     Values are between [0, 2pi]. 
-    Margin to account for numerical errors. '''
+    Margin to account for numerical errors. """
     delta_low = angle_difference_directional_2pi(angle_test, angle_low)
     delta_high = angle_difference_directional_2pi(angle_high, angle_test)
 
@@ -35,7 +35,7 @@ def angle_is_in_between(angle_test, angle_low, angle_high, margin=1e-9):
 
 
 def angle_modulo(angle):
-    ''' Get angle in [-pi, pi[  '''
+    """ Get angle in [-pi, pi[  """
     return ((angle+pi) % (2*pi)) - pi
 
 
@@ -49,10 +49,10 @@ def angle_difference_directional_2pi(angle1, angle2):
 
     
 def angle_difference_directional(angle1, angle2):
-    '''
+    """
     Difference between two angles ]-pi, pi]
     Note: angle1-angle2 (non-commutative)
-    '''
+    """
     angle_diff = (angle1-angle2)
     while angle_diff > pi:
         angle_diff = angle_diff-2*pi
@@ -64,17 +64,17 @@ def angle_difference(angle1, angle2):
     return angle_difference_directional(angle1, angle2)
 
 def angle_difference_abs(angle1, angle2):
-    '''
+    """
     Difference between two angles [0,pi[
     angle1-angle2 = angle2-angle1(commutative)
-    '''
+    """
     angle_diff = np.abs(angle2-angle1)
     while angle_diff >= pi:
         angle_diff = 2*pi-angle_diff
     return angle_diff
 
 def transform_polar2cartesian(magnitude, angle, center_position=None, center_point=None):
-    ''' Transform 2d from polar- to cartesian coordinates.'''
+    """ Transform 2d from polar- to cartesian coordinates."""
     # Only 2D input
 
     if not center_point is None:
@@ -96,10 +96,10 @@ def transform_polar2cartesian(magnitude, angle, center_position=None, center_poi
 
 
 def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=True):
-    '''
+    """
     Two dimensional transformation of cartesian to polar coordinates
     Based on center_position (default value center_position=np.zeros(dim))
-    '''
+    """
     # TODO -- check dim and etc
     # Don't just squeeze, maybe...
     
@@ -131,9 +131,9 @@ def transform_cartesian2polar(points, center_position=None, second_axis_is_dim=T
 
 
 def get_orthogonal_basis(vector, normalize=True):
-    '''
+    """
     Orthonormal basis for a vector
-    '''
+    """
     if isinstance(vector, list):
         vector = np.array(vector)
     elif not isinstance(vector, np.ndarray):
@@ -260,7 +260,7 @@ def get_angle_space_inverse(dir_angle_space, null_direction=None, NullMatrix=Non
 
 
 def get_directional_weighted_sum(null_direction, directions, weights, total_weight=1, normalize=True, normalize_reference=True):
-    '''
+    """
     Weighted directional mean for inputs vector ]-pi, pi[ with respect to the null_direction
 
     # INPUT
@@ -272,7 +272,7 @@ def get_directional_weighted_sum(null_direction, directions, weights, total_weig
 
     # OUTPUT 
     
-    '''
+    """
     # TODO remove obs and position
     ind_nonzero = (weights>0) # non-negative
 
@@ -338,7 +338,7 @@ def get_directional_weighted_sum(null_direction, directions, weights, total_weig
 
 
 def periodic_weighted_sum(angles, weights, reference_angle=None):
-    '''Weighted Average of angles (1D)'''
+    """Weighted Average of angles (1D)"""
     # TODO: unify with directional_weighted_sum() // see above
     # Extend to dimenions d>2
     if isinstance(angles, list): 

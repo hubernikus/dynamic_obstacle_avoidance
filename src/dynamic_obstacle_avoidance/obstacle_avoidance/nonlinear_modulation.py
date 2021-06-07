@@ -10,8 +10,7 @@ import numpy as np
 import numpy.linalg as LA
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
+from dynamic_obstacle_avoidance.obstacles import Obstacle, Polygon
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *

@@ -15,7 +15,7 @@ from shapely.geometry import Point
 from shapely.geometry import LineString
 from shapely.geometry.polygon import LinearRing
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Cuboid
+from dynamic_obstacle_avoidance.obstacles import Cuboid
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_is_in_between, angle_difference_directional
 
 

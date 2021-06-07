@@ -11,10 +11,8 @@ import numpy as np
 from math import pi
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse, CircularObstacle
+from dynamic_obstacle_avoidance.obstacles import Ellipse, CircularObstacle
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
-
-
 
 def visualize_ellipse_with_ref_point_inside():
     ''' Visualize ellipse with reference point far away '''
@@ -91,11 +89,8 @@ def visualization_circular_reference_point_outside():
     
 if (__name__) == "__main__":
     # test_normal_ellipse()
-
     # visualize_ellipse_with_ref_point_inside()
-
     # visualization_ellipse_with_ref_point_outside()
-    
     visualization_circular_reference_point_outside()
     
     print("Selected tests complete.")
