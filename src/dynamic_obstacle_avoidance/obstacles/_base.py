@@ -1,13 +1,15 @@
 #!/USSR/bin/python3
-'''
+"""
 Basic class to represent obstacles
-'''
+"""
 
 import time
 import warnings, sys
 import numpy as np
 import numpy.linalg as LA
 from math import sin, cos, pi, ceil
+
+from abc import ABC, abstractmethod
 
 from functools import lru_cache
 # from functools import cache     # Store all values(?)
@@ -24,8 +26,9 @@ __email__ = "lukas.huber@epfl.ch"
 
 visualize_debug = False
 
+# TODO: explore obstacles with shapely for speed
 
-class Obstacle(State):
+class Obstacle(ABC):
     """ 
     (Virtual) base class of obstacles 
     This class defines obstacles to modulate the DS around it
@@ -207,14 +210,14 @@ class Obstacle(State):
     
     # TODO: use loop for 2D array, in order to speed up for 'on-robot' implementation!
     def get_normal_direction(self, position, in_global_frame=False):
-        ''' Get normal direction to the surface. 
-        IMPORTANT: Based on convention normal.dot(reference)>0 . '''
+        """ Get normal direction to the surface. 
+        IMPORTANT: Based on convention normal.dot(reference)>0 . """
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
 
     # Store five previous values
     @lru_cache(maxsize=5)
     def get_gamma(self, position, *args, **kwargs):
-        ''' Get gamma value of obstacle.'''
+        """ Get gamma value of obstacle."""
         if len(position.shape)==1:
             position = np.reshape(position, (self.dim, 1))
 
@@ -227,8 +230,8 @@ class Obstacle(State):
             ValueError("Triple dimensional position are unexpected")
     
     def _get_gamma(self, position, reference_point=None, in_global_frame=False, gamma_type='proportional'):
-        ''' Calculates the norm of the function.
-        Position input has to be 2-dimensional array '''
+        """ Calculates the norm of the function.
+        Position input has to be 2-dimensional array """
 
         import pdb; pdb.set_trace() 
 
@@ -298,7 +301,7 @@ class Obstacle(State):
         raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
 
     def get_surface_derivative_angle_num(self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, rel_delta_dir=1e-6):
-        ''' Numerical evaluation of surface derivative. '''
+        """ Numerical evaluation of surface derivative. """
         # TODO: make global frame evaluation more efficient
         # TODO: get surface intersection based on direction
 
@@ -332,7 +335,7 @@ class Obstacle(State):
     
 
     def get_normal_derivative_angle_num(self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, delta_dir=1e-6):
-        ''' Numerical evaluation of surface derivative. '''
+        """ Numerical evaluation of surface derivative. """
         # TODO: make global frame evaluation more efficient
         # TODO: get surface intersection based on direction
 
@@ -361,8 +364,8 @@ class Obstacle(State):
 
     
     def transform_global2relative(self, position):
-        ''' Transform a position from the global frame of reference 
-        to the obstacle frame of reference'''
+        """ Transform a position from the global frame of reference 
+        to the obstacle frame of reference"""
         if not position.shape[0]==self.dim:
             raise ValueError("Wrong position dimensions")
 
@@ -380,8 +383,8 @@ class Obstacle(State):
             raise ValueError("Unexpected position-shape")
 
     def transform_relative2global(self, position):
-        ''' Transform a position from the obstacle frame of reference 
-        to the global frame of reference'''
+        """ Transform a position from the obstacle frame of reference 
+        to the global frame of reference"""
         if not isinstance(position, (list, np.ndarray)):
             raise TypeError('Position={} is of type {}'.format(position, type(position)))
 
@@ -410,14 +413,14 @@ class Obstacle(State):
             raise ValueError("Unexpected position-shape")
         
     def transform_relative2global_dir(self, direction):
-        ''' Transform a direction, velocity or relative position to the global-frame '''
+        """ Transform a direction, velocity or relative position to the global-frame """
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return direction
         return self.rotMatrix.dot(direction)
 
     def transform_global2relative_dir(self, direction):
-        ''' Transform a direction, velocity or relative position to the obstacle-frame '''
+        """ Transform a direction, velocity or relative position to the obstacle-frame """
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return direction
@@ -712,8 +715,8 @@ class Obstacle(State):
         
 
     def move_center(self, position, in_global_frame=True):
-        ''' Change (center) position of the system. 
-        Note that all other variables are relative.'''
+        """ Change (center) position of the system. 
+        Note that all other variables are relative."""
         
         if not in_global_frame:
             position = self.transform_relative2global(position)
@@ -722,12 +725,12 @@ class Obstacle(State):
 
 
     def update_position_and_orientation(self, position, orientation, k_position=0.9, k_linear_velocity=0.9, k_orientation=0.9, k_angular_velocity=0.9, time_current=None, reset=False):
-        ''' Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
+        """ Updates position and orientation. Additionally calculates linear and angular velocity based on the passed timestep. 
         Updated values for pose and twist are filetered.
 
         Input: 
         - Position (2D) & 
-        - Orientation (float)  '''
+        - Orientation (float)  """
         
         if self.dim>2:
             raise NotImplementedError("Implement for dimension >2.")
@@ -814,12 +817,12 @@ class Obstacle(State):
     
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0): # 
-        '''
+        """
         Reverse Gamma value such that boundaries can be treated with the same algorithm
         as obstacles
 
         Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
-        '''
+        """
         if isinstance(Gamma, (float, int)):
             if Gamma <= Gamma_ref:
                 return sys.float_info.max
@@ -915,8 +918,8 @@ class Obstacle(State):
             plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], 'k--')
         
     def get_reference_direction(self, position, in_global_frame=False, normalize=True):
-        ''' Get direction from 'position' to the reference point of the obstacle. 
-        The global frame is considered by the choice of the reference point. '''
+        """ Get direction from 'position' to the reference point of the obstacle. 
+        The global frame is considered by the choice of the reference point. """
         # Inherit
 
         if hasattr(self, 'reference_point') or hasattr(self,'center_dyn'):  # automatic adaptation of center
@@ -974,11 +977,12 @@ class Obstacle(State):
             scaled_boundary_points = scale*self._boundary_points
             
         return self.transform_relative2global(scaled_boundary_points)
-        
-    def obs_check_collision(self, ):
-        print('TODO: check class')
-        raise NotImplementedError()
 
+    # @abstractmethod
+    def obs_check_collision(self, ):
+        raise NotImplementedError()
+    
+    # @abstractmethod
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         raise NotImplementedError()
 
