@@ -1,4 +1,3 @@
-#!/USSR/bin/python3
 '''
 date 2021-04-29
 @author Lukas Huber 
@@ -15,9 +14,9 @@ import numpy.linalg as LA
 import matplotlib.pyplot as plt     # TODO: remove for production
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo, angle_difference_directional_2pi
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 

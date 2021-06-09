@@ -1,24 +1,17 @@
-#!/USSR/bin/python3
-
-'''
-Library for the Modulation of Linear Systems
-Copyright (c)2019 under GPU license
-'''
-
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
-
+""" Library for the Modulation of Linear Systems
+Copyright (c) 2021 under MIT license
+"""
 __author__ = "Lukas Huber"
 __date__ = "2021-20-01"
 __info__ = "Obstacle avoidance for star-shaped obstacle in linear DS"
 
-import matplotlib.pyplot as plt
+import warnings
 
 import numpy as np
-import numpy.linalg as LA
+import matplotlib.pyplot as plt   # TODO: remove for production
 
-import warnings
-import sys
+from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 
 def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   factor_repulsion=0.1,
@@ -27,9 +20,9 @@ def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   virtual_mass_time_factor=1.0,
                                   evaluate_with_relative_minimum=True,
                                   ):
-    ''' Potential field method. 
+    """ Potential field method. 
     Based on: khatib1986real
-    Not that the artificial potential field algorithm is acting in the force space.'''
+    Not that the artificial potential field algorithm is acting in the force space."""
 
     # Trivial enrionment check
     if not len(obs):
@@ -90,7 +83,7 @@ def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
 
 
 def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None):
-    '''
+    """
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
     INPUT
@@ -102,7 +95,7 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
     
     OUTPUT
     xd [dim]: modulated dynamical system at position x
-    '''
+    """
 
     if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
@@ -176,7 +169,7 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
         return xd
 
     if N_attr:
-        d_a = LA.norm(x - np.array(attractor))        # Distance to attractor
+        d_a = np.linalg.norm(x - np.array(attractor))        # Distance to attractor
         weight = compute_weights(np.hstack((Gamma_proportional, [d_a])), N_obs+N_attr)
     else:
         weight = compute_weights(Gamma_proportional, N_obs)

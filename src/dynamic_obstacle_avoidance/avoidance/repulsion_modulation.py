@@ -9,11 +9,11 @@ Copyright (c) 2019 under GPU license.
 import numpy as np
 import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacles import Obstacle, Polygon
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 
 import warnings
 import copy 
@@ -354,39 +354,5 @@ def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=T
     xd_list = xd_list + np.tile(xd_obs, (max_hirarchy+1, 1)).T
     
     return xd_list, m_x
-
-
-def obs_avoidance_rungeKutta(dt, x, obs, obs_avoidance=obs_avoidance_nonlinear_hirarchy, ds_init=linearAttractor, center_position=False, order=4):
-    # Fourth order integration of obstacle avoidance differential equation
-    # NOTE: The movement of the obstacle is considered as small, hence position and movement changed are not considered. This will be fixed in future iterations.
-    dim = np.array(x).shape[0]
-    if type(center_position)==bool:
-        # TODO --- no default value
-        center_position = np.zeros(dim)
-
-    if order == 1:
-        step_fraction = np.array[1]
-        rk_fac = np.array[1]
-    elif order==4:
-        step_fraction = np.array([0, 0.5, 0.5, 1.0])
-        rk_fac = np.array([1,2,2,1])/6
-    else:
-        print('WARNING: implement rk with order {}'.format(order))
-        step_fraction = np.array([1])
-        rk_fac = np.array([1])
-        
-    k = np.zeros((dim, len(step_fraction)+1))
-
-    for ii in range(len(step_fraction)):
-        # TODO remove after debugging
-        xd, m_x = obs_avoidance(x + k[:,ii]*step_fraction[ii], ds_init, obs)
-        
-        xd = xd[:,-1]
-        # xd = velConst_attr(x, xd, center_position)
-        k[:,ii+1] = dt*xd
-
-    x = x + np.sum(np.tile(rk_fac,(dim,1))*k[:,1:],axis=1) # + O(dt^5)
- 
-    return x
 
 

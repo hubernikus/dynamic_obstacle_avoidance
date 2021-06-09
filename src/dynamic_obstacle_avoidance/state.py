@@ -1,16 +1,16 @@
 #!/usr/bin/python3
+''' Basic stat to base objects on
 '''
-@date 2019-10-15
-@author Lukas Huber // lukas.huber@epfl.ch
-'''
+# author: Lukas Huber // lukas.huber@epfl.ch
+# license:
 
 import numpy as np
 import time
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 
-import matplotlib.pyplot as plt # for debugging
+import matplotlib.pyplot as plt    # Only for debugging
+
 
 class State(object):
     def __init__(self, typename=None, name="default", reference_frame="world", is_empty=True, *args):

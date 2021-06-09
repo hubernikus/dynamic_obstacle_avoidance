@@ -1,13 +1,9 @@
-#
-#
-
-#!/USSR/bin/python3
-''' Library for the Modulation of Linear Systems
-Copyright (c) 2019 under GPU license
-'''
+""" Library for the Modulation of Linear Systems
+Copyright (c) 2021 under MIT license
+"""
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 
 __author__ = "Lukas Huber"
 __date__ = "2019-11-29"
@@ -22,7 +18,7 @@ import warnings
 import sys
 
 def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
-    '''
+    """
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
     INPUT
@@ -34,7 +30,7 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
     
     OUTPUT
     xd [dim]: modulated dynamical system at position x
-    '''
+    """
     if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
         position = x
@@ -339,42 +335,3 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
     return vel_final
 
 
-def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_moving, ds=linearAttractor, x0=False):
-    ''' Fourth order integration of obstacle avoidance differential equation '''
-    # NOTE: The movement of the obstacle is considered as small, hence position and movement changed are not considered. This will be fixed in future iterations.
-    # TODO: More General Implementation (find library)
-
-    if type(x0)==bool:
-        x0 = np.zeros(np.array(x).shape[0])
-
-    # k1
-    xd = ds(x, x0)
-    xd = velConst_attr(x, xd, x0)
-    xd = obs_avoidance(x, xd, obs)
-    k1 = dt*xd
-
-    # k2
-    xd = ds(x+0.5*k1, x0)
-    xd = velConst_attr(x, xd, x0)
-    xd = obs_avoidance(x+0.5*k1, xd, obs)
-    k2 = dt*xd
-
-    # k3
-    xd = ds(x+0.5*k2, x0)
-    xd = velConst_attr(x, xd, x0)
-    xd = obs_avoidance(x+0.5*k2, xd, obs)
-    
-    k3 = dt*xd
-
-    # k4
-    xd = ds(x+k3, x0)
-    xd = velConst_attr(x, xd, x0)
-    xd = obs_avoidance(x+k3, xd, obs)
-    k4 = dt*xd
-
-    # x final
-    # Maybe: directional sum? Can this be done?
-    x = x + 1./6*(k1+2*k2+2*k3+k4) # + O(dt^5)
-
-
-    return x

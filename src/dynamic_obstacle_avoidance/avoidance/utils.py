@@ -18,6 +18,89 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 # import matplotlib.pyplot as plt
 
+def get_relative_obstacle_velocity(
+    position, obstacle_list, ind_obstacles=None, gamma_list=None, cut_off_gamma=1e-6):
+    """ Get the relative obstacle velocity
+
+    Parameters
+    ----------
+    obstacle_list: list or <obstacle-conainter> with obstacles
+
+    ind_obstacles: Inidicates which obstaces will be considered (array-like of int)
+
+    gamma_list: Precalculated gamma-values (list of float)
+
+    
+    Return
+    ------
+    relative_velocity: array-like of float
+    """
+    if gamma_list is None:
+        n_obstacles = len(obstacle_list)
+        gamma_list = np.zeros(n_obstacles)
+    
+        for n in range(N_obs):
+            Gamma[n] = obs[n].get_gamma(position, in_global_frame=True)
+
+    if ind_obstacles is None:
+        ind_obstacles = gamma_list > cut_off_gamma
+        
+    obs = obstacle_list
+    ind_obs = ind_obstacles
+    dim = position.shape[0]
+    
+    xd_obs = np.zeros((dim))
+        
+    for n in np.arange(N_obs)[ind_obs]:
+        if dim==2:
+            xd_w = np.cross(np.hstack(([0,0], obs[n].angular_velocity)),
+                            np.hstack((x-np.array(obs[n].center_position),0)))
+            xd_w = xd_w[0:2]
+        elif dim==3:
+            xd_w = np.cross(obs[n].orientation, x-obs[n].center_position)
+        else:
+            xd_w = np.zeros(dim)
+            warnings.warn('Angular velocity is not defined for={}'.format(d))
+
+        weight_angular = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
+        
+        linear_velocity = obs[n].linear_velocity
+        velocity_only_in_positive_normal_direction = True
+        
+        if velocity_only_in_positive_normal_direction:
+            lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
+            if lin_vel_local[0]<0 and not obs[n].is_boundary:
+                # Obstacle is moving towards the agent
+                linear_velocity = np.zeros(lin_vel_local.shape[0])
+            else:
+                linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
+
+            weight_linear = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
+            # linear_velocity = weight_linear*linear_velocity
+
+        xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
+        
+        # The Exponential term is very helpful as it help to avoid
+        # the crazy rotation of the robot due to the rotation of the object
+        if obs[n].is_deforming:
+            weight_deform = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n], 1])-1))
+            vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
+
+            if velocity_only_in_positive_normal_direction:
+                vel_deformation_local = E_orth[:, :, n].T.dot(vel_deformation)
+                if ((vel_deformation_local[0] > 0 and not obs[n].is_boundary)
+                    or (vel_deformation_local[0] < 0 and obs[n].is_boundary)):
+                    vel_deformation = np.zeros(vel_deformation.shape[0])
+                    
+                else:
+                    vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
+                    
+            xd_obs_n += weight_deform * vel_deformation
+        xd_obs = xd_obs + xd_obs_n*weight[n]
+
+    relative_velocity = xd_obs
+    return relative_velocity
+
 
 def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
     ''' Compute diagonal Matrix'''
@@ -52,20 +135,7 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
     normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
 
-    # TODO: remove
-    # margin_vec = 1e-6
-    # if np.abs(np.linalg.norm(normal_vector)-1)>margin_vec :
-        # warnings.warn('normal vector not normalized...')
-    # if np.abs(np.linalg.norm(reference_direction)-1)>margin_vec:
-        # warnings.warn('reference vector not normalized...')
-    # end remove
-
     dot_prod = np.dot(normal_vector, reference_direction)
-
-    # x = obs.transform_relative2global(x_t)
-    # ref_dir = obs.transform_relative2global_dir(reference_direction)
-    # plt.quiver(x[0], x[1], ref_dir[0], ref_dir[1], color='r')
-    
     if obs.is_non_starshaped and np.abs(dot_prod) < dot_margin:
         # Adapt reference direction to avoid singularities
         # WARNING: full convergence is not given anymore, but impenetrability
@@ -81,10 +151,6 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
     E_orth = get_orthogonal_basis(normal_vector, normalize=True)
     E = np.copy((E_orth))
     E[:, 0] = -reference_direction
-
-    # tang = obs.transform_relative2global_dir(E[:, 1])
-    # plt.quiver(x[0], x[1], tang[0], tang[1], color='g')
-    # import pdb; pdb.set_trace()
     
     return E, E_orth
 
@@ -105,6 +171,8 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
     E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
     '''
+    if True:
+        raise NotImplementedError("Depreciated ---- remove")
     warnings.warn("Depreciated ---- remove")
     dim = obs.dim
     
@@ -115,44 +183,12 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
     
-    # Check if there was correct placement of reference point
-    # Gamma_referencePoint = obs.get_gamma(obs.reference_point, in_global_frame=False)
-
-    # if not obs.is_boundary and Gamma_referencePoint >= 1:
-        # Check what this does and COMMENT!!!!
-        # import pdb; pdb.set_trace() ## DEBUG ##
-        # Per default negative
-        # referenceNormal_angle = np.arccos(reference_direction.T.dot(normal_vector))
-        
-        # surface_position = obs.get_obstace_radius* x_t/LA.norm(x_t)
-        # direction_surface2reference = obs.get_reference_point()-surface_position
-        
-        # if referenceNormal_angle < (matrix_singularity_margin):
-            # x_global = obs.transform_relative2global(x_t)
-            # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], 'r')
-            # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], color='r')
-            # plt.quiver(x_global[0],x_global[1], reference_direction[0], reference_direction[1], color='b')
-            
-            # referenceNormal_angle = np.min([0, referenceNormal_angle-pi/2.0])
-    
-            # Gamma_convexHull = 1*referenceNormal_angle/(matrix_singularity_margin-pi/2.0)
-            # Gamma = np.max([Gamma, Gamma_convexHull])
-            
-            # reference_orthogonal = (normal_vector -
-                                    # reference_direction * reference_direction.T @ normal_vector)
-            # normal_vector = (reference_direction*np.sin(matrix_singularity_margin)
-                             # + reference_orthogonal*np.cos(matrix_singularity_margin))
-
-            # plt.quiver(x_global[0],x_global[1], normal_vector[0], normal_vector[1], color='g')
-            # plt.ion()
-
     E, E_orth = compute_decomposition_matrix(obs, x_t, dim)
     import pdb; pbd.set_trace()
     D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary,
                                 repulsion_coeff = obs.repulsion_coeff)
     
     return E, D, Gamma, E_orth
-
 
 
 def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):
@@ -164,7 +200,6 @@ def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):
     
 def get_radius_ellipsoid(x_t, a=[], ob=[]):
     # Derivation from  x^2/a^2 + y^2/b^2 = 1
-    
     if not np.array(a).shape[0]:
         a = ob.a
 

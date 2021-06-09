@@ -2,6 +2,9 @@
 '''
 Basic class to represent obstacles
 '''
+__date__ = "2019-10-15"
+__author__ = "Lukas Huber"
+__email__ = "lukas.huber@epfl.ch"
 
 import time
 import warnings, sys
@@ -14,17 +17,24 @@ from functools import lru_cache
 # from functools import cached_property    # Store property [pyhton 3 only]
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import State
+from dynamic_obstacle_avoidance.state import State
 
 import matplotlib.pyplot as plt     # TODO: remove after debugging!
 
-__date__ = "2019-10-15"
-__author__ = "Lukas Huber"
-__email__ = "lukas.huber@epfl.ch"
-
 visualize_debug = False
 
-
+# Utils (!)
+def local_frame_check_return_velocity(func, in_global_frame=False):
+    # Is this really useful / easily possible(?!)
+    def wrapper():
+        if in_global_frame:
+            # DO which ones here?
+            pass
+        velocity = func()
+        # what self...
+        velocity = self.transform_global2relative_dir(velocity)
+        return velocity
+        
 class Obstacle(State):
     """ 
     (Virtual) base class of obstacles 
@@ -212,7 +222,7 @@ class Obstacle(State):
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
 
     # Store five previous values
-    @lru_cache(maxsize=5)
+    # @lru_cache(maxsize=5)
     def get_gamma(self, position, *args, **kwargs):
         ''' Get gamma value of obstacle.'''
         if len(position.shape)==1:
