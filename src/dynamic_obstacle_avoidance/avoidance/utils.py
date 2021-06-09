@@ -1,10 +1,10 @@
-'''
+"""
 Obstacle Avoidance Library with different options
 
 @author Lukas Huber
 @date 2018-02-15
 
-'''
+"""
 import numpy as np
 import numpy.linalg as LA
 from numpy import pi
@@ -103,7 +103,7 @@ def get_relative_obstacle_velocity(
 
 
 def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
-    ''' Compute diagonal Matrix'''
+    """ Compute diagonal Matrix"""
 
     # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
     
@@ -130,7 +130,7 @@ def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coef
 
 
 def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
-    ''' Compute decomposition matrix and orthogonal matrix to basis'''
+    """ Compute decomposition matrix and orthogonal matrix to basis"""
     
     normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
@@ -157,7 +157,7 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
 
 def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
     # TODO: depreciated remove
-    '''
+    """
      The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
     Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
     
@@ -170,7 +170,7 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
     Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
     E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
-    '''
+    """
     if True:
         raise NotImplementedError("Depreciated ---- remove")
     warnings.warn("Depreciated ---- remove")
@@ -372,7 +372,7 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
 
 
 def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
-    ''' Compute weights based on a distance measure (with no upper limit)'''
+    """ Compute weights based on a distance measure (with no upper limit)"""
     distMeas = np.array(distMeas)
     n_points = distMeas.shape[0]
     
@@ -429,8 +429,8 @@ def compute_R(d, th_r):
 
 
 def obs_check_collision_2d(obs_list, XX, YY):
-    ''' Check if points (as a list in *args) are colliding with any of the obstacles. 
-    Function is implemented for 2D only. '''
+    """ Check if points (as a list in *args) are colliding with any of the obstacles. 
+    Function is implemented for 2D only. """
     d = 2
 
     dim_points = XX.shape
@@ -462,7 +462,7 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
 
 def obs_check_collision(obs_list, dim, *args):
-    ''' Check if points (as a list in *args) are colliding with any of the obstacles. '''
+    """ Check if points (as a list in *args) are colliding with any of the obstacles. """
 
     # No obstacles
     if len(obs_list)==0:
@@ -502,13 +502,13 @@ def obs_check_collision_ellipse(obs_list, dim, points):
 
 
 def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
-    '''
+    """
     Get 2D tangent vector of ellipse with axes <<axes>> and center <<center_point>>
     with respect to a point <<edge_point>>
 
     Function returns the tangents and the points of contact
 
-     '''
+     """
     if not dim==2:
         # TODO cut ellipse along direction & apply 2D-problem
         raise TypeError("Not implemented for higher dimension")
@@ -571,7 +571,7 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
 
 def get_reference_weight(distance, obs_reference_size=None,
                          distance_min=0, distance_max=3, weight_pow=1):
-    ''' Get a weight inverse proportinal to the distance'''
+    """ Get a weight inverse proportinal to the distance"""
 
     # TODO: based on inverse prop weight calculation
     # weights = get_inverse_proprtional_weight(distance, distance_min, distance_max, weight_pow)
@@ -607,7 +607,7 @@ def get_reference_weight(distance, obs_reference_size=None,
     return weights_all
 
 def get_inverse_proprtional_weight(distance, distance_min=0, distance_max=3, weight_pow=1):
-    ''' Get a weight inverse proportinal to the distance'''
+    """ Get a weight inverse proportinal to the distance"""
     weights = np.zeros(distance.shape)
 
     if any(np.logical_and(distance<=distance_min, distance>0)):

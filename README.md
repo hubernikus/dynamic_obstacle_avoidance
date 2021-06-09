@@ -12,6 +12,10 @@ conda activate obstacle_avoidance_linear
 python setup.py install
 ```
 
+Certain functionality of this package are depend on:
+https://github.com/hubernikus/various_tools
+make sure this is setup for seamless execution.
+
 ### Interactive jupyter notebook module
 There is an interactive jupyter module, to familarize with the algorithm. From the install/code directory it can by run with:
 ```

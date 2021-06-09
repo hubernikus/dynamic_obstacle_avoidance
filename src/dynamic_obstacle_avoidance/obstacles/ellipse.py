@@ -1,8 +1,11 @@
-'''
-date 2021-04-29
-@author Lukas Huber 
-@email lukas.huber@epfl.ch
-'''
+"""
+Ellipse Obstacle for Obstacle Avoidance and Visualization Purposes
+"""
+
+# Author Lukas Huber 
+# Email lukas.huber@epfl.ch
+# License BSD
+
 import sys
 import copy
 import warnings
@@ -24,11 +27,12 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 visualize_debug = False
 
+
 class Ellipse(Obstacle):
-    ''' Ellipse type obstacle 
+    """ Ellipse type obstacle 
     Geometry specifi attributes are
     axes_length: 
-    curvature: float / array (list) '''
+    curvature: float / array (list) """
     
     # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, curvature=None,
@@ -135,6 +139,7 @@ class Ellipse(Obstacle):
 
     @property
     def p(self): # TODO: remove
+        breakpoint()
         warnings.warn("Depreciated use 'curvature' instead")
         return self._curvature
 
@@ -145,8 +150,6 @@ class Ellipse(Obstacle):
 
     @property
     def curvature(self):
-        if len(self._curvature)>1: # TODO: deprciated... remove
-            return self._curvature[0]
         return self._curvature
 
     @curvature.setter
@@ -179,8 +182,8 @@ class Ellipse(Obstacle):
         return np.sqrt(np.sum(self.a*2))
         
     def get_reference_length(self):
-        ''' Get a characeteric (or maximal) length of the obstacle. 
-        For an ellipse obstacle,the longest axes. '''
+        """ Get a characeteric (or maximal) length of the obstacle. 
+        For an ellipse obstacle,the longest axes. """
         return LA.norm(self.axes_length) + self.margin_absolut
 
     def calculate_normalVectorAndDistance(self):
@@ -256,7 +259,7 @@ class Ellipse(Obstacle):
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
     def get_gamma(self, position, in_global_frame=False, gamma_type=None, gamma_distance=None):
-        ''' Gamma of ellipse 3d'''
+        """ Gamma of ellipse 3d"""
 
         # WHY WAS THIS ACTIVE?!?!
         # if self.dim==2:
@@ -276,21 +279,19 @@ class Ellipse(Obstacle):
             or self.gamma_distance is not None):
             warnings.warn("Implement linear gamma type.")
             
-        Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.p))
+        Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))
 
         return Gamma
 
-    
     def get_normal_ellipse(self, position):
-        ''' Return normal to ellipse surface '''
-        # return (2*self.p/self.axes_length*(position/self.axes_length)**(2*self.p-1))
-        return (2*self.p/self.axes_with_margin*(position/self.axes_with_margin)**(2*self.p-1))
-    
+        """ Return normal to ellipse surface """
+        # return (2*self.curvature/self.axes_length*(position/self.axes_length)**(2*self.curvature-1))
+        return (2*self.curvature/self.axes_with_margin*(position/self.axes_with_margin)**(2*self.curvature-1))
 
     def get_angle2referencePatch(self, position, max_angle=pi, in_global_frame=False):
-        '''
+        """
         Returns an angle in [0, pi]
-        '''
+        """
         if in_global_frame:
             position = self.transform_global2relative(position)
             
@@ -396,9 +397,9 @@ class Ellipse(Obstacle):
         if n_points>0:
             # Assumption -- zero-norm check already performed
             # norm_position = np.linalg.norm(position, axis=0)
-            # np.sum( (position / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.p, (n_points,1)).T), axis=0)
+            # np.sum( (position / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.curvature, (n_points,1)).T), axis=0)
             
-            # rad_local = np.sqrt(1.0/np.sum((position/np.tile(self.axes_with_margin, (n_points, 1)).T)**np.tile(self.p, (n_points, 1)).T, axis=0))
+            # rad_local = np.sqrt(1.0/np.sum((position/np.tile(self.axes_with_margin, (n_points, 1)).T)**np.tile(self.curvature, (n_points, 1)).T, axis=0))
             # return np.linalg.norm(position, axis=0)/(rad_local*np.linalg.norm(position, axis=0))
             # return 1.0/rad_local
             return np.sqrt(np.sum((position / np.tile(axes, (n_points, 1)).T)**np.tile(2*curvature, (n_points, self.dim)).T, axis=0))
@@ -407,7 +408,7 @@ class Ellipse(Obstacle):
             norm_position = np.linalg.norm(position)
             if norm_position == 0:
                 return 0
-            # rad_local = np.sqrt(1.0/np.sum(position/self.axes_with_margin**self.p) )
+            # rad_local = np.sqrt(1.0/np.sum(position/self.axes_with_margin**self.curvature) )
             # return 1.0/rad_local
             return np.sqrt(np.sum((position/axes)**(2*curvature) ))
     
@@ -481,13 +482,13 @@ class Ellipse(Obstacle):
 
 
     def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=False, in_global_frame=False):
-        ''' Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+        """ Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line
         direction / m : direction of line
 
         axes / a1 & a2: Axes of ellipse
-        center_ellipse: Center of ellipse '''
+        center_ellipse: Center of ellipse """
 
 
         # print('direction', direction)
@@ -584,9 +585,9 @@ class Ellipse(Obstacle):
     
 
     def _get_local_radius_ellipse(self, position, relative_center=None):
-        '''
+        """
         Get radius of ellipse in direction of position from the reference point
-        '''
+        """
         # TODO: extend for actual relative center
         if relative_center is None:
             relative_center = np.zeros(self.dim)
@@ -658,9 +659,9 @@ class Ellipse(Obstacle):
 
     # def get_gamma(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
     def get_gamma_old(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
-        '''
+        """
         Get distance function from surface
-        '''
+        """
         # TODO: depreciated... remove
         
         if in_global_frame:
@@ -685,11 +686,11 @@ class Ellipse(Obstacle):
             if self.dim==2:
                 if (self.reference_point_is_inside):
                     Gamma = self.get_gamma_ellipse(position)
-                    # Gamma[intersecting_ind] = np.sum( (position / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.p, (n_points,1)).T), axis=0)
+                    # Gamma[intersecting_ind] = np.sum( (position / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.curvature, (n_points,1)).T), axis=0)
                 else:
                     for pp in range(n_points):
                         if self.position_is_in_direction_of_ellipse(position[:, pp]):
-                            # Gamma[intersecting_ind] = np.sum( (position[:, intersecting_ind] / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.p, (n_points,1)).T), axis=0)
+                            # Gamma[intersecting_ind] = np.sum( (position[:, intersecting_ind] / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.curvature, (n_points,1)).T), axis=0)
                             Gamma[pp] = self.get_gamma_ellipse(position[:, pp])
                         else:
                             angle_position = np.arctan2(position[1, pp], position[0, pp])
@@ -731,10 +732,10 @@ class Ellipse(Obstacle):
         return Gamma
 
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
-        '''
+        """
         Creates points for obstacle and obstacle margin
-        '''
-        p = self.p
+        """
+        p = self.curvature
         a = self.axes_length
 
         if update_core_boundary_points:
@@ -837,10 +838,10 @@ class Ellipse(Obstacle):
 
     
     def get_radius_of_angle(self, angle, in_global_frame=False):
-        '''
+        """
         Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
-        '''
+        """
         
         if in_global_frame:
             position =  transform_polar2cartesian(magnitude=10, angle=angle-self.orientation)
@@ -852,8 +853,8 @@ class Ellipse(Obstacle):
 
     
     def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):
-        ''' Extend the hull of non-boundary, convex obstacles such that the reference point 
-        lies in inside the boundary again. '''
+        """ Extend the hull of non-boundary, convex obstacles such that the reference point 
+        lies in inside the boundary again. """
         self.reference_point_is_inside = True # Default assumption
         
         dist_max = self.get_maximal_distance()*relative_hull_margin
@@ -894,14 +895,14 @@ class Ellipse(Obstacle):
             self.n_planes = 0
 
     def update_deforming_obstacle(self, delta_time):
-        ''' Update step. '''
+        """ Update step. """
         self.axes_length = self.axes_length + self.expansion_speed_axes*delta_time
         
         self.draw_obstacle()
 
 
 class CircularObstacle(Ellipse):
-    ''' Ellipse obstacle with equal axes '''
+    """ Ellipse obstacle with equal axes """
     def __init__(self, radius=None, axes_length=None, *args, **kwargs):
         if not radius is None:
             axes_length = np.array([radius, radius])
@@ -946,8 +947,8 @@ class CircularObstacle(Ellipse):
         return self.radius_with_margin
     
     def get_deformation_velocity(self, position, in_global_frame=False):
-        ''' Get relative velocity of a boundary point.
-        This is zero if the deformation would be pulling. '''
+        """ Get relative velocity of a boundary point.
+        This is zero if the deformation would be pulling. """
 
         if in_global_frame:
             raise NotImplementedError()
@@ -965,7 +966,7 @@ class CircularObstacle(Ellipse):
         return deformation_vel
 
     def update_deforming_obstacle(self, radius_new, position, orientation, time_current=None):
-        ''' Update an obstacle which can also deform '''
+        """ Update an obstacle which can also deform """
         if time_current is None:
             time_current = time.time()
             

@@ -11,7 +11,6 @@ from dynamic_obstacle_avoidance.avoidance.utils import *
 
 import matplotlib.pyplot as plt    # Only for debugging
 
-
 class State(object):
     def __init__(self, typename=None, name="default", reference_frame="world", is_empty=True, *args):
                  

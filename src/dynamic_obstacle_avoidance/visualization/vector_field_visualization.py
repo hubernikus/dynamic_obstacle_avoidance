@@ -1,13 +1,17 @@
 #!/USSR/bin/python3
-'''
+"""
 Obstacle Avoidance Algorithm script with vecotr field
-'''
+"""
 
-from dynamic_obstacle_avoidance.dynamical_system import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
+from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+# from dynamic_obstacle_avoidance.dynamical_system import linearAttractor
+# from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
+
 
 # General classes
 import copy
@@ -34,7 +38,7 @@ __email__ = "lukas.huber@epfl.ch"
 
 
 def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, dt=0.01, convergence_margin=1e-4, fig_and_ax_handle=None, normalize_magnitude=True, line_color=None, min_value=0, max_value=None):
-    ''' Draw line where qolo has been moving along. '''
+    """ Draw line where qolo has been moving along. """
 
     if fig_and_ax_handle is None:
         fig, ax = plt.subplots()
@@ -142,7 +146,7 @@ def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
 
 def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
                      dim=2, dt=0.01, max_simu_step=300, convergence_margin=0.03):
-    ''' Plot streamlines. '''
+    """ Plot streamlines. """
     # 
     n_points = np.array(points_init).shape[1]
 
@@ -174,11 +178,11 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--'):
-    ''' Plot all obstacles & attractors '''
+def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--'):
+    """ Plot all obstacles & attractors """
 
-    if not xAttractor is None:
-        ax.plot(xAttractor[0], xAttractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
+    if pos_attractor is not None:
+        ax.plot(pos_attractor[0], pos_attractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
 
     obs_polygon = []
     obs_polygon_sf = []
@@ -263,11 +267,11 @@ def plot_obstacles(ax, obs, x_range, y_range, xAttractor=None, obstacleColor=Non
     return 
     
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, xAttractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamicalSystem=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
-    ''' 
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
+    """ 
     Draw obstacle and vectorfield. Several parameters and defaults 
     allow easy customization of plot.
-    '''
+    """
     # TODO: gamma ditance does not fit as paramtere here (since not visual)...
 
     dim = 2
@@ -297,13 +301,13 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if not plotObstacle:
         warnings.warn('x_label & ticks not implemented')
     
-    plot_obstacles(ax, obs, x_range, y_range, xAttractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
+    plot_obstacles(ax, obs, x_range, y_range, pos_attractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
 
     # Show certain streamlines
     if np.array(points_init).shape[0]:
-        plot_streamlines(points_init, ax, obs, xAttractor)
+        plot_streamlines(points_init, ax, obs, pos_attractor)
 
-    if not draw_vectorField or xAttractor is None:
+    if not draw_vectorField:
         plt.ion()
         plt.show()
         return fig, ax
@@ -320,14 +324,13 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         N_x = N_y = 1
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
 
-    
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
     # N_x = N_y = 1
     # XX = np.zeros((N_x, N_y))
     # YY = np.zeros((N_x, N_y))
     it_start = 0
-    n_samples = 5
+    n_samples = 0
 
     pos1 = [4.38, -4.52]
     pos2 = [4.40, -4.52]
@@ -351,10 +354,15 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     # import pdb; pdb.set_trace()
     ########## STOP REMOVE ###########
 
+    if dynamical_system is None:
+        # Default ds
+        def dynamical_system(x, MAX_SPEED=3.0):
+            return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)
+
     # Forced to attracting Region
     if attractingRegion:      
         def obs_avoidance_temp(x, xd, obs):
-            return obs_avoidance_func(x, xd, obs, xAttractor)
+            return obs_avoidance_func(x, xd, obs, pos_attractor)
         
         obs_avoidance = obs_avoidance_temp
     else:
@@ -373,15 +381,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             if not indOfNoCollision[ix, iy]:
                 continue
             pos = np.array([XX[ix, iy], YY[ix, iy]])
+            
+            xd_init[:, ix, iy] = dynamical_system(pos) # initial DS
 
-            #xd_init[:,ix,iy] = dynamicalSystem(pos, x0=xAttractor) # initial DS
-            MAX_SPEED = 3.0
-            xd_init[:, ix, iy] = linear_ds_max_vel(pos, attractor=xAttractor, vel_max=MAX_SPEED)
-
-            # print('pos', pos)
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs,
             # gamma_distance=gamma_distance # DEBUGGING: remove
-            )     
+            )
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
@@ -389,7 +394,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
         res_init = ax_init.streamplot(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[(0.3,0.3,0.3)])
         
-        ax_init.plot(xAttractor[0], xAttractor[1], 'k*', zorder=5)
+        ax_init.plot(pos_attractor[0], pos_attractor[1], 'k*', zorder=5)
         plt.gca().set_aspect('equal', adjustable='box')
 
         plt.xlim(x_range)
@@ -420,6 +425,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
+                # breakpoint()
                 res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=3)
                 
             else:
@@ -438,7 +444,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 res_ifd = ax.quiver(XX, YY,
                                     dx1_noColl*quiver_factor, dx2_noColl*quiver_factor,
                                     color=streamColor, zorder=3)
-
     plt.show()
 
     start_time = time.time()

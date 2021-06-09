@@ -1,10 +1,9 @@
-'''
+""" Library of different dynamical systems
+"""
 
-Library of different dynamical systems
-
-@author Lukas Huber
-@date 2018-02-15
-'''
+# Author Lukas Huber
+# Date 2018-02-15
+# License BSD 
 
 import numpy as np
 import numpy.linalg as LA
@@ -12,15 +11,15 @@ import numpy.linalg as LA
 # TODO: clean up and restructure files.
 
 def get_linear_ds(position, attractor=None):
-    ''' Linear Dynamical System'''
+    """ Linear Dynamical System"""
     if attractor is None:
         return (-1)*position
     else:
         return attractor-position
 
 def linear_ds_max_vel(position, attractor=np.array([0,0]), vel_max=0.5, slow_down_region=0.5):
-    ''' Linear Dynamical System with decreasing velocity close to the attractor,
-    but constant (maximal) velocity, everywhere else.'''
+    """ Linear Dynamical System with decreasing velocity close to the attractor,
+    but constant (maximal) velocity, everywhere else."""
     velocity = attractor-position
 
     mag_velocity = distance = np.linalg.norm(velocity)
@@ -34,7 +33,7 @@ def linear_ds_max_vel(position, attractor=np.array([0,0]), vel_max=0.5, slow_dow
 
 
 def limit_velocity(velocity, position, final_position, max_vel=0.07, slow_down_dist=0.1):
-    ''' Limit velocity with convergence to 0 around the final position.'''
+    """ Limit velocity with convergence to 0 around the final position."""
     dist = final_position-position
     dist_norm = np.linalg.norm(dist)
     vel_norm = np.linalg.norm(velocity)

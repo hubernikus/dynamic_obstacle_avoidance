@@ -5,20 +5,16 @@
 Copyright (c) 2019 under GPU license. 
 
 '''
+import warnings
+import copy 
+import sys
 
 import numpy as np
 import numpy.linalg as LA
 
-# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
-from dynamic_obstacle_avoidance.obstacles import Obstacle, Polygon
-
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.avoidance.utils import *
+from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
-import warnings
-import copy 
-
-import sys
 
 def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=True, gamma_limit=1.0, weight_pow=2, repulsive_gammaMargin=0.01):
     # Gamma_limit [float] - defines the minimum gamma, where one function take the whole value
