@@ -18,9 +18,9 @@ import numpy as np
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 

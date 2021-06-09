@@ -1,9 +1,6 @@
-#!/USSR/bin/python3
-'''
-Container encapsulates all obstacles.
+'''Container encapsulates all obstacles.
 Gradient container finds the dynamic reference point through gradient descent.
 '''
-
 __author__ = "LukasHuber"
 __date__ =  "2020-06-30"
 __email__ =  "lukas.huber@epfl.ch"
@@ -11,14 +8,14 @@ __email__ =  "lukas.huber@epfl.ch"
 import warnings, sys
 import numpy as np
 import copy
-import time # TODO comment
+import time 
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
 from dynamic_obstacle_avoidance.obstacles import CircularObstacle
 from dynamic_obstacle_avoidance.obstacles import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_reference_weight
+from dynamic_obstacle_avoidance.avoidance.utils import get_reference_weight
 
 # BUGS / IMPROVEMENTS:
 #    - far-far away, the automatic-extension of the hull of the ellipse does not work
@@ -26,7 +23,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import get_referen
 
 
 class GradientContainer(ObstacleContainer):
-    '''Obstacle Container which can be used with gradient search. It additionally stores 
+    ''' Obstacle Container which can be used with gradient search. It additionally stores 
     the closest boundary point between obstacles. '''
     def __init__(self, obs_list=None):
         if sys.version_info>(3,0): # Python 3

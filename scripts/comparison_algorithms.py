@@ -13,15 +13,16 @@ from numpy import pi
 import matplotlib.pyplot as plt
 
 # Custom libraries
+from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse
+
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.comparison_algorithms import obs_avoidance_potential_field, obs_avoidance_orthogonal_moving
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import obs_avoidance_interpolation_moving, obs_check_collision_2d
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import linear_ds_max_vel
+
 from dynamic_obstacle_avoidance.obstacle_avoidance.metric_evaluation import MetricEvaluator
 
 plt.close('all')

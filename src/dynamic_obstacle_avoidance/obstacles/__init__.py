@@ -11,7 +11,7 @@ from .human_ellipse import TrackedPedestrian, HumanEllipse
 from .boundary_cuboid_with_gap import BoundaryCuboidWithGaps
 
 # Various Continers
-from .container import BaseContainer, ObstacleContainer
+from .container import BaseContainer, SingleWallContainer, LearningContainer, ObstacleContainer
 from .gradient_container import GradientContainer
 
 
@@ -23,6 +23,8 @@ __all__ = ['Obstacle',
            'StarshapedFlower',
            'BaseContainer',
            'ObstacleContainer',
+           'LearningContainer',
+           'SingleWallContainer',
            'GradientContainer',
            ]
 
