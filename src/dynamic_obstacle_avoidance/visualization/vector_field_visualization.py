@@ -4,9 +4,6 @@ Obstacle Avoidance Algorithm script with vecotr field
 """
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-# from dynamic_obstacle_avoidance.dynamical_system import linearAttractor
-# from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
-# from dynamic_obstacle_avoidance.obstacle_avoidance.nonlinear_modulation import *
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
@@ -258,11 +255,11 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
         ax.tick_params(axis='both', which='major',bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
     if showLabel:
-        plt.xlabel(r'$\xi_1$', fontsize=16)
-        plt.ylabel(r'$\xi_2$', fontsize=16)
+        ax.set_xlabel(r'$\xi_1$', fontsize=16)
+        ax.set_ylabel(r'$\xi_2$', fontsize=16)
 
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.tick_params(axis='both', which='minor', labelsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='minor', labelsize=12)
 
     return 
     

@@ -77,19 +77,41 @@ if (__name__)=="__main__":
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    n_resolution = 40
+    n_resolution = 50
 
     pos_attractor = np.array([8, 0])
 
+    def initial_ds(x):
+        return ds_quadratic_axis_convergence(
+            x,  center_position=pos_attractor, stretching_factor=3)
+        
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 7))
+
+    obstacle_list = single_ellipse()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, figName='rotational_avoidance',
+        noTicks=True, 
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        obs_avoidance_func=obstacle_avoidance_rotational,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[2]),
+        )
+
+    
     obstacle_list = []
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, figName='rotational_avoidance',
         noTicks=True, 
         draw_vectorField=True,
-        dynamical_system=lambda x: ds_quadratic_axis_convergence(x, center_position=pos_attractor),
+        dynamical_system=initial_ds,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[0]),
         )
     
     obstacle_list = single_ellipse()
@@ -98,10 +120,13 @@ if (__name__)=="__main__":
         saveFigure=False, figName='rotational_avoidance',
         noTicks=True, 
         draw_vectorField=True,
-        dynamical_system=lambda x: ds_quadratic_axis_convergence(x, center_position=pos_attractor),
+        dynamical_system=initial_ds,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[1]),
         )
+
+
 
     # for obs in obs_list:
     #     obs.draw_obstacle()

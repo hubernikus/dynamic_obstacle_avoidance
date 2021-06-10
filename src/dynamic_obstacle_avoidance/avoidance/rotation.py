@@ -14,6 +14,7 @@ from vartools.directional_space import get_directional_weighted_sum
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
+from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
 
 
 def obstacle_avoidance_rotational(
@@ -40,9 +41,9 @@ def obstacle_avoidance_rotational(
 
     Gamma = np.zeros((n_obstacles))
     for n in range(n_obstacles):
-        Gamma[n] = obs[n].get_gamma(position, in_global_frame=True)
+        Gamma[n] = obstacle_list[n].get_gamma(position, in_global_frame=True)
 
-    ind_obs = (Gamma > cut_off_gamma)
+    ind_obs = (Gamma < cut_off_gamma)
     if not any(ind_obs):
         return initial_velocity
 

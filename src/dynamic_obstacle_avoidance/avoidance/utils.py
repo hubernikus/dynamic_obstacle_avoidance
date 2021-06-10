@@ -43,7 +43,7 @@ def get_relative_obstacle_velocity(
             Gamma[n] = obs[n].get_gamma(position, in_global_frame=True)
 
     if ind_obstacles is None:
-        ind_obstacles = gamma_list > cut_off_gamma
+        ind_obstacles = gamma_list < cut_off_gamma
         
     obs = obstacle_list
     ind_obs = ind_obstacles
@@ -343,35 +343,6 @@ def compute_eigenvalueMatrix(Gamma, rho=1, dim=2, radialContuinity=True):
 
 
 def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
-    # UNTITLED5 Summary of this function goes here
-    # Detailed explanation goes here
-    distMeas = np.array(distMeas)
-    n_points = distMeas.shape[0]
-    
-    critical_points = distMeas <= distMeas_lowerLimit
-    
-    if np.sum(critical_points): # at least one
-        if np.sum(critical_points)==1:
-            w = critical_points*1.0
-            return w
-        else:
-            # TODO: continuous weighting function
-            warnings.warn('Implement continuity of weighting function.')
-            w = critical_points*1./np.sum(critical_points)
-            return w
-        
-    if weightType == 'inverseGamma':
-        distMeas = distMeas - distMeas_lowerLimit
-        w = (1/distMeas)**weightPow
-        if np.sum(w)==0:
-            return w
-        w = w/np.sum(w) # Normalization
-    else:
-        warnings.warn("Unkown weighting method.")
-    return w
-
-
-def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGamma', weightPow=2):
     """ Compute weights based on a distance measure (with no upper limit)"""
     distMeas = np.array(distMeas)
     n_points = distMeas.shape[0]
@@ -397,7 +368,6 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
     else:
         warnings.warn("Unkown weighting method.")
     return w
-
 
 
 def compute_R(d, th_r):
