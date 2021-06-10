@@ -19,31 +19,33 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 # import matplotlib.pyplot as plt
 
 def get_relative_obstacle_velocity(
-    position, obstacle_list, ind_obstacles=None, gamma_list=None, cut_off_gamma=1e-6):
+    position, obstacle_list, E_orth, weights,
+    ind_obstacles=None, gamma_list=None, cut_off_gamma=1e-6):
     """ Get the relative obstacle velocity
 
     Parameters
     ----------
+    E_orth: array which contains orthogonal matrix with repsect to the normal direction at <position>
+            array of (dimension, dimensions, n_obstacles
     obstacle_list: list or <obstacle-conainter> with obstacles
-
     ind_obstacles: Inidicates which obstaces will be considered (array-like of int)
-
-    gamma_list: Precalculated gamma-values (list of float)
-
+    gamma_list: Precalculated gamma-values (list of float) -
+                It is adviced to use 'proportional' gamma values, rather than relative ones
     
     Return
     ------
     relative_velocity: array-like of float
     """
-    if gamma_list is None:
-        n_obstacles = len(obstacle_list)
-        gamma_list = np.zeros(n_obstacles)
+    n_obstacles = len(obstacle_list)
     
-        for n in range(N_obs):
+    if gamma_list is None:
+        gamma_list = np.zeros(n_obstacles)
+        for n in range(n_obstacles):
             Gamma[n] = obs[n].get_gamma(position, in_global_frame=True)
-
+    
     if ind_obstacles is None:
         ind_obstacles = gamma_list < cut_off_gamma
+        Gamma = Gamma[ind_obstacles]
         
     obs = obstacle_list
     ind_obs = ind_obstacles
@@ -51,18 +53,18 @@ def get_relative_obstacle_velocity(
     
     xd_obs = np.zeros((dim))
         
-    for n in np.arange(N_obs)[ind_obs]:
+    for n in np.arange(n_obstacles)[ind_obs]:
         if dim==2:
-            xd_w = np.cross(np.hstack(([0,0], obs[n].angular_velocity)),
-                            np.hstack((x-np.array(obs[n].center_position),0)))
+            xd_w = np.cross(np.hstack(([0, 0], obs[n].angular_velocity)),
+                            np.hstack((position-np.array(obs[n].center_position), 0)))
             xd_w = xd_w[0:2]
         elif dim==3:
-            xd_w = np.cross(obs[n].orientation, x-obs[n].center_position)
+            xd_w = np.cross(obs[n].orientation, position-obs[n].center_position)
         else:
             xd_w = np.zeros(dim)
             warnings.warn('Angular velocity is not defined for={}'.format(d))
 
-        weight_angular = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
+        weight_angular = np.exp(-1.0/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
         
         linear_velocity = obs[n].linear_velocity
         velocity_only_in_positive_normal_direction = True
@@ -75,7 +77,7 @@ def get_relative_obstacle_velocity(
             else:
                 linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
 
-            weight_linear = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n],1])-1))
+            weight_linear = np.exp(-1/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
             # linear_velocity = weight_linear*linear_velocity
 
         xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
@@ -83,7 +85,7 @@ def get_relative_obstacle_velocity(
         # The Exponential term is very helpful as it help to avoid
         # the crazy rotation of the robot due to the rotation of the object
         if obs[n].is_deforming:
-            weight_deform = np.exp(-1/obs[n].sigma*(np.max([Gamma_proportional[n], 1])-1))
+            weight_deform = np.exp(-1/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
             vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
 
             if velocity_only_in_positive_normal_direction:
@@ -96,7 +98,7 @@ def get_relative_obstacle_velocity(
                     vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
                     
             xd_obs_n += weight_deform * vel_deformation
-        xd_obs = xd_obs + xd_obs_n*weight[n]
+        xd_obs = xd_obs + xd_obs_n*weights[n]
 
     relative_velocity = xd_obs
     return relative_velocity

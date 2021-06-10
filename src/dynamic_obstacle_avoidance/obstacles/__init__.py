@@ -13,6 +13,7 @@ from .boundary_cuboid_with_gap import BoundaryCuboidWithGaps
 # Various Continers
 from .container import BaseContainer, SingleWallContainer, LearningContainer, ObstacleContainer
 from .gradient_container import GradientContainer
+from .multiboundary_container import MultiBoundaryContainer
 
 
 __all__ = ['Obstacle',
@@ -26,5 +27,6 @@ __all__ = ['Obstacle',
            'LearningContainer',
            'SingleWallContainer',
            'GradientContainer',
+           'MultiBoundaryContainer',
            ]
 

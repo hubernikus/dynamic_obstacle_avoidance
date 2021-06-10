@@ -34,7 +34,6 @@ class Ellipse(Obstacle):
     axes_length: 
     curvature: float / array (list) """
     
-    # self.ellipse_type = dynamic_obstacle_avoidance.obstacle_avoidance.obstacle.Ellipse
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
                  margin_absolut=0,
@@ -434,7 +433,6 @@ class Ellipse(Obstacle):
             derivative = self.transform_relative2global_dir(derivative)
         return derivative
     
-    
     def get_radius_derivative_direction(self, angle_space):
         axes = self.axes_with_margin
         if self.dim==2:
@@ -481,7 +479,7 @@ class Ellipse(Obstacle):
         return norm
 
 
-    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=False, in_global_frame=False):
+    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=True, in_global_frame=False):
         """ Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line
@@ -507,7 +505,8 @@ class Ellipse(Obstacle):
             intersections = mag_x * direction
             
             if not only_positive_direction:
-                intersections =  np.tile(pos, (2,1)).T
+                intersections =  np.tile(intersections, (2,1)).T
+                intersections[:, 1] = -intersections[:, 1]
                 
             if in_global_frame:
                 intersections = self.transform_relative2global(intersections)
@@ -838,8 +837,7 @@ class Ellipse(Obstacle):
 
     
     def get_radius_of_angle(self, angle, in_global_frame=False):
-        """
-        Extend the hull of non-boundary, convex obstacles such that the reference point lies in
+        """ Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
         """
         

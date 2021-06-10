@@ -162,6 +162,7 @@ class Obstacle(State):
         # Relative Reference point // Dyanmic center
         # if reference_point is None:
         self.reference_point = np.zeros(self.dim) # TODO remove and rename
+        self._relative_reference_point = None
         self.reference_point_is_inside = True
         # else:
             # self.set_reference_point(reference_point, in_global_frame=True)
@@ -445,13 +446,37 @@ class Obstacle(State):
         return self.rotMatrix.dot(matrix).dot(self.rotMatrix.T)
 
     @property
+    def local_relative_reference_point(self):
+        return self._relative_reference_point
+
+    @local_relative_reference_point.setter
+    def local_relative_reference_point(self, value):
+        self._relative_reference_point = value
+
+    @property
+    def global_relative_reference_point(self):
+        if self._relative_reference_point is None:
+            return self.center_position
+        else:
+            return self.transform_relative2global(self._relative_reference_point)
+
+    @global_relative_reference_point.setter
+    def global_relative_reference_point(self, value):
+        if value is None:
+            self._relative_reference_point = None
+        else:
+            self._relative_reference_point = self.transform_global2relative(value)
+
+    def reset_relative_reference(self):
+        self._relative_reference_point = None
+
+    @property
     def center_dyn(self):# TODO: depreciated -- delete
         return self.reference_point
 
     # @property
     # def center_dyn(self):# TODO: depreciated -- delete
         # return self.reference_point
-    
     
     @property
     def global_reference_point(self):
@@ -554,12 +579,12 @@ class Obstacle(State):
 
     @property
     def xd(self): # TODO: remove
-        warnings.warn("Outdated name")
+        warnings.warn("'xd' is an outdated name use 'lienar_velocity' instead.")
+        breakpoint()
         return self._linear_velocity_const
 
     @property
     def velocity_const(self):
-        warnings.warn("Outdated name")
         return self._linear_velocity_const
 
     @property
@@ -657,7 +682,7 @@ class Obstacle(State):
 
     # @boundary_points.setter
     # def boundary_points
-        
+    
     def compute_R(self):
         #TODO: remove - depreciated
         self.compute_rotation_matrix()

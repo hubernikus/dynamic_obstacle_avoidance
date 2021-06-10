@@ -12,18 +12,13 @@ import copy
 from math import pi
 import warnings, sys
 
-import numpy.linalg as LA
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.avoidance.utils  import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-
-# from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_learning import LearningObstacle
-# from sklearn.cluster import DBSCAN # Only used for learning (Clustering)
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import Intersection_matrix
 
@@ -77,7 +72,6 @@ class BaseContainer(list):
     def boundary(self):
         return self._obstacle_list[-1]
     
-
     @property
     def number(self):
         return len(self)

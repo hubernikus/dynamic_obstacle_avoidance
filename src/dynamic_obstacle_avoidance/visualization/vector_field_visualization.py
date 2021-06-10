@@ -185,6 +185,10 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
     obs_polygon_sf = []
 
     for n in range(len(obs)):
+        
+        if obs[n].boundary_points is None:
+            obs[n].draw_obstacle()
+            
         x_obs = obs[n].boundary_points_global_closed
         x_obs_sf = obs[n].boundary_points_margin_global_closed
         ax.plot(x_obs_sf[0, :], x_obs_sf[1, :], color='k', linestyle=border_linestyle)
@@ -236,12 +240,12 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
                 ax.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
             # add group, too
 
-        if drawVelArrow and np.linalg.norm(obs[n].xd)>0:
+        if drawVelArrow and np.linalg.norm(obs[n].linear_velocity)>0:
             # col=[0.5,0,0.9]
             col = [255/255., 51/255., 51/255.]
             fac=5 # scaling factor of velocity
             ax.arrow(obs[n].center_position[0], obs[n].center_position[1],
-                         obs[n].xd[0]/fac, obs[n].xd[1]/fac,
+                         obs[n].linear_velocity[0]/fac, obs[n].linear_velocity[1]/fac,
                          # head_width=0.3, head_length=0.3, linewidth=10,
                          head_width=0.1, head_length=0.1, linewidth=3,
                          fc=col, ec=col, alpha=1)
@@ -323,16 +327,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    # N_x = N_y = 1
-    # XX = np.zeros((N_x, N_y))
-    # YY = np.zeros((N_x, N_y))
     it_start = 0
     n_samples = 0
 
-    pos1 = [4.38, -4.52]
-    pos2 = [4.40, -4.52]
-    # pos1 = [-5.0, 2.5]
-    # pos2 = [5.0, 2.5]
+    pos1 = [1.26, -7.91]
+    # pos1 = [-1.09, -5.61]
+    pos2 = [-3.23, -1.10]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -348,9 +348,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         XX[ix, iy] = x_sample[ii]
         YY[ix, iy] = y_sample[ii]
 
-    # import pdb; pdb.set_trace()
     ########## STOP REMOVE ###########
-
+    
     if dynamical_system is None:
         # Default ds
         def dynamical_system(x, MAX_SPEED=3.0):
@@ -373,6 +372,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     else:
         indOfNoCollision = np.ones((N_x, N_y))
 
+    t_start = time.time()
     for ix in range(N_x):
         for iy in range(N_y):
             if not indOfNoCollision[ix, iy]:
@@ -384,6 +384,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs,
             # gamma_distance=gamma_distance # DEBUGGING: remove
             )
+    t_end = time.time()
+    print("Average time per evaluation {} ms".format(round(t_end - t_start, 3)))
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
@@ -422,7 +424,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
-                # breakpoint()
                 res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=3)
                 
             else:

@@ -12,50 +12,17 @@ from numpy import pi
 import matplotlib.pyplot as plt
 
 from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
+from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
 from dynamic_obstacle_avoidance.obstacles import BaseContainer
-from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
 from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields, plot_obstacles
 
-plt.close('all')
+# plt.close('all')
 plt.ion()
-
-
-def multiple_ellipse_hull():
-    obs_list = BaseContainer()
-
-    obs_list.append(
-        Ellipse(
-        center_position=np.array([-6, 0]), 
-        axes_length=np.array([5, 2]),
-        orientation=50./180*pi,
-        is_boundary=True,
-        )
-    )
-
-    obs_list.append(
-        Ellipse(
-        center_position=np.array([0, 0]), 
-        axes_length=np.array([5, 2]),
-        orientation=-50./180*pi,
-        is_boundary=True,
-        )
-    )
-
-    obs_list.append(
-        Ellipse(
-        center_position=np.array([6, 0]), 
-        axes_length=np.array([5, 2]),
-        orientation=50./180*pi,
-        is_boundary=True,
-        )
-    )
-
-    return obs_list
-
 
 def single_ellipse():
     obs_list = BaseContainer()
@@ -68,45 +35,72 @@ def single_ellipse():
         )
     )
     return obs_list
-    
 
-def parallel_ds(position, direction):
-    return direction
+def multiple_ellipse_hulls():
+    obs_list = BaseContainer()
 
-if (__name__)=="__main__":
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([-6, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=50./180*pi,
+        is_boundary=True,
+        )
+    )
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([0, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=-50./180*pi,
+        is_boundary=True,
+        )
+    )
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([6, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=50./180*pi,
+        is_boundary=True,
+        )
+    )
+    return obs_list
+
+
+def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    n_resolution = 50
-
     pos_attractor = np.array([8, 0])
 
-    def initial_ds(x):
-        return ds_quadratic_axis_convergence(
-            x,  center_position=pos_attractor, stretching_factor=3)
-        
+    def initial_ds(position):
+        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+    
+    def obs_avoidance(*args, **kwargs):
+        def get_convergence_direction(position):
+            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 7))
+    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
 
     obstacle_list = single_ellipse()
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
-        saveFigure=False, figName='rotational_avoidance',
-        noTicks=True, 
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
-        obs_avoidance_func=obstacle_avoidance_rotational,
+        obs_avoidance_func=obs_avoidance,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[2]),
+        show_streamplot=True,
         )
-
     
     obstacle_list = []
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
-        saveFigure=False, figName='rotational_avoidance',
-        noTicks=True, 
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
         automatic_reference_point=False,
@@ -117,8 +111,8 @@ if (__name__)=="__main__":
     obstacle_list = single_ellipse()
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
-        saveFigure=False, figName='rotational_avoidance',
-        noTicks=True, 
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
         automatic_reference_point=False,
@@ -126,29 +120,114 @@ if (__name__)=="__main__":
         fig_and_ax_handle=(fig, axs[1]),
         )
 
+    if save_figure:
+        figure_name = "comparison_linear_vectorfield"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
-    # for obs in obs_list:
-    #     obs.draw_obstacle()
-        
-    # fig = plt.figure(figsize=(12, 8))
-    # ax = plt.subplot(1, 1, 1)
+def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
     
-    # plot_obstacles(ax, obs_list, x_lim, y_lim, showLabel=False)
+    pos_attractor = np.array([8, 0])
 
-    # nx = ny = n_resolution
-    # x_grid, y_grid = np.meshgrid(np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny))
-    # positions = np.vstack((x_grid.reshape(1,-1), y_grid.reshape(1,-1))).reshape(-1, nx, ny)
+    def initial_ds(x):
+        return ds_quadratic_axis_convergence(
+            x,  center_position=pos_attractor, stretching_factor=3,
+            max_vel=1.0
+            )
+
+    def obs_avoidance(*args, **kwargs):
+        def get_convergence_direction(position):
+            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 7))
+
+    obstacle_list = single_ellipse()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False,
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        obs_avoidance_func=obs_avoidance,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[2]),
+        show_streamplot=True,
+        )
     
-    # velocity_init = np.zeros(positions.shape)
-    # # vel_constant = np.array([1, 0])
-    # # velocity_init = np.tile(vel_constant, (ny, nx, 1))
-    # # velocity_init = np.swapaxes(velocity_init, 0, 2)
+    obstacle_list = []
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[0]),
+        )
     
-    # velocity_mod = np.zeros(positions.shape)
+    obstacle_list = single_ellipse()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[1]),
+        )
 
-    # for ix in range(n_resolution):
-    #     for iy in range(n_resolution):
-    #         velocity_init[:, ix, iy] = ds_quadratic_axis_convergence(positions[:, ix, iy])
+    if save_figure:
+        figure_name = "comparison_nonlinear_vectorfield"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
-    # plt.quiver()
+def multiple_hull_linear(save_figure=False, n_resolution=10):
+    """ Multiple ellipse hull. """
+
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+    
+    pos_attractor = np.array([8, 0])
+
+    def initial_ds(x):
+        return ds_quadratic_axis_convergence(
+            x,  center_position=pos_attractor, stretching_factor=3,
+            max_vel=1.0
+            )
+
+    def obs_avoidance(*args, **kwargs):
+        def get_convergence_direction(position):
+            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        return obstacle_avoidance_rotational(*args, **kwargs,
+                                             get_convergence_direction=get_convergence_direction)
+
+    fig, ax = plt.subplots(1, 1, figsize=(15, 7))
+
+    obstacle_list = multiple_ellipse_hulls()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        obs_avoidance_func=obs_avoidance,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, ax),
+        show_streamplot=False,
+    )
+    
+
+if (__name__)=="__main__":
+    # single_ellipse_linear_triple_plot(save_figure=True)
+    # single_ellipse_nonlinear_triple_plot(save_figure=False)
+
+    multiple_hull_linear(save_figure=False)
+
+    # single_ellipse_hull(save_figure=True)
+
