@@ -257,8 +257,21 @@ class Ellipse(Obstacle):
         
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
-    def get_gamma(self, position, in_global_frame=False, gamma_type=None, gamma_distance=None):
-        """ Gamma of ellipse 3d"""
+    def get_gamma(self, position, in_global_frame=False, gamma_type=None, gamma_distance=None,
+                  inverted=None):
+        """ Returns gamma value of an ellipse shaped obstacle at position
+
+        Property
+        -------
+        position: array like position of size (dimension,)
+        in_global_frame: If position input is in global frame, transform to local frame
+        gamma_type: Different types of the distance measure-evaluation
+        inverted: Enforce normal / inverted evaluation (if None use the object / boundary default)
+
+        Return
+        ------
+        Gamma: distance value gamma of float
+        """
 
         # WHY WAS THIS ACTIVE?!?!
         # if self.dim==2:
@@ -280,6 +293,9 @@ class Ellipse(Obstacle):
             
         Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))
 
+        if self.is_boundary:
+            Gamma = 1./Gamma
+            
         return Gamma
 
     def get_normal_ellipse(self, position):
