@@ -261,8 +261,8 @@ class Ellipse(Obstacle):
                   inverted=None):
         """ Returns gamma value of an ellipse shaped obstacle at position
 
-        Property
-        -------
+        Parameters
+        ----------
         position: array like position of size (dimension,)
         in_global_frame: If position input is in global frame, transform to local frame
         gamma_type: Different types of the distance measure-evaluation

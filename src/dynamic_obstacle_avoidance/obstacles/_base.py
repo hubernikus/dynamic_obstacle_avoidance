@@ -300,10 +300,6 @@ class Obstacle(State):
         
         return gamma
         
-    # def get_gamma(self, *args, **kwargs):
-                
-        # raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
-
     def draw_obstacle(self, *args, **kwargs):
         raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
 
@@ -369,10 +365,10 @@ class Obstacle(State):
             
         return norm_derivs
 
-    
     def transform_global2relative(self, position):
         """ Transform a position from the global frame of reference 
         to the obstacle frame of reference"""
+        # TODO: transform this into wrapper / decorator
         if not position.shape[0]==self.dim:
             raise ValueError("Wrong position dimensions")
 

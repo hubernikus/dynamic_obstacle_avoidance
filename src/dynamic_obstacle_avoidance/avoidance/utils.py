@@ -52,53 +52,53 @@ def get_relative_obstacle_velocity(
     dim = position.shape[0]
     
     xd_obs = np.zeros((dim))
-        
-    for n in np.arange(n_obstacles)[ind_obs]:
+
+    for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
         if dim==2:
-            xd_w = np.cross(np.hstack(([0, 0], obs[n].angular_velocity)),
-                            np.hstack((position-np.array(obs[n].center_position), 0)))
+            xd_w = np.cross(np.hstack(([0, 0], obs[it_obs].angular_velocity)),
+                            np.hstack((position-np.array(obs[it_obs].center_position), 0)))
             xd_w = xd_w[0:2]
         elif dim==3:
-            xd_w = np.cross(obs[n].orientation, position-obs[n].center_position)
+            xd_w = np.cross(obs[it_obs].orientation, position-obs[it_obs].center_position)
         else:
             xd_w = np.zeros(dim)
             warnings.warn('Angular velocity is not defined for={}'.format(d))
 
-        weight_angular = np.exp(-1.0/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
+        weight_angular = np.exp(-1.0/obs[it_obs].sigma*(np.max([gamma_list[ii], 1])-1))
         
-        linear_velocity = obs[n].linear_velocity
+        linear_velocity = obs[it_obs].linear_velocity
         velocity_only_in_positive_normal_direction = True
         
         if velocity_only_in_positive_normal_direction:
-            lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
-            if lin_vel_local[0]<0 and not obs[n].is_boundary:
+            lin_vel_local = E_orth[:, :, ii].T.dot(obs[it_obs].linear_velocity)
+            if lin_vel_local[0]<0 and not obs[it_obs].is_boundary:
                 # Obstacle is moving towards the agent
                 linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:
-                linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
+                linear_velocity = E_orth[:, 0, ii].dot(lin_vel_local[0])
 
-            weight_linear = np.exp(-1/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
+            weight_linear = np.exp(-1/obs[it_obs].sigma*(np.max([gamma_list[ii], 1])-1))
             # linear_velocity = weight_linear*linear_velocity
 
         xd_obs_n = weight_linear*linear_velocity + weight_angular*xd_w
         
         # The Exponential term is very helpful as it help to avoid
         # the crazy rotation of the robot due to the rotation of the object
-        if obs[n].is_deforming:
-            weight_deform = np.exp(-1/obs[n].sigma*(np.max([gamma_list[n], 1])-1))
-            vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
+        if obs[it_obs].is_deforming:
+            weight_deform = np.exp(-1/obs[it_obs].sigma*(np.max([gamma_list[ii], 1])-1))
+            vel_deformation = obs[it_obs].get_deformation_velocity(pos_relative[:, ii])
 
             if velocity_only_in_positive_normal_direction:
-                vel_deformation_local = E_orth[:, :, n].T.dot(vel_deformation)
-                if ((vel_deformation_local[0] > 0 and not obs[n].is_boundary)
-                    or (vel_deformation_local[0] < 0 and obs[n].is_boundary)):
+                vel_deformation_local = E_orth[:, :, ii].T.dot(vel_deformation)
+                if ((vel_deformation_local[0] > 0 and not obs[it_obs].is_boundary)
+                    or (vel_deformation_local[0] < 0 and obs[it_obs].is_boundary)):
                     vel_deformation = np.zeros(vel_deformation.shape[0])
                     
                 else:
-                    vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
+                    vel_deformation = E_orth[:, 0, ii].dot(vel_deformation_local[0])
                     
             xd_obs_n += weight_deform * vel_deformation
-        xd_obs = xd_obs + xd_obs_n*weights[n]
+        xd_obs = xd_obs + xd_obs_n*weights[ii]
 
     relative_velocity = xd_obs
     return relative_velocity

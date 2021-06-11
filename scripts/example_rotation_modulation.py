@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
-from dynamic_obstacle_avoidance.obstacles import BaseContainer
+from dynamic_obstacle_avoidance.obstacles import BaseContainer, MultiBoundaryContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
@@ -37,7 +37,7 @@ def single_ellipse():
     return obs_list
 
 def multiple_ellipse_hulls():
-    obs_list = BaseContainer()
+    obs_list = MultiBoundaryContainer()
 
     obs_list.append(
         Ellipse(
@@ -186,33 +186,30 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         figure_name = "comparison_nonlinear_vectorfield"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
+
 def multiple_hull_linear(save_figure=False, n_resolution=10):
     """ Multiple ellipse hull. """
-
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    pos_attractor = np.array([8, 0])
+    pos_attractor = np.array([9, 3])
 
-    def initial_ds(x):
-        return ds_quadratic_axis_convergence(
-            x,  center_position=pos_attractor, stretching_factor=3,
-            max_vel=1.0
-            )
-
+    def initial_ds(position):
+        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+    
     def obs_avoidance(*args, **kwargs):
         def get_convergence_direction(position):
             return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(*args, **kwargs,
-                                             get_convergence_direction=get_convergence_direction)
+        return obstacle_avoidance_rotational(
+            *args, **kwargs, get_convergence_direction=get_convergence_direction)
 
-    fig, ax = plt.subplots(1, 1, figsize=(15, 7))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
     obstacle_list = multiple_ellipse_hulls()
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
-        noTicks=True, showLabel=False,
+        noTicks=False, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
         obs_avoidance_func=obs_avoidance,

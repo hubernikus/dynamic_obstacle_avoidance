@@ -175,12 +175,12 @@ class TestMultiBoundary(unittest.TestCase):
         )
 
         position_list = [
-            # np.array([2.57, -1.20]),
+            np.array([1.01, -1.418]),
             np.array([-2.57, -1.20]),
-            # np.array([-1.20, 2.57]),
-            # np.array([4, -2]),
             np.array([0.0245, -3.31]),
+            np.array([3, -3]),
             ]
+        
         n_tests = len(position_list)
         
         fig, axs = plt.subplots(1, n_tests, figsize=(14, 5))

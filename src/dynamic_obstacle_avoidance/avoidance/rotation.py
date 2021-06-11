@@ -17,6 +17,8 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_vel
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
 
 # TODO: Speed up using cython / cpp e.g. eigen?
+# TODO: list / array stack for lru_cache to speed
+
 
 def obstacle_avoidance_rotational(
     position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None,
@@ -25,52 +27,59 @@ def obstacle_avoidance_rotational(
     
     Parameters
     ----------
-    position :
-    initial_velocity :
+    position : array of the position at which the modulation is performed
+        float-array of (dimension,)
+    initial_velocity : Initial velocity which is modulated 
     obstacle_list :
     gamma_distance : factor for the evaluation of the proportional gamma
+    get_convergence_direction : function with which the direction of the convergence can
+        be evaluated at position
     
     Return
     ------
     modulated_velocity : array-like of shape (n_dimensions,)
     """
-    # TODO: list / array stack for lru_cache!
     n_obstacles = len(obstacle_list)
     if not n_obstacles:  # zero length
         return initial_velocity
 
     dimension = position.shape[0]
 
-    Gamma = np.zeros((n_obstacles))
-    for n in range(n_obstacles):
-        Gamma[n] = obstacle_list[n].get_gamma(position, in_global_frame=True)
+    gamma_array = np.zeros((n_obstacles))
+    for ii in range(n_obstacles):
+        gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
+
+        if gamma_array[ii] <= 1 and not obstacle_list[ii].is_boundary:
+            # Since boundaries are mutually subtracted,
+            raise NotImplementedError()
+
+    ind_obs = np.logical_and(gamma_array < cut_off_gamma, gamma_array > 1)
     
-    ind_obs = (Gamma < cut_off_gamma)
     if not any(ind_obs):
         return initial_velocity
 
     n_obs_close = np.sum(ind_obs)
     
-    Gamma = Gamma[ind_obs]    # Only keep relevant ones
-    Gamma_proportional = np.zeros((n_obstacles))
+    gamma_array = gamma_array[ind_obs]    # Only keep relevant ones
+    gamma_proportional = np.zeros((n_obs_close))
     normal_orthogonal_matrix = np.zeros((dimension, dimension, n_obstacles))
-    for oo in range(n_obs_close):
-        Gamma_proportional[n] = obstacle_list[n].get_gamma(
+
+    for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
+        gamma_proportional[it] = obstacle_list[it_obs].get_gamma(
            position, in_global_frame=True, gamma_distance=gamma_distance,
         )
-        normal_dir = obstacle_list[oo].get_normal_direction(
+        normal_dir = obstacle_list[it_obs].get_normal_direction(
             position, in_global_frame=True)
-        normal_orthogonal_matrix[:, :, n] = get_orthogonal_basis(normal_dir)
+        normal_orthogonal_matrix[:, :, it] = get_orthogonal_basis(normal_dir)
     
-    weights = compute_weights(Gamma)
-
+    weights = compute_weights(gamma_array)
     relative_velocity = get_relative_obstacle_velocity(
         position=position, obstacle_list=obstacle_list,
-        ind_obstacles=ind_obs, gamma_list=Gamma_proportional,
+        ind_obstacles=ind_obs, gamma_list=gamma_proportional,
         E_orth=normal_orthogonal_matrix, weights=weights) 
     modulated_velocity = initial_velocity - relative_velocity
 
-    inv_gamma_weight = 1 - 1./Gamma[ind_obs]
+    inv_gamma_weight = 1 - 1./gamma_array
     rotated_velocities = np.zeros((dimension, n_obs_close))
     for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -93,6 +102,7 @@ def obstacle_avoidance_rotational(
         velocity_perp = (convergence_velocity
                          - np.dot(convergence_velocity, reference_dir) * reference_dir)
 
+        # Project on tangent plane
         velocity_perp_proj = normal_orthogonal_matrix[:, :, it].T @ velocity_perp
         velocity_perp_proj[0] = 0
         velocity_perp_proj = normal_orthogonal_matrix[:, :, it] @ velocity_perp_proj
@@ -107,7 +117,7 @@ def obstacle_avoidance_rotational(
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
         directions=rotated_velocities,
-        weights=weights[ind_obs],
+        weights=weights,
         )
 
     # Magnitude such that zero on the surface of an obstacle
@@ -115,5 +125,5 @@ def obstacle_avoidance_rotational(
     rotated_velocity = rotated_velocity * magnitude
     
     rotated_velocity = rotated_velocity - relative_velocity
-    # TODO: check maximal magnitude
+    # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
     return rotated_velocity

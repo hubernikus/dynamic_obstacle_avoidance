@@ -328,11 +328,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
     it_start = 0
-    n_samples = 0
+    n_samples = 2
 
-    pos1 = [1.26, -7.91]
-    # pos1 = [-1.09, -5.61]
-    pos2 = [-3.23, -1.10]
+    pos1 = [6.54211, 2.1]
+    pos2 = [5, 3]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -368,7 +367,14 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     xd_mod = np.zeros((2, N_x, N_y))
 
     if vector_field_only_outside:
-        indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
+        if hasattr(obs, 'check_collision_array'):
+            pos = np.vstack((XX.flatten(), YY.flatten()))
+            collision_index = obs.check_collision_array(pos)
+            indOfNoCollision = np.logical_not(collision_index).reshape(N_x, N_y)
+            
+        else:
+            warnings.warn("Depreciated (non-attribute) collision method.")
+            indOfNoCollision = obs_check_collision_2d(obs, XX, YY)
     else:
         indOfNoCollision = np.ones((N_x, N_y))
 
