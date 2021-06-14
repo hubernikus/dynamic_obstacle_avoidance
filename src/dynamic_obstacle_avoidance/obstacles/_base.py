@@ -34,9 +34,8 @@ def local_frame_check_return_velocity(func, in_global_frame=False):
         velocity = self.transform_global2relative_dir(velocity)
         return velocity
         
-class Obstacle(State):
-    """ 
-    (Virtual) base class of obstacles 
+class Obstacle(ABC):
+    """ (Virtual) base class of obstacles 
     This class defines obstacles to modulate the DS around it
     """
     id_counter = 0
@@ -162,10 +161,10 @@ class Obstacle(State):
         # Relative Reference point // Dyanmic center
         # if reference_point is None:
         self.reference_point = np.zeros(self.dim) # TODO remove and rename
-        self._relative_reference_point = None
         self.reference_point_is_inside = True
-        # else:
-            # self.set_reference_point(reference_point, in_global_frame=True)
+        
+        # Set reference point value to None
+        self.reset_relative_reference() 
 
         self.Gamma_ref = Gamma_ref
         self.is_boundary = is_boundary
@@ -428,7 +427,7 @@ class Obstacle(State):
             warnings.warn("Not implemented for higer dimensions")
             return direction
         return self.rotMatrix.T.dot(direction)
-
+    
     def transform_global2relative_matr(self, matrix):
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
@@ -462,35 +461,15 @@ class Obstacle(State):
             self._relative_reference_point = None
         else:
             self._relative_reference_point = self.transform_global2relative(value)
-
-    def reset_relative_reference(self):
-        self._relative_reference_point = None
-
+            
     @property
     def center_dyn(self):# TODO: depreciated -- delete
         return self.reference_point
 
-    # @property
-    # def center_dyn(self):# TODO: depreciated -- delete
-        # return self.reference_point
-    
     @property
     def global_reference_point(self):
         # Rename kernel-point?
         return self.transform_relative2global(self._reference_point)
-    
-    # @global_reference_point.setter
-    # def global_reference_point(self, value):
-        # self._reference_point = self.transform_global2relative(value)
-        
-    # @property
-    # def kernel_point(self):
-        # Rename kernel-point?
-        # return self._reference_point
-    
-    # @kernel_point.setter
-    # def kernel_point(self, value):
-        # self._reference_point = value
 
     @property
     def local_reference_point(self):
@@ -527,10 +506,12 @@ class Obstacle(State):
 
     @property
     def th_r(self): # TODO: will be removed since outdated
+        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
         return self.orientation # getter
 
     @th_r.setter
     def th_r(self, value): # TODO: will be removed since outdated
+        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
         self.orientation = value # setter
 
     @property
@@ -543,10 +524,12 @@ class Obstacle(State):
 
     @property
     def x0(self):
+        warnings.warn("'x0' is an outdated name use 'center_position' instead.")
         return self.center_position
 
     @x0.setter
     def x0(self, value):
+        warnings.warn("'x0' is an outdated name use 'center_position' instead.")
         self.center_position = value
         self.has_moved = True
     
@@ -601,6 +584,10 @@ class Obstacle(State):
     def linear_velocity(self, value):
         self._linear_velocity = value
         self._linear_velocity_const = value
+
+    @property
+    def angular_velocity(self):
+        return self._angular_velocity
 
     @property
     def angular_velocity_const(self):
@@ -675,12 +662,10 @@ class Obstacle(State):
     def boundary_points_margin_global_closed(self):
         boundary = self.boundary_points_margin_global
         return np.hstack((boundary, boundary[:, 0:1]))
-
-    # @boundary_points.setter
-    # def boundary_points
     
     def compute_R(self):
         #TODO: remove - depreciated
+        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
         self.compute_rotation_matrix()
         
     def compute_rotation_matrix(self):
@@ -822,7 +807,6 @@ class Obstacle(State):
 
                     return True, LA.norm(direction_factors[0]*connection_direction)
         return False, -1
-
     
     def get_obstacle_radius(self, position, in_global_frame=False, Gamma=None): # Inherit
         # TODO: remove since looping...
@@ -834,22 +818,49 @@ class Obstacle(State):
         dist_to_center = LA.norm(position)
 
         return dist_to_center/Gamma
-
     
     def get_reference_point(self, in_global_frame=False): # Inherit
         if in_global_frame:
             return self.transform_relative2global(self.reference_point)
         else:
             return self.reference_point
-    
+
+    def set_relative_gamma_at_position(self, position, relative_gamma,
+                                       gammatype="proportional", in_global_frame=True):
+        """ Store the relative gamma of a corresponding position."""
+        if not in_global_frame:
+            position = self.transform_relative2global(position)
+        self._relative_gamma_position = position
+        self._relative_gamma = relative_gamma
+        
+    def get_relative_gamma_at_position(self, position, gammatype="proportional",
+                                       in_global_frame=True):
+        """ Returns relative gamma if position corresponds to stored one
+        returns None if this is not the case. """
+        if not in_global_frame:
+            position = self.transform_relative2global(position)
+
+        if np.allclose(position, self._relative_gamma_position):
+            return self._relative_gamma
+        else:
+            return None
+
+    def reset_relative_reference(self):
+        self._relative_reference_point = None
+        self._relative_gamma_position = None
+        self._relative_gamma = None
+
+    @property
+    def has_relative_gamma(self):
+        return (self._relative_gamma is not None)
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0): # 
-        """
-        Reverse Gamma value such that boundaries can be treated with the same algorithm
+        """ Reverse Gamma value such that boundaries can be treated with the same algorithm
         as obstacles
 
         Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
         """
+        # TODO: make a decorator out of this (!?)
         if isinstance(Gamma, (float, int)):
             if Gamma <= Gamma_ref:
                 return sys.float_info.max
@@ -1012,9 +1023,3 @@ class Obstacle(State):
     # @abstractmethod
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         raise NotImplementedError()
-
-
-class ObstacleDirection(Obstacle):
-    # def __init__(self):
-        # pass
-    pass

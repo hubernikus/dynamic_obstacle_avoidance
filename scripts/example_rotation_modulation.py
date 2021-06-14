@@ -2,7 +2,7 @@
 """ Script to show lab environment on computer """
 
 # Author: Lukas Huber
-# License: BSD @ 2021
+# License: BSD (c) 2021
 
 import warnings
 import copy
@@ -41,11 +41,12 @@ def multiple_ellipse_hulls():
 
     obs_list.append(
         Ellipse(
-        center_position=np.array([-6, 0]), 
+        center_position=np.array([6, 0]), 
         axes_length=np.array([5, 2]),
         orientation=50./180*pi,
         is_boundary=True,
-        )
+        ),
+        parent=-1,
     )
     obs_list.append(
         Ellipse(
@@ -53,16 +54,19 @@ def multiple_ellipse_hulls():
         axes_length=np.array([5, 2]),
         orientation=-50./180*pi,
         is_boundary=True,
-        )
+        ),
+        parent=-1,
     )
     obs_list.append(
         Ellipse(
-        center_position=np.array([6, 0]), 
+        center_position=np.array([-6, 0]), 
         axes_length=np.array([5, 2]),
         orientation=50./180*pi,
         is_boundary=True,
-        )
+        ),
+        parent=-1,
     )
+    
     return obs_list
 
 
@@ -140,7 +144,8 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
     def obs_avoidance(*args, **kwargs):
         def get_convergence_direction(position):
             return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+        return obstacle_avoidance_rotational(
+            *args, **kwargs, get_convergence_direction=get_convergence_direction)
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 7))
 
@@ -187,7 +192,7 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
-def multiple_hull_linear(save_figure=False, n_resolution=10):
+def multiple_hull_linear(save_figure=False, n_resolution=4):
     """ Multiple ellipse hull. """
     x_lim = [-10, 10]
     y_lim = [-10, 10]
@@ -206,6 +211,8 @@ def multiple_hull_linear(save_figure=False, n_resolution=10):
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
     obstacle_list = multiple_ellipse_hulls()
+    obstacle_list.update_intersection_graph(attractor_position=pos_attractor)
+
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
@@ -218,6 +225,8 @@ def multiple_hull_linear(save_figure=False, n_resolution=10):
         fig_and_ax_handle=(fig, ax),
         show_streamplot=False,
     )
+    
+    obstacle_list.plot_convergence_attractor(ax=ax, attractor_position=pos_attractor)
     
 
 if (__name__)=="__main__":

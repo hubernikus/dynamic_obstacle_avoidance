@@ -1,9 +1,9 @@
 #!/USSR/bin/python3
-'''
+"""
 @date 2019-10-15
 @author Lukas Huber 
 @mail lukas.huber@epfl.ch
-'''
+"""
 
 import time
 import numpy as np
@@ -32,7 +32,7 @@ class BaseContainer(list):
             self._obstacle_list = obs_list
 
     def __getitem__(self, key):
-        ''' List-like or dictionarry-like access to obstacle'''
+        """ List-like or dictionarry-like access to obstacle"""
         # TODO: can this be done more efficiently?
         if isinstance(key, (str)):
             for ii in range(len(self._obstacle_list)):
@@ -46,11 +46,11 @@ class BaseContainer(list):
         self._obstacle_list[key] = value
 
     def append(self, value): # Compatibility with normal list.
-        ''' Add new elements to obstacles list. The wall obstacle is placed last.'''
+        """ Add new elements to obstacles list. The wall obstacle is placed last."""
         self._obstacle_list.append(value)
             
     def __delitem__(self, key):
-        '''Obstacle is not part of the workspace anymore.'''
+        """Obstacle is not part of the workspace anymore."""
         del(self._obstacle_list[key])
             
     def add_obstacle(self, value):
@@ -115,7 +115,7 @@ class SingleWallContainer(BaseContainer):
                     # self.index_wall = ii
                     
     def __delitem__(self, key):
-        '''Obstacle is not part of the workspace anymore.'''
+        """Obstacle is not part of the workspace anymore."""
         if key==len(self)-1:
             self.contains_wall_obstacle = False
             
@@ -128,7 +128,7 @@ class SingleWallContainer(BaseContainer):
                 # self.index_wall = None
 
     def append(self, value): # Compatibility with normal list.
-        ''' Add new elements to obstacles list. The wall obstacle is placed last.'''
+        """ Add new elements to obstacles list. The wall obstacle is placed last."""
         if self.contains_wall_obstacle:
             if value.is_boundary:
                 raise RuntimeError("Obstacles container already has a wall!.")
@@ -142,7 +142,7 @@ class SingleWallContainer(BaseContainer):
         
     @property
     def index_wall(self):
-        ''' Wall obstacles are placed at the end of the list.'''
+        """ Wall obstacles are placed at the end of the list."""
         if self.contains_wall_obstacle:
             return len(self._obstacle_list)-1
         else:
@@ -254,7 +254,7 @@ class ObstacleContainer(BaseContainer):
 
 
     def __getitem__(self, key):
-        ''' List-like or dictionarry-like access to obstacle'''
+        """ List-like or dictionarry-like access to obstacle"""
         if isinstance(key, (str)):
             for ii in range(len(self._obstacle_list)):
                 if self._obstacle_list[ii].name == key:
@@ -273,7 +273,7 @@ class ObstacleContainer(BaseContainer):
             self._distance_matrix[jj, key] = None
 
     # def __delitem__(self, key):
-        '''Obstacle is not part of the workspace anymore.'''
+        """Obstacle is not part of the workspace anymore."""
         
         # del(self._obstacle_list[key])
         # if self.index_wall>key:
@@ -340,7 +340,7 @@ class ObstacleContainer(BaseContainer):
         self.assign_sibling_groups(intersecting_obs)
 
     def assign_sibling_groups(self, intersecting_obs):
-        ''' Assign each obstacle to a group label & calculate corresponding label'''
+        """ Assign each obstacle to a group label & calculate corresponding label"""
         if True:
             self._family_label = np.ones(len(self))*(-1)
 

@@ -12,7 +12,7 @@ __author__ = "Lukas Huber"
 __date__ = "2019-11-15"
 __email__ = "lukas.huber@epfl.ch"
 
-# TODO: optimize for speed. Cython?
+# TODO: remove this one & use ''
 
 def angle_is_between(angle_test, angle_low, angle_high):
     """ Verify if angle_test is in between angle_low & angle_high """

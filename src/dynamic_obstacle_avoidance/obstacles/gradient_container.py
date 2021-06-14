@@ -1,9 +1,9 @@
-'''Container encapsulates all obstacles.
+"""Container encapsulates all obstacles.
 Gradient container finds the dynamic reference point through gradient descent.
-'''
-__author__ = "LukasHuber"
-__date__ =  "2020-06-30"
-__email__ =  "lukas.huber@epfl.ch"
+"""
+# Author: "LukasHuber"
+# Email: lukas.huber@epfl.ch
+# License: BSD (c) 2021
 
 import warnings, sys
 import numpy as np
@@ -21,10 +21,9 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_reference_weight
 #    - far-far away, the automatic-extension of the hull of the ellipse does not work
 #    - Gradient descent change function
 
-
 class GradientContainer(ObstacleContainer):
-    ''' Obstacle Container which can be used with gradient search. It additionally stores 
-    the closest boundary point between obstacles. '''
+    """ Obstacle Container which can be used with gradient search. It additionally stores 
+    the closest boundary point between obstacles. """
     def __init__(self, obs_list=None):
         if sys.version_info>(3,0): # Python 3
             super().__init__(obs_list)
@@ -43,9 +42,7 @@ class GradientContainer(ObstacleContainer):
             # self._are_close_for_first_time = None
 
     def append(self, value): # Compatibility with normal list.
-        ''' Add new obstacle to the end of the container. '''
-        # self._obstacle_list.append(value)
-        
+        """ Add new obstacle to the end of the container. """
         if sys.version_info>(3,0): # Python 3
             super().append(value)
         else: # Python 2 compatibility
@@ -84,7 +81,7 @@ class GradientContainer(ObstacleContainer):
             # import pdb; pdb.set_trace()
 
     def __delitem__(self, key): # Compatibility with normal list.
-        ''' Remove obstacle from container list. '''
+        """ Remove obstacle from container list. """
         
         if sys.version_info>(3,0): # Python 3
             super().__delitem__(key)
@@ -125,23 +122,23 @@ class GradientContainer(ObstacleContainer):
             self._distance_matrix = new_dist_matr
 
     def get_distance(self, ii, jj=None):
-        '''Distance between obstacles ii and jj'''
+        """Distance between obstacles ii and jj"""
         dist = self._distance_matrix[ii, jj]
         
         return -1 if (dist is None or dist<0) else dist
     
     def set_distance(self, ii, jj, value):
-        '''Distance between obstacles ii and jj'''
+        """Distance between obstacles ii and jj"""
         self._distance_matrix[ii, jj] = value
         
     def reset_obstacles_have_moved(self):
-        ''' Resets obstacles in list such that they have NOT moved.'''
+        """ Resets obstacles in list such that they have NOT moved."""
         for obs in self._obstacle_list:
             obs.has_moved = False
 
     def reset_reference_points(self):
-        ''' Set the reference points at the center of the obstacle to not 
-        interfer with any evaluation.'''
+        """ Set the reference points at the center of the obstacle to not 
+        interfer with any evaluation."""
         for obs in self._obstacle_list:
             obs.set_reference_point(np.zeros(obs.dim), in_global_frame=False)
 
@@ -241,10 +238,11 @@ class GradientContainer(ObstacleContainer):
         self.reset_obstacles_have_moved()
 
         
-    def update_boundary_reference_points(self, max_it=100, convergence_err=1e-3, contact_err=1e-3, step_size=2, mult_consideration_dist=3, need_for_speed=True):
-        ''' Boundary reference point refers to the closest point on the obstacle surface 
-        to another obstacle. '''
-        
+    def update_boundary_reference_points(
+        self, max_it=100, convergence_err=1e-3, contact_err=1e-3, step_size=2,
+        mult_consideration_dist=3, need_for_speed=True):
+        """ Boundary reference point refers to the closest point on the obstacle surface 
+        to another obstacle. """
         dim = self[0].dim
         if dim<2:
             raise ValueError("No obstacle avoidance possible in d=2.")
@@ -379,25 +377,17 @@ class GradientContainer(ObstacleContainer):
                         self.intersection_matrix[ii, jj] = ref_point1
 
     def get_boundary_reference_point_simplified(self, obs0, obs1):
-        ''' Accelerated calculation for circles. 
-        Important assumption: obs0 is never boundry (last in list). '''
-
+        """ Accelerated calculation for circles. 
+        Important assumption: obs0 is never boundry (last in list). """
         direction_center = obs1.center_position - obs0.center_position
         dist_center = np.linalg.norm(direction_center)
 
-        rad_point_obs0 = obs0.get_local_radius_point(direction=direction_center, in_global_frame=True)
-        rad_point_obs1 = obs1.get_local_radius_point(direction=-direction_center, in_global_frame=True)
-        # rad_obs0 = obs1.get_local_radius(obs1.center_position)
-        # rad_obs1 = obs1.get_local_radius(obs0.center_position)
+        rad_point_obs0 = obs0.get_local_radius_point(
+            direction=direction_center, in_global_frame=True)
+        rad_point_obs1 = obs1.get_local_radius_point(
+            direction=-direction_center, in_global_frame=True)
         rad_obs0 = np.linalg.norm(rad_point_obs0-obs0.center_position)
         rad_obs1 = np.linalg.norm(rad_point_obs1-obs1.center_position)
-
-        # import pdb; pdb.set_trace()
-        # if obs0.is_boundary:
-            # warnings.warn("Unexpected boundary index")
-            # if obs1.is_boundary:
-                # raise 
-            # obs0, obs1 = obs1, obs0
 
         if obs1.is_boundary:
             # Only object1 can be boundary
@@ -434,8 +424,8 @@ class GradientContainer(ObstacleContainer):
                         
 
     def angle_gradient_descent(self, obs0, obs1, angles, NullMatrices, contact_err=1e-2, convergence_err=1e-3, max_it=100):
-        ''' Find closest point of obstacles using gradient descent in direction space. 
-        Gradient Descent is performed in the angle space of the obstacle. '''
+        """ Find closest point of obstacles using gradient descent in direction space. 
+        Gradient Descent is performed in the angle space of the obstacle. """
         
         dim = obs0.dim
         
@@ -559,7 +549,7 @@ class GradientContainer(ObstacleContainer):
 
         
     def gamma_gradient_descent(self, obs0, obs1, common_point, convergence_err=1e-3, max_it=100):
-        ''' Find closest point of obstacles using gradient descent in direction space. '''
+        """ Find closest point of obstacles using gradient descent in direction space. """
         step_size = 0.09
 
         it_count = 0
@@ -575,18 +565,13 @@ class GradientContainer(ObstacleContainer):
                 break
             
         print("Convergence of Gamma-descent reached after {} iterations.".format(it_count))
-
-        # print('center obs1 & obs2', obs0.center_position, obs1.center_position)
-        # print('common point', common_point)
-        # print('same & same \n')
-        
         return common_point
 
     
     def derivative_gamma_sum(self, position, obs0, obs1, grad_pow=4,
                              delta_dist=1e-6, gamma_type="proportional"):
-        ''' Derive a function based on gamma to find a reasonable center 
-        which lies strictly inside the obstacles. '''
+        """ Derive a function based on gamma to find a reasonable center 
+        which lies strictly inside the obstacles. """
         dim = obs0.dim
 
         derivative = np.zeros(dim)
@@ -621,8 +606,8 @@ class GradientContainer(ObstacleContainer):
 
     
     def get_gamma_cost_function(self, gamma, is_boundary=False, margin=1e-2):
-        ''' This functions maps [0, 1] to [1, - infinity]
-        ! A margin is added to compensate for cases where  '''
+        """ This functions maps [0, 1] to [1, - infinity]
+        ! A margin is added to compensate for cases where  """
         if is_boundary:
             # TODO: cost function which enforces lying outside (make constant distance)
             # Gamma is relative

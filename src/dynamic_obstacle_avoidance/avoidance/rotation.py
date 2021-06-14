@@ -86,8 +86,9 @@ def obstacle_avoidance_rotational(
         reference_dir = obstacle_list[oo].get_reference_direction(
             position, in_global_frame=True)
         
-        if hasattr(obstacle_list, 'get_convergence_direction'):
-            convergence_velocity = obstacle_list.get_convergence_direction(oo)
+        if (hasattr(obstacle_list, 'get_convergence_direction')):
+            convergence_velocity = obstacle_list.get_convergence_direction(position=position,
+                                                                           it_obs=oo)
         elif get_convergence_direction is not None:
             convergence_velocity = get_convergence_direction(position=position)
         else:
@@ -122,6 +123,25 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
+    if True: # DEBUGGING
+        import matplotlib.pyplot as plt
+        temp_init = initial_velocity / np.linalg.norm(initial_velocity)
+        
+        plt.quiver(position[0], position[1], temp_init[0], temp_init[1], label='initial', color='k')
+
+        temp_vel = velocity_perp_proj / np.linalg.norm(velocity_perp_proj)
+        plt.quiver(position[0], position[1], velocity_perp_proj[0],
+                   velocity_perp_proj[1], label='projected', color='r')
+
+        plt.quiver(position[0], position[1],
+                   rotated_velocity[0], rotated_velocity[1], label='rotated', color='b')
+        
+        plt.quiver(position[0], position[1],
+                   convergence_velocity[0], convergence_velocity[1], label='convergence', color='g')
+        plt.legend(loc='right')
+        plt.show()
+        # breakpoint()
+        
     rotated_velocity = rotated_velocity * magnitude
     
     rotated_velocity = rotated_velocity - relative_velocity

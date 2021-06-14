@@ -1,7 +1,4 @@
-"""
-Ellipse Obstacle for Obstacle Avoidance and Visualization Purposes
-"""
-
+""" Ellipse Obstacle for Obstacle Avoidance and Visualization Purposes. """
 # Author Lukas Huber 
 # Email lukas.huber@epfl.ch
 # License BSD
@@ -13,11 +10,12 @@ import time
 from math import sin, cos, pi, ceil
 
 import numpy as np
-import numpy.linalg as LA
+from shapely.geometry.point import Point
+from shapely import affinity
+
 import matplotlib.pyplot as plt     # TODO: remove for production
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
-# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo, angle_difference_directional_2pi
 from dynamic_obstacle_avoidance.avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
@@ -25,15 +23,16 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import 
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
-visualize_debug = False
-
 
 class Ellipse(Obstacle):
-    """ Ellipse type obstacle 
+    """ Ellipse type obstacle
+
+    Attributes / Properties
+    -----------------------
     Geometry specifi attributes are
     axes_length: 
-    curvature: float / array (list) """
-    
+    curvature: float / array (list)
+    """
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
                  margin_absolut=0,
@@ -76,7 +75,6 @@ class Ellipse(Obstacle):
         self.is_convex = True
         
         # Reference to other arrays
-        # self.edge_points -- # Points of 'the no-go zone'
         
         # No go zone assuming a uniform margin around the obstacle
         self.edge_margin_points = np.zeros((self.dim, 0))
@@ -96,20 +94,22 @@ class Ellipse(Obstacle):
         
     @property
     def a(self): # TODO: remove
-        warnings.warn("Depreciated use 'axes_length' instead")
+        warnings.warn("'a' is depriciated, use 'axes_length' instead")
         return self.axes_length
 
     @a.setter # TODO:remove
     def a(self, value):
-        warnings.warn("Depreciated use 'axes_length' instead")
+        warnings.warn("'a' is depriciated, use 'axes_length' instead")
         self.axes_length = value
 
     @property
     def axes(self): # TODO: remove
+        warnings.warn("'axes' is depriciated, use 'axes_length' instead")
         return self.axes_length
 
     @axes.setter # TODO:remove
     def axes(self, value):
+        warnings.warn("'axes' is depriciated, use 'axes_length' instead")        
         self.axes_length = value
 
     @property
@@ -139,12 +139,12 @@ class Ellipse(Obstacle):
     @property
     def p(self): # TODO: remove
         breakpoint()
-        warnings.warn("Depreciated use 'curvature' instead")
+        warnings.warn("'p' is depreciated use 'curvature' instead")
         return self._curvature
 
     @p.setter
     def p(self, value): # TODO: remove
-        warnings.warn("Depreciated use 'curvature' instead")
+        warnings.warn("'p' is depreciated use 'curvature' instead")
         self.curvature = value
 
     @property
@@ -183,7 +183,7 @@ class Ellipse(Obstacle):
     def get_reference_length(self):
         """ Get a characeteric (or maximal) length of the obstacle. 
         For an ellipse obstacle,the longest axes. """
-        return LA.norm(self.axes_length) + self.margin_absolut
+        return np.linalg.norm(self.axes_length) + self.margin_absolut
 
     def calculate_normalVectorAndDistance(self):
         normal_vector = np.zeros((self.dim, self.n_planes))
@@ -238,7 +238,7 @@ class Ellipse(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
         
-        mag_position = LA.norm(position, axis=0)
+        mag_position = np.linalg.norm(position, axis=0)
         position_dir = position / mag_position
         
         angle_tangents = np.zeros(self.edge_reference_points.shape[2])
@@ -258,7 +258,7 @@ class Ellipse(Obstacle):
         return abs(angle_tang-(angle_tang1_pos+angle_pos_tang0)) < margin_subtraction
 
     def get_gamma(self, position, in_global_frame=False, gamma_type=None, gamma_distance=None,
-                  inverted=None):
+                  inverted=None, relative_gamma=True):
         """ Returns gamma value of an ellipse shaped obstacle at position
 
         Parameters
@@ -267,23 +267,25 @@ class Ellipse(Obstacle):
         in_global_frame: If position input is in global frame, transform to local frame
         gamma_type: Different types of the distance measure-evaluation
         inverted: Enforce normal / inverted evaluation (if None use the object / boundary default)
+        relative_gamma: Bool value to indicate if it is allowed to use the relative_value only
 
         Return
         ------
         Gamma: distance value gamma of float
         """
-
-        # WHY WAS THIS ACTIVE?!?!
-        # if self.dim==2:
-            # if sys.version_info>(3,0):
-                # super().__init__(position, in_global_frame=in_global_frame)
-            # else:
-                # super(Ellipse, self).__init__(position, in_global_frame=in_global_frame)
-
         if not gamma_type is None:
             # TODO: remove at some stage...
-            warnings.warn("Gamma type not implemented for ellipse obstacle.")
+            warnings.warn("Gammatype is not yet implemented for ellipse obstacle.")
 
+        if relative_gamma and self.has_relative_gamma:
+            # The relative gamma is assumed for to include notion of obstacle vs. boundary
+            Gamma = self.get_relative_gamma_at_position(position, in_global_frame=in_global_frame)
+            if Gamma is None:
+                raise NotImplementedError("Relative Gamma evalaution not implemented "
+                                      "outside of evalaution point.")
+            
+            return Gamma
+            
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -297,7 +299,7 @@ class Ellipse(Obstacle):
             Gamma = 1./Gamma
             
         return Gamma
-
+    
     def get_normal_ellipse(self, position):
         """ Return normal to ellipse surface """
         # return (2*self.curvature/self.axes_length*(position/self.axes_length)**(2*self.curvature-1))
@@ -318,14 +320,14 @@ class Ellipse(Obstacle):
         angle2refencePatch = np.ones(n_planes)*max_angle
 
         for ii in np.arange(n_planes)[normalDistance2plane>0]:
-            # vec_position2edge[:, ii] /= LA.norm(vec_position2edge[:, ii])
+            # vec_position2edge[:, ii] /= np.linalg.norm(vec_position2edge[:, ii])
 
             # cos_position2edge = vec_position2edge[:, ii].T.dot(self.tangent_vector[:,ii])
             # angle2refencePatch[ii] = np.arccos(cos_position2edge)
 
             edge_points_temp = np.vstack((self.edge_reference_points[:, ii, 0], self.edge_reference_points[:, ii-1, 1])).T
             # Calculate angle to agent-position
-            ind_sort = np.argsort(LA.norm(np.tile(position, (2,1)).T - edge_points_temp, axis=0))
+            ind_sort = np.argsort(np.linalg.norm(np.tile(position, (2,1)).T - edge_points_temp, axis=0))
             tangent_line = edge_points_temp[:,ind_sort[1]] - edge_points_temp[:, ind_sort[0]]
             
             position_line = position - edge_points_temp[:, ind_sort[0]]
@@ -488,26 +490,18 @@ class Ellipse(Obstacle):
             position = direction
 
         norm = self.get_normal_ellipse(position)
-
         if in_global_frame:
             norm = self.transform_relative2global(norm)
-            
         return norm
 
-
     def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=True, in_global_frame=False):
-        """ Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
+        """Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line
         direction / m : direction of line
 
         axes / a1 & a2: Axes of ellipse
         center_ellipse: Center of ellipse """
-
-
-        # print('direction', direction)
-        # print('axes', self.axes_with_margin)
-        # import pdb; pdb.set_trace()
         if in_global_frame:
             direction = self.transform_global2relative_dir(direction)
 
@@ -598,11 +592,8 @@ class Ellipse(Obstacle):
             position = self.transform_global2relative(position)
         return self._get_local_radius_ellipse(position, relative_center)
     
-
     def _get_local_radius_ellipse(self, position, relative_center=None):
-        """
-        Get radius of ellipse in direction of position from the reference point
-        """
+        """ Get radius of ellipse in direction of position from the reference point """
         # TODO: extend for actual relative center
         if relative_center is None:
             relative_center = np.zeros(self.dim)
@@ -655,7 +646,7 @@ class Ellipse(Obstacle):
                             if sign*angle_difference_directional(angle_ref, angle_position) >= 0:
                                 surface_dir = (self.edge_reference_points[: ,self.ind_edge_ref, ii] - self.edge_reference_points[:, self.ind_edge_tang, 1-ii])
 
-                                dist_intersect, dist_tangent = LA.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[:, self.ind_edge_ref, ii], rcond=-1)[0]
+                                dist_intersect, dist_tangent = np.linalg.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[:, self.ind_edge_ref, ii], rcond=-1)[0]
 
                                 dist_intersect = dist_intersect*np.linalg.norm(position[:, pp])
 
@@ -672,12 +663,13 @@ class Ellipse(Obstacle):
                         radius[pp] = dist_intersect
         return radius
 
-    # def get_gamma(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
+    
     def get_gamma_old(self, position, in_global_frame=False, gamma_type='proportional', margin_absolut=None):
         """
         Get distance function from surface
         """
         # TODO: depreciated... remove
+        warnings.warn("'get_gamma_old' is depreciated. Use 'get_gamma' instead.")
         
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -719,7 +711,7 @@ class Ellipse(Obstacle):
                                 if sign*angle_difference_directional(angle_ref, angle_position) >= 0:
                                     surface_dir = (self.edge_reference_points[: ,self.ind_edge_ref, ii] - self.edge_reference_points[:, self.ind_edge_tang, 1-ii])
 
-                                    dist_intersect, dist_tangent = LA.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[: ,self.ind_edge_ref, ii], rcond=-1)[0]
+                                    dist_intersect, dist_tangent = np.linalg.lstsq(np.vstack((position[:, pp], -surface_dir)).T, self.edge_reference_points[: ,self.ind_edge_ref, ii], rcond=-1)[0]
                             
                             if dist_intersect<0: # 
                                 if not margin_absolut:
@@ -746,10 +738,17 @@ class Ellipse(Obstacle):
             return Gamma[0] # 1x1-array to value
         return Gamma
 
+    def create_shape(self):
+        """ Create object (shape) based on the shapely library. """
+        if self.dim != 2:
+            raise NotImplementedError("Shapely object only existing for 2D")
+        circ = Point(self.center_position).buffer(1)
+        ell = affinity.scale(circ, self.axes_length[0], self.axes_length[1])
+        ellr = affinity.rotate(ell,  self.orientation*180.0/pi)
+        self.shape = ellr
+        
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
-        """
-        Creates points for obstacle and obstacle margin
-        """
+        """ Creates points for obstacle and obstacle margin. """
         p = self.curvature
         a = self.axes_length
 
@@ -863,7 +862,7 @@ class Ellipse(Obstacle):
             position = transform_polar2cartesian(magnitude=1, angle=angle)
         
         gamma = self.get_gamma(position, gamma_type='proportional')
-        return LA.norm(position)/gamma
+        return np.linalg.norm(position)/gamma
 
     
     def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):

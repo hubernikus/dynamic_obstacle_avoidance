@@ -208,14 +208,91 @@ class TestMultiBoundary(unittest.TestCase):
                 ax.plot([abs_ref_point[0], ref_point[0]],
                          [abs_ref_point[1], ref_point[1]], 'k--')
 
+    @classmethod
+    def plottest_default_direction(cls):
+
+        import matplotlib.pyplot as plt
+        from dynamic_obstacle_avoidance.visualization import plot_obstacles
+        
+        obs_list = MultiBoundaryContainer()
+
+        obs_list.append(
+            Ellipse(
+            center_position=np.array([6, 0]), 
+            axes_length=np.array([5, 2]),
+            orientation=50./180*pi,
+            is_boundary=True,
+            ),
+            parent=-1,
+        )
+        obs_list.append(
+            Ellipse(
+            center_position=np.array([0, 0]), 
+            axes_length=np.array([5, 2]),
+            orientation=-50./180*pi,
+            is_boundary=True,
+            ),
+            parent=-1,
+        )
+        obs_list.append(
+            Ellipse(
+            center_position=np.array([-6, 0]), 
+            axes_length=np.array([5, 2]),
+            orientation=50./180*pi,
+            is_boundary=True,
+            ),
+            parent=-1,
+        )
+        
+        obs_list.update_intersection_graph()
+        
+        attractor_position = np.array([8, 0])
+
+        color_list = ['g', 'r', 'b']
+        for it_obs, obs in zip(range(len(obs_list)), obs_list):
+        # it_obs=2
+        # obs = obs_list[it_obs]
+        # if True:
+            x_lim = [obs.center_position[0]-obs.get_maximal_distance(),
+                     obs.center_position[0]+obs.get_maximal_distance()]
+
+            y_lim = [obs.center_position[1]-obs.get_maximal_distance(),
+                     obs.center_position[1]+obs.get_maximal_distance()]
+
+            n_points = 10
+            x_vals = np.linspace(x_lim[0], x_lim[1], n_points)
+            y_vals = np.linspace(y_lim[0], y_lim[1], n_points)
+
+            dim = 2
+            positions = np.zeros((dim, n_points, n_points))
+            velocities = np.zeros((dim, n_points, n_points))
+
+            # ind_no_col = 
+            
+            for ix in range(n_points):
+                for iy in range(n_points):
+                    pos = np.array([x_vals[ix], y_vals[iy]])
+                    positions[:, ix, iy] = pos
+
+                    if obs.get_gamma(pos, in_global_frame=True) > 1:
+                        velocities[:, ix, iy] = obs_list.get_convergence_direction(
+                            pos, it_obs=it_obs, attractor_position=attractor_position)
+                        
+            plt.quiver(positions[0, :, :], positions[1, :, :],
+                       velocities[0, :, :], velocities[1, :, :],
+                       color=color_list[it_obs])
+
+        plt.axis('equal')
+
 
 if __name__ == '__main__':
     # Allow running in ipython (!)
     # unittest.main(argv=['first-arg-is-ignored'], exit=False)
     # unittest.main()
-
+    
     visualize = True
     if visualize:
-        TestMultiBoundary.plottest_list_simple()
-        TestMultiBoundary.plottest_list_advanced()
-        TestMultiBoundary.plottest_list_intersect()
+        # TestMultiBoundary.plottest_list_simple()
+        # TestMultiBoundary.plottest_list_advanced()
+        # TestMultiBoundary.plottest_list_intersect()
+        TestMultiBoundary.plottest_default_direction()
