@@ -2,7 +2,6 @@
 """
 Basic class to represent obstacles
 """
-
 import time
 import warnings, sys
 import numpy as np
@@ -33,6 +32,7 @@ def local_frame_check_return_velocity(func, in_global_frame=False):
         # what self...
         velocity = self.transform_global2relative_dir(velocity)
         return velocity
+
         
 class Obstacle(ABC):
     """ (Virtual) base class of obstacles 
@@ -81,8 +81,6 @@ class Obstacle(ABC):
             center_position = x0        # TODO remove and rename
         self.position = center_position
         self.center_position = self.position
-        
-        self.x0 = center_position       # TODO: REMOVE!
 
         # Dimension of space
         self.dim = len(self.center_position)
@@ -507,11 +505,15 @@ class Obstacle(ABC):
     @property
     def th_r(self): # TODO: will be removed since outdated
         warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
+        if True:
+            raise ValueError()
         return self.orientation # getter
 
     @th_r.setter
     def th_r(self, value): # TODO: will be removed since outdated
         warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
+        if True:
+            raise ValueError()
         self.orientation = value # setter
 
     @property
@@ -522,16 +524,20 @@ class Obstacle(ABC):
     def position(self, value):
         self.center_position = value
 
-    @property
-    def x0(self):
-        warnings.warn("'x0' is an outdated name use 'center_position' instead.")
-        return self.center_position
+    # @property
+    # def x0(self):
+        # warnings.warn("'x0' is an outdated name use 'center_position' instead.")
+        # if True:
+            # raise ValueError()
+        # return self.center_position
 
-    @x0.setter
-    def x0(self, value):
-        warnings.warn("'x0' is an outdated name use 'center_position' instead.")
-        self.center_position = value
-        self.has_moved = True
+    # @x0.setter
+    # def x0(self, value):
+        # warnings.warn("'x0' is an outdated name use 'center_position' instead.")
+        # if True:
+            # raise ValueError()
+        # self.center_position = value
+        # self.has_moved = True
     
     @property
     def center_position(self):

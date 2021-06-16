@@ -11,10 +11,11 @@ import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.directional_space import directional_convergence_summing
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
-from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
+from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
@@ -95,9 +96,19 @@ def obstacle_avoidance_rotational(
             raise ValueError("No initial-convergence direction is defined")
 
         conv_vel_norm = np.linalg.norm(convergence_velocity)
-        if not conv_vel_norm:
+        if conv_vel_norm:   # Zero value
             rotated_velocities[:, it] = initial_velocity
-            
+
+        rotated_velocities[:, it] = directional_convergence_summing(
+            convergence_vector=convergence_velocity,
+            reference_vector=reference_dir,
+            weight=inv_gamma_weight[it],
+            nonlinear_velocity=initial_velocity,
+            null_matrix=normal_orthogonal_matrix[:, :, it])
+        if True:
+            breakpoint
+            continue
+        
         convergence_velocity = convergence_velocity / conv_vel_norm
             
         velocity_perp = (convergence_velocity
@@ -123,7 +134,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if True: # DEBUGGING
+    if False: # DEBUGGING
         import matplotlib.pyplot as plt
         temp_init = initial_velocity / np.linalg.norm(initial_velocity)
         

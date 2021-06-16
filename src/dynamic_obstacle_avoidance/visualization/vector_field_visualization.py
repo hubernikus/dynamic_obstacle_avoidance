@@ -328,10 +328,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
     it_start = 0
-    n_samples = 10
+    n_samples = 8
 
-    pos1 = [-3.29, 0.941]
-    pos2 = [-3.29, 3.506]
+    # pos1 = [-5.51, -0.88]
+    # pos2 = [-5.46, 3.04]
+    pos1 = [-7.69, 7.85]
+    pos2 = [-3.21, 3.44]
     
     x_sample_range = [pos1[0], pos2[0]]
     y_sample_range = [pos1[1], pos2[1]]
@@ -411,13 +413,17 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     n_calculations = np.sum(indOfNoCollision)
     if print_info:
         print('Number of free points: {}'.format(n_calculations))
-        print('Average time: {} ms'.format(np.round((end_time-start_time)/(n_calculations)*1000),5) )
+        print('Average time: {} ms'.format(
+            np.round((end_time-start_time)/(n_calculations)*1000),5) )
         print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
+    # breakpoint()
     if plotStream:
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
-            strm = res_ifd = ax.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
+            strm = res_ifd = ax.streamplot(
+                XX, YY, dx1_noColl, dx2_noColl, color=velMag, cmap='winter',
+                norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
             
         else:
             # Normalize
@@ -430,7 +436,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
                 dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero]/normVel[ind_nonZero]
 
             if show_streamplot:
-                res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl, color=streamColor, zorder=3)
+                res_ifd = ax.streamplot(XX[0, :], YY[:, 0], dx1_noColl, dx2_noColl,
+                                        color=streamColor, zorder=3)
                 
             else:
                 quiver_factor=1.0

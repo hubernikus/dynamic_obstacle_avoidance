@@ -84,7 +84,9 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
             return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
         return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    # fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    axs = [None, None, ax]
 
     obstacle_list = single_ellipse()
     Simulation_vectorFields(
@@ -97,8 +99,11 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[2]),
-        show_streamplot=True,
+        # Quiver or Streamplot
+        show_streamplot=False,
         )
+    if True:
+        return
     
     obstacle_list = []
     Simulation_vectorFields(
@@ -230,10 +235,10 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
     
 
 if (__name__)=="__main__":
-    # single_ellipse_linear_triple_plot(save_figure=True)
+    single_ellipse_linear_triple_plot(save_figure=False, n_resolution=3)
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
 
-    multiple_hull_linear(save_figure=False)
+    # multiple_hull_linear(save_figure=False)
 
     # single_ellipse_hull(save_figure=True)
 
