@@ -327,8 +327,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     it_start = 0
     
     if n_samples:  # nonzero
-        pos1 = [-3.21, 3.44]
-        pos2 = [-7.69, 7.85]
+        pos1 = [-3.344, 3.409]
+        pos2 = [-7.95, 7.92]
 
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]
@@ -389,7 +389,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             )
     t_end = time.time()
     print("Average time per evaluation {} ms".format(
-        round((t_end - t_start)/(N_x*N_y), 3)))
+        round((t_end - t_start)*1000/(N_x*N_y), 3)))
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
@@ -413,7 +413,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             np.round((end_time-start_time)/(n_calculations)*1000),5) )
         print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
-    # breakpoint()
     if plotStream:
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100

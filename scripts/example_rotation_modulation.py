@@ -32,6 +32,7 @@ def single_ellipse():
         center_position=np.array([0, 0]), 
         axes_length=np.array([2, 5]),
         orientation=0./180*pi,
+        tail_effect=False,
         )
     )
     return obs_list
@@ -101,6 +102,7 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         fig_and_ax_handle=(fig, axs[2]),
         # Quiver or Streamplot
         show_streamplot=True,
+        # show_streamplot=False,       
         )
     # if True:
         # return
@@ -235,10 +237,10 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
     
 
 if (__name__)=="__main__":
-    single_ellipse_linear_triple_plot(save_figure=True, n_resolution=50)
-    single_ellipse_nonlinear_triple_plot(save_figure=True)
+    # single_ellipse_linear_triple_plot(save_figure=True, n_resolution=100)
+    # single_ellipse_nonlinear_triple_plot(save_figure=True)
 
-    # multiple_hull_linear(save_figure=False)
+    multiple_hull_linear(save_figure=False)
 
     # single_ellipse_hull(save_figure=True)
 

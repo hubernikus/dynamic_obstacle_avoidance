@@ -38,20 +38,21 @@ class TestRotational(unittest.TestCase):
         gamma = 1./weight
 
         # Make data.
-        
-        
         # val = weight**weight_fac * (dist0/(1-dist0/(1-weight)))**power_frac
-        power_frac = 1.0
-        weight0 = (1 - dist0)/(1 + (gamma/(gamma-1)))**power_frac
+        # power_frac = 1.0
+        # weight0 = (1 - dist0)/(1 + (gamma/(gamma-1)))**power_frac
         # weight0 = (1 - (1-dist0)/( 1 + (gamma/(gamma-1))))**power_frac
         # weight0 = np.ones(weight.shape)
 
-        weight_fac = 1.0
-        weight1 = weight
-        weight1 = np.ones(weight.shape)
+        # weight_fac = 5.0
+        # weight1 = weight
+        # weight1 = np.ones(weight.shape)
         
-        val =  weight0**power_frac * weight1**weight_fac
-        # val = val ** (1./2)
+        # val =  weight0**power_frac * weight1**weight_fac
+
+        pow_factor = 3.0
+        val = weight ** (1.0/(pow_factor*dist0))
+        # val = 1 - weight ** (dist0)
         # Plot the surface.
         surf = ax.plot_surface(dist0, weight, val,
                                cmap=cm.cool,
