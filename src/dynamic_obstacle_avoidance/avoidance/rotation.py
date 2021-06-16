@@ -1,8 +1,8 @@
 """ Library for the Rotation (Modulation Imitation) of Linear Systems
 Copyright (c) 2021 under MIT license
 """
-# author: Lukas Huber
-# email: hubernikus@gmail.com
+# Author: Lukas Huber
+# Email: hubernikus@gmail.com
 
 import warnings
 
@@ -19,6 +19,10 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_vel
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
+
+def get_weight_from_gamma(gamma_array, power_value=1.0):
+    """ Returns weight-array based on input of gamma_array """
+    return 1.0/np.abs(gamma_array)**power_value
 
 
 def obstacle_avoidance_rotational(
@@ -49,7 +53,6 @@ def obstacle_avoidance_rotational(
     gamma_array = np.zeros((n_obstacles))
     for ii in range(n_obstacles):
         gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
-
         if gamma_array[ii] <= 1 and not obstacle_list[ii].is_boundary:
             # Since boundaries are mutually subtracted,
             raise NotImplementedError()
@@ -80,7 +83,7 @@ def obstacle_avoidance_rotational(
         E_orth=normal_orthogonal_matrix, weights=weights) 
     modulated_velocity = initial_velocity - relative_velocity
 
-    inv_gamma_weight = 1 - 1./gamma_array
+    inv_gamma_weight = get_weight_from_gamma(gamma_array)
     rotated_velocities = np.zeros((dimension, n_obs_close))
     for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -98,6 +101,8 @@ def obstacle_avoidance_rotational(
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
             rotated_velocities[:, it] = initial_velocity
+        # print('gamma', gamma_array)
+        # print('inv_gamma_weight', inv_gamma_weight)
 
         rotated_velocities[:, it] = directional_convergence_summing(
             convergence_vector=convergence_velocity,
@@ -106,7 +111,6 @@ def obstacle_avoidance_rotational(
             nonlinear_velocity=initial_velocity,
             null_matrix=normal_orthogonal_matrix[:, :, it])
         if True:
-            breakpoint
             continue
         
         convergence_velocity = convergence_velocity / conv_vel_norm

@@ -13,6 +13,12 @@ import numpy as np
 # from dynamic_obstacle_avoidance.obstacles import Ellipse
 # from dynamic_obstacle_avoidance.obstacles import MultiBoundaryContainer
 
+def weight_invgamma(inv_gamma, pow_fac):
+    return weight ** pow_fac
+
+def weight_dist(dist, inv_gamma, pow_fac):
+    return (1.0/(1- dist/(1-inv_gamma)))
+
 class TestRotational(unittest.TestCase):
     @classmethod
     def rotation_weight(cls):
@@ -25,20 +31,38 @@ class TestRotational(unittest.TestCase):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-        n_grid = 10
-        dist0 = np.linspace(0, 1, n_grid)
-        weight = np.linspace(0, 1, n_grid)
+        n_grid = 20
+        dist0 = np.linspace(1e-6, 1-1e-6, n_grid)
+        weight = np.linspace(1e-6, 1-1e-6, n_grid)
         weight, dist0 = np.meshgrid(weight, dist0)
+        gamma = 1./weight
 
         # Make data.
-        val = weight**2*dist0 / (1 + weight - dist0)
+        
+        
+        # val = weight**weight_fac * (dist0/(1-dist0/(1-weight)))**power_frac
+        power_frac = 1.0
+        weight0 = (1 - dist0)/(1 + (gamma/(gamma-1)))**power_frac
+        # weight0 = (1 - (1-dist0)/( 1 + (gamma/(gamma-1))))**power_frac
+        # weight0 = np.ones(weight.shape)
+
+        weight_fac = 1.0
+        weight1 = weight
+        weight1 = np.ones(weight.shape)
+        
+        val =  weight0**power_frac * weight1**weight_fac
+        # val = val ** (1./2)
         # Plot the surface.
         surf = ax.plot_surface(dist0, weight, val,
-                               # cmap=cm.coolwarm,
-                               linewidth=0, antialiased=False)
+                               cmap=cm.cool,
+                               linewidth=0.2, edgecolors='k')
+                               # antialiased=False)
         # breakpoint()
         ax.set_xlabel('Distance')
         ax.set_ylabel('Weight')
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
+        ax.set_zlim([0, 1])
         
 if __name__ == '__main__':
     visualize = True

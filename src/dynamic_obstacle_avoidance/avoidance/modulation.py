@@ -1,13 +1,8 @@
 """ Library for the Modulation of Linear Systems
-Copyright (c) 2021 under MIT license
 """
-
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.avoidance.utils import *
-
-__author__ = "Lukas Huber"
-__date__ = "2019-11-29"
-__info__ = "Obstacle avoidance for star-shaped obstacle in linear DS"
+# Author: Lukas Huber
+# Email: hubernikus@gmail.com
+# License: BSD (c) 2021
 
 import matplotlib.pyplot as plt
 
@@ -17,18 +12,24 @@ import numpy.linalg as LA
 import warnings
 import sys
 
+from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from dynamic_obstacle_avoidance.avoidance.utils import *
+
+
 def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
     """
     This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
-    INPUT
+    Parameters
+    ----------
     x [dim]: position at which the modulation is happening
     xd [dim]: initial dynamical system at position x
     obs [list of obstacle_class]: a list of all obstacles and their properties, which present in the local environment
     attractor [list of [dim]]]: list of positions of all attractors
     weightPow [int]: hyperparameter which defines the evaluation of the weight
     
-    OUTPUT
+    Return
+    ------
     xd [dim]: modulated dynamical system at position x
     """
     if x is not None:
@@ -333,5 +334,3 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
         breakpoint()
         
     return vel_final
-
-

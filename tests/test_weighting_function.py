@@ -1,6 +1,9 @@
 #!/USSR/bin/python3
+""" Test different weighting functions. """
+
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 # Define variables
 r0 = 0.1

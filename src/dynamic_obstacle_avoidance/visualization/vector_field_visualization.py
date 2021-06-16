@@ -1,14 +1,8 @@
 #!/USSR/bin/python3
-"""
-Obstacle Avoidance Algorithm script with vecotr field
-"""
-
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
-from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
-
+"""Obstacle Avoidance Algorithm script with vecotr field. """
+# Author: Lukas Huber
+# Date: 2018-02-15
+# Email: lukas.huber@epfl.ch
 
 # General classes
 import copy
@@ -22,16 +16,18 @@ from numpy import pi
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.collections import LineCollection
+import matplotlib.image as mpimg
 
 from scipy import ndimage
-import matplotlib.image as mpimg
+
+from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
 
 # Show plot in a reactive manner
 plt.ion()
-
-__author__ = "Lukas Huber"
-__date__ =  "2018-02-15"
-__email__ = "lukas.huber@epfl.ch"
 
 
 def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, dt=0.01, convergence_margin=1e-4, fig_and_ax_handle=None, normalize_magnitude=True, line_color=None, min_value=0, max_value=None):
@@ -327,27 +323,26 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
+    n_samples = 0
     it_start = 0
-    n_samples = 8
-
-    # pos1 = [-5.51, -0.88]
-    # pos2 = [-5.46, 3.04]
-    pos1 = [-7.69, 7.85]
-    pos2 = [-3.21, 3.44]
     
-    x_sample_range = [pos1[0], pos2[0]]
-    y_sample_range = [pos1[1], pos2[1]]
+    if n_samples:  # nonzero
+        pos1 = [-3.21, 3.44]
+        pos2 = [-7.69, 7.85]
 
-    x_sample = np.linspace(x_sample_range[0], x_sample_range[1], n_samples)
-    y_sample = np.linspace(y_sample_range[0], y_sample_range[1], n_samples)
+        x_sample_range = [pos1[0], pos2[0]]
+        y_sample_range = [pos1[1], pos2[1]]
 
-    ii = 0
-    for ii in range(n_samples):
-        iy = (ii+it_start) % N_y
-        ix = int((ii+it_start) / N_x)
-        
-        XX[ix, iy] = x_sample[ii]
-        YY[ix, iy] = y_sample[ii]
+        x_sample = np.linspace(x_sample_range[0], x_sample_range[1], n_samples)
+        y_sample = np.linspace(y_sample_range[0], y_sample_range[1], n_samples)
+
+        ii = 0
+        for ii in range(n_samples):
+            iy = (ii+it_start) % N_y
+            ix = int((ii+it_start) / N_x)
+
+            XX[ix, iy] = x_sample[ii]
+            YY[ix, iy] = y_sample[ii]
 
     ########## STOP REMOVE ###########
     
@@ -393,7 +388,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             # gamma_distance=gamma_distance # DEBUGGING: remove
             )
     t_end = time.time()
-    print("Average time per evaluation {} ms".format(round(t_end - t_start, 3)))
+    print("Average time per evaluation {} ms".format(
+        round((t_end - t_start)/(N_x*N_y), 3)))
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 

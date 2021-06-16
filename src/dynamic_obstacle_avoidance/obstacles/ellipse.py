@@ -274,7 +274,7 @@ class Ellipse(Obstacle):
         Gamma: distance value gamma of float
         """
         if not gamma_type is None:
-            # TODO: remove at some stage...
+            # TODO: remove this before release (...)
             warnings.warn("Gammatype is not yet implemented for ellipse obstacle.")
 
         if relative_gamma and self.has_relative_gamma:
@@ -293,7 +293,8 @@ class Ellipse(Obstacle):
             or self.gamma_distance is not None):
             warnings.warn("Implement linear gamma type.")
             
-        Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))
+        Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))**(
+            1.0/(2*np.mean(self.curvature)))
 
         if self.is_boundary:
             Gamma = 1./Gamma
