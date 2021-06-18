@@ -1,4 +1,5 @@
-""" Library for the Modulation of Linear Systems
+"""
+Library for the Modulation of Linear Systems
 """
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
@@ -18,19 +19,22 @@ from dynamic_obstacle_avoidance.avoidance.utils import *
 
 def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
     """
-    This function modulates the dynamical system at position x and dynamics xd such that it avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
+    This function modulates the dynamical system at position x and dynamics xd such that it
+    avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
     
     Parameters
     ----------
     x [dim]: position at which the modulation is happening
     xd [dim]: initial dynamical system at position x
-    obs [list of obstacle_class]: a list of all obstacles and their properties, which present in the local environment
+    obs [list of obstacle_class]: a list of all obstacles and their properties, which
+        present in the local environment
     attractor [list of [dim]]]: list of positions of all attractors
     weightPow [int]: hyperparameter which defines the evaluation of the weight
     
     Return
     ------
     xd [dim]: modulated dynamical system at position x
+    
     """
     if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
@@ -42,12 +46,10 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
         warnings.warn('xd is depriciated. Use <<initial_velocity>> instead.')
         initial_velocity = xd
 
-    # number of obstacles
     N_obs = len(obs)       
-    if not N_obs:
-        # No obstacle
+    if not N_obs:         # No obstacle
         return initial_velocity
-
+    
     dim = obs[0].dimension
 
     initial_velocity_norm = np.linalg.norm(initial_velocity)
@@ -107,7 +109,7 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
         return initial_velocity
 
     if N_attr:
-        d_a = LA.norm(x - np.array(attractor))        # Distance to attractor
+        d_a = np.linalg.norm(x - np.array(attractor))        # Distance to attractor
         weight = compute_weights(np.hstack((Gamma_proportional, [d_a])), N_obs+N_attr)
     else:
         weight = compute_weights(Gamma_proportional, N_obs)
@@ -291,14 +293,16 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
         # TODO: implement properly & test
         # points at the origin
         k_ds = np.hstack((k_ds, np.zeros((dim-1, N_attr)) )) 
-        relative_velocity_hat_magnitude = np.hstack((relative_velocity_hat_magnitude, LA.norm((relative_velocity))*np.ones(N_attr) ))
+        relative_velocity_hat_magnitude = np.hstack((
+            relative_velocity_hat_magnitude, np.linalg.norm((relative_velocity))*np.ones(N_attr)))
         
         total_weight = 1 - weight_attr 
     else:
         total_weight = 1
 
-    weighted_direction = get_directional_weighted_sum(null_direction=initial_velocity_normalized, 
-                                                      directions=relative_velocity_hat_normalized, weights=weight, total_weight=total_weight)
+    weighted_direction = get_directional_weighted_sum(
+        null_direction=initial_velocity_normalized, 
+        directions=relative_velocity_hat_normalized, weights=weight, total_weight=total_weight)
 
     relative_velocity_magnitude = np.sum(relative_velocity_hat_magnitude*weight)
     vel_final = relative_velocity_magnitude*weighted_direction.squeeze()

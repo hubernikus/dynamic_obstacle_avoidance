@@ -15,7 +15,7 @@ from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
 from dynamic_obstacle_avoidance.obstacles import BaseContainer, MultiBoundaryContainer
-from dynamic_obstacle_avoidance.obstacles import Ellipse
+from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
@@ -32,6 +32,35 @@ def single_ellipse():
         center_position=np.array([0, 0]), 
         axes_length=np.array([2, 5]),
         orientation=0./180*pi,
+        tail_effect=False,
+        )
+    )
+    return obs_list
+
+def starshape_hull():
+    obs_list = BaseContainer()
+    
+    obs_list.append(
+        StarshapedFlower(
+        center_position=np.array([0, 0]), 
+        radius_magnitude=2,
+        radius_mean=4,
+        orientation=0./180*pi,
+        tail_effect=False,
+        )
+    )
+    return obs_list
+
+
+def single_ellipse_hull():
+    obs_list = BaseContainer()
+    
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([0, 0]), 
+        axes_length=np.array([6, 9]),
+        orientation=0./180*pi,
+        is_boundary=True,
         tail_effect=False,
         )
     )
@@ -83,7 +112,8 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
     def obs_avoidance(*args, **kwargs):
         def get_convergence_direction(position):
             return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+        return obstacle_avoidance_rotational(
+            *args, **kwargs, get_convergence_direction=get_convergence_direction)
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 6))
     # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -198,6 +228,137 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         figure_name = "comparison_nonlinear_vectorfield"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
+def single_ellipse_hull_linear_triple_plot(save_figure=False, n_resolution=40):
+    """ Moving inside an 'ellipse hull with linear dynamics. """
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+    
+    pos_attractor = np.array([0, -4])
+
+    def initial_ds(position):
+        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+    
+    def obs_avoidance(*args, **kwargs):
+        def get_convergence_direction(position):
+            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    # axs = [None, None, ax]
+
+    obstacle_list = single_ellipse_hull()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        obs_avoidance_func=obs_avoidance,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[2]),
+        # Quiver or Streamplot
+        show_streamplot=True,
+        # show_streamplot=False,       
+        )
+    
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[1]),
+        )
+
+    obstacle_list = []
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[0]),
+        )
+
+
+    if save_figure:
+        figure_name = "comparison_linear_hull"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
+
+def single_ellipse_hull_nonlinear_triple_plot(save_figure=False, n_resolution=4):
+    pass
+
+def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
+    """ Moving inside an 'ellipse hull with linear dynamics. """
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+    
+    pos_attractor = np.array([4, -4])
+
+    def initial_ds(position):
+        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+    
+    def obs_avoidance(*args, **kwargs):
+        def get_convergence_direction(position):
+            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+
+    # fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    axs = [None, None, ax]
+
+    obstacle_list = starshape_hull()
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        obs_avoidance_func=obs_avoidance,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[2]),
+        # Quiver or Streamplot
+        # show_streamplot=True,
+        show_streamplot=False,       
+        )
+    if True:
+        return
+    
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[1]),
+        )
+
+    obstacle_list = []
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=initial_ds,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, axs[0]),
+        )
+
+    if save_figure:
+        figure_name = "comparison_starshape_hull"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
 
 def multiple_hull_linear(save_figure=False, n_resolution=4):
     """ Multiple ellipse hull. """
@@ -232,15 +393,18 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
         fig_and_ax_handle=(fig, ax),
         show_streamplot=False,
     )
-    
     obstacle_list.plot_convergence_attractor(ax=ax, attractor_position=pos_attractor)
     
 
 if (__name__)=="__main__":
     # single_ellipse_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_nonlinear_triple_plot(save_figure=True)
-
-    multiple_hull_linear(save_figure=False)
+    
+    # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
+    # single_ellipse_hull_nonlinear_triple_plot(save_figure=True)
+    starshape_hull_linear_triple_plot(save_figure=False, n_resolution=9)
+    
+    # multiple_hull_linear(save_figure=False, n_resolution=10)
 
     # single_ellipse_hull(save_figure=True)
 

@@ -1,9 +1,7 @@
 #!/USSR/bin/python3
-'''
-@date 2019-10-15
-@author Lukas Huber 
-@email lukas.huber@epfl.ch
-'''
+""" """
+# Author: Lukas Huber 
+# Email: lukas.huber@epfl.ch
 
 import time
 import warnings
@@ -12,13 +10,8 @@ import copy
 
 import numpy as np
 
-
-# import quaternion # numpy-quaternion 
-# import dynamic_obstacle_avoidance
-
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-# from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_modulo
 from dynamic_obstacle_avoidance.avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
@@ -26,11 +19,8 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import 
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
-import matplotlib.pyplot as plt
-
-# import quaternion
-
 visualize_debug = False
+
 
 class StarshapedFlower(Obstacle):
     def __init__(self,  radius_magnitude=1, radius_mean=2, number_of_edges=4, time_now=None,
@@ -44,12 +34,9 @@ class StarshapedFlower(Obstacle):
         self.property_dict = {'radius_magnitude': radius_magnitude,
                               'radius_mean': radius_mean,
                               'number_of_edges': number_of_edges,}
-        
-        
         # Object Specific Paramters
         # self.radius_magnitude=radius_magnitude
         # self.radius_mean=radius_mean
-
         # self.number_of_edges=number_of_edges
 
         self.is_convex = False # What for?
@@ -88,19 +75,16 @@ class StarshapedFlower(Obstacle):
     @number_of_edges.setter
     def number_of_edges(self, value):
         self.property_dict['number_of_edges'] = value
-    
 
     def get_radius_of_angle(self, angle, in_global_frame=False):
         if in_global_frame:
             angle -= self.orientation
         return self.radius_mean+self.radius_magnitude*np.cos((angle)*self.number_of_edges)
     
-
     def get_radiusDerivative_of_angle(self, angle, in_global_frame=False):
         if in_global_frame:
             angle -= self.orientation
         return -self.radius_magnitude*self.number_of_edges*np.sin((angle)*self.number_of_edges)
-
 
     def draw_obstacle(self, include_margin=False, n_curve_points=100, numPoints=None):
         # warnings.warn("Remove numPoints from function argument.")
@@ -118,15 +102,14 @@ class StarshapedFlower(Obstacle):
             for jj in range(x_obs.shape[1]):
                 x_obs[:, jj] = self.rotMatrix.dot(x_obs[:, jj]) + np.array([self.center_position])
             for jj in range(x_obs_sf.shape[1]):
-                x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
+                x_obs_sf[:, jj] = (self.rotMatrix.dot(x_obs_sf[:, jj])
+                                   + np.array([self.center_position]))
 
-        # self.x_obs = self.x_obs.T
-        # self.x_obs_sf = self.x_obs_sf.T
         self.boundary_points_local = x_obs
         self.boundary_points_margin_local = x_obs_sf
 
     def get_local_radius_point(self, position, in_global_frame=False):
-        ''' Get radius from local radius point.'''
+        """ Get radius from local radius point."""
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -142,14 +125,14 @@ class StarshapedFlower(Obstacle):
             
 
     def get_deformation_velocity(self, position, in_global_frame=False):
-        ''' Get numerical evaluation of velocity '''
+        """ Get numerical evaluation of velocity """
         if in_global_frame:
             position = self.transform_global2relative(position)
 
         dt = (self.time_now-self.time_old)
         
         if not dt: # == 0
-            warnings.warn('No time passed to evaluate defomration velocity.')
+            warnings.warn("No time passed to evaluate defomration velocity.")
             return np.zeros(2)
 
         radius_point = self.get_local_radius_point(position)
@@ -169,9 +152,10 @@ class StarshapedFlower(Obstacle):
             vel_surface = self.transform_relative2global_dir(vel_surface)
             
         return vel_surface
+    
 
     def update_deforming_obstacle(self, time_now):
-        ''' Update values. '''
+        """ Update values. """
         self.time_old = self.time_now
         self.time_now = time_now
         
@@ -182,6 +166,7 @@ class StarshapedFlower(Obstacle):
             
 
     def get_gamma(self, position, in_global_frame=False, norm_order=2, gamma_distance=None):
+        """ Calculate gamma-distance function. """
         if not type(position)==np.ndarray:
             position = np.array(position)
 
@@ -208,14 +193,13 @@ class StarshapedFlower(Obstacle):
         
         return Gamma
 
-
     def get_normal_direction(self, position, in_global_frame=False, normalize=True):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
         mag_position = np.linalg.norm(position)
         if not mag_position:
-            return np.ones(self.dim)/self.dim # just return one direction
+            return np.ones(self.dim)/self.dim       # Just return one direction
 
         direction = np.arctan2(position[1], position[0])
         derivative_radius_of_angle = self.get_radiusDerivative_of_angle(direction)
@@ -225,13 +209,16 @@ class StarshapedFlower(Obstacle):
         normal_vector = np.array(([
             derivative_radius_of_angle*np.sin(direction) + radius*np.cos(direction),
             - derivative_radius_of_angle*np.cos(direction) + radius*np.sin(direction)]))
+        normal_vector = (-1)*normal_vector
 
         if normalize:
             mag_vector = np.linalg.norm(normal_vector)
-            if mag_vector: #nonzero
+            if mag_vector:     # Nonzero
                 normal_vector = normal_vector/mag_vector
                 
         if False:
+            # TODO: remove after DEBUG
+            import matplotlib.pyplot as plt    # Remove after debugging
             # self.draw_reference_hull(normal_vector, position)
             pos_abs = self.transform_relative2global(position)
             norm_abs = self.transform_relative2global_dir(normal_vector)
@@ -247,5 +234,3 @@ class StarshapedFlower(Obstacle):
             normal_vector = self.transform_relative2global_dir(normal_vector)
             
         return normal_vector
-
-    

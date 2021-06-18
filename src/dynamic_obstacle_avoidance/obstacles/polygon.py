@@ -22,7 +22,7 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_tangents2ellipse
 
 def is_one_point(point1, point2, margin=1e-9):
     ''' Check if it the two points coincide [1-norm] '''
-    return np.isclose(point1, point2, rtol=1e-9)
+    return np.allclose(point1, point2, rtol=1e-9)
     # return np.sum(np.abs(point1-point2)) < 1e-9
 
 class Polygon(Obstacle):

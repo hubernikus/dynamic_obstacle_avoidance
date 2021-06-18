@@ -135,12 +135,11 @@ def pltLines(pos0, pos1, xlim=[-100,100], ylim=[-100,100]):
         xlim = [pos1[0], pos1[0]]
     
     plt.plot(xlim, ylim, '--', color=[0.3, 0.3, 0.3], linewidth=2)
-
+    
 
 def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
                      dim=2, dt=0.01, max_simu_step=300, convergence_margin=0.03):
     """ Plot streamlines. """
-    # 
     n_points = np.array(points_init).shape[1]
 
     x_pos = np.zeros((dim, max_simu_step+1, n_points))
@@ -160,14 +159,11 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
 
             print("Convergence reached after {} iterations.".format(it_count))
             break
-
         it_count += 1
-
     
     for j in range(n_points):
         ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4, color='r')
         ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13, zorder=5)
-        
     # return x_pos
 
     
@@ -323,12 +319,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    n_samples = 0
-    it_start = 0
-    
+    n_samples = 9
     if n_samples:  # nonzero
-        pos1 = [-3.344, 3.409]
-        pos2 = [-7.95, 7.92]
+        it_start = 0
+        
+        pos1 = [-4.973,-2.6298]
+        pos2 = [-2.4475, -2.46]
 
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]
@@ -343,7 +339,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
             XX[ix, iy] = x_sample[ii]
             YY[ix, iy] = y_sample[ii]
-
     ########## STOP REMOVE ###########
     
     if dynamical_system is None:

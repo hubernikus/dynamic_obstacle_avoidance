@@ -89,6 +89,12 @@ def obstacle_avoidance_rotational(
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
         reference_dir = obstacle_list[oo].get_reference_direction(
             position, in_global_frame=True)
+
+        if obstacle_list[oo].is_boundary:
+            reference_dir = (-1)*reference_dir
+            null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
+        else:
+            null_matrix = normal_orthogonal_matrix[:, :, it]
         
         if (hasattr(obstacle_list, 'get_convergence_direction')):
             convergence_velocity = obstacle_list.get_convergence_direction(position=position,
@@ -101,34 +107,13 @@ def obstacle_avoidance_rotational(
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
             rotated_velocities[:, it] = initial_velocity
-        # print('gamma', gamma_array)
-        # print('inv_gamma_weight', inv_gamma_weight)
 
         rotated_velocities[:, it] = directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
             weight=inv_gamma_weight[it],
             nonlinear_velocity=initial_velocity,
-            null_matrix=normal_orthogonal_matrix[:, :, it])
-        if True:
-            continue
-        
-        convergence_velocity = convergence_velocity / conv_vel_norm
-            
-        velocity_perp = (convergence_velocity
-                         - np.dot(convergence_velocity, reference_dir) * reference_dir)
-
-        # Project on tangent plane
-        velocity_perp_proj = normal_orthogonal_matrix[:, :, it].T @ velocity_perp
-        velocity_perp_proj[0] = 0
-        velocity_perp_proj = normal_orthogonal_matrix[:, :, it] @ velocity_perp_proj
-
-        # Investigate: can this be done for all obstacles together(?)
-        rotated_velocities[:, it] = get_directional_weighted_sum(
-            null_direction=convergence_velocity,
-            directions=np.vstack((initial_velocity, velocity_perp_proj)).T,
-            weights=np.array([inv_gamma_weight[it], 1-inv_gamma_weight[it]]),
-            )
+            null_matrix=null_matrix)
 
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
@@ -138,7 +123,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if False: # DEBUGGING
+    if False: # TODO: remove after DEBUGGING 
         import matplotlib.pyplot as plt
         temp_init = initial_velocity / np.linalg.norm(initial_velocity)
         
