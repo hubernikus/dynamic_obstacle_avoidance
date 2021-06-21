@@ -101,7 +101,8 @@ class MultiBoundaryContainer(BaseContainer):
     def check_collision(self, position):
         """Returns collision with environment (type Bool)
         Note that obstacles are mutually additive, i.e. no collision with any obstacle
-        while the boundaries are mutually subractive, i.e. collision free with at least one boundary
+        while the boundaries are mutually subractive, i.e. collision free with at least
+        one boundary.
         """
         gamma_list_boundary = []
         
@@ -128,7 +129,6 @@ class MultiBoundaryContainer(BaseContainer):
     def update_relative_reference_point(self, position, gamma_margin_close_wall=1e-6):
         """ Get the local reference point as described in active-learning.
         !!! Current assumption: all obstacles are wall. """
-
         ind_boundary = self.get_boundary_ind()
         gamma_list = np.zeros(self.n_obstacles)
         for ii in range(self.n_obstacles):
@@ -156,16 +156,27 @@ class MultiBoundaryContainer(BaseContainer):
                     continue
                 gamma_boundary_point = self[jj_self].get_gamma(
                     boundary_point, in_global_frame=True, relative_gamma=False)
+                
+                # Only obstacles are considered which intersect at the (projected) boundary point
                 if gamma_boundary_point < 1:
-                    # Only obstacles are considered which intersect at the (projected) boundar point
                     continue
 
                 # Weight for the distance to the surface
-                weight_1 = (dist_point)/(dist_boundary_point-dist_point)
+                # weight_1 = (dist_point)/(dist_boundary_point-dist_point)
+                weight_1 = (dist_point)/(dist_boundary_point)
+                
                 # Weight for importance of the corresponding boundary
                 weight_2 = gamma_boundary_point - 1
 
-                weights[jj] = 1-1 / (1 + weight_1*weight_2)
+                # weights[jj] = 1 - 1/(1+weight_1*weight_2)
+
+                mult_pow = 1.0
+                # max_pow = 1.0
+                # weights[jj] = weight_1**(1./min(weight_2*mult_pow, max_pow))
+                weights[jj] = weight_1**(weight_2)
+
+                weight_power = 1
+                weights[jj] = weights[jj]**(1/weight_power)
 
             rel_reference_weight = np.max(weights)
 
@@ -184,6 +195,9 @@ class MultiBoundaryContainer(BaseContainer):
 
             self[ii_self].set_relative_gamma_at_position(
                 position=position, relative_gamma=relative_gamma)
+
+            # print(f"obs={ii_self} has rel_gamam={relative_gamma}")
+            # breakpoint()
             
         for ii_self in np.arange(self.n_obstacles)[~ind_inside]:
             self[ii_self].reset_relative_reference()

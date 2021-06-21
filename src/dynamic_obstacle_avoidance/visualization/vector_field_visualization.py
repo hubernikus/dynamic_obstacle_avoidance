@@ -319,12 +319,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    n_samples = 9
+    n_samples = 10
     if n_samples:  # nonzero
         it_start = 0
         
-        pos1 = [-4.973,-2.6298]
-        pos2 = [-2.4475, -2.46]
+        pos1 = [-3.7862, 1.7265]
+        pos2 = [-2.4071, 1.7215]
 
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]

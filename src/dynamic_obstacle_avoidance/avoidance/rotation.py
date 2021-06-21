@@ -1,11 +1,11 @@
-""" Library for the Rotation (Modulation Imitation) of Linear Systems
-Copyright (c) 2021 under MIT license
+"""
+Library for the Rotation (Modulation Imitation) of Linear Systems
 """
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
+# License: BSD (c) 2021
 
 import warnings
-
 import numpy as np
 import matplotlib.pyplot as plt   # For debugging only (!)
 
@@ -23,7 +23,6 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_vel
 def get_weight_from_gamma(gamma_array, power_value=1.0):
     """ Returns weight-array based on input of gamma_array """
     return 1.0/np.abs(gamma_array)**power_value
-
 
 def obstacle_avoidance_rotational(
     position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None,
@@ -47,6 +46,9 @@ def obstacle_avoidance_rotational(
     n_obstacles = len(obstacle_list)
     if not n_obstacles:  # zero length
         return initial_velocity
+
+    if hasattr(obstacle_list, 'update_relative_reference_point'):
+        obstacle_list.update_relative_reference_point(position=position)
 
     dimension = position.shape[0]
 
@@ -115,6 +117,7 @@ def obstacle_avoidance_rotational(
             nonlinear_velocity=initial_velocity,
             null_matrix=null_matrix)
 
+    # breakpoint()
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
         directions=rotated_velocities,

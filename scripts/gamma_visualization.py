@@ -1,5 +1,4 @@
 #!/USSR/bin/python3
-
 ''' Script to show lab environment on computer '''
 
 # Custom libraries
@@ -255,14 +254,12 @@ def main(n_resol=20, *args, **kwargs):
                 # Gamma_mege = Gamma_mege+(local_rad[:, :, oo])**sum_power
         Gamma_vals = Gamma_mege
 
-
     elif merge_type=="weighted":
         sum_power = 1
         Gamma_mege = np.zeros((n_resolution, n_resolution))
         for oo in range(n_obs):
             Gamma_mege = Gamma_mege+Gamma_vals[:, :, oo]**sum_power
         Gamma_vals = Gamma_mege
-
 
     else:
         it_obs = 0
@@ -279,7 +276,8 @@ def main(n_resol=20, *args, **kwargs):
             for iy in range(n_resolution):
                 if obs[0].get_gamma(positions[:, ix, iy], in_global_frame=True)<=1 \
                    and obs[1].get_gamma(positions[:, ix, iy], in_global_frame=True)<=1:
-                    gamma_derivative[:, ix, iy] = derivative_gamma_sum(positions[:, ix, iy], obs[0], obs[1])
+                    gamma_derivative[:, ix, iy] = derivative_gamma_sum(positions[:, ix, iy],
+                                                                       obs[0], obs[1])
                     norm = np.linalg.norm(gamma_derivative[:, ix, iy])
                     if norm: # nonzero
                         gamma_derivative[:, ix, iy] = gamma_derivative[:, ix, iy]/norm
@@ -300,16 +298,19 @@ def main(n_resol=20, *args, **kwargs):
         obstacle.draw_obstacle(numPoints=50)
         plt.plot(obstacle.x_obs_sf[0, :], obstacle.x_obs_sf[1, :], ':', color='k', linewidth=3)
 
-        plt.plot(obstacle.center_position[0], obstacle.center_position[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
+        plt.plot(obstacle.center_position[0], obstacle.center_position[1], 'k+',
+                 linewidth=18, markeredgewidth=4, markersize=13)
 
     plt.plot(pos_min[0], pos_min[1], color='g', marker="D", markersize=13, label="Gridsearch Minimum")
     plt.axis('equal')
     plt.legend()
 
     if do_quiver:
-        # plt.quiver(positions[0, :, :], positions[1, :], gamma_derivative[0, :, :], gamma_derivative[1, :, :], color='k')
+        # plt.quiver(positions[0, :, :], positions[1, :],
+                   # gamma_derivative[0, :, :], gamma_derivative[1, :, :], color='k')
         
-        plt.streamplot(positions[0, :, 0], positions[1, 0, :], gamma_derivative[0, :, :].T, gamma_derivative[1, :, :].T, color='k', zorder=-2)
+        plt.streamplot(positions[0, :, 0], positions[1, 0, :], gamma_derivative[0, :, :].T,
+                       gamma_derivative[1, :, :].T, color='k', zorder=-2)
                        
                    
 

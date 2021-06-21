@@ -1,9 +1,10 @@
 #!/USSR/bin/python3.9
 """ Test the directional space. """
 
-__author__ = "LukasHuber"
-__date__ = "2021-05-18"
-__email__ = "lukas.huber@epfl.ch"
+# Author: Lukas Huber
+# Date: 2021-05-18
+# Email: lukas.huber@epfl.ch
+# License: BSD (c) 2021
 
 import unittest
 from math import pi
@@ -12,6 +13,43 @@ import numpy as np
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.obstacles import MultiBoundaryContainer
+from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import gamma_field_visualization
+
+from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+
+def multiple_ellipse_hulls():
+    obs_list = MultiBoundaryContainer()
+
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([6, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=50./180*pi,
+        is_boundary=True,
+        ),
+        parent=-1,
+    )
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([0, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=-50./180*pi,
+        is_boundary=True,
+        ),
+        parent=-1,
+    )
+    obs_list.append(
+        Ellipse(
+        center_position=np.array([-6, 0]), 
+        axes_length=np.array([5, 2]),
+        orientation=50./180*pi,
+        is_boundary=True,
+        ),
+        parent=-1,
+    )
+    return obs_list
+
 
 class TestMultiBoundary(unittest.TestCase):
     def test_creating(self):
@@ -277,13 +315,70 @@ class TestMultiBoundary(unittest.TestCase):
                     if obs.get_gamma(pos, in_global_frame=True) > 1:
                         velocities[:, ix, iy] = obs_list.get_convergence_direction(
                             pos, it_obs=it_obs, attractor_position=attractor_position)
-                        
             plt.quiver(positions[0, :, :], positions[1, :, :],
                        velocities[0, :, :], velocities[1, :, :],
                        color=color_list[it_obs])
 
         plt.axis('equal')
 
+
+    @classmethod
+    def gamma_test_multi_hull(cls, n_resolution=100, save_figure=False):
+        """ Evaluate the relative-gamma value for each plot specifically. """
+        x_lim = [-10, 10]
+        y_lim = [-10, 10]
+
+        import matplotlib.pyplot as plt
+        # fig = plt.figure(figsize=(10, 8))
+        
+        # ax = fig.add_subplot(1, 1, 1)
+        obstacle_list = multiple_ellipse_hulls()
+
+        # fig, axs = plt.subplots(1, len(obstacle_list), figsize=(14, 5))
+        
+        # for obstacle, ax in zip(obstacle_list, axs):
+        if True:
+            fig, axs = plt.subplots(1, 1, figsize=(14, 8))
+            ax = axs
+            obstacle = obstacle_list[1]
+
+
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
+
+            plot_obstacles(ax=ax, obs=obstacle_list, x_range=x_lim, y_range=y_lim,
+                           noTicks=True, showLabel=False)
+
+            dim = 2
+
+            # gamma_field_visualization(obstacle=obstacle_list[1])
+            x_vals = np.linspace(x_lim[0], x_lim[1], n_resolution)
+            y_vals = np.linspace(y_lim[0], y_lim[1], n_resolution)
+
+            gamma_values = np.zeros((n_resolution, n_resolution))
+            positions = np.zeros((dim, n_resolution, n_resolution))
+
+            for ix in range(n_resolution):
+                for iy in range(n_resolution):
+                    positions[:, ix, iy] = [x_vals[ix], y_vals[iy]]
+
+                    obstacle_list.update_relative_reference_point(position=positions[:, ix, iy])
+
+                    gamma_values[ix, iy] = obstacle.get_gamma(
+                        positions[:, ix, iy], in_global_frame=True)
+
+            cs = ax.contourf(positions[0, :, :], positions[1, :, :],  gamma_values, 
+                             np.arange(1.0, 10.1, 1.0),
+                             extend='max', alpha=0.6, zorder=2)
+
+        # cbar = fig.colorbar(cs)
+
+        cbar_ax = fig.add_axes([0.925, 0.18, 0.02, 0.65])
+        fig.colorbar(cs, cax=cbar_ax)
+
+        if save_figure:
+            figure_name = "gammavals_multiplehull"
+            plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 if __name__ == '__main__':
     # Allow running in ipython (!)
@@ -295,4 +390,5 @@ if __name__ == '__main__':
         # TestMultiBoundary.plottest_list_simple()
         # TestMultiBoundary.plottest_list_advanced()
         # TestMultiBoundary.plottest_list_intersect()
-        TestMultiBoundary.plottest_default_direction()
+        # TestMultiBoundary.plottest_default_direction()
+        TestMultiBoundary.gamma_test_multi_hull(n_resolution=100, save_figure=True)
