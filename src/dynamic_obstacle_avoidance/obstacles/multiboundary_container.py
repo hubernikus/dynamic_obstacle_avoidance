@@ -10,7 +10,6 @@ from dynamic_obstacle_avoidance.obstacles import BaseContainer
 
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
-
 class MultiBoundaryContainer(BaseContainer):
     """ Container to treat multiple boundaries / walls."""
     def __init__(self, obs_list=None, *args, **kwargs):
@@ -162,21 +161,27 @@ class MultiBoundaryContainer(BaseContainer):
                     continue
 
                 # Weight for the distance to the surface
-                # weight_1 = (dist_point)/(dist_boundary_point-dist_point)
-                weight_1 = (dist_point)/(dist_boundary_point)
+                weight_1 = 1 - (dist_point)/(dist_boundary_point)
                 
-                # Weight for importance of the corresponding boundary
-                weight_2 = gamma_boundary_point - 1
+                # Weight for importance based on corresponding boundary-point
+                mult_power_weight = 3.0
+                max_power_weight = 5.0
+                weight_2 = min((gamma_boundary_point-1) * mult_power_weight,
+                                  max_power_weight)
 
-                # weights[jj] = 1 - 1/(1+weight_1*weight_2)
+                # Power weights
+                f0 = dist_boundary_point/(dist_boundary_point-dist_point)
+                fG = dist_boundary_point/(dist_point)
+                ff = f0**(weight_2) * fG
+                
+                x_hat_dist = (dist_boundary_point - dist_point*ff) / (1-ff)
+                weights[jj] = x_hat_dist/dist_point
 
-                mult_pow = 1.0
-                # max_pow = 1.0
-                # weights[jj] = weight_1**(1./min(weight_2*mult_pow, max_pow))
-                weights[jj] = weight_1**(weight_2)
-
-                weight_power = 1
-                weights[jj] = weights[jj]**(1/weight_power)
+                # print('weights final', weights[jj])
+                if weights[jj]>1 or weights[jj] < 0:
+                    # DEBUG
+                    breakpoint()
+                    a=0 # To not skip to beginning
 
             rel_reference_weight = np.max(weights)
 

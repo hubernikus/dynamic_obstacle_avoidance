@@ -334,15 +334,15 @@ class TestMultiBoundary(unittest.TestCase):
         # ax = fig.add_subplot(1, 1, 1)
         obstacle_list = multiple_ellipse_hulls()
 
-        # fig, axs = plt.subplots(1, len(obstacle_list), figsize=(14, 5))
-        
-        # for obstacle, ax in zip(obstacle_list, axs):
-        if True:
+        fig, axs = plt.subplots(1, len(obstacle_list), figsize=(14, 5))
+
+        if False:
+        # if True:
             fig, axs = plt.subplots(1, 1, figsize=(14, 8))
             ax = axs
             obstacle = obstacle_list[1]
 
-
+        for obstacle, ax in zip(obstacle_list, axs):
             ax.set_xlim(x_lim)
             ax.set_ylim(y_lim)
 
@@ -368,7 +368,7 @@ class TestMultiBoundary(unittest.TestCase):
                         positions[:, ix, iy], in_global_frame=True)
 
             cs = ax.contourf(positions[0, :, :], positions[1, :, :],  gamma_values, 
-                             np.arange(1.0, 10.1, 1.0),
+                             np.arange(1.0, 5.1, 0.2),
                              extend='max', alpha=0.6, zorder=2)
 
         # cbar = fig.colorbar(cs)
@@ -391,4 +391,4 @@ if __name__ == '__main__':
         # TestMultiBoundary.plottest_list_advanced()
         # TestMultiBoundary.plottest_list_intersect()
         # TestMultiBoundary.plottest_default_direction()
-        TestMultiBoundary.gamma_test_multi_hull(n_resolution=100, save_figure=True)
+        TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
