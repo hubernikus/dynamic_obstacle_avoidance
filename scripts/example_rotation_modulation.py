@@ -441,6 +441,34 @@ def starshape_linear_triple_plot(save_figure=False, n_resolution=20):
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
+def multiple_hull_empty(save_figure=False):
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+    
+    pos_attractor = np.array([9, 3])
+    
+    obstacle_list = multiple_ellipse_hulls()
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+
+    Simulation_vectorFields(
+        x_lim, y_lim, 0, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=False,
+        automatic_reference_point=False,
+        pos_attractor=pos_attractor,
+        fig_and_ax_handle=(fig, ax),
+        show_streamplot=False,
+        # show_streamplot=True,
+    )
+
+    if save_figure:
+        figure_name = "multiple_hull_empty"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
+    
+    
 def multiple_hull_linear(save_figure=False, n_resolution=4):
     """ Multiple ellipse hull. """
     x_lim = [-10, 10]
@@ -478,7 +506,6 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
     
     obstacle_list.plot_convergence_attractor(ax=ax, attractor_position=pos_attractor)
 
-    
     if save_figure:
         figure_name = "multiple_hull_linear"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
@@ -489,10 +516,11 @@ if (__name__)=="__main__":
     # single_ellipse_nonlinear_triple_plot(save_figure=True)
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
-    # single_ellipse_hull_nonlinear_triple_plot(save_figure=True)
-    # starshape_hull_linear_triple_plot(save_figure=False, n_resolution=9)
+    # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
+    starshape_hull_linear_triple_plot(save_figure=True, n_resolution=100)
 
     # starshape_linear_triple_plot(save_figure=False, n_resolution=100)
     # starshape_hull_linear_triple_plot(save_figure=False, n_resolution=100)
-    multiple_hull_linear(save_figure=True, n_resolution=4)
+    # multiple_hull_linear(save_figure=True, n_resolution=4)
+    # multiple_hull_empty(save_figure=True)
     # single_ellipse_hull(save_figure=True)

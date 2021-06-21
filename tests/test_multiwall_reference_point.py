@@ -81,7 +81,7 @@ class TestMultiBoundary(unittest.TestCase):
         self.assertTrue(True)
 
     @classmethod
-    def plottest_list_simple(cls):
+    def plottest_list_simple(cls, save_figure=False):
         """ Additional test for visualization. """
         
         import matplotlib.pyplot as plt
@@ -118,7 +118,8 @@ class TestMultiBoundary(unittest.TestCase):
         
         for ii in range(n_tests):
             ax = axs[ii]
-            plot_obstacles(ax=ax, obs=obs_list, x_range=[-6, 10], y_range=[-6, 6], showLabel=False)
+            plot_obstacles(ax=ax, obs=obs_list, x_range=[-6, 10], y_range=[-6, 6],
+                           showLabel=False, noTicks=True)
             position = position_list[ii]
             obs_list.update_relative_reference_point(position)
             
@@ -134,8 +135,13 @@ class TestMultiBoundary(unittest.TestCase):
                 ax.plot([abs_ref_point[0], ref_point[0]],
                          [abs_ref_point[1], ref_point[1]], 'k--')
 
+        if save_figure:
+            figure_name = "relative_reference_simple"
+            plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
+
     @classmethod
-    def plottest_list_advanced(cls):
+    def plottest_list_advanced(cls, save_figure=False):
         """ Additional test for visualization. """
         
         import matplotlib.pyplot as plt
@@ -170,7 +176,8 @@ class TestMultiBoundary(unittest.TestCase):
         
         for ii in range(n_tests):
             ax = axs[ii]
-            plot_obstacles(ax=ax, obs=obs_list, x_range=[-6, 10], y_range=[-6, 6], showLabel=False)
+            plot_obstacles(ax=ax, obs=obs_list, x_range=[-6, 10], y_range=[-6, 6],
+                           showLabel=False, noTicks=True)
             position = position_list[ii]
             obs_list.update_relative_reference_point(position)
             
@@ -186,9 +193,13 @@ class TestMultiBoundary(unittest.TestCase):
                 ax.plot([abs_ref_point[0], ref_point[0]],
                          [abs_ref_point[1], ref_point[1]], 'k--')
 
+        if save_figure:
+            figure_name = "relative_reference_advanced"
+            plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
 
     @classmethod
-    def plottest_list_intersect(cls):
+    def plottest_list_intersect(cls, save_figure=False):
         """ Additional test for visualization. """
         
         import matplotlib.pyplot as plt
@@ -230,7 +241,8 @@ class TestMultiBoundary(unittest.TestCase):
                 # If it's a single element; not a list.
                 ax = axs 
                 
-            plot_obstacles(ax=ax, obs=obs_list, x_range=[-7, 7], y_range=[-6, 6], showLabel=False)
+            plot_obstacles(ax=ax, obs=obs_list, x_range=[-7, 7], y_range=[-6, 6],
+                           showLabel=False, noTicks=True)
             position = position_list[ii]
             obs_list.update_relative_reference_point(position)
             
@@ -246,9 +258,13 @@ class TestMultiBoundary(unittest.TestCase):
                 ax.plot([abs_ref_point[0], ref_point[0]],
                          [abs_ref_point[1], ref_point[1]], 'k--')
 
-    @classmethod
-    def plottest_default_direction(cls):
+        if save_figure:
+            figure_name = "relative_reference_intersect"
+            plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
+
+    @classmethod 
+    def plottest_default_direction(cls, save_figure=False):
         import matplotlib.pyplot as plt
         from dynamic_obstacle_avoidance.visualization import plot_obstacles
         
@@ -321,6 +337,9 @@ class TestMultiBoundary(unittest.TestCase):
 
         plt.axis('equal')
 
+        if save_figure:
+            figure_name = "relative_reference_default_direction"
+            plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
     @classmethod
     def gamma_test_multi_hull(cls, n_resolution=100, save_figure=False):
@@ -387,8 +406,9 @@ if __name__ == '__main__':
     
     visualize = True
     if visualize:
-        # TestMultiBoundary.plottest_list_simple()
-        # TestMultiBoundary.plottest_list_advanced()
-        # TestMultiBoundary.plottest_list_intersect()
+        # TestMultiBoundary.plottest_list_simple(save_figure=False)
+        # TestMultiBoundary.plottest_list_advanced(save_figure=True)
+        # TestMultiBoundary.plottest_list_intersect(save_figure=True)
         # TestMultiBoundary.plottest_default_direction()
-        TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
+        # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
+        # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
