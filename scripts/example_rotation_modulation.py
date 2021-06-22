@@ -493,21 +493,21 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
-        noTicks=False, showLabel=False,
+        noTicks=True, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
         obs_avoidance_func=obs_avoidance,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, ax),
-        show_streamplot=False,
+        show_streamplot=True,
         # show_streamplot=True,
     )
     
     obstacle_list.plot_convergence_attractor(ax=ax, attractor_position=pos_attractor)
 
     if save_figure:
-        figure_name = "multiple_hull_linear"
+        figure_name = "multiple_hull_linear_streamplot"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
@@ -517,10 +517,12 @@ if (__name__)=="__main__":
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
-    starshape_hull_linear_triple_plot(save_figure=True, n_resolution=100)
+    # starshape_hull_linear_triple_plot(save_figure=True, n_resolution=100)
 
     # starshape_linear_triple_plot(save_figure=False, n_resolution=100)
     # starshape_hull_linear_triple_plot(save_figure=False, n_resolution=100)
-    # multiple_hull_linear(save_figure=True, n_resolution=4)
-    # multiple_hull_empty(save_figure=True)
+    
+    # multiple_hull_linear(save_figure=True, n_resolution=200)
+    
+    multiple_hull_empty(save_figure=True)
     # single_ellipse_hull(save_figure=True)

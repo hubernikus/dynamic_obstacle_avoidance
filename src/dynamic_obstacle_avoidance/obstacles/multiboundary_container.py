@@ -126,8 +126,7 @@ class MultiBoundaryContainer(BaseContainer):
         return collision_array
         
     def update_relative_reference_point(self, position, gamma_margin_close_wall=1e-6):
-        """ Get the local reference point as described in active-learning.
-        !!! Current assumption: all obstacles are wall. """
+        """ Get the local reference point as described in active-learning. """
         ind_boundary = self.get_boundary_ind()
         gamma_list = np.zeros(self.n_obstacles)
         for ii in range(self.n_obstacles):
@@ -170,9 +169,9 @@ class MultiBoundaryContainer(BaseContainer):
                                   max_power_weight)
 
                 # Power weights
-                f0 = dist_boundary_point/(dist_boundary_point-dist_point)
-                fG = dist_boundary_point/(dist_point)
-                ff = f0**(weight_2) * fG
+                f_gap = dist_boundary_point/(dist_boundary_point-dist_point)
+                f_gamma = dist_boundary_point/(dist_point)
+                ff = f_gap**(weight_2) * f_gamma
                 
                 x_hat_dist = (dist_boundary_point - dist_point*ff) / (1-ff)
                 weights[jj] = x_hat_dist/dist_point
