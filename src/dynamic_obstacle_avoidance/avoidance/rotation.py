@@ -94,7 +94,7 @@ def obstacle_avoidance_rotational(
             null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
         else:
             null_matrix = normal_orthogonal_matrix[:, :, it]
-        
+            
         if (hasattr(obstacle_list, 'get_convergence_direction')):
             convergence_velocity = obstacle_list.get_convergence_direction(position=position,
                                                                            it_obs=oo)

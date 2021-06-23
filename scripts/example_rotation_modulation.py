@@ -135,7 +135,7 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
     # axs = [None, None, ax]
 
     obstacle_list = single_ellipse()
-    obstacle_list.set_convergence_direction
+    obstacle_list.set_convergence_direction(attractor_position=pos_attractor)
 
     
     Simulation_vectorFields(

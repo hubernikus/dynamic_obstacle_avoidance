@@ -18,6 +18,8 @@ from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
+from dynamic_obstacle_avoidance.containers import BaseContainer
+
 class LearningContainer(BaseContainer):
     def __init__(self, obs_list=None):
         if sys.version_info>(3,0):

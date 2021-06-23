@@ -12,6 +12,7 @@ import warnings, sys
 import matplotlib.pyplot as plt
 
 from vartools.angle_math import *
+from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
 from dynamic_obstacle_avoidance.avoidance.utils  import *
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection_matrix
@@ -93,6 +94,32 @@ class BaseContainer(list):
     def has_environment(self):
         return bool(len(self))
 
-    def get_convergence_direction(self):
-        get_convergence_direction
+    def set_convergence_direction(self, dynamical_system=None, attractor_position=None):
+        """ Define a convergence direction / mode.
+        It is implemented as 'locally-linear' for a multi-boundary-environment.
+
+        Parameters
+        ----------
+        attractor_position: if non-none value: linear-system is chosen as desired function
+        dynamical_system: if non-none value: linear-system is chosen as desired function
+        """
+        if dynamical_system is not None:
+            self._convergence_ds = dynamical_system
+            
+        elif attractor_position is not None:
+            self._convergence_ds = lambda x: evaluate_linear_dynamical_system(
+                x, center_position=attractor_position)
+            
+        elif self._attractor_position is not None:
+            self._convergence_ds = lambda x: evaluate_linear_dynamical_system(
+                x, center_position=self._attractor_position)
+        else:
+            raise ValueError("Unown convergence direction.")
+        
+    def get_convergence_direction(self, position, it_obs=None):
+        """ Return 'convergence direction' at input 'position'."""
+        return self._convergence_ds(position)
+
+
+
 

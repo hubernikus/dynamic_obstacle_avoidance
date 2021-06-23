@@ -13,6 +13,8 @@ import numpy.linalg as LA
 import warnings
 import sys
 
+from vartools.directional_space import get_directional_weighted_sum
+
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.avoidance.utils import *
 

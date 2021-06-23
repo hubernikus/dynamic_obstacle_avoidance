@@ -378,16 +378,17 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             if not indOfNoCollision[ix, iy]:
                 continue
             pos = np.array([XX[ix, iy], YY[ix, iy]])
-            
             xd_init[:, ix, iy] = dynamical_system(pos) # initial DS
-
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:,ix,iy], obs,
-            # gamma_distance=gamma_distance # DEBUGGING: remove
             )
     t_end = time.time()
-    print("Average time per evaluation {} ms".format(
-        round((t_end - t_start)*1000/(N_x*N_y), 3)))
-
+    n_collfree = np.sum(indOfNoCollision)
+    if not n_collfree:  # zero points
+        warnings.warn("No ollision free points in space.")
+    else:
+        print("Average time per evaluation {} ms".format(
+            round((t_end - t_start)*1000/(n_collfree), 3)))
+        
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0,:,:]), np.squeeze(xd_mod[1,:,:])
 
     if sysDyn_init:

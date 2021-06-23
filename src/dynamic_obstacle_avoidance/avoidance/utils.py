@@ -1,10 +1,9 @@
 """
-Obstacle Avoidance Library with different options
-
-@author Lukas Huber
-@date 2018-02-15
-
+Varios tools and uitls for advanced obstacle-avoidance-library
 """
+# Author Lukas Huber
+# Date 2018-02-15
+
 import warnings
 
 import numpy as np
@@ -12,6 +11,8 @@ import numpy.linalg as LA
 from numpy import pi
 
 from vartools.angle_math import *
+from vartools.linalg import get_orthogonal_basis
+from vartools.directional_space import 
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
@@ -104,34 +105,23 @@ def get_relative_obstacle_velocity(
 
 def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
     """ Compute diagonal Matrix"""
-
-    # def calculate_eigenvalues(Gamma, rho=1, is_boundary=False): // Old function name
-    
     if Gamma <= 1 and treat_obstacle_special:
         # Point inside the obstacle
         delta_eigenvalue = 1 
     else:
         delta_eigenvalue = 1./abs(Gamma)**(1./rho)
-
     eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
-
-    # print('eigenvalue_reference', eigenvalue_reference)
-    # import pdb; pdb.set_trace()
-
+    
     if tangent_eigenvalue_isometric:
         eigenvalue_tangent = 1 + delta_eigenvalue
     else:
         # Decreasing velocity in order to reach zero on surface
         eigenvalue_tangent = 1 - 1./abs(Gamma)**tangent_power
-        # print('low gammas gamma={} /// e_tang={} / eigt_ref={}'.format(
-        #    round(Gamma, 2), round(eigenvalue_tangent, 2), round(eigenvalue_reference, 2)))
-        
     return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
 
 
 def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
     """ Compute decomposition matrix and orthogonal matrix to basis"""
-    
     normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
 
@@ -596,7 +586,6 @@ def get_inverse_proprtional_weight(distance, distance_min=0, distance_max=3, wei
     # Normalize
     weights = weights/np.sum(weights)
     return weights
-
     
 def cut_planeWithEllispoid(reference_position, axes, plane):
     # TODO
@@ -607,7 +596,6 @@ def cut_lineWithEllipse(line_points, axes):
     # TODO
     raise NotImplementedError()
 
-
 # from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacle import Ellipse
 def get_intersectionWithEllipse(*args, **kwargs):
     raise NotImplementedError("Use function integrated in Ellipse-Class.")
@@ -615,7 +603,3 @@ def get_intersectionWithEllipse(*args, **kwargs):
 
 def get_circle_and_ellipse():
     pass
-    
-
-
-    
