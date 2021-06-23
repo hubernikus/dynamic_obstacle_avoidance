@@ -25,8 +25,7 @@ def get_weight_from_gamma(gamma_array, power_value=1.0):
     return 1.0/np.abs(gamma_array)**power_value
 
 def obstacle_avoidance_rotational(
-    position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None,
-    get_convergence_direction=None):
+    position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None):
     """ Obstacle avoidance based on 'local' rotation and the directional weighted mean.
     
     Parameters
@@ -36,8 +35,6 @@ def obstacle_avoidance_rotational(
     initial_velocity : Initial velocity which is modulated 
     obstacle_list :
     gamma_distance : factor for the evaluation of the proportional gamma
-    get_convergence_direction : function with which the direction of the convergence can
-        be evaluated at position
     
     Return
     ------
@@ -101,8 +98,6 @@ def obstacle_avoidance_rotational(
         if (hasattr(obstacle_list, 'get_convergence_direction')):
             convergence_velocity = obstacle_list.get_convergence_direction(position=position,
                                                                            it_obs=oo)
-        elif get_convergence_direction is not None:
-            convergence_velocity = get_convergence_direction(position=position)
         else:
             raise ValueError("No initial-convergence direction is defined")
 

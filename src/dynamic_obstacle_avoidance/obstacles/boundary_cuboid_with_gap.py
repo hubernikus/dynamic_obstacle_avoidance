@@ -1,5 +1,9 @@
-#!/USSR/bin/python3
-''' Two dimensional boundary obstacles with gaps. Agent can exit and enter them.'''
+"""
+Two dimensional boundary obstacles with gaps. Agent can exit and enter them.
+"""
+__author__ = "LukasHuber"
+__date__ = "2021-05-12"
+__email__ = "lukas.huber@epfl.ch"
 
 import sys
 import os
@@ -15,18 +19,14 @@ from shapely.geometry import Point
 from shapely.geometry import LineString
 from shapely.geometry.polygon import LinearRing
 
+from vartools.angle_math import angle_is_in_between, angle_difference_directional
+
 from dynamic_obstacle_avoidance.obstacles import Cuboid
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import angle_is_in_between, angle_difference_directional
-
-
-__author__ = "LukasHuber"
-__date__ = "2021-05-12"
-__email__ = "lukas.huber@epfl.ch"
 
 
 class BoundaryCuboidWithGaps(Cuboid):
-    ''' 2D boundary obstacle which allows to include doors (e.g. rooms).
-    Currently only implemented for one door [can be extend in the future]. '''
+    """ 2D boundary obstacle which allows to include doors (e.g. rooms).
+    Currently only implemented for one door [can be extend in the future]. """
     def __init__(self, *args, gap_points_absolute=None, gap_points_relative=None, **kwargs):
         kwargs['is_boundary'] = True
         kwargs['tail_effect'] = False
@@ -49,7 +49,7 @@ class BoundaryCuboidWithGaps(Cuboid):
 
     @property
     def gap_center(self):
-        ''' Local gap center. '''
+        """ Local gap center. """
         return np.mean(self._gap_points, axis=1)
     
     @property
@@ -60,7 +60,7 @@ class BoundaryCuboidWithGaps(Cuboid):
     # @lru_cached_property
     @property
     def gap_angles(self):
-        ''' Gap angles from center to hole in 2D.'''
+        """ Gap angles from center to hole in 2D."""
         # TODO: DIY-cache lookup decorator
         # Check if cache already exists
         args_list = [self._gap_points]
@@ -131,7 +131,7 @@ class BoundaryCuboidWithGaps(Cuboid):
         return self.transform_relative2global(self.gap_center)
 
     def get_deformation_velocity(self, position, in_global_frame=False):
-        ''' Get deformatkion velocity. '''
+        """ Get deformatkion velocity. """
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -150,7 +150,7 @@ class BoundaryCuboidWithGaps(Cuboid):
         return deformation_velocity
         
     def update_step(self, delta_time):
-        ''' Update position & orientation.'''
+        """ Update position & orientation."""
         self.update_deforming_obstacle(delta_time)
         
         if self.linear_velocity is not None:
@@ -161,7 +161,7 @@ class BoundaryCuboidWithGaps(Cuboid):
             self.orientation = self.orientation + self.angular_velocity*delta_time
 
     def update_deforming_obstacle(self, delta_time):
-        ''' Update if obstacle is deforming.'''
+        """ Update if obstacle is deforming."""
 
         self._gap_points = self._gap_points*np.tile(self.get_relative_expansion(delta_time), (self._gap_points.shape[1], 1)).T
         # print('gap angles afer', self.gap_angles)
@@ -175,7 +175,7 @@ class BoundaryCuboidWithGaps(Cuboid):
             super(BoundaryCuboidWithGaps, self).update_deforming_obstacle(delta_time)
 
     def get_gamma(self, position, in_global_frame=False, gamma_distance=None):
-        ''' Caclulate Gamma for 2D-Wall Case with selected Reference-Point.'''
+        """ Caclulate Gamma for 2D-Wall Case with selected Reference-Point."""
         if in_global_frame:
             position = self.transform_global2relative(position)
             
@@ -210,7 +210,7 @@ class BoundaryCuboidWithGaps(Cuboid):
         return gamma
         
     def get_reference_direction(self, position, in_global_frame=False, normalize=True):
-        ''' Reference direction based on guiding reference point'''
+        """ Reference direction based on guiding reference point"""
         if in_global_frame:
             position = self.transform_global2relative(position)
             
@@ -276,7 +276,7 @@ class BoundaryCuboidWithGaps(Cuboid):
         return reference_point
 
     def get_gap_outside_point(self, dist_relative=3, in_global_frame=True):
-        ''' The point which is outside the wall (in front of the gap).'''
+        """ The point which is outside the wall (in front of the gap)."""
         outside_gap_point = (
             self.gap_center
             + self.get_local_gap_to_exit_dir() * dist_relative * self.wall_thickness)

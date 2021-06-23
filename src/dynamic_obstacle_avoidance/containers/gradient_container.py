@@ -10,12 +10,11 @@ import numpy as np
 import copy
 import time 
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacles import CircularObstacle
-from dynamic_obstacle_avoidance.obstacles import ObstacleContainer
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.avoidance.utils import get_reference_weight
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
 # BUGS / IMPROVEMENTS:
 #    - far-far away, the automatic-extension of the hull of the ellipse does not work

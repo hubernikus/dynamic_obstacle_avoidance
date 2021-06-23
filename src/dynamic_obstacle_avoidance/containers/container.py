@@ -1,9 +1,6 @@
-"""
-@date 2019-10-15
-@author Lukas Huber 
-@mail lukas.huber@epfl.ch
-"""
-
+# @date 2019-10-15
+# author Lukas Huber 
+# @mail lukas.huber@epfl.ch
 import time
 import numpy as np
 import copy
@@ -12,13 +9,12 @@ import warnings, sys
 
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.avoidance.utils  import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import Intersection_matrix
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection_matrix
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
 visualize_debug = False
 

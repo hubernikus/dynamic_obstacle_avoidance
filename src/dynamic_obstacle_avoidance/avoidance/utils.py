@@ -5,18 +5,16 @@ Obstacle Avoidance Library with different options
 @date 2018-02-15
 
 """
+import warnings
+
 import numpy as np
 import numpy.linalg as LA
 from numpy import pi
 
-# from math import cos, sin
-
-import warnings
+from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
-# import matplotlib.pyplot as plt
 
 def get_relative_obstacle_velocity(
     position, obstacle_list, E_orth, weights,

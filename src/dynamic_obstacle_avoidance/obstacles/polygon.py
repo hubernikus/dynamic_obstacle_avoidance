@@ -1,12 +1,10 @@
-#!/USSR/bin/python3
-
-'''
-Polygon Obstacle
-'''
-
-__author__ = "LukasHuber"
-__date__ =  "2020-02-28"
-__email__ =  "lukas.huber@epfl.ch"
+"""
+Polygon Obstacle for Avoidance Calculations
+"""
+# Author: Lukas Huber
+# Date: created: 2020-02-28
+# Email: lukas.huber@epfl.ch
+# License: BSD (c) 2021
 
 import time
 import warnings
@@ -15,25 +13,28 @@ import copy
 from math import pi
 import numpy as np
 
+from vartools.directional_space import get_angle_space
+from vartools.angle_math import angle_is_in_between, angle_difference_directional
+from vartools.angle_math import *
+
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import get_angle_space, angle_is_in_between, angle_difference_directional
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.avoidance.utils import get_tangents2ellipse
 
+
 def is_one_point(point1, point2, margin=1e-9):
-    ''' Check if it the two points coincide [1-norm] '''
+    """ Check if it the two points coincide [1-norm] """
     return np.allclose(point1, point2, rtol=1e-9)
     # return np.sum(np.abs(point1-point2)) < 1e-9
 
 class Polygon(Obstacle):
-    ''' Class to define Star Shaped Polygons
+    """ Class to define Star Shaped Polygons
 
     Many calculations focus on 2D-problem.
     Generalization and extension to higher dimensions is possible, but not complete (yet).
 
     This class defines obstacles to modulate the DS around it
     At current stage the function focuses on Ellipsoids, 
-    but can be extended to more general obstacles. '''
+    but can be extended to more general obstacles. """
     def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
                  # reference_point=None,
                  margin_absolut=0,
@@ -172,9 +173,9 @@ class Polygon(Obstacle):
 
     
     def calculate_normalVectorAndDistance(self, edge_points=None):
-        '''
+        """
         Calculate Normal Distance and Distance to Edge points
-        '''
+        """
         
         #TODO: is distance to surface still needed
         if isinstance(edge_points, type(None)):
@@ -303,13 +304,13 @@ class Polygon(Obstacle):
         # self.x_obs = self._boundary_points.T # Surface points
         # self.x_obs_sf = x_obs_sf.T # Margin points
     def get_reference_length(self):
-        ''' Get a length which corresponds to the largest distance from the center of the obstacle. '''
+        """ Get a length which corresponds to the largest distance from the center of the obstacle. """
         return np.min(np.linalg.norm(self.edge_points, axis=0)) + self.margin_absolut
 
     def get_distances_and_normal_to_surfacePannels(self, position, edge_points=None, in_global_frame=False):
-        '''
+        """
         Get the distance to all surfaces panels
-        '''
+        """
         
         if self.dim > 2:
             raise NotImplementedError("Higher dimensions lack functionality.")
@@ -338,7 +339,7 @@ class Polygon(Obstacle):
         return distances, normal_vectors
 
     def get_local_radius_point(self, direction, in_global_frame=False):
-        ''' Get local radius points from relative direction. '''
+        """ Get local radius points from relative direction. """
         if in_global_frame:
             # position = direction + self.center_position
             position = self.transform_global2relative_dir(direction)
@@ -482,10 +483,10 @@ class Polygon(Obstacle):
     
 
     def adapt_normal_to_arc_extension(self, position, normal_vector, in_global_frame=False):
-        '''
+        """
         Smooth extensions are created to account for the unidirectional margin around obstacles. 
         This is considered here.
-        '''
+        """
         if self.dim > 2:
             raise NotImplementedError("Higher dimensions lack functionality.")
         
@@ -537,12 +538,12 @@ class Polygon(Obstacle):
 
 
     def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional", gamma_distance=None):
-        ''' 
+        """ 
         Get distance-measure from surface of the obstacle.
         INPUT: position: list or array of position
         OUTPUT
         RAISE ERROR:Function is partially defined for only the 2D case 
-        '''
+        """
         if isinstance(position, list):
             position = np.array(position)
 
@@ -736,10 +737,10 @@ class Polygon(Obstacle):
         return normal_vector
 
     def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):
-        '''
+        """
         Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
-        '''
+        """
 
         dist_max = self.get_maximal_distance()*relative_hull_margin
         mag_ref_point = np.linalg.norm(self.reference_point)
@@ -908,11 +909,11 @@ class Polygon(Obstacle):
 
 class Cuboid(Polygon):
     def __init__(self, axes_length=[1, 1], margin_absolut=0, expansion_speed_axes=None, wall_thickness=None, relative_expansion_speed=None, *args, **kwargs):
-        '''
+        """
         This class defines obstacles to modulate the DS around it
         At current stage the function focuses on Ellipsoids, 
         but can be extended to more general obstacles
-        '''
+        """
         self.axes_length = np.array(axes_length)
 
         # Different expansion models [relative vs. absolute]

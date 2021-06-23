@@ -11,10 +11,11 @@ from math import sin, cos, pi, ceil
 from abc import ABC, abstractmethod
 
 from functools import lru_cache
+
+from vartools.angle_math import *
 # from functools import cache     # Store all values(?)
 # from functools import cached_property    # Store property [pyhton 3 only]
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 from dynamic_obstacle_avoidance.state import State
 
 import matplotlib.pyplot as plt     # TODO: remove after debugging!
@@ -188,7 +189,7 @@ class Obstacle(ABC):
         self.gamma_distance = gamma_distance
 
         # Convergence direction defined at a reference point of the obstacle
-        self._convergence_direction = None
+        # self._convergence_direction = None
 
         # self.properties = {} # TODO (maybe): use kwargs for properties..
 
@@ -672,19 +673,22 @@ class Obstacle(ABC):
         boundary = self.boundary_points_margin_global
         return np.hstack((boundary, boundary[:, 0:1]))
 
-    def get_convergence_direction(self, dynamical_system=None):
-        """ Evaluates the convergence direction at the reference point based on a
-        dynamical system or from memory."""
-        if dynamical_system is not None:
-            self._convergence_direction = dynamical_system(self.center_position)
-            
-        elif self._convergence_direction is None:
-            raise ValueError("No value assigned for self._convergence_direction.")
-        
-        return self._convergence_direction
+    # def set_convergence_direction(self, dynamical_system=None):
+        # """ Set the convergence direction at the reference point based on DS.
+        # The convergence velocity should not be set for dynamic-obstacles or
+        # environments with time-variant ds. """
+        # self._convergence_direction = dynamical_system(self.center_position)
+    
+    # def get_convergence_direction(self, dynamical_system=None):
+    #     """ Evaluates the convergence direction at the reference point based on a
+    #     dynamical system or from memory."""
+    #     if self._convergence_direction is not None:
+    #         return self._convergence_direction
+    #     else:
+    #         return dynamical_system(self.center_position)
     
     def compute_R(self):
-        #TODO: remove - depreciated
+        # TODO: remove - depreciated
         warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
         self.compute_rotation_matrix()
         

@@ -1,26 +1,24 @@
-#!/USSR/bin/python3
-'''
+"""
 Script to create human specific pedestrian obstacle descriptions.
-'''
-
+"""
 __date__ = "2019-10-15"
 __author__ =  "Lukas Huber"
 __mail__ =  "lukas.huber@epfl.ch"
 
 import time
-import numpy as np
 from math import sin, cos, pi, ceil
-import warnings, sys
+import warnings
+import sys
 
+import numpy as np
 import numpy.linalg as LA
-# import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
+from vartools.angle_math import *
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 
 class TrackedPedestrian(Ellipse):
-    ''' Recognized the pedestrian using a tracker. 
-    It remembers the original position to later 'interpolate' the actual one. '''
+    """ Recognized the pedestrian using a tracker. 
+    It remembers the original position to later 'interpolate' the actual one. """
     def __init__(self,
                  axes_length=[0.3, 0.3],
                  *args, **kwargs):

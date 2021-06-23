@@ -21,10 +21,12 @@ import matplotlib.image as mpimg
 from scipy import ndimage
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
+
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
 
 # Show plot in a reactive manner
 plt.ion()

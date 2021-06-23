@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
-from dynamic_obstacle_avoidance.obstacles import BaseContainer, MultiBoundaryContainer
+from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
@@ -489,7 +489,8 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
     obstacle_list = multiple_ellipse_hulls()
     obstacle_list.update_intersection_graph(attractor_position=pos_attractor)
-
+    # obstacle_list.update_convergence_direction()
+    
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
