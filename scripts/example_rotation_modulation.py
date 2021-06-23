@@ -124,24 +124,27 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
     def initial_ds(position):
         return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
     
-    def obs_avoidance(*args, **kwargs):
-        def get_convergence_direction(position):
-            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(
-            *args, **kwargs, get_convergence_direction=get_convergence_direction)
+    # def obs_avoidance(*args, **kwargs):
+        # def get_convergence_direction(position):
+            # return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
+        # return obstacle_avoidance_rotational(
+            # *args, **kwargs, get_convergence_direction=get_convergence_direction)
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 6))
     # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     # axs = [None, None, ax]
 
     obstacle_list = single_ellipse()
+    obstacle_list.set_convergence_direction
+
+    
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
         dynamical_system=initial_ds,
-        obs_avoidance_func=obs_avoidance,
+        obs_avoidance_func=obstacle_avoidance_rotational,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[2]),

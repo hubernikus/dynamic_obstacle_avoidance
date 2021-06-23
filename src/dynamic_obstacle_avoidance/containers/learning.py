@@ -1,34 +1,36 @@
-"""
-Container encapsulates all obstacles.
-Gradient container finds the dynamic reference point through gradient descent.
-"""
 # Author Lukas Huber 
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
 # License: BSD (c) 2021
 
-import warnings, sys
+import time
 import numpy as np
 import copy
+from math import pi
+import warnings, sys
 
-from dynamic_obstacle_avoidance.containers import BaseContainer, ObstacleContainer
+import matplotlib.pyplot as plt
+
+from vartools.angle_math import *
+
+from dynamic_obstacle_avoidance.avoidance.utils  import *
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection_matrix
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
+from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
 class LearningContainer(BaseContainer):
     def __init__(self, obs_list=None):
-        # self.a = 0
         if sys.version_info>(3,0):
             super().__init__(obs_list)
-        else:
+        else: # Python 2
             super(BaseContainer, self).__init__(obs_list) # works for python < 3.0?!
-
-        # self.temp = 0
+        
             
     def create_obstacles_from_data(self, data, label, cluster_eps=0.1, cluster_min_samles=10, label_free=0, label_obstacle=1, plot_raw_data=False):
         # TODO: numpy import instead?
         
         data_obs = data[:, label==label_obstacle]
         data_free = data[:, label==label_free]
-        
         
         if plot_raw_data:
             # 2D

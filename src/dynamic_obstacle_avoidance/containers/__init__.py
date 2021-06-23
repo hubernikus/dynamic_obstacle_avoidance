@@ -2,7 +2,10 @@
 The :mod:`containers` module implements various type os containers for mudulations
 """
 # Various Continers
-from .container import BaseContainer, SingleWallContainer, LearningContainer, ObstacleContainer
+from .container import BaseContainer
+from .single_wall import SingleWallContainer
+from .learning import LearningContainer
+from .obstacle_container import ObstacleContainer
 from .gradient_container import GradientContainer
 from .multiboundary_container import MultiBoundaryContainer
 
