@@ -12,10 +12,8 @@ from numpy import pi
 
 from vartools.angle_math import *
 from vartools.linalg import get_orthogonal_basis
-from vartools.directional_space import 
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-
 
 def get_relative_obstacle_velocity(
     position, obstacle_list, E_orth, weights,

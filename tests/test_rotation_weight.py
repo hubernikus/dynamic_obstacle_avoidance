@@ -1,17 +1,13 @@
 #!/USSR/bin/python3.9
-""" Test the directional space. """
-
-__author__ = "LukasHuber"
-__date__ = "2021-05-18"
-__email__ = "lukas.huber@epfl.ch"
+""" Test the directional space.
+Creates graph of the rotational/directional weight."""
+# Author: Lukas Huber
+# Email: lukas.huber@epfl.ch
+# Created: 2021-05-18
+# License: BSD (c) 2021
 
 import unittest
-# from math import pi
-
 import numpy as np
-
-# from dynamic_obstacle_avoidance.obstacles import Ellipse
-# from dynamic_obstacle_avoidance.obstacles import MultiBoundaryContainer
 
 def weight_invgamma(inv_gamma, pow_fac):
     return weight ** pow_fac
@@ -64,7 +60,6 @@ class TestRotational(unittest.TestCase):
         # plt.close('all')
         
 if __name__ == '__main__':
-    
     visualize = True
     if visualize:
         TestRotational.rotation_weight(save_figure=True)

@@ -1,4 +1,4 @@
-# Ignore everything in this directory
+# Ignore everything in this directory (store figures locally only)
 *
 # Except this file
 !.gitignore

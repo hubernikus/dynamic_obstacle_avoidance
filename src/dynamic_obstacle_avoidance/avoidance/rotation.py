@@ -121,7 +121,8 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if False: # TODO: remove after DEBUGGING 
+    if True: # TODO: remove after DEBUGGING
+        breakpoint()
         import matplotlib.pyplot as plt
         temp_init = initial_velocity / np.linalg.norm(initial_velocity)
         

@@ -1,4 +1,6 @@
-""" Container for Obstacle to treat the intersction (and exiting) between different walls. """
+"""
+Container for Obstacle to treat the intersction (and exiting) between different walls.
+"""
 # Author: Lukas Huber 
 # Mail hubernikus@gmail.com
 # License: BSD (c) 2021
@@ -137,7 +139,7 @@ class MultiBoundaryContainer(BaseContainer):
         one boundary.
         """
         gamma_list_boundary = []
-        
+            
         for oo in range(self.n_obstacles):
             gamma = self[oo].get_gamma(position, in_global_frame=True)
 
@@ -271,14 +273,13 @@ class MultiBoundaryContainer(BaseContainer):
                 ax.plot(attractor_position[0], attractor_position[1], 'k*')
             else:
                 local_attractor = self._parent_intersection_point[ii]
-                
                 ax.plot([local_attractor[0], self[ii].position[0]],
                          [local_attractor[1], self[ii].position[1]],
                          '-', color='#808080')
+                
                 ax.plot(local_attractor[0], local_attractor[1], 'k*')
 
                 ii_parent = self.get_parent(ii)
-
                 ax.plot([local_attractor[0], self[ii_parent].position[0]],
                          [local_attractor[1], self[ii_parent].position[1]],
                          '-', color='#808080')

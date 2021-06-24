@@ -1,6 +1,5 @@
 #!/USSR/bin/python3.9
 """ Test the directional space. """
-
 # Author: Lukas Huber
 # Date: 2021-05-18
 # Email: lukas.huber@epfl.ch
@@ -12,7 +11,7 @@ from math import pi
 import numpy as np
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacles import MultiBoundaryContainer
+from dynamic_obstacle_avoidance.containers import MultiBoundaryContainer
 from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import gamma_field_visualization
 
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
@@ -410,5 +409,5 @@ if __name__ == '__main__':
         # TestMultiBoundary.plottest_list_advanced(save_figure=True)
         # TestMultiBoundary.plottest_list_intersect(save_figure=True)
         # TestMultiBoundary.plottest_default_direction()
-        # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
+        TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=False)
         # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
