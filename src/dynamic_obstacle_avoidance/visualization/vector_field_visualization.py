@@ -321,12 +321,12 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    n_samples = 10
+    n_samples = 0
     if n_samples:  # nonzero
         it_start = 0
         
-        pos1 = [-0.832, 0.138]
-        pos2 = [-0.516, -0.164]
+        pos1 = [-2.807, 0.480]
+        pos2 = [-3.017, 0.337]
 
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]
@@ -401,7 +401,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
         plt.xlim(x_range)
         plt.ylim(y_range)
-
 
     end_time = time.time()
 

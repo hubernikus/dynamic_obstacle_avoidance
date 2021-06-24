@@ -283,7 +283,7 @@ class Ellipse(Obstacle):
             Gamma = self.get_relative_gamma_at_position(position, in_global_frame=in_global_frame)
             if Gamma is None:
                 raise NotImplementedError("Relative Gamma evalaution not implemented "
-                                      "outside of evalaution point.")
+                                          "outside of evalaution point.")
             
             return Gamma
             
@@ -299,7 +299,6 @@ class Ellipse(Obstacle):
 
         if self.is_boundary:
             Gamma = 1./Gamma
-            
         return Gamma
     
     def get_normal_ellipse(self, position):
@@ -496,7 +495,8 @@ class Ellipse(Obstacle):
             norm = self.transform_relative2global(norm)
         return norm
 
-    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=True, in_global_frame=False):
+    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None,
+                                      center_ellipse=None, only_positive_direction=True, in_global_frame=False):
         """Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line
@@ -571,7 +571,7 @@ class Ellipse(Obstacle):
                 intersections = np.zeros(self.dim)
                 intersections[0] = (-B+sqrtD)/(2*A)
 
-                if (intersections[0] - edge_point[0])/direction[0]>0:
+                if (intersections[0] - edge_point[0])/direction[0]<0:
                     intersections[0] = (-B-sqrtD)/(2*A)
                 intersections[1] = intersections[0]*m + c
 

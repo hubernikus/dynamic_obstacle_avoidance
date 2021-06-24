@@ -240,6 +240,11 @@ class MultiBoundaryContainer(BaseContainer):
             
         for ii_self in np.arange(self.n_obstacles)[~ind_inside]:
             self[ii_self].reset_relative_reference()
+
+    def reset_relative_references(self):
+        """ Reset all relative references."""
+        for ii_self in range(self.n_obstacles):
+            self[ii_self].reset_relative_reference()
     
     def get_convergence_direction(self, position, it_obs, attractor_position=None):
         """ Get the (null) direction for a specific obstacle in the multi-body-boundary

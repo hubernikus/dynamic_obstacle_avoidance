@@ -45,6 +45,7 @@ def obstacle_avoidance_rotational(
         return initial_velocity
 
     if hasattr(obstacle_list, 'update_relative_reference_point'):
+        # TODO: directly return gamma_array
         obstacle_list.update_relative_reference_point(position=position)
 
     dimension = position.shape[0]
@@ -121,7 +122,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if True: # TODO: remove after DEBUGGING
+    if False: # TODO: remove after DEBUGGING
         breakpoint()
         import matplotlib.pyplot as plt
         temp_init = initial_velocity / np.linalg.norm(initial_velocity)
