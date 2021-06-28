@@ -749,7 +749,8 @@ class Ellipse(Obstacle):
         ellr = affinity.rotate(ell,  self.orientation*180.0/pi)
         self.shape = ellr
         
-    def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
+    def draw_obstacle(self, numPoints=20, update_core_boundary_points=True,
+                      point_density=2*pi/50):
         """ Creates points for obstacle and obstacle margin. """
         p = self.curvature
         a = self.axes_length
@@ -820,16 +821,6 @@ class Ellipse(Obstacle):
             self.boundary_points_margin_local = boundary_points_margin
 
         if self.dim==3:
-            # a = a+self.margin_absolut
-            # boundary_points_margin = []
-            # boundary_points_margin = np.hstack((
-            #     boundary_points_margin,
-            #     np.vstack((a[0]*np.cos(phi)*np.cos(theta),
-            #                a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1])),
-            #                a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) )) ))
-                
-            # self.boundary_points_margin_local = boundary_points_margin
-            # self.boundary_points_margin_local = boundary_points_margin
             axes_length = self.axes_length
 
             # Set of all spherical angles:
@@ -857,7 +848,6 @@ class Ellipse(Obstacle):
         """ Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
         """
-        
         if in_global_frame:
             position =  transform_polar2cartesian(magnitude=10, angle=angle-self.orientation)
         else:

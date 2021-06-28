@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
-from vartools.directional_space import directional_convergence_summing
+from vartools.directional_space import get_angle_space, get_angle_space_inverse
+
+# from vartools.directional_space import directional_convergence_summing
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
 
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
@@ -20,9 +22,141 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_vel
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
 
+# TODO: speed up learning through cpp / c / cython(!?)
+def get_intersection_with_circle(start_position, direction, radius):
+    """Returns intersection with circle of of radius 'radius' and the line defined as
+    'start_position + x * direction'
+    (!) Only intersection at furthest distance to start_point is returned. """
+    # Binomial Formula to solve for x in:
+    # || dir_reference + x * (delta_dir_conv) || = pi/2
+    AA = np.sum(direction**2) 
+    BB = 2 * np.dot(direction, start_position)
+    CC = np.sum(start_position**2) - radius**2
+    DD = BB**2 - 4*AA*CC
+
+    if DD < 0:
+        # raise ValueError("Negative Determinant. No intersection.")
+        # No intersection with circle
+        return None
+
+    # Only negative direction due to expected negative A (?!) [returns max-direciton]..
+    fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
+    return fac_direction
+    
+    
+def directional_convergence_summing(
+    convergence_vector, reference_vector, weight, nonlinear_velocity=None,
+    null_direction=None, null_matrix=None):
+    """ Rotatiting / modulating a vector by using directional space.
+
+    Paramters
+    ---------
+    convergence_vector: a array of floats of size (dimension,)
+    reference_vector: a array of floats of size (dimension,)
+    weight: float in the range [0, 1] which gives influence on how important vector 2 is.
+    nonlinear_velocity: (optional) the vector-field which converges 
+
+    Return
+    ------
+    converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
+    """
+    if null_matrix is None:
+        null_matrix = get_orthogonal_basis(null_direction)
+    
+    dir_reference = get_angle_space(reference_vector, null_matrix=null_matrix)
+    dir_convergence = get_angle_space(convergence_vector, null_matrix=null_matrix)
+
+    # Find intersection a with radius of pi/2
+    tangent_radius = np.pi/2.0
+
+    if np.linalg.norm(dir_convergence) < tangent_radius:
+        # Inside the tangent radius, i.e. vectorfield towards obstacle [no-tail-effect]
+
+        # Do the math in the angle space
+        delta_dir_conv = dir_convergence - dir_reference
+        norm_dir_conv = np.linalg.norm(delta_dir_conv)
+        if not norm_dir_conv: # Zero value
+            if nonlinear_velocity is None:
+                return convergence_vector
+            else:
+                return nonlinear_velocity
+
+        fac_tang_conv = get_intersection_with_circle(
+            start_position=dir_reference, direction=delta_dir_conv, radius=tangent_radius)
+
+        dir_tangent = dir_reference + fac_tang_conv*delta_dir_conv
+        norm_tangent_dist = np.linalg.norm(dir_tangent - dir_reference)
+
+        # Weight to ensure that:
+        # weight=1 => w_conv=1  AND norm_dir_conv=0 => w_conv=0
+        weight_deviation = norm_dir_conv / norm_tangent_dist
+
+        # TODO: allow 'tail-effect' after obstacle (is it useful?)
+        # Allow finding of 'closest' 
+        if weight_deviation <= 0:
+            warnings.warn("Weight negative. This should be cautght by the (+square problem.")
+            # print("Weight deviation", weight_deviation)
+            dir_conv_rotated = dir_convergence
+
+        elif weight_deviation > 1:
+            warnings.warn("Weight negative. This should be excluded radius test.")
+            # print("Weight deviation", weight_deviation)
+            dir_conv_rotated = dir_convergence
+
+        else:
+            # If both negative, no change needed
+            power_factor = 5.0
+            w_conv = weight**(1./(weight_deviation*power_factor))
+
+            dir_conv_rotated = w_conv*dir_tangent + (1-w_conv)*dir_convergence
+    else:
+        # Initial velocity 'dir_convergecne' already pointing away from obstacle
+        dir_conv_rotated = dir_convergence
+        
+
+    if False:
+    # if True:
+        # TODO: Remove after DEBUG
+        import matplotlib.pyplot as plt
+        # plt.close('all')
+        plt.figure()
+        plt.plot([-pi, pi], [0, 0], '--', color='k')
+        plt.plot(0, 0, 'k.', label='normal / tangent')
+        plt.plot(-pi/2.0, 0, 'k.')
+        plt.plot(+pi/2.0, 0, 'k.')
+        
+        plt.plot(dir_reference[0], 0, 'ro', label="ref")
+        plt.plot(dir_convergence[0], 0, 'bo', label="converg")
+        plt.plot(dir_conv_rotated[0], 0, 'go', label="rotated")
+        plt.plot(dir_tangent[0], 0, 'o', color='magenta', label="tangent")
+        plt.legend()
+        plt.show()
+        breakpoint()
+        
+    if nonlinear_velocity is None:
+        return get_angle_space_inverse(dir_conv_rotated, null_matrix=null_matrix)
+    
+    else:
+        # TODO: only do until pi/2, not full circle [i.e. circle cutting]
+        # TODO: expand for more general nonlinear velocities
+        dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
+
+        if np.linalg.norm(dir_nonlinearvelocity - dir_convergence) > np.pi:
+            # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
+            # i.e. find the same one, which is 2*pi in the other direction.
+            norm_nonlinear = np.linalg.norm(dir_nonlinearvelocity)
+            dirdir_nonlinear = dir_nonlinearvelocity / norm_nonlinear
+            
+            dir_nonlinearvelocity = (norm_nonlinear-2*pi) * dirdir_nonlinear
+
+        dir_nonlinear_rotated = weight*dir_conv_rotated + (1-weight)*dir_nonlinearvelocity
+        return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
+    
+
 def get_weight_from_gamma(gamma_array, power_value=1.0):
     """ Returns weight-array based on input of gamma_array """
     return 1.0/np.abs(gamma_array)**power_value
+
 
 def obstacle_avoidance_rotational(
     position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None):
@@ -121,7 +255,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if True: # TODO: remove after DEBUGGING
+    if False: # TODO: remove after DEBUGGING
         breakpoint()
         import matplotlib.pyplot as plt
         temp_init = initial_velocity / np.linalg.norm(initial_velocity)
