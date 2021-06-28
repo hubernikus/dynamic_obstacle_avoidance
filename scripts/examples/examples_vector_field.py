@@ -2,25 +2,20 @@
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
 '''
+# Author: Lukas Huber
+# Created: 2018-02-15
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 import matplotlib.pyplot as plt
 
-__author__ = "LukasHuber"
-__date__ = "2018-02-15"
-
- 
-# Custom libraries
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
+from dynamic_obstacle_avoidance.containers import GradientContainer
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
 ########################################################################
 
-# Chose the option you want to run as a number in the option list (integer from -2 to 10)
+# Chose the option you want to run as a number in the option list (integer from -6 to 10)
 options = [0]
 N_resol = 80
 saveFigures=False
@@ -516,7 +511,6 @@ def main(options=[0], N_resol=100, saveFigures=False):
             if saveFigures:
                 plt.savefig('fig/' + 'ellipseCenterNotMiddle_centerLine_pres_colMap' + '.eps', bbox_inches='tight')
 
-# print('name', __name__)    
 if (__name__)=="__main__":
     if False:
         if len(sys.argv) > 1:
@@ -529,8 +523,6 @@ if (__name__)=="__main__":
                     saveFigures = sys.argv[3]
 
     main(options=options, N_resol=N_resol, saveFigures=saveFigures)
-
-    # input("\nPress enter to continue...")
 
 # Run function
 

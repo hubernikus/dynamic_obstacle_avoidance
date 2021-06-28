@@ -1,0 +1,3 @@
+[submodule "src/various_tools"]
+	path = lib/various_tools
+	url = https://github.com/hubernikus/various_tools.git

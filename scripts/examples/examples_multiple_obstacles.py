@@ -1,15 +1,16 @@
 #!/USSR/bin/python3
-''' Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. '''
+'''
+Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance.
+'''
+# Author: Lukas Huber
+# Created: 2018-02-15
+# Email: lukas.huber@epfl.ch
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from math import pi
-
-__author__ = "LukasHuber"
-__date__ = "2018-02-15"
-__email__ = "lukas.huber@epfl.ch"
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *

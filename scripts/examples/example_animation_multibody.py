@@ -1,26 +1,20 @@
 #!/usr/bin/python3
-
 '''
 Dynamic Simulation - Obstacle Avoidance Algorithm
-
-@author LukasHuber
-@date 2018-05-24
-
 '''
 
 import sys
+import datetime
 
 import numpy as np
 from numpy import pi
 
-import datetime
-
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import ObstacleContainer
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 # from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon
+from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import 
+from dynamic_obstacle_avoidance.avoidance import *
 from dynamic_obstacle_avoidance.visualization.animated_multibody import run_animation_multibody
 
 print(' ----- Script <<dynamic simulation>> started. ----- ')
