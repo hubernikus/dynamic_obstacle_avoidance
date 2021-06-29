@@ -13,7 +13,8 @@ import copy
 from math import pi
 import numpy as np
 
-from vartools.directional_space import get_angle_space
+from vartools.directional_space import get_angle_space, get_angle_space_of_array
+from vartools.directional_space import get_directional_weighted_sum
 from vartools.angle_math import angle_is_in_between, angle_difference_directional
 from vartools.angle_math import *
 
@@ -390,7 +391,10 @@ class Polygon(Obstacle):
             if not self.margin_absolut:
                 for jj in np.arange(n_points)[~zero_mag]:
                     # import pdb; pdb.set_trace()
-                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_points)
+                    # angle_to_reference = get_angle_space(
+                        # null_direction=position_dir[:, jj], directions=self.edge_points)                    
+                    angle_to_reference = get_angle_space_of_array(
+                        null_direction_abs=position_dir[:, jj], directions=self.edge_points)
                     
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 

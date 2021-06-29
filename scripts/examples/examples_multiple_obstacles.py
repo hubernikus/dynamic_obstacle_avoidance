@@ -1,90 +1,137 @@
 #!/USSR/bin/python3
 '''
-Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance.
+Demonstration script on how to use multiple obstacles
 '''
 # Author: Lukas Huber
-# Created: 2018-02-15
+# Created: 2021-06-29
 # Email: lukas.huber@epfl.ch
 
-# Command to automatically reload libraries -- in ipython before exectureion
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
 from math import pi
+import numpy as np
+# import matplotlib.pyplot as plt
+
+# Import dynamical systems
+from vartools.dynamicalsys import LinearSystem
 
 # Custom libraries
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon, Cuboid
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon, Cuboid
+from dynamic_obstacle_avoidance.containers import GradientContainer
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
-########################################################################
-# Chose the option you want to run as a number in the option list (integer from -2 to 10)
 
-options = [0]
+def single_obstacle_environment(n_resolution=100, save_figure=False):
+    Environment = GradientContainer() # create empty obstacle list
+    Environment.append(
+        Ellipse(
+        center_position=[3.5, 0.4],
+        orientation=30./180.*pi,
+        axes_length=[2.0, 1.5]
+        ))
 
-N_resol = 60
+    InitialSytem = LinearSystem(attractor_position=np.array([0, 0 ]))
 
-saveFigures=False
-########################################################################
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
 
-def main(options=[0], N_resol=100, saveFigures=False):
-    for option in options:
-        obs = GradientContainer() # create empty obstacle list
-        if option==0:
-            xAttractor = [8., -1]
-            
-            x_lim, y_lim = [2, 8], [-2.1, 2.5]
-            # x_lim, y_lim = [-0, 7.1], [-0.1, 7.1]
-            
-            obs.append(Ellipse(center_position=[3.5, 0.4],
-                               # orientation=0/180.*pi,
-                               axes_length=[0.3, 0.2]))
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, Environment,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSytem.evaluate,
+        obs_avoidance_func=obs_avoidance_interpolation_moving,
+        automatic_reference_point=False,
+        pos_attractor=InitialSytem.attractor_position,
+        show_streamplot=True,
+        )
 
-            obs.append(Ellipse(center_position=[7, -1],
-                               # orientation=0/180.*pi,
-                               axes_length=[0.3, 0.2]))
 
-            
-            obs.append(Ellipse(center_position=[6, -0.4],
-                               # orientation=0/180.*pi,
-                               axes_length=[0.2, 0.3]))
+def multiple_obstacles(n_resolution=100, save_figure=False):
+    Environment = GradientContainer() # create empty obstacle list
+    Environment.append(
+        Ellipse(
+        center_position=[3.5, -4.4],
+        orientation=40./180.*pi,
+        axes_length=[2.0, 3.0]
+        ))
 
-            import pdb; pdb.set_trace()
-            
-            
-            Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
-                                    saveFigure=saveFigures, figName='twoEllispoidsIntersecting',
-                                    noTicks=False, draw_vectorField=True,
-                                    automatic_reference_point=True, point_grid=N_resol)
+    Environment.append(
+        Cuboid(
+        center_position=[-4.0, -1.4],
+        orientation=40./180.*pi,
+        axes_length=[3.0, 4.0]
+        ))
 
-        if option==1:
-            xAttractor = [1., 0]
-            
-            x_lim, y_lim = [-1.1, 1.1], [-1.1, 1.1]
+    Environment.append(
+        Ellipse(
+        center_position=[4.0, 4.4],
+        orientation=40./180.*pi,
+        axes_length=[3.0, 1.0]
+        ))
 
-            edge_points = np.array([[1, 0.5],
-                                    [1, 1],
-                                    [-1, 1],
-                                    [-1, -1],
-                                    [1, -1],
-                                    [1, -0.5]]).T
+    Environment.append(
+        Polygon(
+        center_position=[0, 0],
+        orientation=40./180.*pi,
+        edge_points = np.array([[-2, 2, 0],
+                                [-1,-1, 2]]),
+        ))
 
-            ind_open=5
-            obs.append(Polygon(edge_points, is_boundary=True, ind_open=5, center_position=[0, 0]))
-            
-            Simulation_vectorFields(x_lim, y_lim,  obs=obs, xAttractor=xAttractor, saveFigure=saveFigures, figName='twoEllispoidsIntersecting', noTicks=False, draw_vectorField=True,  automatic_reference_point=True, point_grid=N_resol)
-            
+    InitialSytem = LinearSystem(attractor_position=np.array([8, 0 ]))
 
-if (("__main__")==str(__name__)):
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, Environment,
+        saveFigure=False, 
+        noTicks=False, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSytem.evaluate,
+        obs_avoidance_func=obs_avoidance_interpolation_moving,
+        automatic_reference_point=False,
+        pos_attractor=InitialSytem.attractor_position,
+        show_streamplot=True,
+        )
+
+
+def obstacle_and_hull_environment(n_resolution=100, save_figure=False):
+    Environment = GradientContainer() # create empty obstacle list
+    Environment.append(
+        Ellipse(
+        center_position=[3.5, 0.4],
+        orientation=30./180.*pi,
+        axes_length=[2.0, 1.5],
+        ))
+
+    Environment.append(
+        Cuboid(
+        center_position=[0, 0.0],
+        orientation=0./180.*pi,
+        axes_length=[19.0, 19.0],
+        is_boundary=True,
+        ))
+
+    InitialSytem = LinearSystem(attractor_position=np.array([-8, -4.0 ]))
+
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, Environment,
+        saveFigure=False, 
+        noTicks=False, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSytem.evaluate,
+        obs_avoidance_func=obs_avoidance_interpolation_moving,
+        automatic_reference_point=False,
+        pos_attractor=InitialSytem.attractor_position,
+        show_streamplot=True,
+        )
+
     
-    # if len(sys.argv) > 1 and not sys.argv[1]=='-i':
-        # options = [int(sys.argv[1])]
-        # if len(sys.argv) > 2:
-            # N_resol = int(sys.argv[2])
-            # if len(sys.argv) > 3:
-                # saveFigures = bool(sys.argv[3])
-
-    main(options=options, N_resol=N_resol, saveFigures=saveFigures)
-
+if "__main__"==__name__:
+    # single_obstacle_environment(n_resolution=100)
+    # multiple_obstacles(n_resolution=100)
+    obstacle_and_hull_environment(n_resolution=100)

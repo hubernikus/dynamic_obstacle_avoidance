@@ -7,10 +7,7 @@
 import numpy as np
 import warnings
 
-from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
-
 from dynamic_obstacle_avoidance.avoidance.utils  import *
-
 
 class BaseContainer(list):
     def __init__(self, obs_list=None):

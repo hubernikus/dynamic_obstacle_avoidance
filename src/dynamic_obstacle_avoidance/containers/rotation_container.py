@@ -4,11 +4,14 @@
 # Created 2021-06-22
 # License: BSD (c) 2021
 
-import numpy as np
 import warnings
+
+import numpy as np
 
 from vartools.dynamicalsys import ConstantValue, LocallyRotated
 from vartools.directional_space import get_angle_space
+
+from dynamic_obstacle_avoidance.containers import BaseContainer
 
 class RotationContainer(BaseContainer):
     def __init__(self, *args, **kwargs):

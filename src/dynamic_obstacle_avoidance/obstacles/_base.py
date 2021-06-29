@@ -907,8 +907,9 @@ class Obstacle(ABC):
                 tangent_dir /= np.tile(LA.norm(tangent_dir, axis=0), (self.dim, 1))
                 angle_arccos = np.sum(position_dir * tangent_dir, axis=0)
             else:
-                position_dir /= LA.norm(position_dir)
-                tangent_dir /= LA.norm(tangent_dir)
+                position_dir = position_dir / np.linalg.norm(position_dir)
+                tangent_dir = tangent_dir / np.linalg.norm(tangent_dir)
+                
                 angle_arccos = np.sum(position_dir * tangent_dir)
         return np.arccos(angle_arccos)
 
