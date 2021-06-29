@@ -169,7 +169,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--'):
+def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
 
     if pos_attractor is not None:
@@ -204,7 +204,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
 
             if obstacleColor is None:
                 obs_polygon[n].set_color(np.array([176,124,124])/255)
@@ -245,7 +245,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
                          fc=col, ec=col, alpha=1)
 
     ax.set_aspect('equal', adjustable='box')
-
+    
     ax.set_xlim(x_range)
     ax.set_ylim(y_range)
 
