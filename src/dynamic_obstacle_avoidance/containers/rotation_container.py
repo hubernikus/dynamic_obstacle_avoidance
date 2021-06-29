@@ -3,12 +3,11 @@
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
 # License: BSD (c) 2021
-
 import warnings
 
 import numpy as np
 
-from vartools.dynamical_systems import ConstantValue, LocallyRotated
+from vartools.dynamical_systems import ConstantValue, LinearSystem, LocallyRotated
 from vartools.directional_space import get_angle_space
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
@@ -41,26 +40,34 @@ class RotationContainer(BaseContainer):
         dynamical_system: if non-none value: linear-system is chosen as desired function
         """
         if DynamicalSystem.attractor_position is None:
+            # WARNING: non-knowlege about local topology leads to weird behavior (!)
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
                 local_velocity = DynamicalSystem.evaluate(position)
-                self._ConvergenceDS = ConstantValue(velocity=local_velocity)
-
+                if np.linalg.norm(local_velocity): # Nonzero
+                    self._ConvergenceDynamics[it_obs] = ConstantValue(velocity=local_velocity)
+                else:
+                    # Make converge towards center
+                    self._ConvergenceDynamics[it_obs] = LinearSystem(attractor_position=position)
         else:
             attractor = DynamicalSystem.attractor_position
             
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
                 local_velocity = DynamicalSystem.evaluate(position)
-                reference_radius = self[it_obs].get_reference_length()
+                if np.linalg.norm(local_velocity):
+                    # Nonzero / not at attractor
+                    reference_radius = self[it_obs].get_reference_length()
                 
-                ds_direction = get_angle_space(direction=local_velocity,
-                                               null_direction=(attractor-position))
+                    ds_direction = get_angle_space(direction=local_velocity,
+                                                   null_direction=(attractor-position))
                 
-                self._ConvergenceDynamics[it_obs] = LocallyRotated(mean_rotation=ds_direction,
-                                                                   rotation_center=position,
-                                                                   influence_radius=reference_radius,
-                                                                   attractor_position=attractor)
+                    self._ConvergenceDynamics[it_obs] = LocallyRotated(
+                        mean_rotation=ds_direction, rotation_center=position,
+                        influence_radius=reference_radius, attractor_position=attractor)
+                else:
+                    # Make it converge to attractor either way, as evaluation might be numerically bad.
+                    self._ConvergenceDynamics[it_obs] = LinearSystem(attractor_position=attractor)
 
     def get_convergence_direction(self, position, it_obs):
         """ Return 'convergence direction' at input 'position'."""
