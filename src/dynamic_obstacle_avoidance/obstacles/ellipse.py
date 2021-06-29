@@ -750,8 +750,9 @@ class Ellipse(Obstacle):
         self.shape = ellr
         
     def draw_obstacle(self, numPoints=20, update_core_boundary_points=True,
-                      point_density=2*pi/50):
-        """ Creates points for obstacle and obstacle margin. """
+                      point_density=2*pi/50, n_grid=100):
+        """ Creates points for obstacle and obstacle margin.
+        n_grid is used for 3D drawing"""
         p = self.curvature
         a = self.axes_length
 
@@ -784,7 +785,6 @@ class Ellipse(Obstacle):
         if self.dim==2:
             boundary_points_margin = np.zeros((self.dim, 0))
             if not self.reference_point_is_inside:
-                
                 angle_tangents = np.zeros(2)
                 for ii in range(angle_tangents.shape[0]):
                     angle_tangents[ii] = np.arctan2(self.edge_reference_points[1, self.ind_edge_tang, ii], self.edge_reference_points[0, self.ind_edge_tang, ii])
@@ -820,26 +820,33 @@ class Ellipse(Obstacle):
             
             self.boundary_points_margin_local = boundary_points_margin
 
-        if self.dim==3:
+        elif self.dim==3:
             axes_length = self.axes_length
 
             # Set of all spherical angles:
-            n_u = int(np.floor(np.sqrt(numPoints)))
-            n_v = int(np.ceil(numPoints/n_u))
+            # n_u = int(np.floor(np.sqrt(n_grid)))
+            # n_v = int(np.ceil(n_grid/n_u))
+            n_u = n_v = n_grid
             
-            u = np.linspace(0, 2 * np.pi, n_u)
+            u = np.linspace(0, 2*np.pi, n_u)
             v = np.linspace(0, np.pi, n_v)
 
-            self.boundary_points_local = []
+            boundary_points_local = []
             
             # Cartesian coordinates that correspond to the spherical angles:
             # (this is the equation of an ellipsoid):
             # self.boundary_points
-            self.boundary_points_local.append(axes_length[0] * np.outer(np.cos(u), np.sin(v)))
-            self.boundary_points_local.append(axes_length[1] * np.outer(np.sin(u), np.sin(v)))
-            self.boundary_points_local.append(axes_length[2] * np.outer(np.ones_like(u), np.cos(v)))
+            boundary_points_local.append(axes_length[0] * np.outer(np.cos(u), np.sin(v)))
+            boundary_points_local.append(axes_length[1] * np.outer(np.sin(u), np.sin(v)))
+            boundary_points_local.append(axes_length[2] * np.outer(np.ones_like(u), np.cos(v)))
 
-            return self.transform_relative2global(self.boundary_points_local)
+            boundary_points_local = np.array(boundary_points_local).reshape(self.dim, n_grid*n_grid)
+            boundary_points_global = self.transform_relative2global(boundary_points_local)
+
+            return boundary_points_global.reshape(self.dim, n_grid, n_grid)
+
+        else:
+            raise ValueError("Drawing of obstacle not implemented in high-dimensional space.")
         
         return self.transform_relative2global(self._boundary_points_margin)
 
