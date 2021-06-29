@@ -7,10 +7,20 @@ Requirements: conda, jupyter notebook, python.
 ## Setup
 To setup got to your install/code directory, and type:
 ```
-git clone https://github.com/epfl-lasa/dynamic_obstacle_avoidance.git
+git clone --recurse-submodules https://github.com/epfl-lasa/dynamic_obstacle_avoidance.git
+```
+(Make sure submodules are there if various_tools librarys is not installed.
+
+```
 conda env create -f environment.yml
 conda activate dynamic_obstacle_avoidance
 pip install -r requirements.txt
+python setup.py develop
+```
+
+Next step is to install the dependency library:
+```
+cd lib/various_tools/
 python setup.py develop
 ```
 
