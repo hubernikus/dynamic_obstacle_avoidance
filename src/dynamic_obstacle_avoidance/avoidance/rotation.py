@@ -6,6 +6,8 @@ Library for the Rotation (Modulation Imitation) of Linear Systems
 # License: BSD (c) 2021
 
 import warnings
+from math import pi
+
 import numpy as np
 import matplotlib.pyplot as plt   # For debugging only (!)
 

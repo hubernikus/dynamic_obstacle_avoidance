@@ -24,14 +24,14 @@ from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields, pl
 # plt.close('all')
 plt.ion()
 
-def single_ellipse():
+def single_ellipse(rot_degree=0.):
     obs_list = RotationContainer()
     
     obs_list.append(
         Ellipse(
         center_position=np.array([0, 0]), 
         axes_length=np.array([2, 5]),
-        orientation=0./180*pi,
+        orientation=rot_degree/180.*pi,
         tail_effect=False,
         )
     )
@@ -227,20 +227,81 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         figure_name = "comparison_nonlinear_vectorfield"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
+
+def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+    
+    InitialSystem = LinearSystem(attractor_position=np.array([0, -4]),
+                                 A_matrix=np.array([[-1.0, -3.0],
+                                                    [3.0,-1.0]])
+                                 )
+
+    # fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    axs = [None, None, ax]
+
+    obstacle_list = single_ellipse(rot_degree=30)
+    obstacle_list.set_convergence_directions(InitialSystem)
+
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSystem.evaluate,
+        obs_avoidance_func=obstacle_avoidance_rotational,
+        automatic_reference_point=False,
+        pos_attractor=InitialSystem.attractor_position,
+        fig_and_ax_handle=(fig, axs[2]),
+        # Quiver or Streamplot
+        show_streamplot=True,
+        # show_streamplot=False,       
+        )
+
+    if True:
+        return
+
+    obstacle_list = single_ellipse(rot_degree=30)
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSystem.evaluate,
+        # obs_avoidance_func=obstacle_avoidance_rotational,
+        automatic_reference_point=False,
+        pos_attractor=InitialSystem.attractor_position,
+        fig_and_ax_handle=(fig, axs[1]),
+        # Quiver or Streamplot
+        show_streamplot=True,
+        # show_streamplot=False,       
+        )
+
+    obstacle_list = []
+    Simulation_vectorFields(
+        x_lim, y_lim, n_resolution, obstacle_list,
+        saveFigure=False, 
+        noTicks=True, showLabel=False,
+        draw_vectorField=True,
+        dynamical_system=InitialSystem.evaluate,
+        obs_avoidance_func=obstacle_avoidance_rotational,
+        automatic_reference_point=False,
+        pos_attractor=InitialSystem.attractor_position,
+        fig_and_ax_handle=(fig, axs[0]),
+        # Quiver or Streamplot
+        show_streamplot=True,
+        # show_streamplot=False,       
+        )
+
+    
+
 def single_ellipse_hull_linear_triple_plot(save_figure=False, n_resolution=40):
     """ Moving inside an 'ellipse hull with linear dynamics. """
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    pos_attractor = np.array([0, -4])
-
-    def initial_ds(position):
-        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-    
-    def obs_avoidance(*args, **kwargs):
-        def get_convergence_direction(position):
-            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(*args, **kwargs, get_convergence_direction=get_convergence_direction)
+    InitialSystem = LinearSystem(attractor_position=np.array([0, -4]))
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 6))
     # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -252,10 +313,10 @@ def single_ellipse_hull_linear_triple_plot(save_figure=False, n_resolution=40):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
-        obs_avoidance_func=obs_avoidance,
+        dynamical_system=InitialSystem.evaluate,
+        obs_avoidance_func=obstacle_avoidance_rotational,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[2]),
         # Quiver or Streamplot
         show_streamplot=True,
@@ -267,9 +328,9 @@ def single_ellipse_hull_linear_triple_plot(save_figure=False, n_resolution=40):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
+        pos_attractor=InitialSystem.attractor_position,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[1]),
         )
 
@@ -279,9 +340,9 @@ def single_ellipse_hull_linear_triple_plot(save_figure=False, n_resolution=40):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
+        pos_attractor=InitialSystem.attractor_position,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[0]),
         )
 
@@ -498,6 +559,8 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 if (__name__)=="__main__":
     # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
+    
+    single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
