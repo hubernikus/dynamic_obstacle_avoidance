@@ -1,23 +1,16 @@
 #!/USSR/bin/python3
 """
-UNIT TESTING
-
-Test script for obstacle avoidance algorithm
-Test normal formation
+Test script for obstacle avoidance algorithm - specifically the normal function evaluation
 """
-
-
+import unittest
 import sys
 import os
 from math import pi
-
-import unittest
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import GradientContainer
-
 from dynamic_obstacle_avoidance.obstacles import Cuboid, CircularObstacle, Ellipse
 from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
 from dynamic_obstacle_avoidance.obstacles import BoundaryCuboidWithGaps
