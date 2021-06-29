@@ -8,7 +8,7 @@ import warnings
 
 import numpy as np
 
-from vartools.dynamicalsys import ConstantValue, LocallyRotated
+from vartools.dynamical_systems import ConstantValue, LocallyRotated
 from vartools.directional_space import get_angle_space
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
@@ -40,14 +40,14 @@ class RotationContainer(BaseContainer):
         attractor_position: if non-none value: linear-system is chosen as desired function
         dynamical_system: if non-none value: linear-system is chosen as desired function
         """
-        if dynamical_system.attractor_position is None:
+        if DynamicalSystem.attractor_position is None:
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
                 local_velocity = DynamicalSystem.evaluate(position)
                 self._ConvergenceDS = ConstantValue(velocity=local_velocity)
 
         else:
-            attractor = dynamical_system.attractor_position
+            attractor = DynamicalSystem.attractor_position
             
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
@@ -58,9 +58,9 @@ class RotationContainer(BaseContainer):
                                                null_direction=(attractor-position))
                 
                 self._ConvergenceDynamics[it_obs] = LocallyRotated(mean_rotation=ds_direction,
-                                                                 rotation_center=position,
-                                                                 influence_radius=reference_radius)
-                
+                                                                   rotation_center=position,
+                                                                   influence_radius=reference_radius,
+                                                                   attractor_position=attractor)
 
     def get_convergence_direction(self, position, it_obs):
         """ Return 'convergence direction' at input 'position'."""

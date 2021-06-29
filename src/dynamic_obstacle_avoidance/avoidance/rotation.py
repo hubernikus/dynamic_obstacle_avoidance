@@ -13,9 +13,6 @@ from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
-# from vartools.directional_space import directional_convergence_summing
-from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
-
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 

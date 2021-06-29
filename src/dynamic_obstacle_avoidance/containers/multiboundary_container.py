@@ -10,7 +10,7 @@ import numpy as np
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
 
-from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
+from vartools.dynamical_systems import LinearSystem
 
 class MultiBoundaryContainer(BaseContainer):
     """ Container to treat multiple boundaries / walls."""
@@ -258,9 +258,7 @@ class MultiBoundaryContainer(BaseContainer):
                 direction=(self._parent_intersection_point[it_obs]-self[it_obs].center_position),
                 in_global_frame=True)
 
-        direction = evaluate_linear_dynamical_system(
-            position=position, center_position=local_attractor)
-        
+        direction = LinearSystem(attractor_position=local_attractor).evaluate(position)
         return direction
 
     def plot_convergence_attractor(self, ax, attractor_position):
