@@ -10,11 +10,11 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
-from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
-from vartools.dynamicalsys import QuadraticAxisConvergence
+# from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
+# from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
+from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
 
-from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer
+from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer, RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
@@ -25,7 +25,7 @@ from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields, pl
 plt.ion()
 
 def single_ellipse():
-    obs_list = BaseContainer()
+    obs_list = RotationContainer()
     
     obs_list.append(
         Ellipse(
@@ -38,7 +38,7 @@ def single_ellipse():
     return obs_list
 
 def starshape():
-    obs_list = BaseContainer()
+    obs_list = RotationContainer()
     
     obs_list.append(
         StarshapedFlower(
@@ -52,7 +52,7 @@ def starshape():
     return obs_list
 
 def starshape_hull():
-    obs_list = BaseContainer()
+    obs_list = RotationContainer()
     
     obs_list.append(
         StarshapedFlower(
@@ -68,7 +68,7 @@ def starshape_hull():
 
 
 def single_ellipse_hull():
-    obs_list = BaseContainer()
+    obs_list = RotationContainer()
     
     obs_list.append(
         Ellipse(
@@ -115,46 +115,35 @@ def multiple_ellipse_hulls():
     return obs_list
 
 
-
 def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    pos_attractor = np.array([8, 0])
+    InitialSystem = LinearSystem(attractor_position=np.array([8, 0]))
 
-    def initial_ds(position):
-        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-    
-    # def obs_avoidance(*args, **kwargs):
-        # def get_convergence_direction(position):
-            # return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        # return obstacle_avoidance_rotational(
-            # *args, **kwargs, get_convergence_direction=get_convergence_direction)
-
-    # fig, axs = plt.subplots(1, 3, figsize=(15, 6))
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    axs = [None, None, ax]
+    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    # axs = [None, None, ax]
 
     obstacle_list = single_ellipse()
-    obstacle_list.set_convergence_direction(attractor_position=pos_attractor)
+    obstacle_list.set_convergence_directions(InitialSystem)
 
-    
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
         obs_avoidance_func=obstacle_avoidance_rotational,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[2]),
         # Quiver or Streamplot
         show_streamplot=True,
         # show_streamplot=False,       
         )
-    if True:
-        return
+    # if True:
+        # return
     
     obstacle_list = []
     Simulation_vectorFields(
@@ -162,9 +151,9 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[0]),
         )
     
@@ -174,9 +163,9 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[1]),
         )
 
@@ -189,26 +178,14 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
     
-    pos_attractor = np.array([8, 0])
-
     InitialSystem = QuadraticAxisConvergence(
-        stretching_factor=3, maximum_velocity=1.0, dimension=2)
-    
-    def initial_ds(x):
-        return ds_quadratic_axis_convergence(
-            x,  center_position=pos_attractor, stretching_factor=3,
-            max_vel=1.0
-            )
-
-    def obs_avoidance(*args, **kwargs):
-        def get_convergence_direction(position):
-            return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-        return obstacle_avoidance_rotational(
-            *args, **kwargs, get_convergence_direction=get_convergence_direction)
+        stretching_factor=3, maximum_velocity=1.0, dimension=2, attractor_position=np.array([8, 0]))
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 7))
 
     obstacle_list = single_ellipse()
+    obstacle_list.set_convergence_directions(InitialSystem)
+
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
         saveFigure=False,
@@ -217,7 +194,7 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         dynamical_system=InitialSystem.evaluate,
         obs_avoidance_func=obstacle_avoidance_rotational,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[2]),
         show_streamplot=True,
         )
@@ -228,9 +205,9 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[0]),
         )
     
@@ -240,9 +217,9 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         saveFigure=False, 
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        dynamical_system=InitialSystem.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=InitialSystem.attractor_position,
         fig_and_ax_handle=(fig, axs[1]),
         )
 
@@ -493,8 +470,9 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
     obstacle_list = multiple_ellipse_hulls()
+    # obstacle_list.update_intersection_graph(attractor_position=pos_attractor)
+    # obstacle_list.update_intersection_graph(attractor_position=pos_attractor)
     obstacle_list.update_intersection_graph(attractor_position=pos_attractor)
-    # obstacle_list.update_convergence_direction()
     
     Simulation_vectorFields(
         x_lim, y_lim, n_resolution, obstacle_list,
@@ -519,7 +497,7 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 if (__name__)=="__main__":
     # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
-    single_ellipse_nonlinear_triple_plot(save_figure=False)
+    # single_ellipse_nonlinear_triple_plot(save_figure=False)
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
