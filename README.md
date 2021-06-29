@@ -12,6 +12,7 @@ git clone --recurse-submodules https://github.com/epfl-lasa/dynamic_obstacle_avo
 (Make sure submodules are there if various_tools librarys is not installed.
 
 ```
+cd dynamic_obstacle_avoidance
 conda env create -f environment.yml
 conda activate dynamic_obstacle_avoidance
 pip install -r requirements.txt
@@ -25,8 +26,9 @@ python setup.py develop
 ```
 
 ## Getting Started
+To run example file for a 'multiple-obstacle' environment:
 ```
-
+python scripts/examples/examples_multiple_obstaces.py
 ```
 
 
