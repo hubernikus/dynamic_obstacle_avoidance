@@ -321,7 +321,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    n_samples = 10
+    n_samples = 0
     if n_samples:  # nonzero
         it_start = 0
         

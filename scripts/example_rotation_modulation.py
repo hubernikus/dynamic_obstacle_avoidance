@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from vartools.dynamicalsys.closedform import ds_quadratic_axis_convergence
 from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
+from vartools.dynamicalsys import QuadraticAxisConvergence
 
 from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
@@ -130,9 +131,9 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         # return obstacle_avoidance_rotational(
             # *args, **kwargs, get_convergence_direction=get_convergence_direction)
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
-    # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    # axs = [None, None, ax]
+    # fig, axs = plt.subplots(1, 3, figsize=(15, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    axs = [None, None, ax]
 
     obstacle_list = single_ellipse()
     obstacle_list.set_convergence_direction(attractor_position=pos_attractor)
@@ -152,8 +153,8 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         show_streamplot=True,
         # show_streamplot=False,       
         )
-    # if True:
-        # return
+    if True:
+        return
     
     obstacle_list = []
     Simulation_vectorFields(
@@ -190,6 +191,9 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
     
     pos_attractor = np.array([8, 0])
 
+    InitialSystem = QuadraticAxisConvergence(
+        stretching_factor=3, maximum_velocity=1.0, dimension=2)
+    
     def initial_ds(x):
         return ds_quadratic_axis_convergence(
             x,  center_position=pos_attractor, stretching_factor=3,
@@ -210,8 +214,8 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         saveFigure=False,
         noTicks=True, showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
-        obs_avoidance_func=obs_avoidance,
+        dynamical_system=InitialSystem.evaluate,
+        obs_avoidance_func=obstacle_avoidance_rotational,
         automatic_reference_point=False,
         pos_attractor=pos_attractor,
         fig_and_ax_handle=(fig, axs[2]),
@@ -376,8 +380,6 @@ def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
     if save_figure:
         figure_name = "comparison_starshape_hull"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
-
-
     
 def starshape_linear_triple_plot(save_figure=False, n_resolution=20):
     """ Moving inside an 'ellipse hull with linear dynamics. """
@@ -516,8 +518,8 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 
 if (__name__)=="__main__":
-    single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
-    # single_ellipse_nonlinear_triple_plot(save_figure=True)
+    # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
+    single_ellipse_nonlinear_triple_plot(save_figure=False)
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
