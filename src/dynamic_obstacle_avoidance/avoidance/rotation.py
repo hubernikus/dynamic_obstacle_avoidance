@@ -242,8 +242,18 @@ def obstacle_avoidance_rotational(
             weight=inv_gamma_weight[it],
             nonlinear_velocity=initial_velocity,
             null_matrix=null_matrix)
-
-    # breakpoint()
+        
+        if False:
+            warnings.warn("Things are not going well... Help @ ")
+            print('position', position)
+            print('normal', normal_orthogonal_matrix[:, 0, 0])
+            print('ref_dir', reference_dir)
+            print('conv vel', convergence_velocity)
+            print('inital vel', initial_velocity)
+            print('dot vels', np.dot(position, convergence_velocity)/(
+            np.linalg.norm(position)*np.linalg.norm(convergence_velocity)))
+            breakpoint()
+        
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
         directions=rotated_velocities,
@@ -270,10 +280,9 @@ def obstacle_avoidance_rotational(
                    convergence_velocity[0], convergence_velocity[1], label='convergence', color='g')
         plt.legend(loc='right')
         plt.show()
-        # breakpoint()
+        breakpoint()
         
     rotated_velocity = rotated_velocity * magnitude
-    
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
     return rotated_velocity

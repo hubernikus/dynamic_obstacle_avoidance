@@ -31,6 +31,44 @@ def plot_obstacles(ObstacleContainer, ax=None):
                         rstride=4, cstride=4, color=np.array([176, 124, 124])/255.)
 
 
+def plot_obstacles_and_vector_levelz_3d(
+    ObstacleContainer,
+    InitialDynamics, func_obstacle_avoidance,
+    x_lim=None, y_lim=None, z_level=None
+    z_level=0, n_grid=10,
+    fig_and_ax_handle=None,
+    ):
+    dimension = 3 # 3D-visualization
+    
+    if fig_and_ax_handle is None:
+        fig = plt.figure(figsize=(8, 6))
+        ax = fig.gca(projection='3d')
+    else:
+        fig, ax = fig_and_ax_handle
+    
+    x_values = np.linspace(x_lim[0], x_lim[1], n_grid)
+    y_values = np.linspace(x_lim[0], x_lim[1], n_grid)
+
+    positions = np.zeros((dimension, n_grid, n_grid))
+    linear_velocities = np.zeros((dimension, n_grid, n_grid))
+    modulated_velocities = np.zeros((dimension, n_grid, n_grid))
+
+    for ix in range(n_grid):
+        for iy in range(n_grid):
+            positions[:, ix, iy] = [x_values[ix], y_values[iy], z_level]
+            linear_velocities[:, ix, iy] = InitialDynamics.evaluate(positions[:, ix, iy])
+            modulated_velocities[:, ix, iy] = func_obstacle_avoidance(trajectory_points[ii][:, it_step],
+                                                                    initial_velocity,
+                                                                    ObstacleContainer)
+
+    plot_obstacles(ObstacleContainer=ObstacleContainer, ax=ax)
+
+    if hasattr(InitialDynamics, 'attractor_position'):
+        ax.plot([InitialDynamics.attractor_position[0]],
+                [InitialDynamics.attractor_position[1]],
+                [InitialDynamics.attractor_position[2]], 'k*')
+
+
 def plot_obstacles_and_trajectory_3d(
     ObstacleContainer,
     InitialDynamics, func_obstacle_avoidance,

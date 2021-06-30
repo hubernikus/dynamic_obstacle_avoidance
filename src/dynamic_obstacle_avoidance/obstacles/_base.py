@@ -266,8 +266,8 @@ class Obstacle(ABC):
     @orientation.setter
     def orientation(self, value):
         if self.dim == 2:
-            self.compute__rotation_matrix()
             self._orientation = value
+            self.compute_rotation_matrix()
             
         elif self.dim == 3:
             if not isinstance(value, Rotation):
@@ -391,6 +391,7 @@ class Obstacle(ABC):
 
     @property
     def x_obs(self):
+        warnings.warn("Outdated name 'x_obs'")
         return self.boundary_points_global_closed
 
     @property
@@ -412,6 +413,7 @@ class Obstacle(ABC):
 
     @property
     def x_obs_sf(self):
+        warnings.warn("Outdated name 'x_obs_sf'")
         return self.boundary_points_margin_global_closed
     
     @property
@@ -497,7 +499,6 @@ class Obstacle(ABC):
             warnings.warn("Not implemented for higer dimensions")
             return direction
         
-
     def transform_global2relative_dir(self, direction):
         """ Transform a direction, velocity or relative position to the obstacle-frame """
         if self.dim == 2:

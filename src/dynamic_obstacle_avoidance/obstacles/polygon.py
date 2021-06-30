@@ -392,7 +392,7 @@ class Polygon(Obstacle):
                 for jj in np.arange(n_points)[~zero_mag]:
                     # import pdb; pdb.set_trace()
                     # angle_to_reference = get_angle_space(
-                        # null_direction=position_dir[:, jj], directions=self.edge_points)                    
+                        # null_direction=position_dir[:, jj], directions=self.edge_points)
                     angle_to_reference = get_angle_space_of_array(
                         null_direction_abs=position_dir[:, jj], directions=self.edge_points)
                     
@@ -420,8 +420,10 @@ class Polygon(Obstacle):
             else:
                 # Obstacle has aboslut-margin
                 for jj in np.arange(n_points)[~zero_mag]:
-                    angle_to_reference = get_angle_space(null_direction=position_dir[:, jj],
-                                                         directions=self.edge_reference_points[:, :, 0])
+                    # angle_to_reference = get_angle_space(null_direction=position_dir[:, jj],
+                                                         # directions=self.edge_reference_points[:, :, 0])
+                    angle_to_reference = get_angle_space_of_array(
+                        null_direction_abs=position_dir[:, jj], directions=self.edge_reference_points[:, :, 0])
 
                     magnitude_angles = np.linalg.norm(angle_to_reference, axis=0)
 
@@ -438,7 +440,9 @@ class Polygon(Obstacle):
                         edge_point = self.edge_reference_points[:, ind_low, 0]
 
                     else:
-                        angle_hull_double_low = get_angle_space(null_direction=position_dir[:, jj], directions=self.edge_reference_points[:, ind_low, 1])
+                        angle_hull_double_low = get_angle_space(
+                            null_direction=position_dir[:, jj],
+                            direction=self.edge_reference_points[:, ind_low, 1])
 
                         if angle_hull_double_low>0:
                             # Solve quadratic equation to get intersection with (partial-) circl
@@ -738,6 +742,9 @@ class Polygon(Obstacle):
         if in_global_frame: 
             normal_vector = self.transform_relative2global_dir(normal_vector)
 
+        # In order to be pointing outside (!)
+        # normal_vector = (-1)*normal_vector
+        
         return normal_vector
 
     def extend_hull_around_reference(self, edge_reference_dist=0.3, relative_hull_margin=0.1):
@@ -839,15 +846,12 @@ class Polygon(Obstacle):
                                 self.edge_reference_points[:, (pp), 1] = tang_points[:, 0]
                                 self.edge_reference_points[:, (pp+2)%self.n_planes, 0] = tang_points[:, 1]
                             break
-                        # debugging_mode=False # TODO: remove
-                        # if debugging_mode:
                         
                     # Adapted normal
                     self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.hull_points)
                     
             else:
                 for pp in range(self.n_planes):
-                    # TODO: 
                     n0 = self.edge_points[:, pp] - self.edge_points[:, (pp-1)%self.n_planes]
                     n1 = self.edge_points[:, (pp+1)%self.n_planes]  - self.edge_points[:, pp]
 
@@ -860,55 +864,27 @@ class Polygon(Obstacle):
                             self.edge_reference_points = copy.deepcopy(self.edge_points)
                             self.edge_reference_points[:, pp] = reference_point_temp
                         else:
-                            # try:
-                            if True:
-                                self.edge_reference_points = np.hstack((
-                                    self.edge_reference_points[:, :pp],
-                                    np.reshape(self.reference_point, (self.dim, 1)),
-                                    self.edge_reference_points[:, pp:]))
-                            # except:
-                                # import pdb; pdb.set_trace()
+                            self.edge_reference_points = np.hstack((
+                                self.edge_reference_points[:, :pp],
+                                np.reshape(self.reference_point, (self.dim, 1)),
+                                self.edge_reference_points[:, pp:]))
                         break
                     
-                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_reference_points)
+                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
+                    self.edge_reference_points)
             
             self.reference_point_is_inside = False
             self.n_planes = self.edge_reference_points.shape[1]
+            
         else:
             self.edge_reference_points =  self.edge_margin_points  # include margin
 
             if not self.reference_point_is_inside:
-                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+                self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
+                    self.edge_points)
             self.reference_point_is_inside = True
             self.n_planes = self.n_planes_edge
             self.ind_edge_ref = None
-
-
-        if False:
-        # if self.name=="desk_wall" and self.edge_reference_points.shape[1]==6: ### DEBUG ####
-            import matplotlib.pyplot as plt
-            plt.figure()
-            points = np.zeros((self.dim, self.edge_reference_points.shape[1]*2))
-            it = 0
-            for ii in range(self.edge_reference_points.shape[1]):
-                for jj in range(2):
-                    try:
-                        points[:, it] = self.edge_reference_points[:, ii, jj]
-                    except:
-                        import pdb; pdb.set_trace() ## DEBUG ##
-                    it+=1
-
-            plt.plot(0, 0, 'r', marker='.')
-            plt.plot(self.reference_point[0], self.reference_point[1], 'r', marker='o')
-            plt.plot(self.edge_points[0, :], self.edge_points[1, :], 'b', marker='x')
-            plt.plot(points[0, :], points[1, :], 'k', marker='x')
-            plt.axis('equal')
-            plt.grid()
-            plt.ion()
-            plt.show()
-
-            import pdb; pdb.set_trace() ## DEBUG ##
-            plt.close('all')
 
 
 class Cuboid(Polygon):
