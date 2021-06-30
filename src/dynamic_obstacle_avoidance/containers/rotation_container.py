@@ -30,7 +30,7 @@ class RotationContainer(BaseContainer):
         super().__setitem__(self._obstacle_list[key])
         self._ConvergenceDynamics[key] = None
         
-    def set_convergence_directions(self, DynamicalSystem):
+    def set_convergence_directions(self, NonlinearDynamcis=None, ConvergingDynamics=None):
         """ Define a convergence direction / mode.
         It is implemented as 'locally-linear' for a multi-boundary-environment.
 
@@ -39,22 +39,27 @@ class RotationContainer(BaseContainer):
         attractor_position: if non-none value: linear-system is chosen as desired function
         dynamical_system: if non-none value: linear-system is chosen as desired function
         """
-        if DynamicalSystem.attractor_position is None:
+        if ConvergingDynamics is not None:
+            # Converging dynamics are for all the same
+            self._ConvergenceDynamics = [ConvergingDynamics for ii in range(self.n_obstacles)]
+            return
+                                         
+        if NonlinearDynamcis.attractor_position is None:
             # WARNING: non-knowlege about local topology leads to weird behavior (!)
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
-                local_velocity = DynamicalSystem.evaluate(position)
+                local_velocity = NonlinearDynamcis.evaluate(position)
                 if np.linalg.norm(local_velocity): # Nonzero
                     self._ConvergenceDynamics[it_obs] = ConstantValue(velocity=local_velocity)
                 else:
                     # Make converge towards center
                     self._ConvergenceDynamics[it_obs] = LinearSystem(attractor_position=position)
         else:
-            attractor = DynamicalSystem.attractor_position
+            attractor = NonlinearDynamcis.attractor_position
             
             for it_obs in range(self.n_obstacles):
                 position = self[it_obs].center_position
-                local_velocity = DynamicalSystem.evaluate(position)
+                local_velocity = NonlinearDynamcis.evaluate(position)
                 if np.linalg.norm(local_velocity):
                     # Nonzero / not at attractor
                     reference_radius = self[it_obs].get_reference_length()

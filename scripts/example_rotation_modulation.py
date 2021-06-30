@@ -9,11 +9,12 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
+from vartools.dynamical_systems import LinearSystemoQuadraticAxisConvergence
 from vartools.dynamical_systems import BifurcationSpiral
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 
-from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer, RotationContainer
+from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer,
+from dynamic_obstacle_avoidance.containers import RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving

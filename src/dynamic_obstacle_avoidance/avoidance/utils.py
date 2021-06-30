@@ -51,12 +51,13 @@ def get_relative_obstacle_velocity(
     xd_obs = np.zeros((dim))
 
     for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
+        # xd_w = obs[it_obs].get_velocity_from_rotation(position)
         if dim==2:
             xd_w = np.cross(np.hstack(([0, 0], obs[it_obs].angular_velocity)),
                             np.hstack((position-np.array(obs[it_obs].center_position), 0)))
             xd_w = xd_w[0:2]
         elif dim==3:
-            xd_w = np.cross(obs[it_obs].orientation, position-obs[it_obs].center_position)
+            xd_w = np.cross(obs[it_obs].angular_velocity, position-obs[it_obs].center_position)
         else:
             xd_w = np.zeros(dim)
             warnings.warn('Angular velocity is not defined for={}'.format(d))
@@ -455,7 +456,6 @@ def obs_check_collision_ellipse(obs_list, dim, points):
         Gamma = sum( ( 1/obs_list[it_obs].sf * R.T.dot(points - np.tile(np.array([obs_list[it_obs].x0]).T,(1,N_points) ) ) / np.tile(np.array([obs_list[it_obs].a]).T, (1, N_points)) )**(np.tile(2*np.array([obs_list[it_obs].p]).T, (1, N_points)) ) )
 
         noColl = (noColl* Gamma>1)
-
     return noColl
 
 
@@ -584,20 +584,3 @@ def get_inverse_proprtional_weight(distance, distance_min=0, distance_max=3, wei
     # Normalize
     weights = weights/np.sum(weights)
     return weights
-    
-def cut_planeWithEllispoid(reference_position, axes, plane):
-    # TODO
-    raise NotImplementedError()
-
-
-def cut_lineWithEllipse(line_points, axes):
-    # TODO
-    raise NotImplementedError()
-
-# from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacle import Ellipse
-def get_intersectionWithEllipse(*args, **kwargs):
-    raise NotImplementedError("Use function integrated in Ellipse-Class.")
-    # return Ellipse.get_intersectionWith(*args, **kwargs)
-
-def get_circle_and_ellipse():
-    pass

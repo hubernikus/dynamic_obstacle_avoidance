@@ -4,27 +4,23 @@ Basic class to represent obstacles
 """
 import time
 import warnings, sys
-import numpy as np
-import numpy.linalg as LA
 from math import sin, cos, pi, ceil
-
 from abc import ABC, abstractmethod
-
 from functools import lru_cache
 
-from vartools.angle_math import *
-# from functools import cache     # Store all values(?)
-# from functools import cached_property    # Store property [pyhton 3 only]
+import numpy as np
+import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.state import State
+from scipy.spatial.transform import Rotation # scipy rotation
+
+from vartools.angle_math import *
+from dynamic_obstacle_avoidance.state import State # TODO: make obstacle a state-object
 
 import matplotlib.pyplot as plt     # TODO: remove after debugging!
 
-visualize_debug = False
-
 # Utils (!)
 def local_frame_check_return_velocity(func, in_global_frame=False):
-    # Is this really useful / easily possible(?!)
+    # Wrapper / Is this really useful / easily possible(?!)
     def wrapper():
         if in_global_frame:
             # DO which ones here?
@@ -56,7 +52,7 @@ class Obstacle(ABC):
                  is_dynamic=False, is_deforming=False,
                  # reference_point=None,
                  # margin_absolut=0, 
-                 x0=None, th_r=None, dimension=None,
+                 x0=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1,
@@ -71,7 +67,6 @@ class Obstacle(ABC):
             
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
-        
         self.sigma = sigma
         
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
@@ -79,6 +74,7 @@ class Obstacle(ABC):
 
         # Obstacle attitude / 
         if not x0 is None:
+            raise NotImplementedError("Wrong name")
             center_position = x0        # TODO remove and rename
         self.position = center_position
         self.center_position = self.position
@@ -91,19 +87,16 @@ class Obstacle(ABC):
 
         if orientation is None:
             if self.dim == 2:
-                orientation = 0
-            if self.dim == 3:
-                orientation = np.zeros(3)
-                
-            if not th_r is None:
-                # TODO: depreciated remove
-                orientation = th_r
-                
-        self.orientation = orientation
-
-        self.rotMatrix = []
-        self.compute_R()      # Compute Rotation Matrix
-
+                self.orientation = 0
+                self._rotation_matrix = []
+            elif self.dim == 3:
+                self.orientation = Rotation.from_rot_vec([0, 0, 0])
+                        
+        else:
+            if self.dim == 2:
+                self._rotation_matrix = []
+            self.orientation = orientation
+            
         self.resolution = 0      # Resolution of drawing
 
         self._boundary_points = None      # Numerical drawing of obstacle boundarywq
@@ -215,7 +208,320 @@ class Obstacle(ABC):
             # warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
             # value = 1.0
         self._repulsion_coeff = value
+
+    @property
+    def local_relative_reference_point(self):
+        return self._relative_reference_point
+
+    @local_relative_reference_point.setter
+    def local_relative_reference_point(self, value):
+        self._relative_reference_point = value
+
+    @property
+    def global_relative_reference_point(self):
+        if self._relative_reference_point is None:
+            return self.center_position
+        else:
+            return self.transform_relative2global(self._relative_reference_point)
+
+    @global_relative_reference_point.setter
+    def global_relative_reference_point(self, value):
+        if value is None:
+            self._relative_reference_point = None
+        else:
+            self._relative_reference_point = self.transform_global2relative(value)
+            
+    @property
+    def center_dyn(self):# TODO: depreciated -- delete
+        return self.reference_point
+
+    @property
+    def global_reference_point(self):
+        # Rename kernel-point?
+        return self.transform_relative2global(self._reference_point)
+
+    @property
+    def local_reference_point(self):
+        # Rename kernel-point?
+        return self._reference_point
+
+    @local_reference_point.setter
+    def local_reference_point(self, value):
+        # Rename kernel-point?
+        self._reference_point = value
+        
+    @property
+    def reference_point(self):
+        # Rename kernel-point?
+        return self._reference_point
+
+    @reference_point.setter
+    def reference_point(self, value):
+        self._reference_point = value
+
+    @property
+    def orientation(self):
+        return self._orientation
     
+    @orientation.setter
+    def orientation(self, value):
+        if self.dim == 2:
+            self.compute__rotation_matrix()
+            self._orientation = value
+            
+        elif self.dim == 3:
+            if not isinstance(value, Rotation):
+                raise TypeError("Use 'scipy - Rotation' type for 3D orientation.")
+            self._orientation = value
+                
+        else:
+            if value is not None and np.sum(np.abs(value)): # nonzero value
+                warnings.warn("Rotation for dimensions > 3 not defined.")
+            self._orientation = value
+
+    @property
+    def th_r(self): # TODO: will be removed since outdated
+        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
+        if True:
+            raise ValueError()
+        return self.orientation # getter
+
+    @th_r.setter
+    def th_r(self, value): # TODO: will be removed since outdated
+        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
+        if True:
+            raise ValueError()
+        self.orientation = value # setter
+
+    @property
+    def position(self):
+        return self.center_position
+
+    @position.setter
+    def position(self, value):
+        self.center_position = value
+    
+    @property
+    def center_position(self):
+        return self._center_position
+    
+    @center_position.setter
+    def center_position(self, value):
+        if isinstance(value, list):
+            self._center_position = np.array(value) 
+        else:
+            self._center_position = value
+
+    @property
+    def timestamp(self):
+        return self._timestamp
+
+    @timestamp.setter
+    def timestamp(self, value):
+        # if timestamp is None:
+        self._timestamp = value
+
+    def update_timestamp(self):
+        self._timestamp = time.time()
+
+    @property
+    def xd(self): # TODO: remove
+        warnings.warn("'xd' is an outdated name use 'lienar_velocity' instead.")
+        breakpoint()
+        return self._linear_velocity_const
+
+    @property
+    def velocity_const(self):
+        return self._linear_velocity_const
+
+    @property
+    def linear_velocity_const(self):
+        return self._linear_velocity_const
+
+    @linear_velocity_const.setter
+    def linear_velocity_const(self, value):
+        if isinstance(value, list):
+            value = np.array(value)
+        self._linear_velocity_const = value
+
+    @property
+    def linear_velocity(self):
+        return self._linear_velocity
+
+    @linear_velocity.setter
+    def linear_velocity(self, value):
+        self._linear_velocity = value
+        self._linear_velocity_const = value
+
+    @property
+    def angular_velocity(self):
+        return self._angular_velocity
+
+    @property
+    def angular_velocity_const(self):
+        return self._angular_velocity_const
+
+    @angular_velocity_const.setter
+    def angular_velocity_const(self, value):
+        if isinstance(value, list):
+            value = np.array(value)
+        self._angular_velocity_const = value
+        self._angular_velocity = value
+
+    @property
+    def w(self): # TODO: remove
+        warnings.warn("Outdated name")
+        return self._angular_velocity_const
+
+    @property
+    def boundary_points(self):
+        return self._boundary_points
+
+    @boundary_points.setter
+    def boundary_points(self, value):
+        self._boundary_points = value
+        
+    @property
+    def boundary_points_local(self):
+        return self._boundary_points
+
+    @boundary_points_local.setter
+    def boundary_points_local(self, value):
+        self._boundary_points = value
+
+    @property
+    def x_obs(self):
+        return self.boundary_points_global_closed
+
+    @property
+    def boundary_points_global_closed(self):
+        boundary = self.boundary_points_global
+        return np.hstack((boundary, boundary[:, 0:1]))
+
+    @property
+    def boundary_points_global(self):
+        return self.transform_relative2global(self._boundary_points)
+
+    @property
+    def boundary_points_margin_local(self):
+        return self._boundary_points_margin
+    
+    @boundary_points_margin_local.setter
+    def boundary_points_margin_local(self, value):
+        self._boundary_points_margin = value
+
+    @property
+    def x_obs_sf(self):
+        return self.boundary_points_margin_global_closed
+    
+    @property
+    def boundary_points_margin_global(self):
+        return self.transform_relative2global(self._boundary_points_margin)
+
+    @property
+    def boundary_points_margin_global_closed(self):
+        boundary = self.boundary_points_margin_global
+        return np.hstack((boundary, boundary[:, 0:1]))
+
+    def transform_global2relative(self, position):
+        """ Transform a position from the global frame of reference 
+        to the obstacle frame of reference"""
+        # TODO: transform this into wrapper / decorator
+        if not position.shape[0]==self.dim:
+            raise ValueError("Wrong position dimensions")
+ 
+        if self.dim == 2:
+            if len(position.shape)==1:
+                return self._rotation_matrix.T.dot(position - np.array(self.center_position))
+            elif len(position.shape)==2:
+                n_points = position.shape[1]
+                return self._rotation_matrix.T.dot(position-
+                                            np.tile(self.center_position, (n_points,1)).T)
+            else:
+                raise ValueError("Unexpected position-shape")
+        
+        elif self.dim == 3:
+            if len(position.shape)==1:
+                return self._orientation.inv().apply(position - self.center_position)
+                        
+            elif len(position.shape)==2:
+                n_points = position.shape[1]
+                return self._orientation.inv().apply(
+                    position.T - np.tile(self.center_position, (n_points, 1))).T
+
+        else:
+            warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
+            return position
+
+    def transform_relative2global(self, position):
+        """ Transform a position from the obstacle frame of reference 
+        to the global frame of reference"""
+        if not isinstance(position, (list, np.ndarray)):
+            raise TypeError('Position={} is of type {}'.format(position, type(position)))
+
+        if self.dim == 2:
+            if len(position.shape)==1:
+                return self._rotation_matrix.dot(position) + self.center_position
+            elif len(position.shape)==2:
+                n_points = position.shape[1]
+                return (self._rotation_matrix.dot(position)
+                        + np.tile(self.center_position, (n_points,1)).T)
+            else:
+                raise ValueError("Unexpected position-shape")
+
+        elif self.dim == 3:
+            if len(position.shape)==1:
+                return self._orientation.apply(position) + self.center_position
+                        
+            elif len(position.shape)==2:
+                n_points = position.shape[1]
+                return (self._orientation.apply(position.T) +
+                            + np.tile(self.center_position, (n_points, 1))).T
+            
+            else:
+                raise ValueError("Unexpected position-shape")
+        
+        else:
+            warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
+            return position
+        
+    def transform_relative2global_dir(self, direction):
+        """ Transform a direction, velocity or relative position to the global-frame """
+        if self.dim == 2:
+            return self._rotation_matrix.dot(direction)
+        
+        elif self.dim == 3:
+            return self._orientation.apply(direction.T).T
+        
+        else:
+            warnings.warn("Not implemented for higer dimensions")
+            return direction
+        
+
+    def transform_global2relative_dir(self, direction):
+        """ Transform a direction, velocity or relative position to the obstacle-frame """
+        if self.dim == 2:
+            return self._rotation_matrix.T.dot(direction)
+        
+        elif self.dim == 3:
+            return self._orientation.inv.apply(direction.T).T
+            
+        else:
+            warnings.warn("Not implemented for higer dimensions")
+            return direction
+        
+    def transform_global2relative_matr(self, matrix):
+        if self.dim > 3:
+            warnings.warn("Not implemented for higer dimensions")
+            return matrix
+        return self._rotation_matrix.T.dot(matrix).dot(self._rotation_matrix)
+
+    def transform_relative2global_matr(self, matrix):
+        if self.dim > 3:
+            warnings.warn("Not implemented for higer dimensions")
+            return matrix
+        return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
+
     # TODO: use loop for 2D array, in order to speed up for 'on-robot' implementation!
     def get_normal_direction(self, position, in_global_frame=False):
         """ Get normal direction to the surface. 
@@ -363,368 +669,27 @@ class Obstacle(ABC):
             
         # if in_global_frame:
             # norm_derivs = self.transform_relative2global_dir(norm_derivs)
-            
         return norm_derivs
 
-    def transform_global2relative(self, position):
-        """ Transform a position from the global frame of reference 
-        to the obstacle frame of reference"""
-        # TODO: transform this into wrapper / decorator
-        if not position.shape[0]==self.dim:
-            raise ValueError("Wrong position dimensions")
-
-        if self.dim > 2:
-            warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
-            return position
-            # raise NotImplementedError("Rotation for dimensions {} need to be implemented".format(self.dim))
-            
-        if len(position.shape)==1:
-            return self.rotMatrix.T.dot(position - np.array(self.center_position))
-        elif len(position.shape)==2:
-            n_points = position.shape[1]
-            return self.rotMatrix.T.dot(position - np.tile(self.center_position, (n_points,1)).T)
-        else:
-            raise ValueError("Unexpected position-shape")
-
-    def transform_relative2global(self, position):
-        """ Transform a position from the obstacle frame of reference 
-        to the global frame of reference"""
-        if not isinstance(position, (list, np.ndarray)):
-            raise TypeError('Position={} is of type {}'.format(position, type(position)))
-
-        if self.dim > 2:
-             warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
-             return position
-            # raise NotImplementedError("Rotation for dimensions {} need to be implemented".format(self.dim))
-
-        if isinstance(position, (list)):
-            position = np.array(position)
-            
-        if not position.shape[0]==self.dim:
-            raise TypeError('Position is of dimension {}, instead of {}'.format(position.shape[0], self.dim))
-
-        if len(position.shape)==1:
-            return self.rotMatrix.dot(position) + self.center_position
-        elif len(position.shape)==2:
-            # TODO - make it a oneliner without for loop to speed up
-            # for ii in range(position.shape[1]):
-                # position[:, ii] = self.rotMatrix.dot(position[:, ii]) + self.center_position
-            # return position
-            n_points = position.shape[1]
-            return self.rotMatrix.dot(position) + np.tile(self.center_position, (n_points,1)).T
-        # return (self.rotMatrix.dot(position))  + np.array(self.center_position)
-        else:
-            raise ValueError("Unexpected position-shape")
-        
-    def transform_relative2global_dir(self, direction):
-        """ Transform a direction, velocity or relative position to the global-frame """
-        if self.dim > 3:
-            warnings.warn("Not implemented for higer dimensions")
-            return direction
-        return self.rotMatrix.dot(direction)
-
-    def transform_global2relative_dir(self, direction):
-        """ Transform a direction, velocity or relative position to the obstacle-frame """
-        if self.dim > 3:
-            warnings.warn("Not implemented for higer dimensions")
-            return direction
-        return self.rotMatrix.T.dot(direction)
-    
-    def transform_global2relative_matr(self, matrix):
-        if self.dim > 3:
-            warnings.warn("Not implemented for higer dimensions")
-            return matrix
-        return self.rotMatrix.T.dot(matrix).dot(self.rotMatrix)
-
-    def transform_relative2global_matr(self, matrix):
-        if self.dim > 3:
-            warnings.warn("Not implemented for higer dimensions")
-            return matrix
-        return self.rotMatrix.dot(matrix).dot(self.rotMatrix.T)
-
-    @property
-    def local_relative_reference_point(self):
-        return self._relative_reference_point
-
-    @local_relative_reference_point.setter
-    def local_relative_reference_point(self, value):
-        self._relative_reference_point = value
-
-    @property
-    def global_relative_reference_point(self):
-        if self._relative_reference_point is None:
-            return self.center_position
-        else:
-            return self.transform_relative2global(self._relative_reference_point)
-
-    @global_relative_reference_point.setter
-    def global_relative_reference_point(self, value):
-        if value is None:
-            self._relative_reference_point = None
-        else:
-            self._relative_reference_point = self.transform_global2relative(value)
-            
-    @property
-    def center_dyn(self):# TODO: depreciated -- delete
-        return self.reference_point
-
-    @property
-    def global_reference_point(self):
-        # Rename kernel-point?
-        return self.transform_relative2global(self._reference_point)
-
-    @property
-    def local_reference_point(self):
-        # Rename kernel-point?
-        return self._reference_point
-
-    @local_reference_point.setter
-    def local_reference_point(self, value):
-        # Rename kernel-point?
-        self._reference_point = value
-        
-    @property
-    def reference_point(self):
-        # Rename kernel-point?
-        return self._reference_point
-
-    @reference_point.setter
-    def reference_point(self, value):
-        self._reference_point = value
-
-    @property
-    def orientation(self):
-        return self._orientation
-    
-    @orientation.setter
-    def orientation(self, value):
-        if isinstance(value, list) and self.dim==3:
-            self._orientation = np.array(value) # MAYBE: change to quaternion
-        else:
-            self._orientation = value
-
-        if self.dim==2:
-            self.compute_R()
-
-    @property
-    def th_r(self): # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        return self.orientation # getter
-
-    @th_r.setter
-    def th_r(self, value): # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        self.orientation = value # setter
-
-    @property
-    def position(self):
-        return self.center_position
-
-    @position.setter
-    def position(self, value):
-        self.center_position = value
-
-    # @property
-    # def x0(self):
-        # warnings.warn("'x0' is an outdated name use 'center_position' instead.")
-        # if True:
-            # raise ValueError()
-        # return self.center_position
-
-    # @x0.setter
-    # def x0(self, value):
-        # warnings.warn("'x0' is an outdated name use 'center_position' instead.")
-        # if True:
-            # raise ValueError()
-        # self.center_position = value
-        # self.has_moved = True
-    
-    @property
-    def center_position(self):
-        return self._center_position
-    
-    @center_position.setter
-    def center_position(self, value):
-        if isinstance(value, list):
-            self._center_position = np.array(value) 
-        else:
-            self._center_position = value
-
-    @property
-    def timestamp(self):
-        return self._timestamp
-
-    @timestamp.setter
-    def timestamp(self, value):
-        # if timestamp is None:
-        self._timestamp = value
-
-    def update_timestamp(self):
-        self._timestamp = time.time()
-
-    @property
-    def xd(self): # TODO: remove
-        warnings.warn("'xd' is an outdated name use 'lienar_velocity' instead.")
-        breakpoint()
-        return self._linear_velocity_const
-
-    @property
-    def velocity_const(self):
-        return self._linear_velocity_const
-
-    @property
-    def linear_velocity_const(self):
-        return self._linear_velocity_const
-
-    @linear_velocity_const.setter
-    def linear_velocity_const(self, value):
-        if isinstance(value, list):
-            value = np.array(value)
-        self._linear_velocity_const = value
-
-    @property
-    def linear_velocity(self):
-        return self._linear_velocity
-
-    @linear_velocity.setter
-    def linear_velocity(self, value):
-        self._linear_velocity = value
-        self._linear_velocity_const = value
-
-    @property
-    def angular_velocity(self):
-        return self._angular_velocity
-
-    @property
-    def angular_velocity_const(self):
-        return self._angular_velocity_const
-
-    @angular_velocity_const.setter
-    def angular_velocity_const(self, value):
-        if isinstance(value, list):
-            value = np.array(value)
-        self._angular_velocity_const = value
-        self._angular_velocity = value
-
-    @property
-    def w(self): # TODO: remove
-        warnings.warn("Outdated name")
-        return self._angular_velocity_const
-
-    @property
-    def boundary_points(self):
-        return self._boundary_points
-
-    @boundary_points.setter
-    def boundary_points(self, value):
-        self._boundary_points = value
-        
-    @property
-    def boundary_points_local(self):
-        return self._boundary_points
-
-    @boundary_points_local.setter
-    def boundary_points_local(self, value):
-        self._boundary_points = value
-
-    @property
-    def x_obs(self):
-        return self.boundary_points_global_closed
-
-    @property
-    def boundary_points_global_closed(self):
-        boundary = self.boundary_points_global
-        return np.hstack((boundary, boundary[:, 0:1]))
-
-    @property
-    def boundary_points_global(self):
-        return self.transform_relative2global(self._boundary_points)
-
-    # @property
-    # def boundary_points_margin(self):
-        # return self._boundary_points_margin
-    
-    # @boundary_points_margin.setter
-    # def boundary_points_margin(self, value):
-        # self._boundary_points_margin = value
-
-    @property
-    def boundary_points_margin_local(self):
-        return self._boundary_points_margin
-    
-    @boundary_points_margin_local.setter
-    def boundary_points_margin_local(self, value):
-        self._boundary_points_margin = value
-
-    @property
-    def x_obs_sf(self):
-        return self.boundary_points_margin_global_closed
-    
-    @property
-    def boundary_points_margin_global(self):
-        return self.transform_relative2global(self._boundary_points_margin)
-
-    @property
-    def boundary_points_margin_global_closed(self):
-        boundary = self.boundary_points_margin_global
-        return np.hstack((boundary, boundary[:, 0:1]))
-
-    # def set_convergence_direction(self, dynamical_system=None):
-        # """ Set the convergence direction at the reference point based on DS.
-        # The convergence velocity should not be set for dynamic-obstacles or
-        # environments with time-variant ds. """
-        # self._convergence_direction = dynamical_system(self.center_position)
-    
-    # def get_convergence_direction(self, dynamical_system=None):
-    #     """ Evaluates the convergence direction at the reference point based on a
-    #     dynamical system or from memory."""
-    #     if self._convergence_direction is not None:
-    #         return self._convergence_direction
-    #     else:
-    #         return dynamical_system(self.center_position)
     
     def compute_R(self):
         # TODO: remove - depreciated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        self.compute_rotation_matrix()
+        raise NotImplementedError("compute_R is depreciated"
+                                  + "---- use 'compute__rotation_matrix' instead.")
         
     def compute_rotation_matrix(self):
         # TODO - replace with quaternions
         # Find solution for higher dimensions
-        orientation = self._orientation
-
-        # Compute the rotation matrix in 2D and 3D
-        if orientation is None:
-            self.rotMatrix = np.eye(self.dim)
+        if self.dim != 2:
+            warnings.warn("Orientation matrix only used for useful for 2-D rotations.")
             return
+        orientation = self._orientation
 
         # rotating the query point into the obstacle frame of reference
         if self.dim==2:
-            self.rotMatrix = np.array([[cos(orientation), -sin(orientation)], 
+            self._rotation_matrix = np.array([[cos(orientation), -sin(orientation)], 
                                        [sin(orientation),  cos(orientation)]])
-                                       
-        elif self.dim==3:
-            R_x = np.array([[1, 0, 0,],
-                        [0, np.cos(orientation[0]), np.sin(orientation[0])],
-                        [0, -np.sin(orientation[0]), np.cos(orientation[0])] ])
-
-            R_y = np.array([[np.cos(orientation[1]), 0, -np.sin(orientation[1])],
-                        [0, 1, 0],
-                        [np.sin(orientation[1]), 0, np.cos(orientation[1])] ])
-
-            R_z = np.array([[np.cos(orientation[2]), np.sin(orientation[2]), 0],
-                        [-np.sin(orientation[2]), np.cos(orientation[2]), 0],
-                        [ 0, 0, 1] ])
-
-            self.rotMatrix= R_x.dot(R_y).dot(R_z)
-        else:
-            warnings.warn('rotation not yet defined in dimensions d > 3 !')
-            self.rotMatrix = np.eye(self.dim)
-
+        
     def set_reference_point(self, position, in_global_frame=False): # Inherit
         """Defines reference point. 
         It is used to create reference direction for the modulation of the system."""

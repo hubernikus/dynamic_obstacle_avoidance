@@ -174,7 +174,7 @@ def obstacle_avoidance_rotational(
     modulated_velocity : array-like of shape (n_dimensions,)
     """
     n_obstacles = len(obstacle_list)
-    if not n_obstacles:  # zero length
+    if not n_obstacles:  # No obstacles in the environment
         return initial_velocity
 
     if hasattr(obstacle_list, 'update_relative_reference_point'):
@@ -227,12 +227,10 @@ def obstacle_avoidance_rotational(
             null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
         else:
             null_matrix = normal_orthogonal_matrix[:, :, it]
-            
+
         if (hasattr(obstacle_list, 'get_convergence_direction')):
-            convergence_velocity = obstacle_list.get_convergence_direction(position=position,
-                                                                           it_obs=oo)
-        else:
-            raise ValueError("No initial-convergence direction is defined")
+            convergence_velocity = obstacle_list.get_convergence_direction(
+                position=position, it_obs=oo)
 
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
