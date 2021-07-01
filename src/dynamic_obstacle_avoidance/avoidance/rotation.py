@@ -9,6 +9,7 @@ import warnings
 from math import pi
 
 import numpy as np
+from numpy import linalg as LA
 import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
@@ -17,6 +18,7 @@ from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
+
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
@@ -67,8 +69,9 @@ def directional_convergence_summing(
 
     # Find intersection a with radius of pi/2
     tangent_radius = np.pi/2.0
+    convergence_is_outside_tangent = np.linalg.norm(dir_convergence) < tangent_radius
 
-    if np.linalg.norm(dir_convergence) < tangent_radius:
+    if convergence_is_outside_tangent:
         # Inside the tangent radius, i.e. vectorfield towards obstacle [no-tail-effect]
 
         # Do the math in the angle space
@@ -111,7 +114,16 @@ def directional_convergence_summing(
     else:
         # Initial velocity 'dir_convergecne' already pointing away from obstacle
         dir_conv_rotated = dir_convergence
-        
+
+    if False:
+    # if True:
+        print("")
+        try:
+            print('w_conv', w_conv)
+        except:
+            print("no w_conv")
+        print('dir_conv_rotated', dir_conv_rotated)
+        print("")
 
     if False:
     # if True:
@@ -133,6 +145,7 @@ def directional_convergence_summing(
         breakpoint()
         
     if nonlinear_velocity is None:
+        print("DEBUG NO LONELY WARRIOR...")
         return get_angle_space_inverse(dir_conv_rotated, null_matrix=null_matrix)
     
     else:
@@ -140,14 +153,35 @@ def directional_convergence_summing(
         # TODO: expand for more general nonlinear velocities
         dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
 
-        if np.linalg.norm(dir_nonlinearvelocity - dir_convergence) > np.pi:
+        # if False: # Currently deactivated due to non-conformity in higher-dim space.
+        dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_convergence)
+        if dist_conv_nonlinear > np.pi:
             # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
             # i.e. find the same one, which is 2*pi in the other direction.
+            # Since the normal is not adjusted to find
+            # This should be replaced by 'base-transformation' in the future.
             norm_nonlinear = np.linalg.norm(dir_nonlinearvelocity)
             dirdir_nonlinear = dir_nonlinearvelocity / norm_nonlinear
-            
-            dir_nonlinearvelocity = (norm_nonlinear-2*pi) * dirdir_nonlinear
 
+            # print('Turnaround...')
+            # breakpoint()
+            dir_nonlinearvelocity_new = (norm_nonlinear-2*pi) * dirdir_nonlinear
+            if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_convergence):
+                dist_conv_nonlinear = dir_nonlinearvelocity_new
+
+            warnings.warn("pi-transfer was executed. This should be replaced with base-transformation."
+            
+        if True: # DEBUG
+            print('nonlinar vel', nonlinear_velocity)
+            print('normal/null dir', null_matrix[:, 0])
+            print('normal/null dir 1', null_matrix[:, 1])
+            print('dir_conv_rotated', dir_conv_rotated)
+            print("dir_nonlinearvelocity", dir_nonlinearvelocity)
+            # print("mag---dir_nonlinearvelocity", LA.norm(dir_nonlinearvelocity))
+            print("")
+
+        # TODO: try to project only onto the circle (?)
+        # if convergence_is_outside_tangent:
         dir_nonlinear_rotated = weight*dir_conv_rotated + (1-weight)*dir_nonlinearvelocity
         return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
     
@@ -187,6 +221,7 @@ def obstacle_avoidance_rotational(
         gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
         if gamma_array[ii] <= 1 and not obstacle_list[ii].is_boundary:
             # Since boundaries are mutually subtracted,
+            # breakpoint()
             raise NotImplementedError()
 
     ind_obs = np.logical_and(gamma_array < cut_off_gamma, gamma_array > 1)
@@ -244,15 +279,17 @@ def obstacle_avoidance_rotational(
             null_matrix=null_matrix)
         
         if False:
-            warnings.warn("Things are not going well... Help @ ")
+            # warnings.warn("Checking things at... Help @ ")
             print('position', position)
+            print('inital vel', initial_velocity)
+            print('conv vel', convergence_velocity)
             print('normal', normal_orthogonal_matrix[:, 0, 0])
             print('ref_dir', reference_dir)
-            print('conv vel', convergence_velocity)
-            print('inital vel', initial_velocity)
-            print('dot vels', np.dot(position, convergence_velocity)/(
-            np.linalg.norm(position)*np.linalg.norm(convergence_velocity)))
-            breakpoint()
+            print('rotated_vel', rotated_velocities[:, it])
+            print()
+            # print('dot vels', np.dot(position, convergence_velocity)/(
+                # np.linalg.norm(position)*np.linalg.norm(convergence_velocity)))
+            # breakpoint()
         
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,

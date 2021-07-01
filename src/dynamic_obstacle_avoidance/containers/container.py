@@ -82,3 +82,36 @@ class BaseContainer(list):
     @property
     def has_environment(self):
         return bool(len(self))
+
+
+    def check_collision(self, position):
+        """ Returns collision with environment (type Bool)
+        
+        Convention for this model is that:
+        > Obstacles are mutually additive, i.e. no collision with any obstacle
+        > Boundaries are mutually subractive, i.e. collision free with at least one boundary.
+        """
+        gamma_list_boundary = []
+        for oo in range(self.n_obstacles):
+            gamma = self[oo].get_gamma(position, in_global_frame=True)
+
+            if self[oo].is_boundary:
+                gamma_list_boundary.append(gamma)
+                
+            elif gamma <= 1:
+                # Collided with an obstacle
+                return True
+
+        if len(gamma_list_boundary):
+            # At least one boundary
+            return all(np.array(gamma_list_boundary) <= 1)
+        else:
+            return False
+
+    def check_collision_array(self, positions):
+        """ Return array of checked collisions of type bool. """
+        collision_array = np.zeros(positions.shape[1], dtype=bool)
+        for it in range(positions.shape[1]):
+            collision_array[it] = self.check_collision(positions[:, it])
+        return collision_array
+    

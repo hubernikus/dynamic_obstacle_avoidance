@@ -132,33 +132,6 @@ class MultiBoundaryContainer(BaseContainer):
         for obs in self.n_obstacles:
             obs.get_convergence_direction(dynamical_system=dynamical_system)
         
-    def check_collision(self, position):
-        """ Returns collision with environment (type Bool)
-        Note that obstacles are mutually additive, i.e. no collision with any obstacle
-        while the boundaries are mutually subractive, i.e. collision free with at least
-        one boundary.
-        """
-        gamma_list_boundary = []
-            
-        for oo in range(self.n_obstacles):
-            gamma = self[oo].get_gamma(position, in_global_frame=True)
-
-            if self[oo].is_boundary:
-                gamma_list_boundary.append(gamma)
-                
-            elif gamma < 1:
-                # Collided with an obstacle
-                return True
-            
-        # No collision with any obstacle so far
-        return all(np.array(gamma_list_boundary) <= 1)
-
-    def check_collision_array(self, positions):
-        """ Return array of checked collisions of type bool. """
-        collision_array = np.zeros(positions.shape[1], dtype=bool)
-        for it in range(positions.shape[1]):
-            collision_array[it] = self.check_collision(positions[:, it])
-        return collision_array
         
     def update_relative_reference_point(self, position, gamma_margin_close_wall=1e-6):
         """ Get the local reference point as described in active-learning. """
