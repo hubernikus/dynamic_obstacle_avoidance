@@ -169,7 +169,8 @@ def directional_convergence_summing(
             if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_convergence):
                 dist_conv_nonlinear = dir_nonlinearvelocity_new
 
-            warnings.warn("pi-transfer was executed. This should be replaced with base-transformation."
+            warnings.warn("pi-transfer was executed. "
+                          + "This should be replaced with base-transformation.")
             
         if True: # DEBUG
             print('nonlinar vel', nonlinear_velocity)
