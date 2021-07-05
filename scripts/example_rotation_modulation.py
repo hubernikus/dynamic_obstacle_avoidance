@@ -9,11 +9,11 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-from vartools.dynamical_systems import LinearSystemoQuadraticAxisConvergence
+from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
 from vartools.dynamical_systems import BifurcationSpiral
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 
-from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer,
+from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer
 from dynamic_obstacle_avoidance.containers import RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
@@ -746,7 +746,7 @@ if (__name__)=="__main__":
     # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
     
-    # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
+    single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
     # single_ellipse_spiral_analysis(save_figure=True, n_resolution=100)
 
     # TODO: analyse this local-convergence better / what velocity is needed.

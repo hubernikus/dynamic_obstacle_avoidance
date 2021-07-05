@@ -8,28 +8,34 @@ Container for Obstacle to treat the intersction (and exiting) between different 
 import warnings
 import numpy as np
 
-from dynamic_obstacle_avoidance.containers import BaseContainer
+from dynamic_obstacle_avoidance.containers import RotationContainer
 
 from vartools.dynamical_systems import LinearSystem
 
-class MultiBoundaryContainer(BaseContainer):
+class MultiBoundaryContainer(RotationContainer):
     """ Container to treat multiple boundaries / walls."""
-    def __init__(self, obs_list=None, *args, **kwargs):
+    def __init__(self, obs_list=None, attractor_position=None, *args, **kwargs):
+        print("Initialize MultiBoundaryContainer -- Remove after debug")
         super().__init__(obs_list=obs_list, *args, **kwargs)
 
         if obs_list is not None:
-            raise NotImplementedError()
+            raise NotImplementederror()
         
         else:
             self._parent_array = np.zeros(0, dtype=int)
             self._children_list = []
             self._parent_intersection_point = []
-            
-        self._attractor_position = None
+
+        if (attractor_position is not None or not hasattr(self, '_attractor_position')):
+            self._attractor_position = attractor_position
+        
+        print("DONE MultiBoundaryContainer-init --- debug only")
 
     def append(self, value, parent=None):
         """ Add new obstacle & adapting container-properties"""
         super().append(value)
+        
+        # if update_parent_list:
         self._parent_array = np.hstack((self._parent_array, [-1]))
         self._children_list.append([])
         self._parent_intersection_point.append(None)
@@ -68,7 +74,7 @@ class MultiBoundaryContainer(BaseContainer):
             return root
         elif root.shape[0] > 1:
             warnings.warn("Several root-element found. Only first one returned.")
-            
+
         return root[0]
 
     def set_parent(self, it, parent):
@@ -83,10 +89,12 @@ class MultiBoundaryContainer(BaseContainer):
         """ Get a number for each obstacle in self which corresponds to level."""
         ind_parents = self.get_root(return_multi_values=True)
         ind_parents = ind_parents.tolist()
+        print(ind_parents)
         
         level_value = (-1)*np.ones(len(self._obstacle_list), dtype=int)
         it_level = 0
-        while(len(ind_parents)): # nonzeroit
+        while(len(ind_parents)): # nonzero-iterator
+            print('ind_partents', ind_parents)
             ind_children = []
             for it_p in ind_parents:
                 level_value[it_p] = it_level
@@ -210,29 +218,34 @@ class MultiBoundaryContainer(BaseContainer):
 
             # print(f"obs={ii_self} has rel_gamam={relative_gamma}")
             # breakpoint()
-            
+
         for ii_self in np.arange(self.n_obstacles)[~ind_inside]:
             self[ii_self].reset_relative_reference()
+
+    def reset_relative_references(self):
+        """ Reset all relative references. """
+        for ii_self in range(self.n_obstacles):
+            self[ii_self].reset_relative_reference()
     
-    def get_convergence_direction(self, position, it_obs, attractor_position=None):
-        """ Get the (null) direction for a specific obstacle in the multi-body-boundary
-        container which serves for the rotational-modulation. """
-        if attractor_position is not None:
-            self._attractor_position = attractor_position
+    # def get_convergence_direction(self, position, it_obs, attractor_position=None):
+    #     """ Get the (null) direction for a specific obstacle in the multi-body-boundary
+    #     container which serves for the rotational-modulation. """
+    #     if attractor_position is not None:
+    #         self._attractor_position = attractor_position
 
-        # Project point on surface
-        if self._parent_intersection_point[it_obs] is None:
-            if self._attractor_position is None:
-                raise ValueError("Need 'attractor_position' to evaluate the desired direction.")
-            local_attractor = self._attractor_position
+    #     # Project point on surface
+    #     if self._parent_intersection_point[it_obs] is None:
+    #         if self._attractor_position is None:
+    #             raise ValueError("Need 'attractor_position' to evaluate the desired direction.")
+    #         local_attractor = self._attractor_position
             
-        else:
-            local_attractor = self[it_obs].get_intersection_with_surface(
-                direction=(self._parent_intersection_point[it_obs]-self[it_obs].center_position),
-                in_global_frame=True)
+    #     else:
+    #         local_attractor = self[it_obs].get_intersection_with_surface(
+    #             direction=(self._parent_intersection_point[it_obs]-self[it_obs].center_position),
+    #             in_global_frame=True)
 
-        direction = LinearSystem(attractor_position=local_attractor).evaluate(position)
-        return direction
+    #     direction = LinearSystem(attractor_position=local_attractor).evaluate(position)
+    #     return direction
 
     def plot_convergence_attractor(self, ax, attractor_position):
         """ Plot the local-graph for all obstacles """

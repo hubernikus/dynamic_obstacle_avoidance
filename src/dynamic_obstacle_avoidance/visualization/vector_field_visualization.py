@@ -58,15 +58,12 @@ def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, d
 
             # Check convergence
             if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos) < convergence_margin):
-                
                 x_pos = x_pos[:, :it_count+2]
-                
                 print("Convergence reached after {} iterations.".format(it_count))
                 break
 
             if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count]) < convergence_margin):
                 x_pos = x_pos[:, :it_count+2]
-                
                 print("Stopping at local minimum after {} iterations.".format(it_count))
                 break
 
@@ -325,8 +322,8 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if n_samples:  # nonzero
         it_start = 0
         
-        pos1 = [-0.832, 0.138]
-        pos2 = [-0.516, -0.164]
+        pos1 = [-3.018, 1.042]
+        pos2 = [-3.016, 1.187]
 
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]

@@ -154,7 +154,7 @@ def directional_convergence_summing(
         dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
 
         # if False: # Currently deactivated due to non-conformity in higher-dim space.
-        dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_convergence)
+        dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_conv_rotated)
         if dist_conv_nonlinear > np.pi:
             # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
             # i.e. find the same one, which is 2*pi in the other direction.
@@ -166,13 +166,19 @@ def directional_convergence_summing(
             # print('Turnaround...')
             # breakpoint()
             dir_nonlinearvelocity_new = (norm_nonlinear-2*pi) * dirdir_nonlinear
-            if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_convergence):
-                dist_conv_nonlinear = dir_nonlinearvelocity_new
+            if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated):
+                # print('dir_nonlinear', dir_nonlinearvelocity)
+                # print('dir_nonlinear_new', dir_nonlinearvelocity_new)
+                # print('dist', dist_conv_nonlinear)
+                # print('dist new', np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated))
+                # print('dir_conv_rotated', dir_conv_rotated)
+                dir_nonlinearvelocity = dir_nonlinearvelocity_new
 
-            warnings.warn("pi-transfer was executed. "
-                          + "This should be replaced with base-transformation.")
+                warnings.warn("pi-transfer was executed. "
+                              + "This should be replaced with base-transformation.")
             
-        if True: # DEBUG
+        # if True: # DEBUG
+        if False: # DEBUG
             print('nonlinar vel', nonlinear_velocity)
             print('normal/null dir', null_matrix[:, 0])
             print('normal/null dir 1', null_matrix[:, 1])
@@ -180,6 +186,7 @@ def directional_convergence_summing(
             print("dir_nonlinearvelocity", dir_nonlinearvelocity)
             # print("mag---dir_nonlinearvelocity", LA.norm(dir_nonlinearvelocity))
             print("")
+            breakpoint()
 
         # TODO: try to project only onto the circle (?)
         # if convergence_is_outside_tangent:
@@ -264,12 +271,12 @@ def obstacle_avoidance_rotational(
         else:
             null_matrix = normal_orthogonal_matrix[:, :, it]
 
-        if (hasattr(obstacle_list, 'get_convergence_direction')):
-            convergence_velocity = obstacle_list.get_convergence_direction(
-                position=position, it_obs=oo)
-
+        convergence_velocity = obstacle_list.get_convergence_direction(
+            position=position, it_obs=oo)
+            
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
+            
             rotated_velocities[:, it] = initial_velocity
 
         rotated_velocities[:, it] = directional_convergence_summing(
@@ -290,7 +297,7 @@ def obstacle_avoidance_rotational(
             print()
             # print('dot vels', np.dot(position, convergence_velocity)/(
                 # np.linalg.norm(position)*np.linalg.norm(convergence_velocity)))
-            # breakpoint()
+            breakpoint()
         
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
