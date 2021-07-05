@@ -9,7 +9,7 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
+from vartools.dynamical_systems import xbLinearSystem, QuadraticAxisConvergence
 from vartools.dynamical_systems import BifurcationSpiral
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 

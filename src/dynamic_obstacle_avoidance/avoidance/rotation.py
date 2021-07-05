@@ -16,20 +16,20 @@ from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
-from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
-from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
+from dynamic_obstacle_avoidance.avoidance.utils import compute_weights, get_weight_from_gamma
 
+from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
 
 # TODO: speed up learning through cpp / c / cython(!?)
-def get_intersection_with_circle(start_position, direction, radius):
+def get_intersection_with_circle(start_position, direction, radius, only_positive=True):
     """Returns intersection with circle of of radius 'radius' and the line defined as
     'start_position + x * direction'
     (!) Only intersection at furthest distance to start_point is returned. """
     # Binomial Formula to solve for x in:
-    # || dir_reference + x * (delta_dir_conv) || = pi/2
+    # || dir_reference + x * (delta_dir_conv) || = radius
     AA = np.sum(direction**2) 
     BB = 2 * np.dot(direction, start_position)
     CC = np.sum(start_position**2) - radius**2
@@ -40,14 +40,18 @@ def get_intersection_with_circle(start_position, direction, radius):
         # No intersection with circle
         return None
 
-    # Only negative direction due to expected negative A (?!) [returns max-direciton]..
-    fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
-    return fac_direction
-    
-    
+    if only_positive:
+        # Only negative direction due to expected negative A (?!) [returns max-direciton]..
+        fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
+        return fac_direction
+    else:
+        points = (np.array([+BB, - BB])  + np.sqrt(DD)) / (2*AA)
+        return points
+
+
 def directional_convergence_summing(
     convergence_vector, reference_vector, weight, nonlinear_velocity=None,
-    null_direction=None, null_matrix=None):
+    null_direction=None, null_matrix=None, convergence_radius=pi/2):
     """ Rotatiting / modulating a vector by using directional space.
 
     Paramters
@@ -68,12 +72,10 @@ def directional_convergence_summing(
     dir_convergence = get_angle_space(convergence_vector, null_matrix=null_matrix)
 
     # Find intersection a with radius of pi/2
-    tangent_radius = np.pi/2.0
-    convergence_is_outside_tangent = np.linalg.norm(dir_convergence) < tangent_radius
+    convergence_is_outside_tangent = np.linalg.norm(dir_convergence) < convergence_radius
 
     if convergence_is_outside_tangent:
         # Inside the tangent radius, i.e. vectorfield towards obstacle [no-tail-effect]
-
         # Do the math in the angle space
         delta_dir_conv = dir_convergence - dir_reference
         norm_dir_conv = np.linalg.norm(delta_dir_conv)
@@ -84,7 +86,7 @@ def directional_convergence_summing(
                 return nonlinear_velocity
 
         fac_tang_conv = get_intersection_with_circle(
-            start_position=dir_reference, direction=delta_dir_conv, radius=tangent_radius)
+            start_position=dir_reference, direction=delta_dir_conv, radius=convergence_radius)
 
         dir_tangent = dir_reference + fac_tang_conv*delta_dir_conv
         norm_tangent_dist = np.linalg.norm(dir_tangent - dir_reference)
@@ -194,11 +196,6 @@ def directional_convergence_summing(
         return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
     
 
-def get_weight_from_gamma(gamma_array, power_value=1.0):
-    """ Returns weight-array based on input of gamma_array """
-    return 1.0/np.abs(gamma_array)**power_value
-
-
 def obstacle_avoidance_rotational(
     position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None):
     """ Obstacle avoidance based on 'local' rotation and the directional weighted mean.
@@ -241,7 +238,7 @@ def obstacle_avoidance_rotational(
     
     gamma_array = gamma_array[ind_obs]    # Only keep relevant ones
     gamma_proportional = np.zeros((n_obs_close))
-    normal_orthogonal_matrix = np.zeros((dimension, dimension, n_obstacles))
+    normal_orthogonal_matrix = np.zeros((dimension, dimension, n_obs_close))
 
     for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         gamma_proportional[it] = obstacle_list[it_obs].get_gamma(
@@ -276,9 +273,10 @@ def obstacle_avoidance_rotational(
             
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
-            
             rotated_velocities[:, it] = initial_velocity
 
+        # Note that the inv_gamma_weight was prepared for the multiboundary environment through
+        # the reference point displacement (see 'loca_reference_point')
         rotated_velocities[:, it] = directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
@@ -331,3 +329,5 @@ def obstacle_avoidance_rotational(
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
     return rotated_velocity
+
+

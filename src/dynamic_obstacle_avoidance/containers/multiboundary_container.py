@@ -103,7 +103,7 @@ class MultiBoundaryContainer(RotationContainer):
             ind_parents = ind_children
         return level_value
 
-    def get_intersection(self, it_obs1, it_obs2):
+    def _get_intersection(self, it_obs1, it_obs2):
         """Get the intersection betweeen two obstacles contained in the list.
         The intersection is numerically based on the drawn points. """
         self[it_obs1].create_shape()
@@ -130,16 +130,15 @@ class MultiBoundaryContainer(RotationContainer):
             if self.get_parent(ii) < 0: # Root element
                 self._parent_intersection_point[ii] = None
             else:
-                self._parent_intersection_point[ii] = self.get_intersection(
+                self._parent_intersection_point[ii] = self._get_intersection(
                     it_obs1=ii, it_obs2=self.get_parent(ii))
                 
-        self._attractor_position = attractor_position
+                self._attractor_position = attractor_position
 
     def update_convergence_direction(self, dynamical_system):
         """ Set the convergence direction to the evaluated 'convergence' DS. """
         for obs in self.n_obstacles:
             obs.get_convergence_direction(dynamical_system=dynamical_system)
-        
         
     def update_relative_reference_point(self, position, gamma_margin_close_wall=1e-6):
         """ Get the local reference point as described in active-learning. """
@@ -157,7 +156,7 @@ class MultiBoundaryContainer(RotationContainer):
         for ii, ii_self in zip(range(np.sum(ind_inside)), np.arange(self.n_obstacles)[ind_inside]):
             # Displacement_weight for each obstacle
             # TODO: make sure following function is for obstacles other than ellipses (!)
-            boundary_point = self[ii_self].get_intersection_with_surface(
+            boundary_point = self[ii_self]._get_intersection_with_surface(
                 direction=(position - self[ii_self].center_position), in_global_frame=True)
 
             weights = np.zeros(num_close)
@@ -240,13 +239,31 @@ class MultiBoundaryContainer(RotationContainer):
     #         local_attractor = self._attractor_position
             
     #     else:
-    #         local_attractor = self[it_obs].get_intersection_with_surface(
+    #         local_attractor = self[it_obs]._get_intersection_with_surface(
     #             direction=(self._parent_intersection_point[it_obs]-self[it_obs].center_position),
     #             in_global_frame=True)
 
     #     direction = LinearSystem(attractor_position=local_attractor).evaluate(position)
     #     return direction
 
+    def get_parent_intersection(self, it_child):
+        return self._parent_intersection_point[it_child]
+        
+    def get_convergence_boundary_point(self, *, it_child: int, project_on_child: bool, it_parent: bool = None):
+    # def get_convergence_boundary_point(self, *, it_child, project_on_child, it_parent =0):
+        """ Return intersection point projected on boundary of one of the obstacles. """
+        # TODO: is projection really needed (?!)
+        intersection_point = self._parent_intersection_point[it_child]
+
+        if project_on_child is False and it_parent is None:
+            raise ValueError("Parent index is needed.")
+        
+        it_surf_obs = it_child if project_on_child else it_parent
+        surface_projection = self[it_surf_obs].get_intersection_with_surface(
+            direction=(intersection_point-self[it_surf_obs].center_position), in_global_frame=True)
+        
+        return surface_projection
+    
     def plot_convergence_attractor(self, ax, attractor_position):
         """ Plot the local-graph for all obstacles """
         for ii in range(self.n_obstacles):

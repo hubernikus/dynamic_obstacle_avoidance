@@ -101,83 +101,9 @@ def get_relative_obstacle_velocity(
     relative_velocity = xd_obs
     return relative_velocity
 
-
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
-    """ Compute diagonal Matrix"""
-    if Gamma <= 1 and treat_obstacle_special:
-        # Point inside the obstacle
-        delta_eigenvalue = 1 
-    else:
-        delta_eigenvalue = 1./abs(Gamma)**(1./rho)
-    eigenvalue_reference = 1 - delta_eigenvalue*repulsion_coeff
-    
-    if tangent_eigenvalue_isometric:
-        eigenvalue_tangent = 1 + delta_eigenvalue
-    else:
-        # Decreasing velocity in order to reach zero on surface
-        eigenvalue_tangent = 1 - 1./abs(Gamma)**tangent_power
-    return np.diag(np.hstack((eigenvalue_reference, np.ones(dim-1)*eigenvalue_tangent)))
-
-
-def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
-    """ Compute decomposition matrix and orthogonal matrix to basis"""
-    normal_vector = obs.get_normal_direction(x_t, normalize=True, in_global_frame=in_global_frame)
-    reference_direction = obs.get_reference_direction(x_t, in_global_frame=in_global_frame)
-
-    dot_prod = np.dot(normal_vector, reference_direction)
-    if obs.is_non_starshaped and np.abs(dot_prod) < dot_margin:
-        # Adapt reference direction to avoid singularities
-        # WARNING: full convergence is not given anymore, but impenetrability
-        if not np.linalg.norm(normal_vector): # zero
-            normal_vector = -reference_direction
-        else:
-            weight = np.abs(dot_prod)/dot_margin
-            dir_norm = np.copysign(1,dot_prod)
-            reference_direction = get_directional_weighted_sum(reference_direction=normal_vector,
-                directions=np.vstack((reference_direction, dir_norm*normal_vector)).T,
-                weights=np.array([weight, (1-weight)]))
-    
-    E_orth = get_orthogonal_basis(normal_vector, normalize=True)
-    E = np.copy((E_orth))
-    E[:, 0] = -reference_direction
-    
-    return E, E_orth
-
-
-def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
-    # TODO: depreciated remove
-    """
-     The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
-    Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
-    
-    Input
-    x_t [dim]: The position of the robot in the obstacle reference frame
-    obs [obstacle class]: Description of the obstacle with parameters
-        
-    Output
-    E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles surface
-    D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
-    Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
-    E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
-    """
-    if True:
-        raise NotImplementedError("Depreciated ---- remove")
-    warnings.warn("Depreciated ---- remove")
-    dim = obs.dim
-    
-    if hasattr(obs, 'rho'):
-        rho = np.array(obs.rho)
-    else:
-        rho = 1
-
-    Gamma = obs.get_gamma(x_t, in_global_frame=False) # function for ellipsoids
-    
-    E, E_orth = compute_decomposition_matrix(obs, x_t, dim)
-    import pdb; pbd.set_trace()
-    D = compute_diagonal_matrix(Gamma, dim=dim, is_boundary=obs.is_boundary,
-                                repulsion_coeff = obs.repulsion_coeff)
-    
-    return E, D, Gamma, E_orth
+def get_weight_from_gamma(gamma_array, power_value=1.0):
+    """ Returns weight-array based on input of gamma_array """
+    return 1.0/np.abs(gamma_array)**power_value
 
 
 def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):
@@ -360,6 +286,7 @@ def compute_weights(distMeas, N=0, distMeas_lowerLimit=1, weightType='inverseGam
 
 
 def compute_R(d, th_r):
+    warnings.warn("This function will be removed. Don't use it")
     if th_r == 0:
         rotMatrix = np.eye(d)
     # rotating the query point into the obstacle frame of reference

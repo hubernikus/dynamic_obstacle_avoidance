@@ -166,7 +166,7 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
+def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
 
     if pos_attractor is not None:
@@ -175,6 +175,9 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
     obs_polygon = []
     obs_polygon_sf = []
 
+    if obstacle_color is None:
+        np.array([176, 124, 124])/255.
+    
     for n in range(len(obs)):
         
         if obs[n].boundary_points is None:
@@ -194,7 +197,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
                                            [y_range[0], y_range[0], y_range[1], y_range[1]]])
             outer_boundary = outer_boundary.T
             boundary_polygon = plt.Polygon(outer_boundary, alpha=1.0, zorder=-4)
-            boundary_polygon.set_color(np.array([176, 124, 124])/255.)
+            boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
             obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
@@ -203,10 +206,10 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
         else:
             obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
 
-            if obstacleColor is None:
+            if obstacle_color is None:
                 obs_polygon[n].set_color(np.array([176,124,124])/255)
             else:
-                obs_polygon[n].set_color(obstacleColor[n])
+                obs_polygon[n].set_color(obstacle_color[n])
             
         obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])
@@ -259,7 +262,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
     return 
     
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacle_color=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
     """ 
     Draw obstacle and vectorfield. Several parameters and defaults 
     allow easy customization of plot.
@@ -293,7 +296,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if not plotObstacle:
         warnings.warn('x_label & ticks not implemented')
     
-    plot_obstacles(ax, obs, x_range, y_range, pos_attractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
+    plot_obstacles(ax, obs, x_range, y_range, pos_attractor, obstacle_color, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
 
     # Show certain streamlines
     if np.array(points_init).shape[0]:

@@ -74,7 +74,15 @@ class RotationContainer(BaseContainer):
                 else:
                     # Make it converge to attractor either way, as evaluation might be numerically bad.
                     self._ConvergenceDynamics[it_obs] = LinearSystem(attractor_position=attractor)
-
+        
     def get_convergence_direction(self, position, it_obs):
         """ Return 'convergence direction' at input 'position'."""
         return self._ConvergenceDynamics[it_obs].evaluate(position)
+
+    def get_intersection_position(self, it_ob):
+        """ Get the position where two boundary-obstacles intersect. """
+        if hasattr(self._ConvergenceDynamics[it_obs], 'attractor_position'):
+            return self._ConvergenceDynamics[it_obs].attractor_position
+        
+        else:
+            raise NotImplementedError("Create 'intersection-with-surface' from local DS")
