@@ -9,7 +9,8 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-from vartools.dynamical_systems import xbLinearSystem, QuadraticAxisConvergence
+
+from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
 from vartools.dynamical_systems import BifurcationSpiral
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 
@@ -438,7 +439,7 @@ def single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=40):
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
-        center_position=np.array([1, 6]), 
+        center_position=np.array([1, 3]), 
         axes_length=np.array([2, 5]),
         orientation=80./180.*pi))
     obstacle_list.set_convergence_directions(InitialSystem)
@@ -746,13 +747,13 @@ if (__name__)=="__main__":
     # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
     
-    single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
+    # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
     # single_ellipse_spiral_analysis(save_figure=True, n_resolution=100)
 
     # TODO: analyse this local-convergence better / what velocity is needed.
     #         What do we need to know about the field?
     # single_ellipse_multiattractor_triple_plot(save_figure=True, n_resolution=100)
-    # single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=100)
+    single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=100)
     
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)

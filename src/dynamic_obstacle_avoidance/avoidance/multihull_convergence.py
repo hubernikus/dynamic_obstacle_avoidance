@@ -4,12 +4,13 @@ Library for the rotation and summing of linear Systems for learning purposes.
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
 # License: BSD (c) 2021
-
 import warnings
 from math import pi
 
 import numpy as np
 from numpy import linalg as LA
+import numpy.typing as npt
+
 import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
@@ -22,7 +23,9 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_gamma
 from dynamic_obstacle_avoidance.avoidance.rotation import directional_convergence_summing  
 
 
-def get_desired_radius(position, gamma_value, it_obs, obstacle_list, dotprod_weight=1, gamma_weight=1):
+def get_desired_radius(
+    position: np.ndarray, gamma_value: float, it_obs: int, obstacle_list: list,
+    dotprod_weight: float = 1, gamma_weight: float = 1) -> np.array:
     """ Returns desired radius on which boundary a vector has to lie in direction space.
     e.g. radius=pi/2 for a vector to be tangent or pointing away.
 
@@ -31,8 +34,8 @@ def get_desired_radius(position, gamma_value, it_obs, obstacle_list, dotprod_wei
     gamma_position : The gamma value of this obstacle at the evluation position
     distance : distance between position & projected boundary position
 
-    w_dist : (optional) weight-factor applied to the distance
-    w_gamma : (optional) weight-factor applied to the gamm
+    w_dist : weight-factor applied to the distance
+    w_gamma : weight-factor applied to the gamm
 
     Return
     ------
@@ -79,8 +82,9 @@ def get_desired_radius(position, gamma_value, it_obs, obstacle_list, dotprod_wei
 
 
 def multihull_attraction(
-    position, initial_velocity, obstacle_list, cutoff_gamma_high=1e6, cutoff_gamma_low=1e-6,
-    gamma_distance=None):
+    position: np.ndarray, initial_velocity: np.ndarray,
+    obstacle_list: list, cutoff_gamma_high: float = 1e6, cutoff_gamma_low: float = 1e-6,
+    gamma_distance: float = None) -> np.ndarray:
     """ Learned trajectory can be forced to attracto a multi-hull environment.
     Obstacle avoidance is not ensured in order to allow a smooth space
     But the method is inspired by rotational obstacle avoidance (!)
@@ -123,8 +127,6 @@ def multihull_attraction(
             position, in_global_frame=True)
         normal_orthogonal_matrix = get_orthogonal_basis(normal_dir)
 
-        # if False:
-        # if obstacle_list[oo].is_boundary and gamma_array[it] < 1.0:
         if obstacle_list[oo].is_boundary:
             reference_dir = (-1)*reference_dir
             normal_orthogonal_matrix = normal_orthogonal_matrix * (-1)

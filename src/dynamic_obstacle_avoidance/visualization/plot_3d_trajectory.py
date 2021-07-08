@@ -13,6 +13,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 
+# ! Miavy needed for 3D plotting
+# Turn on 3D plotting (!)
+# %gui qt
+
 # import mayavi.mlab
 
 from vartools.dynamical_systems import LinearSystem
@@ -59,7 +63,7 @@ def plot_obstacles_and_vector_levelz_3d(
 
     ########## DEBUGGING ONLY ##########
     # TODO: DEBUGGING Only for Development and testing
-    n_samples = 4
+    n_samples = 0
     if n_samples:  # nonzero
         n_x = n_y = n_grid
         it_start = 0

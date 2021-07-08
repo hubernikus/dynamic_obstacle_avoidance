@@ -25,6 +25,14 @@ cd lib/various_tools/
 python setup.py develop
 ```
 
+### 3D Plotting
+In order to get nice 3D plots, additionally install mayavi (http://docs.enthought.com/mayavi/mayavi/index.html) & PyQt5
+
+``` sh
+pip install mayavi
+pip install PyQt5
+```
+
 ## Getting Started
 To run example file for a 'multiple-obstacle' environment:
 ```

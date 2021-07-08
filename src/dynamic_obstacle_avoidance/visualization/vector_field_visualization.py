@@ -176,7 +176,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
     obs_polygon_sf = []
 
     if obstacle_color is None:
-        np.array([176, 124, 124])/255.
+        obstacle_color = np.array([176, 124, 124])/255.
     
     for n in range(len(obs)):
         
@@ -196,7 +196,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
                 outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
                                            [y_range[0], y_range[0], y_range[1], y_range[1]]])
             outer_boundary = outer_boundary.T
-            boundary_polygon = plt.Polygon(outer_boundary, alpha=1.0, zorder=-4)
+            boundary_polygon = plt.Polygon(outer_boundary, alpha=alpha_obstacle, zorder=-4)
             boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
@@ -206,10 +206,10 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
         else:
             obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
 
-            if obstacle_color is None:
-                obs_polygon[n].set_color(np.array([176,124,124])/255)
-            else:
-                obs_polygon[n].set_color(obstacle_color[n])
+            # if obstacle_color is None:
+                # obs_polygon[n].set_color(np.array([176,124,124])/255)
+            # else:
+            obs_polygon[n].set_color(obstacle_color)
             
         obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])

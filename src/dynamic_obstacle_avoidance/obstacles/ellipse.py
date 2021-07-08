@@ -202,10 +202,10 @@ class Ellipse(Obstacle):
             normal_vector[:, ii] = np.array([normal_vector[1, ii], -normal_vector[0, ii],])
 
         for ii in range(self.n_planes):
-            normalDistance2center[ii] = normal_vector[:, ii].T.dot(self.edge_reference_points[:, ii, 1])
+            normalDistance2center[ii] = normal_vector[:, ii].T.dot(
+                self.edge_reference_points[:, ii, 1])
 
-        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1)) 
-
+        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1))
         return normal_vector, normalDistance2center
         
     def get_distance_to_hullEdge(self, position, hull_edge=None, in_global_frame=False):
@@ -496,7 +496,9 @@ class Ellipse(Obstacle):
             norm = self.transform_relative2global(norm)
         return norm
 
-    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None, center_ellipse=None, only_positive_direction=True, in_global_frame=False):
+    def get_intersection_with_surface(
+        self, edge_point=None, direction=None, axes=None, center_ellipse=None,
+        only_positive_direction=True, in_global_frame=False):
         """Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line

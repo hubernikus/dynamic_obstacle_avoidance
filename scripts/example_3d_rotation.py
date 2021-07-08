@@ -66,11 +66,11 @@ def example_single_ellipse_3d():
     # ObstacleEnvironment = RotationContainer()
 
     
-    # InitialDynamics = SpiralStable(complexity_spiral=5)
-    InitialDynamics = CircularLinear(attractor_position=np.array([0, 0, 0]),
-                                     factor_circular=100, factor_linear=10,
-                                     maximum_velocity=1)
-    # InitialDynamics = LinearSystem(attractor_position=np.array([0, 0, 0]))
+    InitialDynamics = SpiralStable(complexity_spiral=5)
+    # InitialDynamics = CircularLinear(attractor_position=np.array([0, 0, 0]),
+                                     # factor_circular=100, factor_linear=10,
+                                     # maximum_velocity=1)
+    InitialDynamics = LinearSystem(attractor_position=np.array([0, 0, 0]))
     ObstacleEnvironment.set_convergence_directions(
         ConvergingDynamics=LinearSystem(InitialDynamics.attractor_position))
     
@@ -103,7 +103,6 @@ def example_single_ellipse_3d():
     # start_positions = np.array([start_pos1, start_pos2, start_pos3, start_pos4, ]).T
     # n_points = 4
     # start_positions = np.array(np.linspace(start_pos1
-
     
     # xyz_lim=[-0.8, 0.8]
     xyz_lim=[-1.5, 1.5]
@@ -118,8 +117,8 @@ def example_single_ellipse_3d():
             delta_time=0.01,
             # InitialDynamics=ObstacleEnvironment._ConvergenceDynamics[0],
             InitialDynamics=InitialDynamics,
-            start_positions=start_positions,
-            # n_points=10,
+            # start_positions=start_positions,
+            n_points=10,
             n_max_it=400,
             # start_positions=start_positions,
             x_lim=xyz_lim, y_lim=xyz_lim, z_lim=[-1.0, 2.0])
@@ -132,8 +131,8 @@ def example_single_ellipse_3d():
             ObstacleEnvironment,
             func_obstacle_avoidance=obstacle_avoidance_rotational,
             InitialDynamics=InitialDynamics,
-            n_grid=2,
-            z_value=0.5,
+            n_grid=10,
+            # z_value=0.5,
             x_lim=xyz_lim, y_lim=xyz_lim, z_lim=xyz_lim)
 
 if (__name__)=="__main__":

@@ -17,14 +17,15 @@ from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights, get_weight_from_gamma
-
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
 
 # TODO: speed up learning through cpp / c / cython(!?)
-def get_intersection_with_circle(start_position, direction, radius, only_positive=True):
+def get_intersection_with_circle(
+    start_position: np.ndarray, direction: np.ndarray, radius: float, only_positive: bool = True,
+    ) -> np.ndarray:
     """Returns intersection with circle of of radius 'radius' and the line defined as
     'start_position + x * direction'
     (!) Only intersection at furthest distance to start_point is returned. """
@@ -50,10 +51,12 @@ def get_intersection_with_circle(start_position, direction, radius, only_positiv
 
 
 def directional_convergence_summing(
-    convergence_vector, reference_vector, weight, nonlinear_velocity=None,
-    null_direction=None, null_matrix=None, convergence_radius=pi/2):
-    """ Rotatiting / modulating a vector by using directional space.
-
+    convergence_vector: np.ndarray, reference_vector: np.ndarray,
+    weight: float, nonlinear_velocity: np.ndarray = None,
+    null_direction: np.ndarray = None, null_matrix: np.ndarray = None,
+    convergence_radius: float = pi/2) -> np.ndarray:
+    """ Rotating / modulating a vector by using directional space.
+    
     Paramters
     ---------
     convergence_vector: a array of floats of size (dimension,)
@@ -65,6 +68,7 @@ def directional_convergence_summing(
     ------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
+    weight = min(weight, 1)
     if null_matrix is None:
         null_matrix = get_orthogonal_basis(null_direction)
     
@@ -104,10 +108,11 @@ def directional_convergence_summing(
 
         elif weight_deviation > 1:
             warnings.warn("Weight negative. This should be excluded radius test.")
-            # print("Weight deviation", weight_deviation)
             dir_conv_rotated = dir_convergence
 
         else:
+            # This 'smooth'-weighting needs to be done, in order to have a smooth vector-field
+            # which can be approximated by the nonlinear DS 
             # If both negative, no change needed
             power_factor = 5.0
             w_conv = weight**(1./(weight_deviation*power_factor))
@@ -117,87 +122,46 @@ def directional_convergence_summing(
         # Initial velocity 'dir_convergecne' already pointing away from obstacle
         dir_conv_rotated = dir_convergence
 
-    if False:
-    # if True:
-        print("")
-        try:
-            print('w_conv', w_conv)
-        except:
-            print("no w_conv")
-        print('dir_conv_rotated', dir_conv_rotated)
-        print("")
-
-    if False:
-    # if True:
-        # TODO: Remove after DEBUG
-        import matplotlib.pyplot as plt
-        # plt.close('all')
-        plt.figure()
-        plt.plot([-pi, pi], [0, 0], '--', color='k')
-        plt.plot(0, 0, 'k.', label='normal / tangent')
-        plt.plot(-pi/2.0, 0, 'k.')
-        plt.plot(+pi/2.0, 0, 'k.')
-        
-        plt.plot(dir_reference[0], 0, 'ro', label="ref")
-        plt.plot(dir_convergence[0], 0, 'bo', label="converg")
-        plt.plot(dir_conv_rotated[0], 0, 'go', label="rotated")
-        plt.plot(dir_tangent[0], 0, 'o', color='magenta', label="tangent")
-        plt.legend()
-        plt.show()
-        breakpoint()
-        
     if nonlinear_velocity is None:
-        print("DEBUG NO LONELY WARRIOR...")
-        return get_angle_space_inverse(dir_conv_rotated, null_matrix=null_matrix)
+        nonlinear_velocity = convergence_vector
+        # return get_angle_space_inverse(dir_conv_rotated, null_matrix=null_matrix)
+
+    # Invert matrix to get smooth summing.
+    # TODO: trafo...
     
-    else:
-        # TODO: only do until pi/2, not full circle [i.e. circle cutting]
-        # TODO: expand for more general nonlinear velocities
-        dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
+    # TODO: only do until pi/2, not full circle [i.e. circle cutting]
+    # TODO: expand for more general nonlinear velocities
+    dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
 
-        # if False: # Currently deactivated due to non-conformity in higher-dim space.
-        dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_conv_rotated)
-        if dist_conv_nonlinear > np.pi:
-            # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
-            # i.e. find the same one, which is 2*pi in the other direction.
-            # Since the normal is not adjusted to find
-            # This should be replaced by 'base-transformation' in the future.
-            norm_nonlinear = np.linalg.norm(dir_nonlinearvelocity)
-            dirdir_nonlinear = dir_nonlinearvelocity / norm_nonlinear
+    # if False: # Currently deactivated due to non-conformity in higher-dim space.
+    dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_conv_rotated)
+    if dist_conv_nonlinear > np.pi:
+        # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
+        # i.e. find the same one, which is 2*pi in the other direction.
+        # Since the normal is not adjusted to find
+        # This should be replaced by 'base-transformation' in the future.
+        norm_nonlinear = np.linalg.norm(dir_nonlinearvelocity)
+        dirdir_nonlinear = dir_nonlinearvelocity / norm_nonlinear
 
-            # print('Turnaround...')
-            # breakpoint()
-            dir_nonlinearvelocity_new = (norm_nonlinear-2*pi) * dirdir_nonlinear
-            if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated):
-                # print('dir_nonlinear', dir_nonlinearvelocity)
-                # print('dir_nonlinear_new', dir_nonlinearvelocity_new)
-                # print('dist', dist_conv_nonlinear)
-                # print('dist new', np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated))
-                # print('dir_conv_rotated', dir_conv_rotated)
-                dir_nonlinearvelocity = dir_nonlinearvelocity_new
+        dir_nonlinearvelocity_new = (norm_nonlinear-2*pi) * dirdir_nonlinear
+        if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated):
+            dir_nonlinearvelocity = dir_nonlinearvelocity_new
 
-                warnings.warn("pi-transfer was executed. "
-                              + "This should be replaced with base-transformation.")
-            
-        # if True: # DEBUG
-        if False: # DEBUG
-            print('nonlinar vel', nonlinear_velocity)
-            print('normal/null dir', null_matrix[:, 0])
-            print('normal/null dir 1', null_matrix[:, 1])
-            print('dir_conv_rotated', dir_conv_rotated)
-            print("dir_nonlinearvelocity", dir_nonlinearvelocity)
-            # print("mag---dir_nonlinearvelocity", LA.norm(dir_nonlinearvelocity))
-            print("")
-            breakpoint()
+            warnings.warn("pi-transfer was executed. "
+                          + "This should be replaced with base-transformation.")
 
-        # TODO: try to project only onto the circle (?)
-        # if convergence_is_outside_tangent:
-        dir_nonlinear_rotated = weight*dir_conv_rotated + (1-weight)*dir_nonlinearvelocity
-        return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
-    
+    # TODO: try to project only onto the circle (?)
+    # if convergence_is_outside_tangent:
+    dir_nonlinear_rotated = weight*dir_conv_rotated + (1-weight)*dir_nonlinearvelocity
+    # breakpoint()
+    return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
+
 
 def obstacle_avoidance_rotational(
-    position, initial_velocity, obstacle_list, cut_off_gamma=1e6, gamma_distance=None):
+    position: np.ndarray, initial_velocity: np.ndarray,
+    obstacle_list: list,
+    # obstacle_list: ObstacleContainer,
+    cut_off_gamma: float = 1e6, gamma_distance: float = None) -> np.ndarray:
     """ Obstacle avoidance based on 'local' rotation and the directional weighted mean.
     
     Parameters
@@ -329,5 +293,3 @@ def obstacle_avoidance_rotational(
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
     return rotated_velocity
-
-
