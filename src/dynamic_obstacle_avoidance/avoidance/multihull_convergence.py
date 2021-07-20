@@ -14,8 +14,9 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
+from vartools.directional_space import DirectionBase
 from vartools.directional_space import get_directional_weighted_sum
-from vartools.directional_space import get_angle_space, get_angle_space_inverse
+# from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_gamma
@@ -119,12 +120,12 @@ def multihull_attraction(
     inv_gamma_weight = get_weight_from_gamma(gamma_array)
     
     rotated_velocities = np.zeros((dimension, n_obs_close))
-    for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
+    # for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
+    for it, oo in enumerate(np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
-        reference_dir = obstacle_list[oo].get_reference_direction(
-            position, in_global_frame=True)
-        normal_dir = obstacle_list[oo].get_normal_direction(
-            position, in_global_frame=True)
+        reference_dir = obstacle_list[oo].get_reference_direction(position, in_global_frame=True)
+        normal_dir = obstacle_list[oo].get_normal_direction(position, in_global_frame=True)
+            
         normal_orthogonal_matrix = get_orthogonal_basis(normal_dir)
 
         if obstacle_list[oo].is_boundary:
@@ -151,12 +152,12 @@ def multihull_attraction(
             weight=inv_gamma_weight[it],
             # weight=1, # 
             nonlinear_velocity=initial_velocity,
-            null_matrix=normal_orthogonal_matrix,
+            base=DirectionBase(matrix=normal_orthogonal_matrix),
             convergence_radius=convergence_radius)
-
 
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
+        # base=DirectionBase(vector=initial_velocity),
         directions=rotated_velocities,
         weights=inv_gamma_weight,
         )
