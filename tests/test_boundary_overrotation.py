@@ -18,6 +18,7 @@ from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import g
 from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields, plot_obstacles
 
 from dynamic_obstacle_avoidance.avoidance.multihull_convergence import get_desired_radius, multihull_attraction
+from dynamic_obstacle_avoidance.avoidance.rotation import get_intersection_with_circle
 
 
 def get_positions(x_lim, y_lim, n_resolution, flattened=False):
@@ -35,6 +36,45 @@ def get_positions(x_lim, y_lim, n_resolution, flattened=False):
 
 
 class TestOverrotation(unittest.TestCase):
+    def test_intersection_with_circle_2d(self):
+        # 2D test right intersection
+        start = np.array([-2, 0])
+        center = np.array([0, 0])
+        radius = 1
+        
+        points = get_intersection_with_circle(
+            start_position=start,
+            direction=center-start,
+            radius=1,
+            only_positive=False,
+            )
+        self.assertTrue(np.allclose([-3, 0], points[:, 0]))
+        self.assertTrue(np.allclose([ 1, 0], points[:, 1]))
+
+        # Only positive direction
+        points = get_intersection_with_circle(
+            start_position=start,
+            direction=center-start,
+            radius=1,
+            only_positive=True,
+            )
+        self.assertTrue(np.allclose([1, 0], points))
+
+        # Inside point (positive direction) [random numbers]
+        start = np.array([0.2, -0.1])
+        direction = np.array([2, 3])
+
+        points = get_intersection_with_circle(
+            start_position=start,
+            direction=direction,
+            radius=2.3,
+            )
+        self.assertEqual(points.shape, start.shape)
+        ratio = (points-start)/direction
+        
+        self.assertEqual(ratio[0], ratio[1])
+        self.assertTrue(ratio[0] > 0)
+        
     def test_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
         dim = 2
@@ -70,6 +110,9 @@ class TestOverrotation(unittest.TestCase):
             ax = axs[1]
         
         positions = get_positions(x_lim, y_lim, n_resolution, flattened=True)
+
+        # DEBUG POSITIONS
+        positions[:, 0] = [-1.11, -3.37]
 
         conv_radius = np.zeros((positions.shape[1]))
         gamma = np.zeros((positions.shape[1]))
@@ -259,6 +302,11 @@ if __name__ == '__main__':
     visualize = True
     if visualize:
         Tester = TestOverrotation()
-        Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
-        # Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
+        # Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
+        
+        # Tester.test_intersection_with_circle_2d()
+        
+        Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
+        
+        
 
