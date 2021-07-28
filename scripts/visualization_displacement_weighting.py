@@ -1,5 +1,6 @@
 #!/USSR/bin/python3
-""" Test different weighting functions. """
+""" Test different weighting functions for 'repulsion-displacement'. """
+# NOTE: this is currently discontinuied.
 
 import numpy as np
 import matplotlib.pyplot as plt

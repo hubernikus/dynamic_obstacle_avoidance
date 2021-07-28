@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt   # For debugging only (!)
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
-from vartools.directional_space import UnitDirection
+from vartools.directional_space import UnitDirection, DirectionBase
 
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights, get_weight_from_gamma
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
@@ -39,17 +39,71 @@ def get_intersection_with_circle(
     DD = BB**2 - 4*AA*CC
 
     if DD < 0:
-        # raise ValueError("Negative Determinant. No intersection.")
         # No intersection with circle
         return None
 
     if only_positive:
         # Only negative direction due to expected negative A (?!) [returns max-direciton]..
         fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
-        return fac_direction
+        point = start_position + fac_direction*direction
+        return point
+    
     else:
-        points = (np.array([+BB, - BB])  + np.sqrt(DD)) / (2*AA)
+        factors = (-BB + np.array([-1, 1])*np.sqrt(DD)) / (2*AA)
+        points = (np.tile(start_position, (2, 1)).T
+                  + np.tile(factors, (2, 1)) * np.tile(direction, (2, 1)).T)
         return points
+
+def _get_directional_deviation_weight(
+    weight: float, weight_deviation: float, power_factor: float = 3.0) -> float:
+    """ This 'smooth'-weighting needs to be done, in order to have a smooth vector-field
+    which can be approximated by the nonlinear DS. """
+    if weight_deviation <= 0:
+        return 0
+    return weight**(1./(weight_deviation*power_factor))
+
+def _get_nonlinear_inverted_weight(
+    inverted_conv_rotated_norm: float, inverted_nonlinear_norm: float,
+    inv_convergence_radius: float, weight: float) -> float:
+    if inverted_conv_rotated_norm > inv_convergence_radius:
+        delta_nonl = inverted_conv_rotated_norm - inv_convergence_radius
+        delta_conv = inverted_nonlinear_norm - inv_convergence_radius
+        weight_nonl = weight * delta_nonl/(delta_nonl + delta_conv)
+        
+    else:
+        weight_nonl = weight
+        
+    return weight_nonl
+
+def _get_projection_of_inverted_convergions_direction(
+    dir_conv_rotated: UnitDirection, delta_dir_conv: UnitDirection,
+    inv_convergence_radius: UnitDirection) -> UnitDirection:
+    inverted_conv_rotated = dir_conv_rotated.invert_normal()
+
+    points = get_intersection_with_circle(
+        start_position=inverted_conv_rotated.as_angle(),
+        direction=delta_dir_conv.as_angle(),
+        radius=inv_convergence_radius,
+        only_positive=False)
+
+    if inverted_conv_rotated.norm() <= inv_convergence_radius:
+        # weight=1 -> set to point far-away
+        inverted_conv_proj = UnitDirection(base).from_angle(points[:, 1])
+
+    elif points is not None:
+        # 2 points are returned
+        dist = LA.norm(np.tile(inverted_nonlinear.as_angle(), (2, 1)).T - points, axis=0)
+        it_max = np.argmax(dist)
+        w_cp = (LA.norm(points[:, 0] - points[:, 1]) /
+                LA.norm(inverted_conv_rotated.as_angle() - points[:, it_max]))
+
+        inv_base = inverted_conv_rotated.base
+        inverted_conv_proj = (w_cp*UnitDirection(inv_base).from_angle(points[:, it_max])
+                              + (1-w_cp)*inverted_conv_rotated)
+
+    else:
+        # Points is none
+        inverted_conv_proj = inverted_conv_rotated
 
 
 def directional_convergence_summing(
@@ -66,26 +120,22 @@ def directional_convergence_summing(
     weight: float in the range [0, 1] which gives influence on how important vector 2 is.
     nonlinear_velocity: (optional) the vector-field which converges 
 
-    Return
+    Returns
     ------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
     weight = min(weight, 1)
         
-    # dir_reference = get_angle_space(reference_vector, null_matrix=null_matrix)
-    # dir_convergence = get_angle_space(convergence_vector, null_matrix=null_matrix)
     dir_reference = UnitDirection(base).from_vector(reference_vector)
     dir_convergence = UnitDirection(base).from_vector(convergence_vector)
 
     # Find intersection a with radius of pi/2
     # convergence_is_inside_tangent = np.linalg.norm(dir_convergence) < convergence_radius
-    convergence_is_inside_tangent = dir_convergence.norm() < convergence_radius
-
-    if convergence_is_inside_tangent:
+    if dir_convergence.norm() < convergence_radius:
         # Inside the tangent radius, i.e. vectorfield towards obstacle [no-tail-effect]
         # Do the math in the angle space
         delta_dir_conv = dir_convergence - dir_reference
-        # norm_dir_conv = np.linalg.norm(delta_dir_conv)
+
         norm_dir_conv = delta_dir_conv.norm()
         if not norm_dir_conv: # Zero value
             if nonlinear_velocity is None:
@@ -93,51 +143,50 @@ def directional_convergence_summing(
             else:
                 return nonlinear_velocity
 
-        fac_tang_conv = get_intersection_with_circle(
+        angle_tangent = get_intersection_with_circle(
             start_position=dir_reference.as_angle(),
             direction=delta_dir_conv.as_angle(),
             radius=convergence_radius)
-
-        dir_tangent = dir_reference + fac_tang_conv*delta_dir_conv
-        # norm_tangent_dist = np.linalg.norm(dir_tangent - dir_reference)
+        dir_tangent = UnitDirection(base).from_angle(angle_tangent)
+        
         norm_tangent_dist = (dir_tangent - dir_reference).norm()
 
         # Weight to ensure that:
-        # weight=1 => w_conv=1  AND norm_dir_conv=0 => w_conv=0
         weight_deviation = norm_dir_conv / norm_tangent_dist
-
-        # TODO: allow 'tail-effect' after obstacle (is it useful?)
-        # Allow finding of 'closest' 
-        if weight_deviation <= 0:
-            warnings.warn("Weight negative. This should be cautght by the (+square problem.")
-            # print("Weight deviation", weight_deviation)
-            dir_conv_rotated = dir_convergence
-
-        elif weight_deviation > 1:
-            warnings.warn("Weight negative. This should be excluded radius test.")
-            dir_conv_rotated = dir_convergence
-
-        else:
-            # This 'smooth'-weighting needs to be done, in order to have a smooth vector-field
-            # which can be approximated by the nonlinear DS 
-            # If both negative, no change needed
-            power_factor = 5.0
-            w_conv = weight**(1./(weight_deviation*power_factor))
-
-            dir_conv_rotated = w_conv*dir_tangent + (1-w_conv)*dir_convergence
+        w_conv = _get_directional_deviation_weight(weight, weight_deviation=weight_deviation)
+        dir_conv_rotated = w_conv*dir_tangent + (1-w_conv)*dir_convergence
+        
     else:
         # Initial velocity 'dir_convergecne' already pointing away from obstacle
         dir_conv_rotated = dir_convergence
 
     if nonlinear_velocity is None:
-        nonlinear_velocity = convergence_vector
+        dir_nonlinear = dir_convergence
+    else:
+        dir_nonlinear = dir_convergence = UnitDirection(base).from_vector(nonlinear_velocity)
 
     # Invert matrix to get smooth summing.
-    inverted_conv_rotated = dir_conv_rotated.invert_normal()
-    inverted_nonlinear = dir_conv_rotated.invert_normal()
+    inverted_nonlinear = dir_nonlinear.invert_normal()
+
+    # Only project when 'outside the radius'
+    inv_convergence_radius = pi - convergence_radius
+    if inverted_nonlinear.norm() <= inv_convergence_radius:
+        return dir_nonlinear.as_vector()
+    else:
+        weight_nonl = _get_nonlinear_inverted_weight(
+            inverted_conv_rotated.norm(), inverted_nonlinear.norm(), inv_convergence_radius)
+
+        inverted_conv_proj = _get_projection_of_inverted_convergions_direction(
+            dir_conv_rotated, delta_dir_conv, inv_convergence_radius)
+
+        inverted_nonlinear_conv = (weight_nonl*inverted_nonlinear
+                                   + (1-weight_nonl)*inverted_conv_proj)
+
+        nonlinear_conv = inverted_nonlinear_conv.invert_normal()
+        return nonlinear_conv.as_vector()
+
+    # TODO: remove the rest...
     
-    # TODO: only do until pi/2, not full circle [i.e. circle cutting]
-    # TODO: expand for more general nonlinear velocities
     # dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
     dir_nonlinearvelocity = UnitDirection(base).from_vector(nonlinear_velocity)
 
@@ -263,7 +312,7 @@ def obstacle_avoidance_rotational(
             nonlinear_velocity=initial_velocity,
             base=DirectionBase(matrix=null_matrix))
         
-        if False:
+        if True:
             # warnings.warn("Checking things at... Help @ ")
             print('position', position)
             print('inital vel', initial_velocity)

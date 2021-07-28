@@ -11,6 +11,7 @@ from math import pi
 import numpy as np
 
 from vartools.dynamical_systems import LinearSystem
+from vartools.directional_space import UnitDirection, DirectionBase
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.containers import MultiBoundaryContainer
@@ -18,8 +19,9 @@ from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import g
 from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields, plot_obstacles
 
 from dynamic_obstacle_avoidance.avoidance.multihull_convergence import get_desired_radius, multihull_attraction
-from dynamic_obstacle_avoidance.avoidance.rotation import get_intersection_with_circle
 
+from dynamic_obstacle_avoidance.avoidance.rotation import get_intersection_with_circle
+from dynamic_obstacle_avoidance.avoidance.rotation import directional_convergence_summing
 
 def get_positions(x_lim, y_lim, n_resolution, flattened=False):
     dimension = 2
@@ -33,6 +35,7 @@ def get_positions(x_lim, y_lim, n_resolution, flattened=False):
         positions = positions.reshape(2, n_resolution, n_resolution)
 
     return positions
+
 
 
 class TestOverrotation(unittest.TestCase):
@@ -60,7 +63,7 @@ class TestOverrotation(unittest.TestCase):
             )
         self.assertTrue(np.allclose([1, 0], points))
 
-        # Inside point (positive direction) [random numbers]
+        # Inside point (positive direction) ['randomly'-chosen numbers]
         start = np.array([0.2, -0.1])
         direction = np.array([2, 3])
 
@@ -74,6 +77,176 @@ class TestOverrotation(unittest.TestCase):
         
         self.assertEqual(ratio[0], ratio[1])
         self.assertTrue(ratio[0] > 0)
+
+    def test_interesection_with_circle_specific(self):
+        # inverted_conv_rotated.as_angle()
+        start_position = np.array([3.041924, 0.      ])
+        # delta_dir_conv.as_angle()
+        direction = np.array([0.09966865, 0.        ])
+        rad = 1.5707963267948966
+        
+        points = get_intersection_with_circle(
+            start_position=start_position,
+            direction=direction,
+            radius=rad,
+            only_positive=False)
+        
+        points_correct = np.array([[-rad, 0],
+                                   [rad, 0]]).T
+
+        self.assertTrue(np.allclose(points, points_correct))
+
+    def test_directional_deviation_weight(self, visualize=False, save_figure=False):
+        from dynamic_obstacle_avoidance.avoidance.rotation import _get_directional_deviation_weight
+        
+        if visualize:
+            # Visual of 'weighting' function to help with debugging
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D  
+            from matplotlib import cm
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            n_grid = 20
+            dist0 = np.linspace(1e-6, 1-1e-6, n_grid)
+            weight = np.linspace(1e-6, 1-1e-6, n_grid)
+            gamma = 1./weight
+
+            val = np.zeros((n_grid, n_grid))
+            for ii, d_weight in enumerate(dist0):
+                for jj, ww in enumerate(weight):
+                    val[ii, jj] = _get_directional_deviation_weight(d_weight, ww)
+                    
+            # val = weight ** (1.0/(pow_factor*dist0))
+
+            weight_mesh, dist0_mesh = np.meshgrid(weight, dist0)
+            surf = ax.plot_surface(dist0_mesh, weight_mesh, val,
+                               cmap=cm.YlGnBu,
+                               linewidth=0.2, edgecolors='k')
+                               # antialiased=False)
+            import matplotlib as mpl
+            mpl.rc('font', family='Times New Roman')
+            ax.set_xlabel(r'Relative Rotation $\tilde d (\xi)$')
+            ax.set_ylabel(r'Weight $1/\Gamma(\xi)$')
+            ax.set_zlabel(r'Rotational Weights $w_r(\Gamma, \tilde{d})$')
+            ax.set_xlim([0, 1])
+            ax.set_ylim([0, 1])
+            ax.set_zlim([0, 1])
+            print("Done")
+
+            if save_figure:
+                figure_name = "rotational_weight_with_power_" + str(int(pow_factor))
+                plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
+            plt.ion()
+            plt.show()
+
+        w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=1)
+        self.assertTrue(w_conv==1)
+
+        w_conv = _get_directional_deviation_weight(weight=0, weight_deviation=1)
+        self.assertTrue(w_conv==0)
+        
+        w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=0)
+        self.assertTrue(w_conv==0)
+
+        w_conv = _get_directional_deviation_weight(weight=0, weight_deviation=0)
+        self.assertTrue(w_conv==0)
+        
+        w_low = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
+        w_high = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.7)
+        self.assertTrue(0 < w_low < w_high < 1)
+
+        w_low = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
+        w_high = _get_directional_deviation_weight(weight=0.7, weight_deviation=0.3)
+        self.assertTrue(0 < w_low < w_high < 1)
+
+    def test_nonlinear_inverted_weight(self, visualize=False, save_figure=False):
+        from dynamic_obstacle_avoidance.avoidance.rotation import _get_nonlinear_inverted_weight
+
+        if visualize:
+            # Visual of 'weighting' function to help with debugging
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D  
+            from matplotlib import cm
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+            n_grid = 20
+            dim = 3
+
+            inv_conv_radius = pi/2.0
+            base0 = DirectionBase(matrix=np.eye(dim))
+            dir_inv_nonlinear_outside = UnitDirection(base0).from_angle(
+                np.array([pi/0.6, pi/0.4]))
+            
+            # Check that outside
+            self.assertTrue(dir_inv_nonlinear_outside.norm() > inv_conv_radius)
+
+            dir_inv_conv_rot = UnitDirection(base0)
+
+            nx = ny = n_grid
+            x_vals, y_vals = np.meshgrid(np.linspace(-pi, pi, nx), np.linspace(-pi, pi, ny))
+
+            angles = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+            values = np.zeros(angles.shape)
+
+            for ii, angle in enumerate(angles):
+                dir_inv_conv_rot.from_angle(angle)
+
+                if dir_inv_conv_rot.norm() > pi:
+                    pass
+                values[ii] = _get_nonlinear_inverted_weight(
+                   dir_inv_conv_rot.norm(),
+                   dir_inv_nonlinear_outside.norm(),
+                   inv_convergence_radius=inv_conv_radius,
+                   weight=1)
+
+            breakpoint()
+            surf = ax.plot_surface(
+                dist0_mesh, weight_mesh, val,
+                cmap=cm.YlGnBu, linewidth=0.2, edgecolors='k')
+            # antialiased=False)
+                               
+            import matplotlib as mpl
+            mpl.rc('font', family='Times New Roman')
+            ax.set_xlabel(r'Norm of Inverted Converted Rotated Direction')
+            ax.set_ylabel(r'Norm of Inverted Nonlinear Direction')
+            ax.set_zlabel(r'Inverted Pulling Weight$')
+            ax.set_xlim([0, 1])
+            ax.set_ylim([0, 1])
+            ax.set_zlim([0, 1])
+            print("Done")
+
+            if save_figure:
+                figure_name = "rotational_weight_with_power_" + str(int(pow_factor))
+                plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
+
+            plt.ion()
+            plt.show()
+            
+        pass
+
+
+    def test_directional_convergence_summing(self):
+        """ Test directional convergence summing."""
+        # Weighting der
+        dim = 3
+        base = DirectionBase(matrix=np.eye(3))
+    
+        convergence_vector = np.array([1, 0.1, 0])
+        reference_vector = [1, 0, 0]
+        weight = 0.0
+        # nonlinear_velocity = convergence_vector
+        
+        converged_vector = directional_convergence_summing(
+            convergence_vector=convergence_vector,
+            reference_vector=reference_vector,
+            base=base, weight=weight)
+        
+        breakpoint()
         
     def test_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
@@ -300,13 +473,21 @@ if __name__ == '__main__':
     # unittest.main()
     
     visualize = True
+    # visualize = False
     if visualize:
         Tester = TestOverrotation()
+        # Tester.test_intersection_with_circle_2d()
+        # Tester.test_interesection_with_circle_specific()
+
+        # Tester.test_directional_deviation_weight(visualize=False)
+        Tester.test_nonlinear_inverted_weight(visualize=True)
+        # Tester.test_directional_convergence_summing()
+        
+        
         # Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
         
-        # Tester.test_intersection_with_circle_2d()
-        
-        Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
-        
+        # Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
+
+        print("All selected tests executed with success.")
         
 
