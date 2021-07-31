@@ -60,20 +60,27 @@ def _get_directional_deviation_weight(
     which can be approximated by the nonlinear DS. """
     if weight_deviation <= 0:
         return 0
-    return weight**(1./(weight_deviation*power_factor))
+    elif weight_deviation >= 1 or weight >= 1:
+        return 1
+    else:
+        return weight**(1./(weight_deviation*power_factor))
 
 def _get_nonlinear_inverted_weight(
     inverted_conv_rotated_norm: float, inverted_nonlinear_norm: float,
     inv_convergence_radius: float, weight: float) -> float:
-    if inverted_conv_rotated_norm > inv_convergence_radius:
-        delta_nonl = inverted_conv_rotated_norm - inv_convergence_radius
-        delta_conv = inverted_nonlinear_norm - inv_convergence_radius
-        weight_nonl = weight * delta_nonl/(delta_nonl + delta_conv)
+
+    if inverted_nonlinear_norm <= inv_convergence_radius:
+        return 0
+        
+    elif inverted_conv_rotated_norm > inv_convergence_radius:
+        delta_nonl = inverted_nonlinear_norm - inv_convergence_radius
+        delta_conv = inverted_conv_rotated_norm - inv_convergence_radius
+        # weight_nonl = weight * delta_nonl/(delta_nonl + delta_conv)
+        return weight * delta_nonl/(delta_nonl + delta_conv)
         
     else:
-        weight_nonl = weight
-        
-    return weight_nonl
+        # weight_nonl = weight
+        return weight
 
 def _get_projection_of_inverted_convergions_direction(
     dir_conv_rotated: UnitDirection, delta_dir_conv: UnitDirection,

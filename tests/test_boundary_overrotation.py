@@ -9,6 +9,7 @@ import unittest
 from math import pi
 
 import numpy as np
+from numpy import linalg as LA
 
 from vartools.dynamical_systems import LinearSystem
 from vartools.directional_space import UnitDirection, DirectionBase
@@ -77,6 +78,7 @@ class TestOverrotation(unittest.TestCase):
         
         self.assertEqual(ratio[0], ratio[1])
         self.assertTrue(ratio[0] > 0)
+        
 
     def test_interesection_with_circle_specific(self):
         # inverted_conv_rotated.as_angle()
@@ -96,6 +98,19 @@ class TestOverrotation(unittest.TestCase):
 
         self.assertTrue(np.allclose(points, points_correct))
 
+
+    def test_angle_space_distance(self):
+        dim = 3
+        base = DirectionBase(matrix=np.eye(dim))
+        dir1 = UnitDirection(base).from_angle(np.array([1.88495559, 1.25663706]))
+        dir2 = UnitDirection(base).from_angle(np.array([-3.14159265, -3.14159265]))
+
+        dd1 = dir1.as_angle()
+        dd2 = dir2.as_angle()
+        
+        self.assertAlmostEqual(LA.norm(dd2-dd1), dir1.get_distance_to(dir2))
+
+
     def test_directional_deviation_weight(self, visualize=False, save_figure=False):
         from dynamic_obstacle_avoidance.avoidance.rotation import _get_directional_deviation_weight
         
@@ -109,7 +124,7 @@ class TestOverrotation(unittest.TestCase):
             ax = fig.add_subplot(111, projection='3d')
             # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
             n_grid = 20
-            dist0 = np.linspace(1e-6, 1-1e-6, n_grid)
+            dist0 = np.linspace( 1e-6, 1-1e-6, n_grid)
             weight = np.linspace(1e-6, 1-1e-6, n_grid)
             gamma = 1./weight
 
@@ -122,8 +137,8 @@ class TestOverrotation(unittest.TestCase):
 
             weight_mesh, dist0_mesh = np.meshgrid(weight, dist0)
             surf = ax.plot_surface(dist0_mesh, weight_mesh, val,
-                               cmap=cm.YlGnBu,
-                               linewidth=0.2, edgecolors='k')
+                                   cmap=cm.YlGnBu,
+                                   linewidth=0.2, edgecolors='k')
                                # antialiased=False)
             import matplotlib as mpl
             mpl.rc('font', family='Times New Roman')
@@ -164,77 +179,14 @@ class TestOverrotation(unittest.TestCase):
 
     def test_nonlinear_inverted_weight(self, visualize=False, save_figure=False):
         from dynamic_obstacle_avoidance.avoidance.rotation import _get_nonlinear_inverted_weight
-
-        if visualize:
-            # Visual of 'weighting' function to help with debugging
-            import matplotlib.pyplot as plt
-            from mpl_toolkits.mplot3d import Axes3D  
-            from matplotlib import cm
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-            n_grid = 20
-            dim = 3
-
-            inv_conv_radius = pi/2.0
-            base0 = DirectionBase(matrix=np.eye(dim))
-            dir_inv_nonlinear_outside = UnitDirection(base0).from_angle(
-                np.array([pi/0.6, pi/0.4]))
-            
-            # Check that outside
-            self.assertTrue(dir_inv_nonlinear_outside.norm() > inv_conv_radius)
-
-            dir_inv_conv_rot = UnitDirection(base0)
-
-            nx = ny = n_grid
-            x_vals, y_vals = np.meshgrid(np.linspace(-pi, pi, nx), np.linspace(-pi, pi, ny))
-
-            angles = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-            values = np.zeros(angles.shape)
-
-            for ii, angle in enumerate(angles):
-                dir_inv_conv_rot.from_angle(angle)
-
-                if dir_inv_conv_rot.norm() > pi:
-                    pass
-                values[ii] = _get_nonlinear_inverted_weight(
-                   dir_inv_conv_rot.norm(),
-                   dir_inv_nonlinear_outside.norm(),
-                   inv_convergence_radius=inv_conv_radius,
-                   weight=1)
-
-            breakpoint()
-            surf = ax.plot_surface(
-                dist0_mesh, weight_mesh, val,
-                cmap=cm.YlGnBu, linewidth=0.2, edgecolors='k')
-            # antialiased=False)
-                               
-            import matplotlib as mpl
-            mpl.rc('font', family='Times New Roman')
-            ax.set_xlabel(r'Norm of Inverted Converted Rotated Direction')
-            ax.set_ylabel(r'Norm of Inverted Nonlinear Direction')
-            ax.set_zlabel(r'Inverted Pulling Weight$')
-            ax.set_xlim([0, 1])
-            ax.set_ylim([0, 1])
-            ax.set_zlim([0, 1])
-            print("Done")
-
-            if save_figure:
-                figure_name = "rotational_weight_with_power_" + str(int(pow_factor))
-                plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
-
-            plt.ion()
-            plt.show()
-            
-        pass
+        # breakpoint()
 
 
     def test_directional_convergence_summing(self):
         """ Test directional convergence summing."""
         # Weighting der
         dim = 3
-        base = DirectionBase(matrix=np.eye(3))
+        base = DirectionBase(matrix=np.eye(dim))
     
         convergence_vector = np.array([1, 0.1, 0])
         reference_vector = [1, 0, 0]
@@ -480,6 +432,8 @@ if __name__ == '__main__':
         # Tester.test_interesection_with_circle_specific()
 
         # Tester.test_directional_deviation_weight(visualize=False)
+        # Tester.test_angle_space_distance()
+        
         Tester.test_nonlinear_inverted_weight(visualize=True)
         # Tester.test_directional_convergence_summing()
         
