@@ -38,7 +38,6 @@ def get_positions(x_lim, y_lim, n_resolution, flattened=False):
     return positions
 
 
-
 class TestOverrotation(unittest.TestCase):
     def test_intersection_with_circle_2d(self):
         # 2D test right intersection
@@ -81,6 +80,7 @@ class TestOverrotation(unittest.TestCase):
         
 
     def test_interesection_with_circle_specific(self):
+        """ Test of several circle values which posed problems in the past."""
         # inverted_conv_rotated.as_angle()
         start_position = np.array([3.041924, 0.      ])
         # delta_dir_conv.as_angle()
@@ -95,9 +95,14 @@ class TestOverrotation(unittest.TestCase):
         
         points_correct = np.array([[-rad, 0],
                                    [rad, 0]]).T
-
         self.assertTrue(np.allclose(points, points_correct))
-
+        
+        base = DirectionBase(np.array([[1., 0., 0.],
+                                       [0., 1., 0.],
+                                       [0., 0., 1.]]))
+        
+        inverted_conv_rotated = UnitDirection(base).from_angle(np.array([-2.77573629 -5.65486678]))
+        inv_nonlinear = UnitDirection(base).from_angle([1.88495559 1.25663706])
 
     def test_angle_space_distance(self):
         dim = 3
@@ -434,7 +439,8 @@ if __name__ == '__main__':
         # Tester.test_directional_deviation_weight(visualize=False)
         # Tester.test_angle_space_distance()
         
-        Tester.test_nonlinear_inverted_weight(visualize=True)
+        # Tester.test_nonlinear_inverted_weight(visualize=True)
+        Tester.test_interesection_with_circle_specific()
         # Tester.test_directional_convergence_summing()
         
         
