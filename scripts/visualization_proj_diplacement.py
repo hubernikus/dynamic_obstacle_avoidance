@@ -12,14 +12,14 @@ from numpy import linalg as LA
 from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.directional_space.visualization import circular_space_setup
 
-plt.close('all')
+# plt.close('all')
 plt.ion()
 
 def visualize_displacements(
     inv_nonlinear_list: list,
     inv_conv_rotated_list: list,
     ):
-    from dynamic_obstacle_avoidance.avoidance.rotation import _get_projection_of_inverted_convergions_direction
+    from dynamic_obstacle_avoidance.avoidance.rotation import _get_projection_of_inverted_convergence_direction
     from dynamic_obstacle_avoidance.avoidance.rotation import _get_projected_nonlinear_velocity
     dim = 3
     
@@ -36,7 +36,7 @@ def visualize_displacements(
 
     for it_nonl, inv_nonlinear in enumerate(inv_nonlinear_list):
         for it_conv, inv_conv_rotated in enumerate(inv_conv_rotated_list):
-            inv_conv_proj = _get_projection_of_inverted_convergions_direction(
+            inv_conv_proj = _get_projection_of_inverted_convergence_direction(
                 inv_conv_rotated=inv_conv_rotated,
                 inv_nonlinear=inv_nonlinear,
                 inv_convergence_radius=pi/2,
@@ -54,16 +54,17 @@ def visualize_displacements(
                      '-', color='k', alpha=0.5)
 
             plt.plot(inv_conv_rotated._angle[0], inv_conv_rotated._angle[1], 'o', color='b')
-            plt.plot(inv_conv_proj._angle[0], inv_conv_proj._angle[1], '+' , color='b')
+            plt.plot(inv_conv_proj._angle[0], inv_conv_proj._angle[1], '+', color='b',
+                     markersize=8, markeredgewidth=3)
             
-            plt.plot(inv_nonlinear._angle[0], inv_nonlinear._angle[1], 'o', color='r')
-            plt.plot(inv_nonl_rotated._angle[0], inv_nonl_rotated._angle[1], 'x', color='r') 
-            
+            plt.plot(inv_nonlinear._angle[0], inv_nonlinear._angle[1], 'o', color='r',)
+            plt.plot(inv_nonl_rotated._angle[0], inv_nonl_rotated._angle[1], 'x', color='r',
+                     markersize=8, markeredgewidth=3)
             
     plt.plot([], [], 'o', color='r', label=r"$f_{nonl}^\angle$")
     plt.plot([], [], 'o', color='b', label=r"$f_{conv}^\angle$")
-    plt.plot([], [], '+', color='b' , label=r"$f_{c,proj}^\angle$")
-    plt.plot([], [], 'x', color='r' , label=r"$f_{n,proj}^\angle$")
+    plt.plot([], [], '+', color='b' , label=r"$f_{c,proj}^\angle$", markersize=8, markeredgewidth=3)
+    plt.plot([], [], 'x', color='r' , label=r"$f_{n,proj}^\angle$", markersize=8, markeredgewidth=3)
     # plt.plot([], [], '--', color='k', legend=r"$f_{proj}^\angle$")
 
     ax.legend()
@@ -78,6 +79,9 @@ if (__name__)=='__main__':
         [-0.1*pi, -pi*0.2],
         [-0.8*pi, -pi*0.2],
         [0.4*pi, -pi*0.4],
+        [0.7*pi, -pi*0.6],
+        [0.9*pi, -pi*0.1],
+        [0.6*pi, pi*0.7],
         ]
         )
     figure_name = "multiple_nonlinear_total_displacement"

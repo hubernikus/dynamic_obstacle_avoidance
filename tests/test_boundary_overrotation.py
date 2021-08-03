@@ -78,32 +78,6 @@ class TestOverrotation(unittest.TestCase):
         self.assertEqual(ratio[0], ratio[1])
         self.assertTrue(ratio[0] > 0)
         
-
-    def test_interesection_with_circle_specific(self):
-        """ Test of several circle values which posed problems in the past."""
-        # inverted_conv_rotated.as_angle()
-        start_position = np.array([3.041924, 0.      ])
-        # delta_dir_conv.as_angle()
-        direction = np.array([0.09966865, 0.        ])
-        rad = 1.5707963267948966
-        
-        points = get_intersection_with_circle(
-            start_position=start_position,
-            direction=direction,
-            radius=rad,
-            only_positive=False)
-        
-        points_correct = np.array([[-rad, 0],
-                                   [rad, 0]]).T
-        self.assertTrue(np.allclose(points, points_correct))
-        
-        base = DirectionBase(np.array([[1., 0., 0.],
-                                       [0., 1., 0.],
-                                       [0., 0., 1.]]))
-        
-        inverted_conv_rotated = UnitDirection(base).from_angle(np.array([-2.77573629 -5.65486678]))
-        inv_nonlinear = UnitDirection(base).from_angle([1.88495559 1.25663706])
-
     def test_angle_space_distance(self):
         dim = 3
         base = DirectionBase(matrix=np.eye(dim))
@@ -269,13 +243,14 @@ class TestOverrotation(unittest.TestCase):
                 initial_velocities[:, it] = InitialDynamics.evaluate(positions[:, it])
                 rotated_velocities[:, it] = multihull_attraction(
                     positions[:, it], initial_velocities[:, it], obstacle_list)
-                # breakpoint()
+                
                 if assert_check and it>=1:
                     # Exclude numerical errors...
                     if not np.isclose(conv_radius[it], conv_radius[it-1]):
                         # Since no 'additional' weight; unique function of gamma
-                        self.assertEqual(conv_radius[it] > conv_radius[it-1], gamma[it] < gamma[it-1],
-                                         "Increasing convergence-raius with decreasing gamma needed.")
+                        self.assertEqual(
+                            conv_radius[it] > conv_radius[it-1], gamma[it] < gamma[it-1],
+                            "Increasing convergence-raius with decreasing gamma needed.")
 
             if visualize:
                 cs = ax.contourf(positions[0, :].reshape(n_resolution, n_resolution),
@@ -440,14 +415,9 @@ if __name__ == '__main__':
         # Tester.test_angle_space_distance()
         
         # Tester.test_nonlinear_inverted_weight(visualize=True)
-        Tester.test_interesection_with_circle_specific()
         # Tester.test_directional_convergence_summing()
         
-        
-        # Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
-        
+        Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
         # Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
 
         print("All selected tests executed with success.")
-        
-

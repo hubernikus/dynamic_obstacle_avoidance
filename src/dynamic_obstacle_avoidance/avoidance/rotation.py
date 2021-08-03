@@ -86,7 +86,7 @@ def _get_nonlinear_inverted_weight(
         # weight_nonl = weight
         return weight
 
-def _get_projection_of_inverted_convergions_direction(
+def _get_projection_of_inverted_convergence_direction(
     inv_conv_rotated: UnitDirection,
     inv_nonlinear: UnitDirection,
     # delta_dir_conv: UnitDirection,
@@ -114,15 +114,20 @@ def _get_projection_of_inverted_convergions_direction(
         direction=(inv_conv_rotated-inv_nonlinear).as_angle(),
         radius=inv_convergence_radius,
         only_positive=False)
-        
+    
     if inv_conv_rotated.norm() <= inv_convergence_radius:
         # weight=1 -> set to point far-away
         inv_conv_proj = UnitDirection(inv_conv_rotated.base).from_angle(points[:, 0])
 
     elif points is not None:
         # 2 points are returned
-        point_dir =  inv_conv_rotated.as_angle()[0] - inv_nonlinear.as_angle()[0]
-        nonl_dir =  points[0, 1] - inv_nonlinear.as_angle()[0]
+        nonl_angle = inv_nonlinear.as_angle()
+        convrot_angle = inv_conv_rotated.as_angle()
+        for ii in range(points.shape[0]):
+            nonl_dir =  points[ii, 1] - nonl_angle[ii]
+            if not np.isclose(nonl_dir, 0): # Nonzero
+                point_dir =  convrot_angle[ii] - nonl_angle[ii]
+                break
 
         # Check if direction of points are aligned!
         if point_dir / nonl_dir > 1:
@@ -174,10 +179,13 @@ def _get_projected_nonlinear_velocity(
         weight_nonl = _get_nonlinear_inverted_weight(
             inv_conv_rotated.norm(), inv_nonlinear.norm(), inv_convergence_radius,
             weight=weight)
-        # print(f'{weight_nonl}')
+        
+        if not weight_nonl: # zero value
+            return inv_nonlinear.invert_normal()
 
-        inv_conv_proj = _get_projection_of_inverted_convergions_direction(
-            inv_conv_rotated=inv_conv_rotated, inv_nonlinear=inv_nonlinear,
+        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+            inv_conv_rotated=inv_conv_rotated,
+            inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius)
 
         inv_nonlinear_conv = (weight_nonl*inv_conv_proj + (1-weight_nonl)*inv_nonlinear)
