@@ -15,6 +15,7 @@ import numpy as np
 from numpy import linalg as LA
 
 from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.directional_space.visualization import circular_space_setup
 
 def ring_coding(ob):
     # The codes will be all "LINETO" commands, except for "MOVETO"s at the
@@ -80,34 +81,9 @@ def visualize_convergence_weight_conv_dir_outside(save_figure=False):
     ax.set_title(r'Inverted Convergence Direction')
     dir_angle = dir_inv_conv_rot.as_angle()
     ax.plot(dir_angle[0], dir_angle[1], 'ko')
-    ax.text(dir_angle[0]+0.1, dir_angle[1]-0.3, r"$f_{conv}$")
 
-    ax.spines.left.set_position('center')
-    ax.spines.right.set_color('none')
-    ax.spines.bottom.set_position('center')
-    ax.spines.top.set_color('none')
-    ax.xaxis.set_ticks_position('bottom')
-    ax.yaxis.set_ticks_position('left')
-
-    plt.axis('equal')
-    print("Done")
-
-    circ_var = np.linspace(0, 2*pi, 100)
-    rad = pi
-    plt.plot(np.cos(circ_var)*inv_conv_radius, np.sin(circ_var)*inv_conv_radius, 'k--')
-
-    # polygon = Point(0, 0).buffer(10.0).difference(MultiPoint([(-5, 0), (5, 0)]).buffer(3.0))
-    polygon = Point(0, 0).buffer(10.0).difference(Point(0,0).buffer(pi))
-    path = pathify(polygon)
+    circular_space_setup(ax)
     
-    patch = PathPatch(path, facecolor='white', linewidth=0)
-
-    dx = dy = 0.1
-    ax.set_xlim([x_vals[0, 0]-dx, x_vals[-1, -1]+dx])
-    ax.set_ylim([y_vals[0, 0]-dy, y_vals[-1, -1]+dy])
-
-    ax.add_patch(patch)
-
     if save_figure:
         figure_name = "nonlinear_weight_conv_dir_outside"
         plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
@@ -383,9 +359,8 @@ def visualize_convergence_weight_inv_nonlinear_outside(save_figure=False):
     plt.ion()
     plt.show()
 
-    
 if __name__ == '__main__':
-    visualize_convergence_weight_inv_nonlinear_outside(save_figure=True)
-    visualize_convergence_weight_inv_nonlinear_inside(save_figure=True)
+    # visualize_convergence_weight_inv_nonlinear_outside(save_figure=True)
+    # visualize_convergence_weight_inv_nonlinear_inside(save_figure=True)
     visualize_convergence_weight_conv_dir_inside(save_figure=True)
-    visualize_convergence_weight_conv_dir_outside(save_figure=True)
+    # visualize_convergence_weight_conv_dir_outside(save_figure=True)
