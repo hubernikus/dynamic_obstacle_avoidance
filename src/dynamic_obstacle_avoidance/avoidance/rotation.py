@@ -46,12 +46,16 @@ def get_intersection_with_circle(
         # Only negative direction due to expected negative A (?!) [returns max-direciton]..
         fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
         point = start_position + fac_direction*direction
+        if point is None:
+            breakpoint()
         return point
     
     else:
         factors = (-BB + np.array([-1, 1])*np.sqrt(DD)) / (2*AA)
         points = (np.tile(start_position, (2, 1)).T
                   + np.tile(factors, (2, 1)) * np.tile(direction, (2, 1)).T)
+        if points is None:
+            breakpoint()
         return points
 
 def _get_directional_deviation_weight(
@@ -83,40 +87,106 @@ def _get_nonlinear_inverted_weight(
         return weight
 
 def _get_projection_of_inverted_convergions_direction(
-    dir_conv_rotated: UnitDirection, delta_dir_conv: UnitDirection,
+    inv_conv_rotated: UnitDirection,
+    inv_nonlinear: UnitDirection,
+    # delta_dir_conv: UnitDirection,
     inv_convergence_radius: UnitDirection) -> UnitDirection:
-    inverted_conv_rotated = dir_conv_rotated.invert_normal()
+    """ Returns projected converenge direction based in the (normal)-direction space.
+
+    Parameters
+    ----------
+    dir_conv_rotated
+    # delta_dir_conv: Difference between dir_conv_rotated & delta_dir_conv (in normal space
+    inv_convergence_radius: the inverted convergence radius
+    
+    Returns
+    -------
+    Convergence value rotated.
+    """
+    if inv_nonlinear.norm() <= inv_convergence_radius:
+        # Already converging
+        return inv_conv_rotated
+    
+    inv_conv_rotated = inv_conv_rotated
 
     points = get_intersection_with_circle(
-        start_position=inverted_conv_rotated.as_angle(),
-        direction=delta_dir_conv.as_angle(),
+        start_position=inv_conv_rotated.as_angle(),
+        direction=(inv_conv_rotated-inv_nonlinear).as_angle(),
         radius=inv_convergence_radius,
         only_positive=False)
-
-    if inverted_conv_rotated.norm() <= inv_convergence_radius:
+        
+    if inv_conv_rotated.norm() <= inv_convergence_radius:
         # weight=1 -> set to point far-away
-        inverted_conv_proj = UnitDirection(base).from_angle(points[:, 1])
+        inv_conv_proj = UnitDirection(inv_conv_rotated.base).from_angle(points[:, 0])
 
     elif points is not None:
         # 2 points are returned
-        dist = LA.norm(np.tile(inverted_nonlinear.as_angle(), (2, 1)).T - points, axis=0)
-        it_max = np.argmax(dist)
-        w_cp = (LA.norm(points[:, 0] - points[:, 1]) /
-                LA.norm(inverted_conv_rotated.as_angle() - points[:, it_max]))
+        point_dir =  inv_conv_rotated.as_angle()[0] - inv_nonlinear.as_angle()[0]
+        nonl_dir =  points[0, 1] - inv_nonlinear.as_angle()[0]
 
-        inv_base = inverted_conv_rotated.base
-        inverted_conv_proj = (w_cp*UnitDirection(inv_base).from_angle(points[:, it_max])
-                              + (1-w_cp)*inverted_conv_rotated)
+        # Check if direction of points are aligned!
+        if point_dir / nonl_dir > 1:
+            dist = LA.norm(np.tile(inv_nonlinear.as_angle(), (2, 1)).T - points, axis=0)
+            it_max = np.argmax(dist)
+            w_cp = (LA.norm(points[:, 0] - points[:, 1]) /
+                    LA.norm(inv_conv_rotated.as_angle() - points[:, it_max]))
+
+            inv_conv_proj = (w_cp*UnitDirection(inv_conv_rotated.base).from_angle(
+                points[:, it_max]) + (1-w_cp)*inv_conv_rotated)
+            
+        else:
+            inv_conv_proj = inv_conv_rotated
 
     else:
         # Points is none
-        inverted_conv_proj = inverted_conv_rotated
+        inv_conv_proj = inv_conv_rotated
+    return inv_conv_proj
+
+
+def _get_projected_nonlinear_velocity(
+    dir_conv_rotated: UnitDirection,
+    dir_nonlinear: UnitDirection,
+    weight: float, convergence_radius: float = pi/2) -> UnitDirection:
+    """ Invert the directional-circle-space and project the nonlinear velocity to approach
+    the linear counterpart.
+
+    Parameters
+    ----------
+    dir_conv_rotated:
+    dir_nonlinear: 
+    weight: 
+
+    Returns
+    -------
+    nonlinar_conv: Projected nonlinear velocity to be aligned with convergence velocity
+    """
+    # Invert matrix to get smooth summing.
+    inv_nonlinear = dir_nonlinear.invert_normal()
+
+    # Only project when 'outside the radius'
+    inv_convergence_radius = pi - convergence_radius
+    if inv_nonlinear.norm() <= inv_convergence_radius:
+        # return dir_nonlinear.as_vector()
+        return dir_nonlinear
+    
+    else:
+        inv_conv_rotated = dir_conv_rotated.invert_normal()
+        weight_nonl = _get_nonlinear_inverted_weight(
+            inv_conv_rotated.norm(), inv_nonlinear.norm(), inv_convergence_radius,
+            weight=weight)
+        # print(f'{weight_nonl}')
+
+        inv_conv_proj = _get_projection_of_inverted_convergions_direction(
+            inv_conv_rotated=inv_conv_rotated, inv_nonlinear=inv_nonlinear,
+            inv_convergence_radius=inv_convergence_radius)
+
+        inv_nonlinear_conv = (weight_nonl*inv_conv_proj + (1-weight_nonl)*inv_nonlinear)
+        return inv_nonlinear_conv.invert_normal()
 
 
 def directional_convergence_summing(
     convergence_vector: np.ndarray, reference_vector: np.ndarray,
-    base: UnitDirection, weight: float, nonlinear_velocity:
-    np.ndarray = None,
+    base: UnitDirection, weight: float, nonlinear_velocity: np.ndarray = None,
     convergence_radius: float = pi/2) -> np.ndarray:
     """ Rotating / modulating a vector by using directional space.
     
@@ -128,7 +198,7 @@ def directional_convergence_summing(
     nonlinear_velocity: (optional) the vector-field which converges 
 
     Returns
-    ------
+    -------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
     weight = min(weight, 1)
@@ -168,65 +238,16 @@ def directional_convergence_summing(
         dir_conv_rotated = dir_convergence
 
     if nonlinear_velocity is None:
-        dir_nonlinear = dir_convergence
+        return dir_conv_rotated
     else:
-        dir_nonlinear = dir_convergence = UnitDirection(base).from_vector(nonlinear_velocity)
+        dir_nonlinear = UnitDirection(base).from_vector(nonlinear_velocity)
 
-    # Invert matrix to get smooth summing.
-    inverted_nonlinear = dir_nonlinear.invert_normal()
-
-    # Only project when 'outside the radius'
-    inv_convergence_radius = pi - convergence_radius
-    if inverted_nonlinear.norm() <= inv_convergence_radius:
-        return dir_nonlinear.as_vector()
-    else:
-        weight_nonl = _get_nonlinear_inverted_weight(
-            inverted_conv_rotated.norm(), inverted_nonlinear.norm(), inv_convergence_radius)
-
-        inverted_conv_proj = _get_projection_of_inverted_convergions_direction(
-            dir_conv_rotated, delta_dir_conv, inv_convergence_radius)
-
-        inverted_nonlinear_conv = (weight_nonl*inverted_nonlinear
-                                   + (1-weight_nonl)*inverted_conv_proj)
-
-        nonlinear_conv = inverted_nonlinear_conv.invert_normal()
+        nonlinear_conv = _get_projected_nonlinear_velocity(
+            dir_conv_rotated=dir_conv_rotated, dir_nonlinear=dir_nonlinear,
+            convergence_radius=convergence_radius, weight=weight)
+        
         return nonlinear_conv.as_vector()
-
-    # TODO: remove the rest...
     
-    # dir_nonlinearvelocity = get_angle_space(nonlinear_velocity, null_matrix=null_matrix)
-    dir_nonlinearvelocity = UnitDirection(base).from_vector(nonlinear_velocity)
-
-    # if False: # Currently deactivated due to non-conformity in higher-dim space.
-    # dist_conv_nonlinear = np.linalg.norm(dir_nonlinearvelocity - dir_conv_rotated)
-    dist_conv_nonlinear = dir_nonlinearvelocity.get_distance_to(dir_conv_rotated)
-    
-    if dist_conv_nonlinear > np.pi:
-        # If it is larger than pi, we assume that it was rotated in the 'wrong direction'
-        # i.e. find the same one, which is 2*pi in the other direction.
-        # Since the normal is not adjusted to find
-        # This should be replaced by 'base-transformation' in the future.
-        
-        norm_nonlinear = dir_nonlinearvelocity.norm()
-        # dirdir_nonlinear = dir_nonlinearvelocity.as_angle() / norm_nonlinear
-        # dir_nonlinearvelocity_new = (norm_nonlinear - 2*pi) * dirdir_nonlinear
-        
-        dir_nonlinearvelocity_new = copy.deepcopy(dir_nonlinearvelocity)
-        dir_nonlinearvelocity_new = dir_nonlinearvelocity_new / norm_nonlinear * (norm_nonlinear - 2*pi)
-        
-        # if dist_conv_nonlinear > np.linalg.norm(dir_nonlinearvelocity_new - dir_conv_rotated):
-        if dist_conv_nonlinear > dir_nonlinearvelocity_new.get_distance_to(dir_conv_rotated):
-            dir_nonlinearvelocity = dir_nonlinearvelocity_new
-            warnings.warn("pi-transfer was executed. "
-                          + "This should be replaced with base-transformation.")
-
-    # TODO: try to project only onto the circle (?)
-    # if convergence_is_outside_tangent:
-    dir_nonlinear_rotated = weight*dir_conv_rotated + (1-weight)*dir_nonlinearvelocity
-    # breakpoint()
-    # return get_angle_space_inverse(dir_nonlinear_rotated, null_matrix=null_matrix)
-    return dir_nonlinear_rotated.as_vector()
-
 
 def obstacle_avoidance_rotational(
     position: np.ndarray, initial_velocity: np.ndarray,
