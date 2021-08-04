@@ -3,7 +3,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  
 from matplotlib import cm
 
-def directional_deviation_weight():
+plt.ion()
+
+def directional_deviation_weight(save_figure=False):
+    from dynamic_obstacle_avoidance.avoidance.rotation import _get_directional_deviation_weight
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
@@ -33,6 +37,11 @@ def directional_deviation_weight():
     ax.set_ylim([0, 1])
     ax.set_zlim([0, 1])
 
+    if save_figure:
+        figure_name = "rotational_weight_with_power_" + str(int(pow_factor))
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
-if __name__ == '__main__':
-    directional_deviation_weight()
+
+
+if (__name__) == '__main__':
+    directional_deviation_weight(save_figure=False)

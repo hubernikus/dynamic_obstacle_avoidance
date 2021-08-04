@@ -21,6 +21,15 @@ from vartools.directional_space import UnitDirection, DirectionBase
 from dynamic_obstacle_avoidance.avoidance.utils import compute_weights, get_weight_from_gamma
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 
+class WeightOutOfBoundError(Exception):
+    def __init__(self, weight):
+        self.weight = weight
+        super().__init__()
+        
+    def __str__(self):
+        return f"weight={self.weight} -> Weight out of bounded, expected to be in [0, 1]."
+
+
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
 
@@ -46,16 +55,12 @@ def get_intersection_with_circle(
         # Only negative direction due to expected negative A (?!) [returns max-direciton]..
         fac_direction = (-BB + np.sqrt(DD)) / (2*AA)
         point = start_position + fac_direction*direction
-        if point is None:
-            breakpoint()
         return point
     
     else:
         factors = (-BB + np.array([-1, 1])*np.sqrt(DD)) / (2*AA)
         points = (np.tile(start_position, (2, 1)).T
-                  + np.tile(factors, (2, 1)) * np.tile(direction, (2, 1)).T)
-        if points is None:
-            breakpoint()
+                  + np.tile(factors, (start_position.shape[0], 1)) * np.tile(direction, (2, 1)).T)
         return points
 
 def _get_directional_deviation_weight(
@@ -145,6 +150,10 @@ def _get_projection_of_inverted_convergence_direction(
     else:
         # Points is none
         inv_conv_proj = inv_conv_rotated
+        
+    if len(inv_conv_proj.as_angle()) > 1: # DEBUG
+        breakpoint()
+        
     return inv_conv_proj
 
 
@@ -157,9 +166,10 @@ def _get_projected_nonlinear_velocity(
 
     Parameters
     ----------
-    dir_conv_rotated:
-    dir_nonlinear: 
-    weight: 
+    dir_conv_rotated: rotated convergence direction which guides the nonlinear
+    dir_nonlinear: nonlinear direction which is pulled towards the convergence direction.
+    weight: initial weight - which is taken into the calculation
+    convergence_radius: radius of circle to which direction is pulled towards (e.g. pi/2 = tangent)
 
     Returns
     -------
@@ -187,7 +197,7 @@ def _get_projected_nonlinear_velocity(
             inv_conv_rotated=inv_conv_rotated,
             inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius)
-
+        
         inv_nonlinear_conv = (weight_nonl*inv_conv_proj + (1-weight_nonl)*inv_nonlinear)
         return inv_nonlinear_conv.invert_normal()
 
@@ -209,7 +219,8 @@ def directional_convergence_summing(
     -------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
-    weight = min(weight, 1)
+    if weight > 1 or weight < 0:
+        raise WeightOutOfBoundError(weight=weight)
         
     dir_reference = UnitDirection(base).from_vector(reference_vector)
     dir_convergence = UnitDirection(base).from_vector(convergence_vector)
@@ -244,16 +255,17 @@ def directional_convergence_summing(
     else:
         # Initial velocity 'dir_convergecne' already pointing away from obstacle
         dir_conv_rotated = dir_convergence
-
+    
     if nonlinear_velocity is None:
         return dir_conv_rotated
+    
     else:
         dir_nonlinear = UnitDirection(base).from_vector(nonlinear_velocity)
 
         nonlinear_conv = _get_projected_nonlinear_velocity(
             dir_conv_rotated=dir_conv_rotated, dir_nonlinear=dir_nonlinear,
             convergence_radius=convergence_radius, weight=weight)
-        
+
         return nonlinear_conv.as_vector()
     
 
