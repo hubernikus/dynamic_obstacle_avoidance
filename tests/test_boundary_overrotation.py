@@ -77,31 +77,10 @@ class TestOverrotation(unittest.TestCase):
         
         self.assertEqual(ratio[0], ratio[1])
         self.assertTrue(ratio[0] > 0)
-        
-    def test_angle_space_distance(self):
-        dim = 3
-        base = DirectionBase(matrix=np.eye(dim))
-        dir1 = UnitDirection(base).from_angle(np.array([1.88495559, 1.25663706]))
-        dir2 = UnitDirection(base).from_angle(np.array([-3.14159265, -3.14159265]))
-
-        dd1 = dir1.as_angle()
-        dd2 = dir2.as_angle()
-        
-        self.assertAlmostEqual(LA.norm(dd2-dd1), dir1.get_distance_to(dir2))
 
     def test_directional_deviation_weight(self, visualize=False, save_figure=False):
         from dynamic_obstacle_avoidance.avoidance.rotation import _get_directional_deviation_weight
         
-        if visualize:
-            print("Done")
-
-            if save_figure:
-                figure_name = "rotational_weight_with_power_" + str(int(pow_factor))
-                plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
-
-            plt.ion()
-            plt.show()
-
         w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=1)
         self.assertTrue(w_conv==1)
 
@@ -121,19 +100,16 @@ class TestOverrotation(unittest.TestCase):
         w_low = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
         w_high = _get_directional_deviation_weight(weight=0.7, weight_deviation=0.3)
         self.assertTrue(0 < w_low < w_high < 1)
-
-    def test_nonlinear_inverted_weight(self, visualize=False, save_figure=False):
-        from dynamic_obstacle_avoidance.avoidance.rotation import _get_nonlinear_inverted_weight
-        # breakpoint()
-
+        
 
     def test_directional_convergence_summing(self):
-        """ Test directional convergence summing."""
+        """ Test directional convergence summing in 3D."""
         # Weighting der
         dim = 3
         base = DirectionBase(matrix=np.eye(dim))
     
         convergence_vector = np.array([1, 0.1, 0])
+        convergence_vector = convergence_vector / LA.norm(convergence_vector)
         reference_vector = [1, 0, 0]
         weight = 0.0
         # nonlinear_velocity = convergence_vector
@@ -141,9 +117,26 @@ class TestOverrotation(unittest.TestCase):
         converged_vector = directional_convergence_summing(
             convergence_vector=convergence_vector,
             reference_vector=reference_vector,
-            base=base, weight=weight)
+            base=base, weight=weight,
+            convergence_radius=pi/2)
+
+        # Zero movement of the converging vector
+        self.assertTrue(np.allclose(convergence_vector, converged_vector.as_vector()))
+
+        weight = 1
+        converged_vector = directional_convergence_summing(
+            convergence_vector=convergence_vector,
+            reference_vector=reference_vector,
+            base=base, weight=weight,
+            convergence_radius=pi/2)
+
+        # Project on pi/2 (tangent) space
+        self.assertTrue(np.isclose(np.dot(base[0], converged_vector.as_vector()), 0))
         
-        breakpoint()
+        # Project away from 'reference-vector'
+        self.assertTrue(np.dot(reference_vector, convergence_vector) >
+                        np.dot(reference_vector, converged_vector.as_vector()))
+        
         
     def test_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
@@ -173,7 +166,7 @@ class TestOverrotation(unittest.TestCase):
 
         obstacle_list.set_convergence_directions(ConverginSystem)
 
-        visuzlize = visualize or save_figure 
+        visualize = visualize or save_figure 
         if visualize:
             import matplotlib.pyplot as plt
             fig, axs = plt.subplots(1, 2, figsize=(14, 8))
@@ -365,7 +358,7 @@ class TestOverrotation(unittest.TestCase):
         )
         
 
-if __name__ == '__main__':
+if (__name__) == '__main__':
     # Allow running in ipython (!)
     # unittest.main(argv=['first-arg-is-ignored'], exit=False)
     # unittest.main()
@@ -384,6 +377,8 @@ if __name__ == '__main__':
         # Tester.test_directional_convergence_summing()
         
         # Tester.test_single_ellipse_radius(visualize=True, assert_check=False, save_figure=True)
-        # Tester.test_two_ellipse_radius(visualize=True, save_figure=True)
+        # Tester.test_directional_convergence_summing()
+        
+        # Tester.test_two_ellipse_radius(visualize=True, save_figure=False)
 
         print("All selected tests executed with success.")
