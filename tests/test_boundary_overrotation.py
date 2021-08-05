@@ -132,10 +132,28 @@ class TestOverrotation(unittest.TestCase):
 
         # Project on pi/2 (tangent) space
         self.assertTrue(np.isclose(np.dot(base[0], converged_vector.as_vector()), 0))
-        
         # Project away from 'reference-vector'
         self.assertTrue(np.dot(reference_vector, convergence_vector) >
                         np.dot(reference_vector, converged_vector.as_vector()))
+
+        # # Increasingly going closer
+        # convergence_velocity = np.array([8., 4.])
+        # initial_velocity = np.array([ 0.99173346, -0.12831505])
+        # reference_dir = np.array([-0.91914503, -0.3939193 ])
+        # inv_gamma_weight = 3.264726439135561
+        # normal_orthogonal_matrix = np.array([[-9.99999977e-01,  2.13942402e-04],
+        #                                      [-2.13942402e-04, -9.99999977e-01]])
+        # convergence_radius = 2.54063962480226
+
+        # rotated_velocities = directional_convergence_summing(
+        #     convergence_vector=convergence_velocity,
+        #     reference_vector=reference_dir,
+        #     weight=inv_gamma_weight,
+        #     # weight=1, # 
+        #     nonlinear_velocity=initial_velocity,
+        #     base=DirectionBase(matrix=normal_orthogonal_matrix),
+        #     convergence_radius=convergence_radius)
+        # breakpoint()
         
         
     def test_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
@@ -173,9 +191,6 @@ class TestOverrotation(unittest.TestCase):
             ax = axs[1]
         
         positions = get_positions(x_lim, y_lim, n_resolution, flattened=True)
-
-        # DEBUG POSITIONS
-        positions[:, 0] = [-1.11, -3.37]
 
         conv_radius = np.zeros((positions.shape[1]))
         gamma = np.zeros((positions.shape[1]))
@@ -261,7 +276,6 @@ class TestOverrotation(unittest.TestCase):
             if save_figure:
                 figure_name = "single_ellipse_radius_value_with_normal"
                 plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
-
 
     def test_two_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
@@ -380,5 +394,6 @@ if (__name__) == '__main__':
         # Tester.test_directional_convergence_summing()
         
         # Tester.test_two_ellipse_radius(visualize=True, save_figure=False)
+        Tester.test_directional_convergence_summing()
 
         print("All selected tests executed with success.")

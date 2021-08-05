@@ -17,8 +17,9 @@ from dynamic_obstacle_avoidance.containers import RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 
 class TestRotational(unittest.TestCase):
-    def test_zero_rotation_container(self, visualize_plot=False, assert_check=True, num_resolution=30,
-                                     x_range=[-10, 10], y_range=[-10, 10], dim=2):
+    def test_zero_rotation_container(
+        self, visualize_plot=False, assert_check=True, num_resolution=30,
+        x_range=[-10, 10], y_range=[-10, 10], dim=2):
 
         obstacle_list = RotationContainer()
         obstacle_list.append(
@@ -57,7 +58,6 @@ class TestRotational(unittest.TestCase):
             plt.quiver(positions[0, :, :], positions[1, :, :],
                        conv_dir[0, :, :], conv_dir[1, :, :], color="blue")
 
-        # breakpoint()
 
 if (__name__)=="__main__":
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

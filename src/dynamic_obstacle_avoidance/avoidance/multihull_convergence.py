@@ -14,12 +14,12 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
-from vartools.directional_space import DirectionBase
+from vartools.directional_space import DirectionBase, UnitDirection
 from vartools.directional_space import get_directional_weighted_sum
 # from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
-from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
-from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_gamma
+from dynamic_obstacle_avoidance.avoidance.utils import get_weight_gamma
+from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_inv_of_gamma
 
 from dynamic_obstacle_avoidance.avoidance.rotation import directional_convergence_summing  
 
@@ -117,9 +117,10 @@ def multihull_attraction(
 
     n_obs_close = np.sum(ind_obs)
     gamma_array = gamma_array[ind_obs]    # Only keep relevant ones
-    inv_gamma_weight = get_weight_from_gamma(gamma_array)
+    inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
     
-    rotated_velocities = np.zeros((dimension, n_obs_close))
+    # rotated_velocities = np.zeros((dimension, n_obs_close))
+    rotated_directions = [None]*n_obs_close
     # for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
     for it, oo in enumerate(np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -137,7 +138,8 @@ def multihull_attraction(
             
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
-            rotated_velocities[:, it] = initial_velocity
+            base = DirectionBase(matrix=normal_orthogonal_matrix)
+            rotated_directions[it] = UnitDirection(base).from_angle(initial_velocity)
 
         # position, gamma_value, it_obs, obstacle_list, dotprod_weight=1, gamma_weight=1):
         convergence_radius = get_desired_radius(position, gamma_array[it], 
@@ -146,7 +148,7 @@ def multihull_attraction(
         # convergence_radius = pi*0.9
         # inv_gamma_weight[it] = 1
         # TODO: better weight-function (less doubling with the radius)
-        rotated_velocities[:, it] = directional_convergence_summing(
+        rotated_directions[it] = directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
             weight=inv_gamma_weight[it],
@@ -155,12 +157,16 @@ def multihull_attraction(
             base=DirectionBase(matrix=normal_orthogonal_matrix),
             convergence_radius=convergence_radius)
 
+    gamma_weight = get_weight_gamma(gamma_array)
+
+    rotated_velocities = np.array([vel.as_vector() for vel in rotated_directions])
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
         # base=DirectionBase(vector=initial_velocity),
         directions=rotated_velocities,
         weights=inv_gamma_weight,
         )
-
+    
     rotated_velocity = rotated_velocity * np.linalg.norm(initial_velocity)
+    
     return rotated_velocity

@@ -71,16 +71,10 @@ class TestMultiBoundary(unittest.TestCase):
             is_boundary=True,
             )
         )
-
         # Save not possible for further use (...)
-
         
-    def test_displacement(self):
-        """ """
-        self.assertTrue(True)
 
-    @classmethod
-    def plottest_list_simple(cls, save_figure=False):
+    def plottest_list_simple(self, save_figure=False):
         """ Additional test for visualization. """
         
         import matplotlib.pyplot as plt
@@ -139,8 +133,7 @@ class TestMultiBoundary(unittest.TestCase):
             plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
-    @classmethod
-    def plottest_list_advanced(cls, save_figure=False):
+    def plottest_list_advanced(self, save_figure=False):
         """ Additional test for visualization. """
         
         import matplotlib.pyplot as plt
@@ -261,9 +254,7 @@ class TestMultiBoundary(unittest.TestCase):
             figure_name = "relative_reference_intersect"
             plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
-
-    @classmethod 
-    def plottest_default_direction(cls, save_figure=False):
+    def plottest_default_direction(self, save_figure=False):
         import matplotlib.pyplot as plt
         from dynamic_obstacle_avoidance.visualization import plot_obstacles
         
@@ -398,12 +389,13 @@ class TestMultiBoundary(unittest.TestCase):
             figure_name = "gammavals_multiplehull"
             plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
+
 if __name__ == '__main__':
     # Allow running in ipython (!)
-    # unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
     # unittest.main()
     
-    visualize = True
+    visualize = False
     if visualize:
         # TestMultiBoundary.plottest_list_simple(save_figure=False)
         # TestMultiBoundary.plottest_list_advanced(save_figure=True)

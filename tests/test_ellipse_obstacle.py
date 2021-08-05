@@ -9,6 +9,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import Gra
 from dynamic_obstacle_avoidance.obstacles import Ellipse, CircularObstacle
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
+
 class TestEllipses(unittest.TestCase):
     def test_ellipse_reference_point_inside(self, visualize=False):
         """ Visualize ellipse with reference point far away """

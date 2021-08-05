@@ -101,9 +101,21 @@ def get_relative_obstacle_velocity(
     relative_velocity = xd_obs
     return relative_velocity
 
-def get_weight_from_gamma(gamma_array, power_value=1.0):
-    """ Returns weight-array based on input of gamma_array """
-    return 1.0/np.abs(gamma_array)**power_value
+
+def get_weight_from_gamma(*args, **kwargs):
+    raise Exception("Renamed to 'get_weight_from_inv_of_gamma'")
+
+def get_weight_from_inv_of_gamma(gamma_array: np.ndarray,
+                                 power_value: float = 1.0) -> np.ndarray:
+    """ Returns weight-array based on input of gamma_array. """
+    weight = 1.0/np.abs(gamma_array)**power_value
+    return weight
+
+def get_weight_gamma(gamma_array: np.ndarray, power_value: float = 1.0) -> np.ndarray:
+    """ Returns weight-array based on input of gamma_array. """
+    weight = np.abs(gamma_array)**power_value
+    weight = weight / np.sum(weight)
+    return weight
 
 
 def getGammmaValue_ellipsoid(ob, x_t, relativeDistance=True):

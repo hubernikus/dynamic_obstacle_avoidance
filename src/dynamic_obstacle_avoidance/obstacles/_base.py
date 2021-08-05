@@ -85,17 +85,8 @@ class Obstacle(ABC):
         # Dimension of space 
         self.d = len(self.center_position)      # TODO remove
 
-        if orientation is None:
-            if self.dim == 2:
-                self.orientation = 0
-                self._rotation_matrix = []
-            elif self.dim == 3:
-                self.orientation = Rotation.from_rot_vec([0, 0, 0])
-                        
-        else:
-            if self.dim == 2:
-                self._rotation_matrix = []
-            self.orientation = orientation
+        self._rotation_matrix = None
+        self.orientation = orientation
             
         self.resolution = 0      # Resolution of drawing
 
@@ -265,6 +256,10 @@ class Obstacle(ABC):
     
     @orientation.setter
     def orientation(self, value):
+        if value is None:
+            self._orientation = value
+            return
+        
         if self.dim == 2:
             self._orientation = value
             self.compute_rotation_matrix()
@@ -434,22 +429,36 @@ class Obstacle(ABC):
  
         if self.dim == 2:
             if len(position.shape)==1:
-                return self._rotation_matrix.T.dot(position - np.array(self.center_position))
+                position = position - np.array(self.center_position)
+                if self._rotation_matrix is None:
+                    return position
+                return self._rotation_matrix.T.dot(position)
+            
             elif len(position.shape)==2:
                 n_points = position.shape[1]
-                return self._rotation_matrix.T.dot(position-
-                                            np.tile(self.center_position, (n_points,1)).T)
+                position = position - np.tile(self.center_position, (n_points,1)).T
+                if self._rotation_matrix is None:
+                    return position
+                return self._rotation_matrix.T.dot(position)
+            
             else:
                 raise ValueError("Unexpected position-shape")
         
         elif self.dim == 3:
             if len(position.shape)==1:
-                return self._orientation.inv().apply(position - self.center_position)
+                position = position - self.center_position
+                if self._orientation is None:
+                    return position
+                return self._orientation.inv().apply(position)
                         
             elif len(position.shape)==2:
                 n_points = position.shape[1]
-                return self._orientation.inv().apply(
-                    position.T - np.tile(self.center_position, (n_points, 1))).T
+                position = position.T - np.tile(self.center_position, (n_points, 1))
+                if self._orientation is None:
+                    return position.T
+                return self._orientation.inv().apply(position).T
+            else:
+                raise ValueError("Unexpected position shape.")
 
         else:
             warnings.warn("Rotation for dimensions {} need to be implemented".format(self.dim))
@@ -462,23 +471,31 @@ class Obstacle(ABC):
             raise TypeError('Position={} is of type {}'.format(position, type(position)))
 
         if self.dim == 2:
-            if len(position.shape)==1:
-                return self._rotation_matrix.dot(position) + self.center_position
+            if len(position.shape) == 1:
+                if self._rotation_matrix is not None:
+                    position = self._rotation_matrix.dot(position)
+                return  position + self.center_position
+            
             elif len(position.shape)==2:
                 n_points = position.shape[1]
-                return (self._rotation_matrix.dot(position)
-                        + np.tile(self.center_position, (n_points,1)).T)
+                if self._rotation_matrix is not None:
+                    position = self._rotation_matrix.dot(position)
+                return position + np.tile(self.center_position, (n_points,1)).T
+
             else:
                 raise ValueError("Unexpected position-shape")
 
         elif self.dim == 3:
             if len(position.shape)==1:
-                return self._orientation.apply(position) + self.center_position
+                if self._orientation is not None:
+                    position = self._orientation.apply(position)
+                return position + self.center_position
                         
             elif len(position.shape)==2:
                 n_points = position.shape[1]
-                return (self._orientation.apply(position.T) +
-                            + np.tile(self.center_position, (n_points, 1))).T
+                if self._orientation is not None:
+                    position = self._orientation.apply(position.T).T
+                return position + np.tile(self.center_position, (n_points, 1)).T
             
             else:
                 raise ValueError("Unexpected position-shape")
@@ -489,6 +506,9 @@ class Obstacle(ABC):
         
     def transform_relative2global_dir(self, direction):
         """ Transform a direction, velocity or relative position to the global-frame """
+        if self._orientation is None:
+            return direction
+        
         if self.dim == 2:
             return self._rotation_matrix.dot(direction)
         
@@ -501,6 +521,9 @@ class Obstacle(ABC):
         
     def transform_global2relative_dir(self, direction):
         """ Transform a direction, velocity or relative position to the obstacle-frame """
+        if self._orientation is None:
+            return direction
+        
         if self.dim == 2:
             return self._rotation_matrix.T.dot(direction)
         
@@ -684,12 +707,10 @@ class Obstacle(ABC):
         if self.dim != 2:
             warnings.warn("Orientation matrix only used for useful for 2-D rotations.")
             return
+        
         orientation = self._orientation
-
-        # rotating the query point into the obstacle frame of reference
-        if self.dim==2:
-            self._rotation_matrix = np.array([[cos(orientation), -sin(orientation)], 
-                                       [sin(orientation),  cos(orientation)]])
+        self._rotation_matrix = np.array([[cos(orientation), -sin(orientation)], 
+                                          [sin(orientation),  cos(orientation)]])
         
     def set_reference_point(self, position, in_global_frame=False): # Inherit
         """Defines reference point. 

@@ -1,10 +1,10 @@
 #!/USSR/bin/python3
-'''
-Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
-'''
-__author__ =  "LukasHuber"
-__email__ = "lukas.huber@epfl.ch"
-__date__ =  "2018-02-15"
+""" Script which creates a variety of examples of local modulation of a vector field
+with obstacle avoidance. 
+"""
+# Author: LukasHuber
+# Email: lukas.huber@epfl.ch
+# Created:  2018-02-15
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
@@ -141,7 +141,6 @@ def get_attracting_square(margin_absolut=0):
 
 def get_attracting_cirlce(margin_absolut=0):
     obs = GradientContainer() # create empty obstacle list
-
         
     obs.append(CircularObstacle(
         radius=0.2,
@@ -213,7 +212,6 @@ if (__name__)=="__main__":
         # x_lim, y_lim = [-1.0, 1.0], [-1.1, 1.1]
         obs = get_repulsive_ellipse(robot_margin)
         fig_name = "attracting_circle"
-    
 
     if False:
         xAttractor = np.array([2.5, 0])

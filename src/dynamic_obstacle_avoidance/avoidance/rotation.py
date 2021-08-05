@@ -1,5 +1,4 @@
-"""
-Library for the Rotation (Modulation Imitation) of Linear Systems
+""" Library for the Rotation (Modulation Imitation) of Linear Systems
 """
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
@@ -18,7 +17,8 @@ from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 from vartools.directional_space import UnitDirection, DirectionBase
 
-from dynamic_obstacle_avoidance.avoidance.utils import compute_weights, get_weight_from_gamma
+from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
+from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
 
 class WeightOutOfBoundError(Exception):
@@ -28,7 +28,6 @@ class WeightOutOfBoundError(Exception):
         
     def __str__(self):
         return f"weight={self.weight} -> Weight out of bounded, expected to be in [0, 1]."
-
 
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
@@ -40,6 +39,9 @@ def get_intersection_with_circle(
     """Returns intersection with circle of of radius 'radius' and the line defined as
     'start_position + x * direction'
     (!) Only intersection at furthest distance to start_point is returned. """
+    if not radius: # Zero radius
+        return None
+        
     # Binomial Formula to solve for x in:
     # || dir_reference + x * (delta_dir_conv) || = radius
     AA = np.sum(direction**2) 
@@ -113,7 +115,6 @@ def _get_projection_of_inverted_convergence_direction(
         return inv_conv_rotated
     
     inv_conv_rotated = inv_conv_rotated
-
     points = get_intersection_with_circle(
         start_position=inv_conv_rotated.as_angle(),
         direction=(inv_conv_rotated-inv_nonlinear).as_angle(),
@@ -151,7 +152,7 @@ def _get_projection_of_inverted_convergence_direction(
         # Points is none
         inv_conv_proj = inv_conv_rotated
         
-    if len(inv_conv_proj.as_angle()) > 1: # DEBUG
+    if len(inv_conv_proj.as_angle()) > pi: # DEBUG
         breakpoint()
         
     return inv_conv_proj
@@ -177,7 +178,7 @@ def _get_projected_nonlinear_velocity(
     """
     # Invert matrix to get smooth summing.
     inv_nonlinear = dir_nonlinear.invert_normal()
-
+    
     # Only project when 'outside the radius'
     inv_convergence_radius = pi - convergence_radius
     if inv_nonlinear.norm() <= inv_convergence_radius:
@@ -189,6 +190,7 @@ def _get_projected_nonlinear_velocity(
         weight_nonl = _get_nonlinear_inverted_weight(
             inv_conv_rotated.norm(), inv_nonlinear.norm(), inv_convergence_radius,
             weight=weight)
+
         
         if not weight_nonl: # zero value
             return inv_nonlinear.invert_normal()
@@ -204,8 +206,8 @@ def _get_projected_nonlinear_velocity(
 
 def directional_convergence_summing(
     convergence_vector: np.ndarray, reference_vector: np.ndarray,
-    base: UnitDirection, weight: float, nonlinear_velocity: np.ndarray = None,
-    convergence_radius: float = pi/2) -> np.ndarray:
+    base: DirectionBase, weight: float, nonlinear_velocity: np.ndarray = None,
+    convergence_radius: float = pi/2) -> UnitDirection:
     """ Rotating / modulating a vector by using directional space.
     
     Paramters
@@ -219,8 +221,12 @@ def directional_convergence_summing(
     -------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
-    if weight > 1 or weight < 0:
-        raise WeightOutOfBoundError(weight=weight)
+    # if weight > 1 or weight < 0:
+        # raise WeightOutOfBoundError(weight=weight)
+    if weight >= 1:
+        weight = 1
+    elif weight < 0:
+        weight = 0
         
     dir_reference = UnitDirection(base).from_vector(reference_vector)
     dir_convergence = UnitDirection(base).from_vector(convergence_vector)
@@ -235,9 +241,9 @@ def directional_convergence_summing(
         norm_dir_conv = delta_dir_conv.norm()
         if not norm_dir_conv: # Zero value
             if nonlinear_velocity is None:
-                return convergence_vector
+                return UnitDirection(base).from_vector(convergence_vector)
             else:
-                return nonlinear_velocity
+                return UnitDirection(base).from_vector(nonlinear_velocity)
 
         angle_tangent = get_intersection_with_circle(
             start_position=dir_reference.as_angle(),
@@ -265,8 +271,8 @@ def directional_convergence_summing(
         nonlinear_conv = _get_projected_nonlinear_velocity(
             dir_conv_rotated=dir_conv_rotated, dir_nonlinear=dir_nonlinear,
             convergence_radius=convergence_radius, weight=weight)
-
-        return nonlinear_conv.as_vector()
+        
+        return nonlinear_conv
     
 
 def obstacle_avoidance_rotational(
@@ -299,13 +305,17 @@ def obstacle_avoidance_rotational(
 
     gamma_array = np.zeros((n_obstacles))
     for ii in range(n_obstacles):
+        # try:
         gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
-        if gamma_array[ii] <= 1 and not obstacle_list[ii].is_boundary:
+        # except:
+            # breakpoint()
+            
+        if gamma_array[ii] < 1 and not obstacle_list[ii].is_boundary:
             # Since boundaries are mutually subtracted,
             # breakpoint()
             raise NotImplementedError()
 
-    ind_obs = np.logical_and(gamma_array < cut_off_gamma, gamma_array > 1)
+    ind_obs = np.logical_and(gamma_array < cut_off_gamma, gamma_array >= 1)
     
     if not any(ind_obs):
         return initial_velocity
@@ -331,8 +341,9 @@ def obstacle_avoidance_rotational(
         E_orth=normal_orthogonal_matrix, weights=weights) 
     modulated_velocity = initial_velocity - relative_velocity
 
-    inv_gamma_weight = get_weight_from_gamma(gamma_array)
-    rotated_velocities = np.zeros((dimension, n_obs_close))
+    inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
+    # rotated_velocities = np.zeros((dimension, n_obs_close))
+    rotated_directions = [None]*n_obs_close
     for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
         reference_dir = obstacle_list[oo].get_reference_direction(
@@ -349,30 +360,22 @@ def obstacle_avoidance_rotational(
             
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:   # Zero value
-            rotated_velocities[:, it] = initial_velocity
+            base = DirectionBase(matrix=null_matrix)
+            # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
+            rotated_directions[it] = UnitDirection(base).from_vector(initial_velocity)
 
         # Note that the inv_gamma_weight was prepared for the multiboundary environment through
         # the reference point displacement (see 'loca_reference_point')
-        rotated_velocities[:, it] = directional_convergence_summing(
+        rotated_directions[it] = directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
             weight=inv_gamma_weight[it],
             nonlinear_velocity=initial_velocity,
             base=DirectionBase(matrix=null_matrix))
+        # rotated_velocities[:, it] = rotated_directionsrotated_velocity[it].as_vector()
         
-        if True:
-            # warnings.warn("Checking things at... Help @ ")
-            print('position', position)
-            print('inital vel', initial_velocity)
-            print('conv vel', convergence_velocity)
-            print('normal', normal_orthogonal_matrix[:, 0, 0])
-            print('ref_dir', reference_dir)
-            print('rotated_vel', rotated_velocities[:, it])
-            print()
-            # print('dot vels', np.dot(position, convergence_velocity)/(
-                # np.linalg.norm(position)*np.linalg.norm(convergence_velocity)))
-            breakpoint()
-        
+    rotated_velocities = np.array([r_dir.as_vector() for r_dir in rotated_directions]).T
+    
     rotated_velocity = get_directional_weighted_sum(
         null_direction=initial_velocity,
         directions=rotated_velocities,
@@ -381,25 +384,6 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-    if False: # TODO: remove after DEBUGGING
-        breakpoint()
-        import matplotlib.pyplot as plt
-        temp_init = initial_velocity / np.linalg.norm(initial_velocity)
-        
-        plt.quiver(position[0], position[1], temp_init[0], temp_init[1], label='initial', color='k')
-
-        temp_vel = velocity_perp_proj / np.linalg.norm(velocity_perp_proj)
-        plt.quiver(position[0], position[1], velocity_perp_proj[0],
-                   velocity_perp_proj[1], label='projected', color='r')
-
-        plt.quiver(position[0], position[1],
-                   rotated_velocity[0], rotated_velocity[1], label='rotated', color='b')
-        
-        plt.quiver(position[0], position[1],
-                   convergence_velocity[0], convergence_velocity[1], label='convergence', color='g')
-        plt.legend(loc='right')
-        plt.show()
-        breakpoint()
         
     rotated_velocity = rotated_velocity * magnitude
     rotated_velocity = rotated_velocity - relative_velocity
