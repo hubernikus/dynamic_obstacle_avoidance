@@ -66,7 +66,5 @@ if (__name__)=="__main__":
     if plot_results:
         MyTester = TestRotational()
         MyTester.test_zero_rotation_container(visualize_plot=True, assert_check=True)
-        
-    print("Selected tests complete.")
 
 

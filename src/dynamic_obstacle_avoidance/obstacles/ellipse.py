@@ -95,23 +95,19 @@ class Ellipse(Obstacle):
         
     @property
     def a(self): # TODO: remove
-        warnings.warn("'a' is depriciated, use 'axes_length' instead")
-        return self.axes_length
+        raise Exception("'a' is depriciated, use 'axes_length' instead")
 
     @a.setter # TODO:remove
     def a(self, value):
-        warnings.warn("'a' is depriciated, use 'axes_length' instead")
-        self.axes_length = value
+        raise Exception("'a' is depriciated, use 'axes_length' instead")
 
     @property
     def axes(self): # TODO: remove
-        warnings.warn("'axes' is depriciated, use 'axes_length' instead")
-        return self.axes_length
+        raise Exception("'axes' is depriciated, use 'axes_length' instead")
 
     @axes.setter # TODO:remove
     def axes(self, value):
-        warnings.warn("'axes' is depriciated, use 'axes_length' instead")        
-        self.axes_length = value
+        raise Exception("'axes' is depriciated, use 'axes_length' instead")
 
     @property
     def axes_length(self):
@@ -175,11 +171,11 @@ class Ellipse(Obstacle):
             return self.axes_length + self.margin_absolut
     
     def get_minimal_distance(self):
-        return np.min(self.a)
+        return np.min(self.axes_length)
 
     def get_maximal_distance(self):
         # Eucledian
-        return np.sqrt(np.sum(self.a*2))
+        return np.sqrt(np.sum(self.axes_length*2))
         
     def get_reference_length(self):
         """ Get a characeteric (or maximal) length of the obstacle. 

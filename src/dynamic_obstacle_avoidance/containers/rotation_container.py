@@ -16,7 +16,6 @@ class RotationContainer(BaseContainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._ConvergenceDynamics = [None for ii in range(len(self))]
-        print("Done rotationcontainer-init --- DEBUG ONLY")
         
     def append(self, value):
         super().append(value)

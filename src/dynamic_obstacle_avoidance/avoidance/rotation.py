@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt   # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.directional_space import get_directional_weighted_sum_from_unit_directions
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 from vartools.directional_space import UnitDirection, DirectionBase
 
@@ -374,13 +375,18 @@ def obstacle_avoidance_rotational(
             base=DirectionBase(matrix=null_matrix))
         # rotated_velocities[:, it] = rotated_directionsrotated_velocity[it].as_vector()
         
-    rotated_velocities = np.array([r_dir.as_vector() for r_dir in rotated_directions]).T
+    # rotated_velocities = np.array([r_dir.as_vector() for r_dir in rotated_directions]).T
+
+    base = DirectionBase(vector=initial_velocity)
+    rotated_velocity = get_directional_weighted_sum_from_unit_directions(
+        base=base, weights=weights,
+        unit_directions=rotated_directions)
     
-    rotated_velocity = get_directional_weighted_sum(
-        null_direction=initial_velocity,
-        directions=rotated_velocities,
-        weights=weights,
-        )
+    # rotated_velocity = get_directional_weighted_sum(
+        # null_direction=initial_velocity,
+        # directions=rotated_velocities,
+        # weights=weights,
+        # )
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)

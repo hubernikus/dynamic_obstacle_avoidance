@@ -15,7 +15,6 @@ from vartools.dynamical_systems import LinearSystem
 class MultiBoundaryContainer(RotationContainer):
     """ Container to treat multiple boundaries / walls."""
     def __init__(self, obs_list=None, attractor_position=None, *args, **kwargs):
-        print("Initialize MultiBoundaryContainer -- Remove after debug")
         super().__init__(obs_list=obs_list, *args, **kwargs)
 
         if obs_list is not None:
@@ -28,8 +27,6 @@ class MultiBoundaryContainer(RotationContainer):
 
         if (attractor_position is not None or not hasattr(self, '_attractor_position')):
             self._attractor_position = attractor_position
-        
-        print("DONE MultiBoundaryContainer-init --- debug only")
 
     def append(self, value, parent=None):
         """ Add new obstacle & adapting container-properties"""
