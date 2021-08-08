@@ -2,12 +2,16 @@
 Test script for obstacle avoidance algorithm
 Test normal formation
 """
+import unittest
+
 import numpy as np
 from math import pi
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
+from dynamic_obstacle_avoidance.containers import GradientContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, CircularObstacle
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
+
+from scipy.spatial.transform import Rotation as Rotation
 
 
 class TestEllipses(unittest.TestCase):
@@ -23,8 +27,8 @@ class TestEllipses(unittest.TestCase):
         # Reset reference point
         obs.set_reference_point(np.array([1, 0.3]), in_global_frame=True)
 
-        self.assertTrue(obs.get_gamma(obs.reference_point)>1,
-                            "Gamma of reference point is too small.")
+        self.assertTrue(obs.get_gamma(obs.reference_point)<1)
+                            
 
         obs_list = GradientContainer()
         obs_list.append(obs)
@@ -62,7 +66,7 @@ class TestEllipses(unittest.TestCase):
                 automatic_reference_point=False,
             )
 
-    def test_visualization_circular_reference_point_outside(self, visualize):
+    def test_visualization_circular_reference_point_outside(self, visualize=False):
         """ Visualize circular-obstacle with reference point far away """
         obs = CircularObstacle(
             radius=1.5,
@@ -85,7 +89,7 @@ class TestEllipses(unittest.TestCase):
             )
 
     def test_creation_3d(self):
-        ObstacleEnvironment = RotationContainer()
+        ObstacleEnvironment = GradientContainer()
         ObstacleEnvironment.append(
             Ellipse(
             center_position=np.array([0.5, -1, 0.3]), 

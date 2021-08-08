@@ -51,7 +51,7 @@ class TestOverrotation(unittest.TestCase):
             radius=1,
             only_positive=False,
             )
-        self.assertTrue(np.allclose([-3, 0], points[:, 0]))
+        self.assertTrue(np.allclose([-1, 0], points[:, 0]))
         self.assertTrue(np.allclose([ 1, 0], points[:, 1]))
 
         # Only positive direction
@@ -85,7 +85,7 @@ class TestOverrotation(unittest.TestCase):
         self.assertTrue(w_conv==1)
 
         w_conv = _get_directional_deviation_weight(weight=0, weight_deviation=1)
-        self.assertTrue(w_conv==0)
+        self.assertTrue(w_conv==1)
         
         w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=0)
         self.assertTrue(w_conv==0)
@@ -156,7 +156,7 @@ class TestOverrotation(unittest.TestCase):
         # breakpoint()
         
         
-    def test_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
+    def plottest_single_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
         dim = 2
         
@@ -277,7 +277,7 @@ class TestOverrotation(unittest.TestCase):
                 figure_name = "single_ellipse_radius_value_with_normal"
                 plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
-    def test_two_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
+    def plottest_two_ellipse_radius(self, assert_check=True, visualize=False, save_figure=False):
         """ Cretion & adapation of MultiWall-Surrounding """
         dim = 2
         x_lim = [-10, 10]
@@ -355,7 +355,7 @@ class TestOverrotation(unittest.TestCase):
             plt.savefig("figures/" + figure_name + ".png", bbox_inches='tight')
 
 
-    def test_vectorfield(self, assert_check=True, visualize=False, save_figure=False):
+    def plottest_vectorfield(self, assert_check=True, visualize=False, save_figure=False):
         Simulation_vectorFields(
             x_lim, y_lim, n_resolution, obstacle_list,
             saveFigure=False, 
@@ -374,11 +374,12 @@ class TestOverrotation(unittest.TestCase):
 
 if (__name__) == '__main__':
     # Allow running in ipython (!)
-    # unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
     # unittest.main()
     
-    visualize = True
     # visualize = False
+    # visualize = True
+    visualize = False
     if visualize:
         Tester = TestOverrotation()
         # Tester.test_intersection_with_circle_2d()

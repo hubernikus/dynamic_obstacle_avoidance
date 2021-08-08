@@ -806,8 +806,12 @@ class Ellipse(Obstacle):
             
             # Margin points
             cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-            power = 2*self.curvature
+            power = 2*self.curvature[0]
+            # try:
             factor = 1.0/((cos_theta/a[0])**power + (sin_theta/a[1])**power)**(1.0/power)
+            # except:
+                # breakpoint()
+            
 
             if self.reference_point_is_inside:
                 boundary_points_margin = np.hstack(( boundary_points_margin, factor*np.vstack((cos_theta, sin_theta)) ))

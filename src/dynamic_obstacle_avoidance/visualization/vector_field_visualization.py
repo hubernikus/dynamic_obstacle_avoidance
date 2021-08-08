@@ -412,7 +412,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             np.round((end_time-start_time)/(n_calculations)*1000),5) )
         print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
-    if plotStream:
+    if plotStream and point_grid:
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
             strm = res_ifd = ax.streamplot(
