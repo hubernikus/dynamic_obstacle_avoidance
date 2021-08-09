@@ -251,6 +251,10 @@ class Obstacle(ABC):
         self._reference_point = value
 
     @property
+    def pose(self):
+        return ObstaclePose(position=self.position, orientation=self.orientation)
+
+    @property
     def orientation(self):
         return self._orientation
     
