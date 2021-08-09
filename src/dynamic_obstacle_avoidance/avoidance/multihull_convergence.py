@@ -16,12 +16,14 @@ import matplotlib.pyplot as plt   # For debugging only (!)
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import DirectionBase, UnitDirection
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.directional_space import get_directional_weighted_sum_from_unit_directions
 # from vartools.directional_space import get_angle_space, get_angle_space_inverse
 
 from dynamic_obstacle_avoidance.avoidance.utils import get_weight_gamma
 from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_inv_of_gamma
 
-from dynamic_obstacle_avoidance.avoidance.rotation import directional_convergence_summing  
+from dynamic_obstacle_avoidance.avoidance.rotation import directional_convergence_summing
+get_directional_weighted_sum_from_unit_directions
 
 
 def get_desired_radius(
@@ -159,13 +161,17 @@ def multihull_attraction(
 
     gamma_weight = get_weight_gamma(gamma_array)
 
-    rotated_velocities = np.array([vel.as_vector() for vel in rotated_directions])
-    rotated_velocity = get_directional_weighted_sum(
-        null_direction=initial_velocity,
-        # base=DirectionBase(vector=initial_velocity),
-        directions=rotated_velocities,
-        weights=inv_gamma_weight,
-        )
+    # rotated_velocities = np.array([vel.as_vector() for vel in rotated_directions])
+    # rotated_velocity = get_directional_weighted_sum(
+    #     null_direction=initial_velocity,
+    #     # base=DirectionBase(vector=initial_velocity),
+    #     directions=rotated_velocities,
+    #     weights=inv_gamma_weight,
+    #     )
+    base = DirectionBase(vector=initial_velocity)
+    rotated_velocity = get_directional_weighted_sum_from_unit_directions(
+        base=base, weights=gamma_weight,
+        unit_directions=rotated_directions)
     
     rotated_velocity = rotated_velocity * np.linalg.norm(initial_velocity)
     

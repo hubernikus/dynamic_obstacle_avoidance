@@ -71,7 +71,7 @@ class MultiBoundaryContainer(RotationContainer):
             return root
         elif root.shape[0] > 1:
             warnings.warn("Several root-element found. Only first one returned.")
-
+            
         return root[0]
 
     def set_parent(self, it, parent):

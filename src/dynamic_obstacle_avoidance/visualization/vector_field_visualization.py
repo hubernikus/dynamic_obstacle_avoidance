@@ -168,7 +168,6 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     
 def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
-
     if pos_attractor is not None:
         ax.plot(pos_attractor[0], pos_attractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
 
@@ -250,7 +249,9 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
     ax.set_ylim(y_range)
 
     if noTicks:
-        ax.tick_params(axis='both', which='major',bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
+        ax.tick_params(axis='both', which='major',
+                       bottom=False, top=False, left=False, right=False,
+                       labelbottom=False, labelleft=False)
 
     if showLabel:
         ax.set_xlabel(r'$\xi_1$', fontsize=16)
