@@ -14,6 +14,7 @@ import numpy.linalg as LA
 from scipy.spatial.transform import Rotation # scipy rotation
 
 from vartools.angle_math import *
+from vartools.states import ObjectPose
 from dynamic_obstacle_avoidance.state import State # TODO: make obstacle a state-object
 
 import matplotlib.pyplot as plt     # TODO: remove after debugging!
@@ -252,7 +253,7 @@ class Obstacle(ABC):
 
     @property
     def pose(self):
-        return ObstaclePose(position=self.position, orientation=self.orientation)
+        return ObjectPose(position=self.position, orientation=self.orientation)
 
     @property
     def orientation(self):
