@@ -50,4 +50,4 @@ python scripts/examples/examples_multiple_obstaces.py
 **Acknowledgments**
 This work was funded in part by the EU project Crowdbots.
 
-
+(c) hubernikus
