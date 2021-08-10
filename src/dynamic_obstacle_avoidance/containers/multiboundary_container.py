@@ -12,6 +12,7 @@ from dynamic_obstacle_avoidance.containers import RotationContainer
 
 from vartools.dynamical_systems import LinearSystem
 
+
 class MultiBoundaryContainer(RotationContainer):
     """ Container to treat multiple boundaries / walls."""
     def __init__(self, obs_list=None, attractor_position=None, *args, **kwargs):
