@@ -1,0 +1,6 @@
+name: control_barrier_function
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
