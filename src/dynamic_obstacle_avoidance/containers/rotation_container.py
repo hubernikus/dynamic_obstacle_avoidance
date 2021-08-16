@@ -9,6 +9,7 @@ import numpy as np
 
 from vartools.dynamical_systems import ConstantValue, LinearSystem, LocallyRotated
 from vartools.directional_space import get_angle_space
+from vartools.states import ObjectPose
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
 
@@ -68,7 +69,7 @@ class RotationContainer(BaseContainer):
                                                    null_direction=(attractor-position))
                 
                     self._ConvergenceDynamics[it_obs] = LocallyRotated(
-                        mean_rotation=ds_direction, rotation_center=position,
+                        max_rotation=ds_direction, influence_pose=ObjectPose(position=position),
                         influence_radius=reference_radius, attractor_position=attractor)
                 else:
                     # Make it converge to attractor either way, as evaluation might be numerically bad.

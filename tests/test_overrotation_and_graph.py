@@ -49,6 +49,7 @@ class TestMultiHullBehvior(unittest.TestCase):
         convering_dynamics = LinearSystem(
             attractor_position=initial_dynamics.attractor_position, maximum_velocity=0.5)
 
+        # breakpoint()
         obstacle_list.set_convergence_directions(convering_dynamics)
 
         # position = np.array([-7.06896552,  1.24137931])
@@ -60,4 +61,8 @@ class TestMultiHullBehvior(unittest.TestCase):
 
 if (__name__) == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)
-    
+
+    manual_test = False
+    if manual_test:
+        my_tester = TestMultiHullBehvior()
+        my_tester.test_creation()
