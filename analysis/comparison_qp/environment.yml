@@ -1,4 +1,4 @@
-name: control_barrier_function
+name: avoidance_qp
 channels:
   - defaults
   - conda-forge

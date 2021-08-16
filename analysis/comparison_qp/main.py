@@ -2,6 +2,8 @@
 Replicating the paper of
 'Safety of Dynamical Systems With MultipleNon-Convex Unsafe Sets UsingControl Barrier Functions'
 """
+from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 from numpy import linalg as LA
@@ -11,38 +13,94 @@ from matplotlib import cm
 
 from vartools.dynamical_systems import DynamicalSystem, LinearSystem
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
-from vartools.math import get_numerical_gradient
+from vartools.math import get_numerical_gradient, get_numerical_hessian
 
 from vartools.states import ObjectPose
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
+from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
+
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
 
 
-class DoubleBlobObstacle(Obstacle):
-    def __init__(self, blob_matrix, center_position=None, *args, **kwargs):
-        self.blob_matrix = blob_matrix
-        self.dim = 2
-        if center_position is None:
-            self.center_position = np.zeros(self.dim)
-        else:
-            self.center_position = center_position
+@dataclass
+class GammaOperator_g_v():
+    """
+    g: matrix function output [n x m]
+    vector: (v) xvector of dimension [m] / 
+    """
+    g: Callable
+    vector: np.ndarray
 
-    def get_barrier_value(self, position):
-        """ Out of the book double-blob hull value."""
-        relative_position = position - self.center_position
-        hull_value = (
-            LA.norm(relative_position)**4
-            - relative_position.T.dot(self.blob_matrix).dot(relative_position))
-        return hull_value
+    def evaluate(self, position):
+        g_x = g.evaluate(position)
+        
+        # gradient_of_g  => in R^[n x m x n] 
+        gradient_of_g = g.get_gradient(position)
+
+        dimension = g_x.shape[0]
+        m_dim = g_x.shape[1]
+
+        Gamma = np.zeros((dimension, dimension))
+        for ii in range(m_dim):
+            Gamma += (g_x[:, ii].T @ vector @ np.eye(dimension) + g_x[:, ii] @ vector.T).dot(
+                gradient_of_g[:, ii, :])
+        return Gamma
+            
+class ControlLyapunovFunction():
+    def __init__(self, ll=[1, 6]):
+        self.ll = ll
+        self.dimension = 2
+
+    def get_control_lyapunov_value(self, position):
+        return 0.5*np.sum(self.ll*position**2)
 
     def evaluate_gradient(self, position):
-        relative_position = position - self.center_position
-        gradient = (4*LA.norm(relative_position)**2*relative_position
-                      - 2*self.blob_matrix.dot(relative_position))
-        return gradient
+        return self.ll*position
+
+    def get_hessian(self, position):
+        return np.diag(self.ll)
+
+@dataclass
+class ControlLyapunovQP():
+    """
+    minimize ||u||^2 + q||w||^2  p delta^2
+
+    s.t. L_f V + L_g V u + ∇_Q V.T ω + γ(V) ≤ δ             (CLF)
+         L_f h + L_g h u + α(h) ≥ 0                         (CBF1)
+         L_f h_D + L_g h_D u + ∇_Q h_D^T ω + β(h_D) ≥ 0     (CBF2)
+    """
+    barrier_function: BarrierFunction
+    control_lyapunov_function: ControlLyapunovFunction
+    p: float = 5
+    q: float = 5
+    epsilon: float = 0.1
+
+    # TODO:
+    # h_D
+    # ∇_Q
+    # ω / omega: -> virtual control signal
+    
+    # -> Needs internally
+    # Sigma(h) / σ(h) [can kinda guess from the constraints]
+    # D(x, Q) & ∇D & ∇_Q D
+    # Q(x)
+    # O_n (x) (?!)
+    # P_f -> scaled orthogonal projection of f
+    # P_G -> scaled orthogonal projection of G (? how! matrix..!)
+    # Gamma -> matrix / vector function
+    #
+    # G = g^t g
+    def sigma(self, h, delta=1):
+        """ Returns σ(h)  s.t.  (i) σ(h) > 0, (ii) σ'(0) = 0 and (iii) lim h→∞ σ(h) = 0."""
+        return  np.exp(-0.5*(h/delta)**2)
+
+    
+    def extended_class_function(self, barrier_function_value):
+        """ Not described in paper - assumption of zero value. 'lambda'-function """
+        return barrier_function_value
     
 
 class ClosedLoopQP():
@@ -61,7 +119,7 @@ class ClosedLoopQP():
         lie_of_h_wrt_f = gradient.dot(self.evaluate_base_dynamics(position))
         lie_of_h_wrt_g = gradient.dot(self.evaluate_control_dynamics(position))
 
-        gamma_of_h = extended_class_function(self.barrier_function.get_barrier_value(position))
+        gamma_of_h = self.extended_class_function(self.barrier_function.get_barrier_value(position))
 
         # Create QP-solver of the form
         # min ( 1/2 x.T P x + q.T x ) 
@@ -69,6 +127,7 @@ class ClosedLoopQP():
         #     A x = b
         #
         # sol = solver.qp(P, q, G, h)
+        # sol = solver.qp(P, q, G, h, A, b)
         P = matrix([[1.0]])
         q = matrix([0.0])
 
@@ -79,7 +138,7 @@ class ClosedLoopQP():
         return sol['x']
 
     def extended_class_function(self, barrier_function_value):
-        """ Not described in paper - assumption of zero value."""
+        """ Not described in paper - assumption of zero value. 'lambda'-function """
         return barrier_function_value
     
     def evaluate(self, position):
@@ -110,7 +169,7 @@ def plot_integrate_trajectory(delta_time=0.01, n_steps=1000):
         )
     g_x = LinearSystem(A_matrix=np.eye(dimension))
 
-    barrier_function = DoubleBlobObstacle(
+    barrier_function = DoubleBlobBarrier(
         blob_matrix=np.array([[10.0, 0.0],
                               [0.0, -1.0]]),
         center_position=np.array([0.0, 3.0]))
@@ -159,32 +218,35 @@ def plot_barrier_function():
     positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
     values = np.zeros(positions.shape[1])
 
-    blob_obstacle = DoubleBlobObstacle(
+    barrier_function = DoubleBlobBarrier(
         blob_matrix=np.array([[10, 0],
                               [0, -1]]),
         center_position=np.array([0, 3]))
 
+    # barrier_function = CirclularBarrier(radius=1.5, center_position=np.array([0, 3]))
     for ii in range(positions.shape[1]):
-        values[ii] = blob_obstacle.get_barrier_value(positions[:, ii])
+        values[ii] = barrier_function.get_barrier_value(positions[:, ii])
 
     cs = ax.contourf(positions[0, :].reshape(n_grid, n_grid),
-                     positions[1, :].reshape(n_grid, n_grid),
-                     values.reshape(n_grid, n_grid),
-                     # np.linspace(-100, 100.0, 21),
-                     np.linspace(-100, 10.0, 101),
-                     cmap=cm.YlGnBu,
-                     # linewidth=0.2, edgecolors='k'
-                     )
+                    positions[1, :].reshape(n_grid, n_grid),
+                    values.reshape(n_grid, n_grid),
+                    np.linspace(-10.0, 0.0, 11),
+                    # vmin=-0.1, vmax=0.1,
+                    # np.linspace(-10, 10.0, 101),
+                    # cmap=cm.YlGnBu,
+                    # linewidth=0.2, edgecolors='k'
+                    )
     
     cbar = fig.colorbar(cs,
-                        # cax=cbar_ax, ticks=np.linspace(0, np.pi, 5)
+                        # ticks=np.linspace(-10, 0, 11)
                         )
 
     plt.grid()
     ax.set_aspect('equal', adjustable='box')
 
 def compare_gradients():
-    blob_obstacle = DoubleBlobObstacle(
+    """ Similar to the testing-script from the 'various-tools' library. """
+    blob_obstacle = DoubleBlobBarrier(
         blob_matrix=np.array([[10, 0],
                               [0, -1]]),
         center_position=np.array([0, 3]))
@@ -207,16 +269,35 @@ def compare_gradients():
 
         print(f"Gradient Analytic: {gradient_analytic}")
         print(f"Gradient Numerical: {gradient_numerical}")
-        
 
+def compare_get_numerical_hessian():
+    barrier_function = CirclularBarrier(radius=1.5)
+
+    position = np.array([0, 0])
+    hessian_numerical = get_numerical_hessian(
+        function=barrier_function.get_barrier_value, position=position)                             
+    hessian_numerical_fast = get_numerical_hessian_fast(
+        function=barrier_function.get_barrier_value, position=position)                             
+        
+    hessian_analytical = barrier_function.get_hessian(position=position)
+    hessian_analytical = barrier_function.get_hessian(position=position)
+
+    print("is close here", np.allclose(hessian_numerical, hessian_analytical, rtol=1e-4))
+
+    print(f"{hessian_numerical=}")
+    print(f"{hessian_analytical=}")
+    print(f"{hessian_numerical_fast=}")
+    # compare speed
 
 if (__name__) == "__main__":
     plt.ion()
     solvers.options['show_progress'] = False
     # plot_main_vector_field()
     # plot_barrier_function()
-    # compare_gradients()
     
-    plot_integrate_trajectory()
+    # plot_integrate_trajectory()
+    
+    # compare_gradients()
+    compare_get_numerical_hessian()
 
     plt.show()
