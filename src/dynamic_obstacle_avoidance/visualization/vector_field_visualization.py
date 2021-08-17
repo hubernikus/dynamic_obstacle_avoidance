@@ -400,7 +400,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         ax_init.plot(pos_attractor[0], pos_attractor[1], 'k*', zorder=5)
         plt.gca().set_aspect('equal', adjustable='box')
 
-        plt.xlim(x_range)
+        plt.xlimb(x_range)
         plt.ylim(y_range)
 
 

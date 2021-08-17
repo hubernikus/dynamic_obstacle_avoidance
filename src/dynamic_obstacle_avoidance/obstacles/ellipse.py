@@ -171,10 +171,11 @@ class Ellipse(Obstacle):
             return self.axes_length + self.margin_absolut
     
     def get_minimal_distance(self):
+        """ Minimal distance or minimal radius."""
         return np.min(self.axes_length)
 
     def get_maximal_distance(self):
-        # Eucledian
+        """ Minimal distance or maximal radius."""
         return np.sqrt(np.sum(self.axes_length*2))
         
     def get_reference_length(self):

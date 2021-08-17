@@ -6,11 +6,21 @@ from abc import ABC, abstractmethod
 import numpy as np
 from numpy import linalg as LA
 
+from vartools.math import get_numerical_gradient, get_numerical_hessian
+
 
 class BarrierFunction(ABC):
     @abstractmethod
     def get_barrier_value(self, position):
         pass
+
+    def evaluate_gradient(self, position):
+        """ Default numerical function. Replace them with the analytical function if possible."""
+        return get_numerical_gradient(function=self.get_barrier_value, position=position)
+
+    def get_hessian(self, position):
+        """ Default numerical function. Replace them with the analytical function if possible."""
+        return get_numerical_hessian(function=self.get_barrier_value, position=position)
 
 
 class CirclularBarrier(BarrierFunction):
@@ -25,10 +35,13 @@ class CirclularBarrier(BarrierFunction):
             
     def get_barrier_value(self, position):
         relative_position = position - self.center_position
-        return 0.5*LA.norm(relative_position)**2 - 0.5*self.radius**2
+        # return 0.5*LA.norm(relative_position)**2 - 0.5*self.radius**2
+        return LA.norm(relative_position)**2 - self.radius**2
 
     def get_hessian(self, position):
-        return np.eye(self.dimension)
+        # return np.eye(self.dimension)
+        return 2*np.eye(self.dimension)
+    
 
 
 class DoubleBlobBarrier(BarrierFunction):
