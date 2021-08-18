@@ -37,9 +37,15 @@ def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position
 
 class NavigationContainer(BaseContainer):
     """
+    The transformation based on
+    'THE CONSTRUCTION OF ANALYTIC DIFFEOMORPHISMS FOR EXACT ROBOT NAVIGATION ON STAR WORLD'
+    by ELON RIMON AND DANIEL E. KODITSCHEK in 1991
+
     p: obstacle-center
     q: ray-center
     rho: minimum radius
+
+    NOTE: only applicable when space is GLOBALLY known(!)
     """
     @property
     def attractor_position(self):
@@ -58,8 +64,23 @@ class NavigationContainer(BaseContainer):
             beta_values[oo] = get_beta(obstacle, position)
         return beta_values
         
-    def get_analytic_switches(self, position, beta_values, lambda_constant=1):
-        """ Analytic switches of obstacle-avoidance function. """
+    def get_analytic_switches(self, rel_pos_attractor, beta_values,
+                              lambda_constant=1, goal_norm_ord=1):
+        """ Return analytic switches of obstacle-avoidance function.
+        
+        Parameters
+        ----------
+        goal_norm_ord:
+        """
+        # Or gamma_d /
+        if goal_norm_ord is not inf:
+            goal_norm_ord = goal_norm_ord*2
+        rel_dist_attractor = LA.norm(rel_pos_attractor, ord=goal_norm_ord)
+        
+        if not rel_dist_attractor:
+            # Position at attractor
+            return np.zeros(beta_values.shape)
+        
         ind_zero = np.isclose(beta_values, 0)
         if np.sum(ind_zero) == 0:
             beta_bar = beta_values / np.tile(np.prod(beta_values), (beta_values.shape[0]))
@@ -69,21 +90,55 @@ class NavigationContainer(BaseContainer):
         else:
             raise Exception("Two zero-value beta's detected. This indicates an invalid \n"
                             + "environment of intersecting obstacles.")
-        
-        # Or gamma_d
-        rel_dist_attractor = LA.norm(self.get_relative_attractor_position(position))
 
         scaled_dist = beta_bar*rel_dist_attractor
         switch_value = scaled_dist / (scaled_dist + lambda_constant*beta_values)
-        
         return switch_value
+
+    def get_minimum_epsilon(self, variable=None):
+        pass
+    def get_minimum_N(self, variable=None):
+        
+        return 0.5*1/epsilon
+        pass
+    
+    def get_minimum_epsilon(self):
+        
+        gradient_of_beta_i = np.zeros(0)
+        hessian_of_beta_i = np.zeros(0)
+
+        epsilon0_prime = LA.norm(q_d - q_i)**2 - rho_i**2
+        epsilon0_pprime = 
+        epsilon0 = 
+        
+        epsilon1 = rho0**2 - LA.norm(q_d)**2
+
+        epsilon2_prime = 1.0/2*rho_i**2
+        epsilon2_pprime = 1.0/4.0 * min(sqrt(beta_i_bar * LA.norm(grad_beta_i))) /
+        epsilon2 = min(epsilon2_prime, epsilon2_pprime)
+
+        epsilon = 1.0/2 * min(epsilon0, epsilon1, epsilon2)
+        return epslion
+        pass
+    
+    def get_max_w_sqrt_of_gamma(self):
+        pass
+
+    def get_sum_of_max_norm_of_grad_beta(self):
+        pass
+    
+    def navigation_function(self, rel_dist_attractor, beta_prod, kappa_factor):
+        return (rel_dist_attractor**2
+                / (rel_dist_attractor**kappa_factor + beta_prod)**(1.0/kappa_factor)
     
     def transform_to_sphereworld(self, position):
         """ h(x) -  """
         # rel_pos_obstacle = np.zeros((self.dimension, self.n_obstacles))
+        rel_pos_attractor = self.get_relative_attractor_position(position)
         position_starshape = np.zeros(position.shape)
         beta_values = self.get_beta_values(position)
-        analytic_switches = self.get_analytic_switches(position, beta_values=beta_values)
+        analytic_switches = self.get_analytic_switches(
+            rel_pos_attractor=rel_pos_attractor, beta_values=beta_values)
         
         for ii in range(self.n_obstacles):
             rel_obs_position = position - self[ii].position
@@ -93,6 +148,7 @@ class NavigationContainer(BaseContainer):
 
             position_starshape += analytic_switches[ii]*(mu*rel_obs_position + self[ii].position)
         return position_starshape
+
 
 
 def plot_star_and_sphere_world():
