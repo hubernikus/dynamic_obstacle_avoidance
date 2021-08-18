@@ -1,15 +1,18 @@
-""" Container to describe obstacles & wall environemnt"""
+"""
+Container to describe obstacles & wall environemnt.
+"""
 # Author Lukas Huber 
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
 # License: BSD (c) 2021
+from abc import ABC, abstractmethod
 
 import numpy as np
 import warnings
 
 from dynamic_obstacle_avoidance.avoidance.utils  import *
 
-class BaseContainer(list):
+class BaseContainer(ABC):
     def __init__(self, obs_list=None):
         self._obstacle_list = []
 
@@ -84,7 +87,7 @@ class BaseContainer(list):
         return bool(len(self))
 
 
-    def check_collision(self, position):
+    def check_collision(self, position: np.ndarray) -> bool:
         """ Returns collision with environment (type Bool)
         
         Convention for this model is that:
@@ -108,7 +111,7 @@ class BaseContainer(list):
         else:
             return False
 
-    def check_collision_array(self, positions):
+    def check_collision_array(self, positions: np.ndarray) -> np.ndarray:
         """ Return array of checked collisions of type bool. """
         collision_array = np.zeros(positions.shape[1], dtype=bool)
         for it in range(positions.shape[1]):
