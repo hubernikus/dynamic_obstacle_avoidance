@@ -748,31 +748,32 @@ class Ellipse(Obstacle):
         ellr = affinity.rotate(ell,  self.orientation*180.0/pi)
         self.shape = ellr
         
-    def draw_obstacle(self, numPoints=20, update_core_boundary_points=True,
-                      point_density=2*pi/50, n_grid=100):
+    def draw_obstacle(self, n_grid=50, update_core_boundary_points=True,
+                      point_density=2*pi/50, numPoints=None):
         """ Creates points for obstacle and obstacle margin.
         n_grid is used for 3D drawing"""
+        warnings.warn("'numPoints' depreciated - use 'n_grid' instead.")
         p = self.curvature
         a = self.axes_length
 
         if update_core_boundary_points:
             if self.dim==2 :
-                theta = np.linspace(-pi,pi, num=numPoints)
-                # resolution = numPoints # Resolution of drawing #points
-                boundary_points = np.zeros((self.dim, numPoints))
+                theta = np.linspace(-pi,pi, num=n_grid)
+                # resolution = n_grid # Resolution of drawing #points
+                boundary_points = np.zeros((self.dim, n_grid))
                 boundary_points[0,:] = a[0]*np.cos(theta)
                 boundary_points[1,:] = np.copysign(a[1], theta)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))
                 self.boundary_points = boundary_points
 
             elif self.dim==3:
-                numPoints = [numPoints, ceil(numPoints/2)]
-                theta, phi = np.meshgrid(np.linspace(-pi,pi, num=numPoints[0]),np.linspace(-pi/2,pi/2,num=numPoints[1]) ) #
-                numPoints = numPoints[0]*numPoints[1]
-                # resolution = numPoints # Resolution of drawing #points
+                n_grid = [n_grid, ceil(n_grid/2)]
+                theta, phi = np.meshgrid(np.linspace(-pi,pi, num=n_grid[0]),np.linspace(-pi/2,pi/2,num=n_grid[1]) ) #
+                n_grid = n_grid[0]*n_grid[1]
+                # resolution = n_grid # Resolution of drawing #points
                 theta = theta.T
                 phi = phi.T
 
-                boundary_points = np.zeros((self.dim, numPoints))
+                boundary_points = np.zeros((self.dim, n_grid))
                 boundary_points[0,:] = (a[0]*np.cos(phi)*np.cos(theta)).reshape((1,-1))
                 boundary_points[1,:] = (a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))).reshape((1,-1))
                 boundary_points[2,:] = (a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) ).reshape((1,-1))

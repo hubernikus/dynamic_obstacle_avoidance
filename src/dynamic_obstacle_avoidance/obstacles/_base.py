@@ -635,11 +635,14 @@ class Obstacle(ABC):
             raise NotImplementedError("Not implemented for other gamma types.")
         
         return gamma
-        
-    def draw_obstacle(self, *args, **kwargs):
-        raise NotImplementedError("Child of type {} needs an Implemenation of virtual class.".format(type(self)))
 
-    def get_surface_derivative_angle_num(self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, rel_delta_dir=1e-6):
+    @abstractmethod
+    def draw_obstacle(self, n_resolution=20):
+        """ Create obstacle boundary points and stores them as attribute."""
+        pass
+
+    def get_surface_derivative_angle_num(
+        self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, rel_delta_dir=1e-6):
         """ Numerical evaluation of surface derivative. """
         # TODO: make global frame evaluation more efficient
         # TODO: get surface intersection based on direction
@@ -658,11 +661,13 @@ class Obstacle(ABC):
             delta_vec[dd] = delta_dir
 
             point_high = get_angle_space_inverse(angle_dir+delta_vec, NullMatrix=NullMatrix)
-            point_high = self.get_local_radius_point(direction=point_high, in_global_frame=in_global_frame)
+            point_high = self.get_local_radius_point(
+                direction=point_high, in_global_frame=in_global_frame)
             # point_high = np.linalg.norm(local_radius)*point_high
             
             point_low = get_angle_space_inverse(angle_dir-delta_vec, NullMatrix=NullMatrix)
-            point_low = self.get_local_radius_point(direction=point_low, in_global_frame=in_global_frame)
+            point_low = self.get_local_radius_point(
+                direction=point_low, in_global_frame=in_global_frame)
             # point_low = np.linalg.norm(local_radius)*point_low
             
             surf_derivs[dd, :] = ((point_high-point_low)/(2*delta_dir)).T
