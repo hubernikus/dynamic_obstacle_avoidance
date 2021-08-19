@@ -13,16 +13,22 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 from vartools.states import ObjectPose
+from vartools.math import get_numerical_gradient
 
-from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse, Sphere
 # from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.containers import BaseContainer
+
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
 
 def get_beta(obstacle, position):
     """ Beta value based on 'gamma' such that beta>0 in free space."""
-    return obstacle.get_gamma(position, in_global_frame=True) - 1
-
+    # return obstacle.get_gamma(position, in_global_frame=True) - 1
+    if obstacle.is_boundary:
+        return obstacle.radius**2 - LA.norm(position - obstacle.position)**2
+    else:
+        return LA.norm(position - obstacle.position)**2 - obstacle.radius**2
 
 def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position=None):
     """ Get starshape deforming factor 'nu'."""
@@ -47,6 +53,12 @@ class NavigationContainer(BaseContainer):
 
     NOTE: only applicable when space is GLOBALLY known(!)
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # For easy trial&error
+        self.default_kappa_factor = 2
+
     @property
     def attractor_position(self):
         return self._attractor_position
@@ -73,7 +85,7 @@ class NavigationContainer(BaseContainer):
         goal_norm_ord:
         """
         # Or gamma_d /
-        if goal_norm_ord is not inf:
+        if not np.isinf(goal_norm_ord):
             goal_norm_ord = goal_norm_ord*2
         rel_dist_attractor = LA.norm(rel_pos_attractor, ord=goal_norm_ord)
         
@@ -97,39 +109,101 @@ class NavigationContainer(BaseContainer):
 
     def get_minimum_epsilon(self, variable=None):
         pass
+    
     def get_minimum_N(self, variable=None):
         
         return 0.5*1/epsilon
         pass
+
+    def rho0(self):
+        pass
     
-    def get_minimum_epsilon(self):
+    def get_epsilon_factor(self):
+        """
+        Return the epsilon factor for the navigation-fuction.
+        
+        rho: radius
+        q: (center) position
+        """
+        if True:
+            # Simple value
+            return 1e-3
+            
+        # Token evaluation
+        rho0 = self.boundary.radius
+        
+        beta_i_max = np.zeros(self.n_obstacles)
+        for ii in range(self.n_obstacles):
+            beta_i_max[ii] = ((rho0 + LA.norm(self.center_position))**2
+                              - self[ii].radius**2)
+
+            if self[ii].is_boundary:
+                beta_i_max[ii] = rho0**2
+
+        norm_beta_i_j_grad_min = np.zeros((
+            self.dimension, self.n_obstacles, self.n_obstacles))
+        for ii in range(self.n_obstacles):
+            for jj in range(self.n_obstacles):
+                if ii == jj:
+                    norm_beta_i_j_grad_min[:, ii, jj] = 2*self[ii].radius
+                    continue
+                
+                norm_beta_i_j_grad_min[:, ii, jj] = 2*(np.sqrt(epsilon))
         
         gradient_of_beta_i = np.zeros(0)
         hessian_of_beta_i = np.zeros(0)
 
         epsilon0_prime = LA.norm(q_d - q_i)**2 - rho_i**2
-        epsilon0_pprime = 
-        epsilon0 = 
+        # epsilon0_pprime = 
+        # epsilon0 = 
         
         epsilon1 = rho0**2 - LA.norm(q_d)**2
 
         epsilon2_prime = 1.0/2*rho_i**2
-        epsilon2_pprime = 1.0/4.0 * min(sqrt(beta_i_bar * LA.norm(grad_beta_i))) /
+        epsilon2_pprime = (1.0/4.0 * min(sqrt(beta_i_bar * LA.norm(grad_beta_i)))
+                           / whatever)
         epsilon2 = min(epsilon2_prime, epsilon2_pprime)
 
         epsilon = 1.0/2 * min(epsilon0, epsilon1, epsilon2)
         return epslion
         pass
-    
-    def get_max_w_sqrt_of_gamma(self):
-        pass
 
-    def get_sum_of_max_norm_of_grad_beta(self):
-        pass
+    def get_N_constant(self, epsilon=None):
+        if epsilon is None:
+            epsilon = self.get_epsilon_factor()
+
+        # N = 1.0/2.0 * 1/epsilon*np.sqrt(max_gamma_d) + np.sum(max_norm_beta_grad)
+        return 1e5
+
+    def get_kappa_factor(self):
+        """ Return kappa-factor which 'pushes' the local-attractor
+        to the boundary. """
+        N_constant = self.get_N_constant()
+        kappa = np.ceil(N_constant) + 1
+        return kappa
     
-    def navigation_function(self, rel_dist_attractor, beta_prod, kappa_factor):
-        return (rel_dist_attractor**2
-                / (rel_dist_attractor**kappa_factor + beta_prod)**(1.0/kappa_factor)
+    def evaluate_navigation_function(
+        self, position, beta_prod=None, kappa_factor=None):
+        if kappa_factor is None:
+            # kappa_factor = self.get_kappa_factor()
+            kappa_factor = self.default_kappa_factor
+            
+        if beta_prod is None:
+            beta_values = self.get_beta_values(position)
+            beta_prod = np.prod(beta_values)
+
+        rel_pos_attractor = self.get_relative_attractor_position(position)
+        rel_dist_attractor = LA.norm(rel_pos_attractor)
+
+        phi = (rel_dist_attractor**2
+               / (rel_dist_attractor**kappa_factor + beta_prod)**(1.0/kappa_factor))
+        return phi
+
+    def evaluate_dynamics(self, position):
+        gradient = get_numerical_gradient(
+            position=position,
+            function=self.evaluate_navigation_function)
+        return (-1)*gradient
     
     def transform_to_sphereworld(self, position):
         """ h(x) -  """
@@ -224,7 +298,118 @@ def plot_star_and_sphere_world():
         # pass
 
 
+def plot_shere_world_and_nav_function():
+    x_lim = [-5.5, 5.5]
+    y_lim = [-5.5, 5.5]
+    
+    obstacle_container = NavigationContainer()
+    obstacle_container.attractor_position = np.array([0, 0])
+    # obstacle_container.attractor_position = np.array([4.9, 0])
+    obstacle_container.append(
+        Sphere(
+            radius=5,
+            center_position=np.array([0, 0]),
+            is_boundary=True,
+            )
+        )
+
+    positions_minispheres = [
+        [2, 2], [2, -2], [-2, -2], [-2, 2]]
+
+    for pos in positions_minispheres:
+        obstacle_container.append(
+            Sphere(radius=0.75,
+                   center_position=np.array(pos),
+                   ))
+
+    plot_obstacles = False
+    if plot_obstacles:
+        Simulation_vectorFields(
+            x_range=x_lim, y_range=y_lim,
+            obs=obstacle_container,
+            draw_vectorField=False,
+            automatic_reference_point=False,
+            )
+    ####################################
+    # FOR DEBUGGING
+    obstacle_container.default_kappa_factor = 10
+    ####################################
+
+            
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+
+    n_grid_surf = 100
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid_surf),
+                                 np.linspace(y_lim[0], y_lim[1], n_grid_surf))
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+    navigation_values = np.zeros(positions.shape[1])
+    collisions = obstacle_container.check_collision_array(positions)
+    
+    for ii in range(positions.shape[1]):
+        if collisions[ii]:
+            continue
+        
+        navigation_values[ii] = obstacle_container.evaluate_navigation_function(
+            positions[:, ii])
+
+    n_grid = n_grid_surf
+    # cs = ax.contourf(positions[0, :].reshape(n_grid, n_grid),
+                    # positions[1, :].reshape(n_grid, n_grid),
+                    # navigation_values.reshape(n_grid, n_grid),
+                    # np.linspace(1e-6, 10.0, 41),
+                    # cmap=cm.YlGnBu,
+                    # linewidth=0.2, edgecolors='k'
+                    # )
+
+    cs = ax.contour(positions[0, :].reshape(n_grid, n_grid),
+                    positions[1, :].reshape(n_grid, n_grid),
+                    navigation_values.reshape(n_grid, n_grid),
+                    np.linspace(1e-6, 1.0, 41),
+                    # cmap=cm.YlGnBu,
+                    linewidth=0.2, edgecolors='k'
+                    )
+
+
+    n_grid_quiver = 40
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid_quiver),
+                                 np.linspace(y_lim[0], y_lim[1], n_grid_quiver))
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+    velocities = np.zeros(positions.shape)
+    collisions = obstacle_container.check_collision_array(positions)
+    
+    for ii in range(positions.shape[1]):
+        if collisions[ii]:
+            continue
+        velocities[:, ii] = obstacle_container.evaluate_dynamics(positions[:, ii])
+
+        norm_vel = LA.norm(velocities[:, ii])
+        if norm_vel:
+            velocities[:, ii] = velocities[:, ii] / norm_vel
+
+    ax.quiver(positions[0, :], positions[1, :],
+                   velocities[0, :], velocities[1, :], color="black")
+
+    n_obs_resolution = 50
+    for it_obs in range(obstacle_container.n_obstacles):
+        obstacle_container[it_obs].draw_obstacle(n_grid=n_obs_resolution)
+        boundary_points = obstacle_container[it_obs].boundary_points_global
+        ax.plot(boundary_points[0, :], boundary_points[1, :], 'k-')
+        ax.plot(obstacle_container[it_obs].center_position[0],
+                obstacle_container[it_obs].center_position[1], 'k+')
+    
+    
+    cbar = fig.colorbar(cs,
+                        # ticks=np.linspace(-10, 0, 11)
+                        )
+    
+    ax.set_aspect('equal', adjustable='box')
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    
+
 if (__name__) == "__main__":
     plt.close('all')
-    plot_star_and_sphere_world()
+    # plot_star_and_sphere_world()
+    plot_shere_world_and_nav_function()
     pass

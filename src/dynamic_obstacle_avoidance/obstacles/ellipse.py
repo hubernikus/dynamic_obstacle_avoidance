@@ -752,7 +752,8 @@ class Ellipse(Obstacle):
                       point_density=2*pi/50, numPoints=None):
         """ Creates points for obstacle and obstacle margin.
         n_grid is used for 3D drawing"""
-        warnings.warn("'numPoints' depreciated - use 'n_grid' instead.")
+        if numPoints is not None:
+            warnings.warn("'numPoints' depreciated - use 'n_grid' instead.")
         p = self.curvature
         a = self.axes_length
 
@@ -917,7 +918,8 @@ class Ellipse(Obstacle):
         self.draw_obstacle()
 
 
-class CircularObstacle(Ellipse):
+
+class Sphere(Ellipse):
     """ Ellipse obstacle with equal axes """
     def __init__(self, radius=None, axes_length=None, *args, **kwargs):
         if not radius is None:
@@ -994,3 +996,8 @@ class CircularObstacle(Ellipse):
 
         self.update_position_and_orientation(position=position, orientation=orientation,
                                              time_current=time_current)
+
+
+class CircularObstacle(Sphere):
+    # TODO: redunant - remove
+    pass
