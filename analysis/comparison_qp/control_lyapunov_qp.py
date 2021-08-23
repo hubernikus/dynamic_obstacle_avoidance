@@ -21,8 +21,16 @@ from vartools.states import ObjectPose
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
+from _base_qp import ControllerQP
 from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
 
+# Add folder to path
+# import sys
+# path_qp = os.path.join(
+    # "/home/lukas/Code/dynamic_obstacle_avoidance", "analysis", "comparison_qp")
+# if not path_qp in sys.path:
+    # sys.path.append(path_qp)
+    
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
 
@@ -34,7 +42,7 @@ def O_n(vector):
                          [ vector[0]]])
     else:
         raise NotImplementedError("Warning not defined for higher dimenions.")
-    
+
 @dataclass
 class GammaOperator_g_v():
     """
@@ -77,21 +85,6 @@ class ControlLyapunovFunction():
     def get_hessian(self, position):
         return np.diag(self.ll)
 
-
-class ControllerQP():
-    def evaluate(self, position):
-        """ Evaluate with 'temporary control'."""
-        control = self.get_optimal_control(position)
-        return self.evaluate_with_control(position, control=control)
-    
-    def evaluate_base_dynamics(self, position):
-        return self.f_x.evaluate(position)
-    
-    def evaluate_control_dynamics(self, position):
-        return self.g_x.evaluate(position)
-
-
-@dataclass
 class ControlLyapunovQP(ControllerQP):
     """
     minimize ||u||^2 + q||w||^2  p delta^2
@@ -100,11 +93,14 @@ class ControlLyapunovQP(ControllerQP):
          L_f h + L_g h u + α(h) ≥ 0                         (CBF1)
          L_f h_D + L_g h_D u + ∇_Q h_D^T ω + β(h_D) ≥ 0     (CBF2)
     """
-    barrier_function: BarrierFunction
-    control_lyapunov_function: ControlLyapunovFunction
-    p: float = 5
-    q: float = 5
-    epsilon: float = 0.1
+    def __init__(self, f_x, g_x, barrier_function: BarrierFunction,
+                 control_lyapunov_function: ControlLyapunovFunction,
+                 p: float = 5, q: float = 5, epsilon: float = 0.1):
+        super().__init__(f_x=f_x, g_x=g_x, barrier_function=barrier_function)
+        self.control_lyapunov_function = control_lyapunov_function
+        self.p = p
+        self.q = q
+        self.epsilon = epsilon
 
     # TODO:
     # h_D
@@ -136,8 +132,8 @@ class ControlLyapunovQP(ControllerQP):
         f_x = base_dynamics
 
         # g(x) in R^[dimension x input]
-        control_dynamics = self.evaluate_control_dynamics(position)
-        GG = control_dynamics.T @ control_dynamics
+        control_dynamic s= self.evaluate_control_dynamics(position)
+        GG = control_dynamics.reshape(.T @ control_dynamics
 
         gamma_g_grad_h = self.gamma_g_v(position=position,
                                         vector=gradient_h,
@@ -148,6 +144,7 @@ class ControlLyapunovQP(ControllerQP):
                                         matrix_function=self.g_x)
         
         P_f = get_scaled_orthogonal_projection(f_x)
+        breakpoint()
         P_G_grad_h = get_scaled_orthogonal_projection(GG @ gradient_h)
         
         D_value = 1.0/2.0 * grad_V.T @ GG @ (P_f + P_G_grad_h) @ GG @ gradient_V
@@ -216,9 +213,24 @@ class ControlLyapunovQP(ControllerQP):
         position/ pos
         vector/ v
         matrix_function / g(x)
+
+        Returns
+        -------
+        np.array of the form [n x x]
         """
-        deriv_g = matrix_function.get_derivative(position)
-        g_x = matrix_function.evaluate(position)
+        # Derivative of function
+        if isinstance(matrix_function, LinearSystem):
+            # zero value
+            dim = matrix_function.dimension
+            return np.zeros((dim, dim))
+
+        breakpoint()
+
+        # deriv_g = self.get_derivative_of_dynamics(position, matrix_function)
+        # g_x = # g_x = matrix_function.evaluate(position)
+
+        if not LA.norm(deriv_g): # zero matrix
+            return np.zeros()
 
         nn = vector.shape[0]
         gamma_value = np.zeros((nn, nn))
@@ -237,6 +249,7 @@ class ControlLyapunovQP(ControllerQP):
         """ Not described in paper - assumption of zero value. 'lambda'-function """
         return barrier_function_value
 
+
     def alpha_function(self, value):
         return value
 
@@ -247,65 +260,6 @@ class ControlLyapunovQP(ControllerQP):
         return value
     
 
-class ClosedLoopQP(ControllerQP):
-    """
-    System of the form:
-
-    dot x = f_x * x + g_x * u
-
-    with a controller to avoid the barrier function h(x)
-    
-    Properties
-    ----------
-    f_x
-    g_x
-    barrier_function
-    
-    """
-    def __init__(self, f_x, g_x, barrier_function: Obstacle):
-        self.f_x = f_x
-        self.g_x = g_x
-        self.barrier_function = barrier_function
-
-    # def set_control(self, control):
-        # self._control = control
-
-    def get_optimal_control(self, position):
-        gradient = self.barrier_function.evaluate_gradient(position)
-
-        # Lie derivative of h: L_f h(x) / L_g h(x)
-        lie_of_h_wrt_f = gradient.dot(self.evaluate_base_dynamics(position))
-        lie_of_h_wrt_g = gradient.dot(self.evaluate_control_dynamics(position))
-
-        gamma_of_h = self.extended_class_function(
-            self.barrier_function.get_barrier_value(position))
-
-        # Create QP-solver of the form
-        # min ( 1/2 x.T P x + q.T x ) 
-        # s.t G x < h
-        #     A x = b
-        #
-        # sol = solver.qp(P, q, G, h)
-        # sol = solver.qp(P, q, G, h, A, b)
-        P = matrix([[1.0]])
-        q = matrix([0.0])
-
-        G = (-1)*matrix([lie_of_h_wrt_g])
-        h = matrix([[lie_of_h_wrt_f + gamma_of_h]])
-        
-        sol = solvers.qp(P, q, G, h)
-        return sol['x']
-
-    def extended_class_function(self, barrier_function_value):
-        """ Not described in paper - assumption of zero value. 'lambda'-function """
-        return barrier_function_value
-    
-    
-    def evaluate_with_control(self, position, control):
-        """ Controller acts on internal dynamics. """
-        return self.f_x.evaluate(position) + self.g_x.evaluate(position)*control
-
-
 def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
     # start_position = [-4, 4]
     # start_position = [4, 4]
@@ -314,51 +268,27 @@ def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
 
     dimension = 2
 
-    qp_1 = True
-    if qp_1:
-        f_x = LinearSystem(A_matrix=np.zeros(dimension))
-        g_x = LinearSystem(A_matrix=np.eye(dimension))
+    f_x = LinearSystem(A_matrix=np.zeros((dimension, dimension)))
+    g_x = LinearSystem(A_matrix=np.eye(dimension))
 
-        barrier_function = CirclularBarrier(
-            radius=1.5,
-            center_position=np.array([0, 3]),
-            )
-        
-        control_lyapunov_function = ControlLyapunovFunction(ll=[6, 1])
+    barrier_function = CirclularBarrier(
+        radius=1.5,
+        center_position=np.array([0, 3]),
+        )
 
-        dynamics = ControlLyapunovQP(
-            barrier_function=barrier_function,
-            control_lyapunov_function=control_lyapunov_function,
-            p=5, q=5, epsilon=0.1)
+    control_lyapunov_function = ControlLyapunovFunction(ll=[6, 1])
 
-        start_position_list = [
-            # [4, 4],
-            [-4, 6]
-            ]
+    dynamics = ControlLyapunovQP(
+        f_x=f_x,
+        g_x=g_x,
+        barrier_function=barrier_function,
+        control_lyapunov_function=control_lyapunov_function,
+        p=5, q=5, epsilon=0.1)
 
-    else:
-        f_x = LinearSystem(
-            A_matrix=np.array([[-6, 0],
-                               [0, -1]])
-            )
-        g_x = LinearSystem(A_matrix=np.eye(dimension))
-
-        # barrier_function = DoubleBlobBarrier(
-            # blob_matrix=np.array([[10.0, 0.0],
-                                  # [0.0, -1.0]]),
-            # center_position=np.array([0.0, 3.0]))
-
-        barrier_function = CirclularBarrier(
-            radius=1.0,
-            center_position=np.array([0, 3]),
-            )
-
-        dynamics = ClosedLoopQP(f_x=f_x, g_x=g_x, barrier_function=barrier_function)
-
-        start_position_list = [
-            [4, 4],
-            [-4, 4]
-            ]
+    start_position_list = [
+        # [4, 4],
+        [-4, 6]
+        ]
     
     fig, ax = plt.subplots(figsize=(7.5, 6))
 

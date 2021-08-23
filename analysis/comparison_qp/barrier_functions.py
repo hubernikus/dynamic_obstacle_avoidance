@@ -10,6 +10,9 @@ from vartools.math import get_numerical_gradient, get_numerical_hessian
 
 
 class BarrierFunction(ABC):
+    def evaluate(self, position):
+        return self.get_barrier_value(position)
+    
     @abstractmethod
     def get_barrier_value(self, position):
         pass
@@ -32,7 +35,7 @@ class CirclularBarrier(BarrierFunction):
             self.center_position = center_position
 
         self.radius = radius
-            
+    
     def get_barrier_value(self, position):
         relative_position = position - self.center_position
         # return 0.5*LA.norm(relative_position)**2 - 0.5*self.radius**2
@@ -42,7 +45,6 @@ class CirclularBarrier(BarrierFunction):
         # return np.eye(self.dimension)
         return 2*np.eye(self.dimension)
     
-
 
 class DoubleBlobBarrier(BarrierFunction):
     def __init__(self, blob_matrix, center_position=None, *args, **kwargs):
