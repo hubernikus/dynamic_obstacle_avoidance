@@ -9,6 +9,7 @@ from math import pi
 import numpy as np
 from numpy import linalg as LA
 
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -22,6 +23,14 @@ from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
 
+def get_rotation_matrix(rotation):
+    """ Returns 2D rotation matrix from rotation input."""
+    cos_r = np.cos(rotation)
+    sin_r = np.sin(rotation)
+    return np.array([[ cos_r, sin_r],
+                     [-sin_r, cos_r]])
+
+
 def get_beta(obstacle, position):
     """ Beta value based on 'gamma' such that beta>0 in free space."""
     # return obstacle.get_gamma(position, in_global_frame=True) - 1
@@ -29,6 +38,7 @@ def get_beta(obstacle, position):
         return obstacle.radius**2 - LA.norm(position - obstacle.position)**2
     else:
         return LA.norm(position - obstacle.position)**2 - obstacle.radius**2
+    
 
 def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position=None):
     """ Get starshape deforming factor 'nu'."""
@@ -39,6 +49,7 @@ def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position
         
     min_dist = obstacle.get_minimal_distance()
     return min_dist*(1+beta)/LA.norm(rel_obs_position)
+
 
 
 class NavigationContainer(BaseContainer):
@@ -303,8 +314,11 @@ def plot_shere_world_and_nav_function():
     y_lim = [-5.5, 5.5]
     
     obstacle_container = NavigationContainer()
-    obstacle_container.attractor_position = np.array([0, 0])
-    # obstacle_container.attractor_position = np.array([4.9, 0])
+    
+    obstacle_container.attractor_position = np.array([4.9, 0])
+
+    rot_matr = get_rotation_matrix(rotation=45./180*pi)
+    obstacle_container.attractor_position = rot_matr @ np.array([4.9, 0])
     obstacle_container.append(
         Sphere(
             radius=5,
@@ -322,6 +336,16 @@ def plot_shere_world_and_nav_function():
                    center_position=np.array(pos),
                    ))
 
+    obstacle_container.append(
+        Sphere(radius=0.5,
+               center_position=np.array([0, 0]),
+               ))
+               
+    # obstacle_container.append(
+        # Sphere(radius=0.2,
+               # center_position=np.array([3, 3]),
+               # ))
+
     plot_obstacles = False
     if plot_obstacles:
         Simulation_vectorFields(
@@ -332,9 +356,8 @@ def plot_shere_world_and_nav_function():
             )
     ####################################
     # FOR DEBUGGING
-    obstacle_container.default_kappa_factor = 10
+    obstacle_container.default_kappa_factor = 5
     ####################################
-
             
     fig, ax = plt.subplots(figsize=(7.5, 6))
 
@@ -364,11 +387,11 @@ def plot_shere_world_and_nav_function():
     cs = ax.contour(positions[0, :].reshape(n_grid, n_grid),
                     positions[1, :].reshape(n_grid, n_grid),
                     navigation_values.reshape(n_grid, n_grid),
-                    np.linspace(1e-6, 1.0, 41),
+                    levels=41,
+                    # levels=np.linspace(1e-6, 5.0, 41),
                     # cmap=cm.YlGnBu,
                     linewidth=0.2, edgecolors='k'
                     )
-
 
     n_grid_quiver = 40
     x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid_quiver),
@@ -386,8 +409,15 @@ def plot_shere_world_and_nav_function():
         if norm_vel:
             velocities[:, ii] = velocities[:, ii] / norm_vel
 
-    ax.quiver(positions[0, :], positions[1, :],
-                   velocities[0, :], velocities[1, :], color="black")
+    show_quiver = True
+    if show_quiver:
+        ax.quiver(positions[0, :], positions[1, :],
+                  velocities[0, :], velocities[1, :], color="black")
+    else:
+        n_grid = n_grid_quiver
+        ax.streamplot(x_vals, y_vals,
+                      velocities[0, :].reshape(n_grid, n_grid),
+                      velocities[1, :].reshape(n_grid, n_grid), color="blue")
 
     n_obs_resolution = 50
     for it_obs in range(obstacle_container.n_obstacles):
@@ -396,7 +426,6 @@ def plot_shere_world_and_nav_function():
         ax.plot(boundary_points[0, :], boundary_points[1, :], 'k-')
         ax.plot(obstacle_container[it_obs].center_position[0],
                 obstacle_container[it_obs].center_position[1], 'k+')
-    
     
     cbar = fig.colorbar(cs,
                         # ticks=np.linspace(-10, 0, 11)
