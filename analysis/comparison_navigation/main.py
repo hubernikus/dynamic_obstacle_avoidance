@@ -2,6 +2,8 @@
 Replicating the paper of
 'Safety of Dynamical Systems With MultipleNon-Convex Unsafe Sets UsingControl Barrier Functions'
 """
+# Author: Lukas Huber
+# License: BSD (c) 2021
 from dataclasses import dataclass
 
 from math import pi
@@ -309,7 +311,8 @@ def plot_star_and_sphere_world():
         # pass
 
 
-def plot_shere_world_and_nav_function():
+def plot_sphere_world_and_nav_function():
+    dimension = 2
     x_lim = [-5.5, 5.5]
     y_lim = [-5.5, 5.5]
     
@@ -430,7 +433,29 @@ def plot_shere_world_and_nav_function():
     cbar = fig.colorbar(cs,
                         # ticks=np.linspace(-10, 0, 11)
                         )
-    
+
+    plot_trajcetory = True
+    if plot_trajcetory:
+        n_traj = 10000
+        delta_time = 0.01
+        positions = np.zeros((dimension, n_traj))
+        start_position = np.array([-3.23, 2.55])
+        start_position = np.array([-0.76, 0.93])
+        start_position = np.array([-0.59, 1.45])
+        
+        positions[:, 0] = start_position
+        for ii in range(positions.shape[1]-1):
+            vel = obstacle_container.evaluate_dynamics(positions[:, ii])
+            positions[:, ii+1] = delta_time*vel + positions[:, ii]
+
+            if LA.norm(vel) < 1e-2:
+                positions = positions[:, :ii+1]
+                print(f"Zero veloctiy - stop loop at it={ii}")
+                break
+
+        plt.plot(positions[0, :], positions[1, :], 'r-')
+        plt.plot(positions[0, 0], positions[1, 0], 'ro')
+            
     ax.set_aspect('equal', adjustable='box')
 
     ax.set_xlim(x_lim)
@@ -440,5 +465,6 @@ def plot_shere_world_and_nav_function():
 if (__name__) == "__main__":
     plt.close('all')
     # plot_star_and_sphere_world()
-    plot_shere_world_and_nav_function()
+    plot_sphere_world_and_nav_function()
+    print('Done')
     pass
