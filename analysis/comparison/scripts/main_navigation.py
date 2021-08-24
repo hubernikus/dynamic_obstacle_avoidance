@@ -25,7 +25,6 @@ from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
 
-
 def get_rotation_matrix(rotation):
     """ Returns 2D rotation matrix from rotation input."""
     cos_r = np.cos(rotation)

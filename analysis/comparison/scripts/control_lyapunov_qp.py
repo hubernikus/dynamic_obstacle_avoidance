@@ -14,6 +14,7 @@ from matplotlib import cm
 from vartools.dynamical_systems import DynamicalSystem, LinearSystem
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 from vartools.math import get_numerical_gradient, get_numerical_hessian
+from vartools.math import get_numerical_gradient_of_vectorfield
 from vartools.math import get_numerical_hessian_fast
 from vartools.math import get_scaled_orthogonal_projection
 
@@ -42,6 +43,21 @@ def O_n(vector):
                          [ vector[0]]])
     else:
         raise NotImplementedError("Warning not defined for higher dimenions.")
+
+class ControlDynamics():
+    pass
+
+class StaticControlDynamics(ControlDynamics):
+    def __init__(self, A_matrix):
+        self.A_matrix = np.array(A_matrix)
+
+    @property
+    def dimension(self):
+        return self.A_matrix.shape[1]
+        
+    def evaluate(self, position):
+        return self.A_matrix
+        
 
 @dataclass
 class GammaOperator_g_v():
@@ -130,10 +146,12 @@ class ControlLyapunovQP(ControllerQP):
         # f(x) in R^[dimension]
         base_dynamics = self.evaluate_base_dynamics(position)
         f_x = base_dynamics
+        grad_f = get_numerical_gradient_of_vectorfield(
+            position=position, function=self.evaluate_base_dynamics)
 
         # g(x) in R^[dimension x input]
-        control_dynamic s= self.evaluate_control_dynamics(position)
-        GG = control_dynamics.reshape(.T @ control_dynamics
+        control_dynamics= self.evaluate_control_dynamics(position)
+        GG = control_dynamics @ control_dynamics.T
 
         gamma_g_grad_h = self.gamma_g_v(position=position,
                                         vector=gradient_h,
@@ -144,30 +162,32 @@ class ControlLyapunovQP(ControllerQP):
                                         matrix_function=self.g_x)
         
         P_f = get_scaled_orthogonal_projection(f_x)
-        breakpoint()
         P_G_grad_h = get_scaled_orthogonal_projection(GG @ gradient_h)
+        P_G_grad_V = get_scaled_orthogonal_projection(GG @ gradient_V)
         
-        D_value = 1.0/2.0 * grad_V.T @ GG @ (P_f + P_G_grad_h) @ GG @ gradient_V
+        D_value = 1.0/2.0 * gradient_V.T @ GG @ (P_f + P_G_grad_h) @ GG @ gradient_V
         
         grad_D = ((hessian_h @ GG + gamma_g_grad_V.T) @ (P_f + P_G_grad_h) @ GG @ gradient_V
                   + (hessian_h @ GG + gamma_g_grad_h.T) @ P_G_grad_V @ GG @ gradient_h
-                  + grad_f.T @ P_g_grad_V @ f_x)
+                  + grad_f.T @ P_G_grad_V @ f_x)
         
-        grad_Q_D = ((hessian_h @ O_n(x) - O_n(gradient_V)).T @ GG @ (P_f + P_G_grad_h)
-                    @ G @ gradient_V)
+        grad_Q_D = ((hessian_h @ O_n(position) - O_n(gradient_V)).T @ GG @ (P_f + P_G_grad_h)
+                    @ GG @ gradient_V)
 
-        h_D = self.sigma(h_value) * (D_value - epsilon)
-        grad_h_D = (self.sigma(h_value) @ grad_D + self.derivative_of_sigma(h_value)
-                    * (D - self.epsilon) @ gradient_h)
+        h_D = self.sigma(h_value) * (D_value - self.epsilon)
+        grad_h_D = (self.sigma(h_value) * grad_D + self.derivative_of_sigma(h_value)
+                    * (D_value - self.epsilon) * gradient_h)
         grad_q_h_D = self.sigma(h_value) * grad_Q_D
 
-        grad_V = Q.T @ grad_V_r 
-        grad_q_V = O_n(position).T @ grad_V
+        # TODO: how to fined V_r?
+        # it is by evaluating 'virtual' rotation
+        grad_V = Q.T @ grad_V_r
+        grad_Q_V = O_n(position).T @ grad_V
 
         # x = [u1, u2, w, delta]
         dimension_opt = 4
         P = matrix(np.diag([1, 1, self.q, self.p]))
-        q = matrix(np.zeros(dimension_opt, 1))
+        q = matrix(np.zeros((dimension_opt, 1)))
         
         # CLF
         lie_of_V_wrt_f = gradient_V.dot(base_dynamics)
@@ -175,7 +195,7 @@ class ControlLyapunovQP(ControllerQP):
         # Delta_Q (?)
         gamma_v = self.gamma_function(control_lyapunov)
 
-        G_CLF = np.array([dimension_opt])
+        G_CLF = np.zeros([dimension_opt])
         G_CLF[0:2] = lie_of_V_wrt_g
         G_CLF[2] = grad_Q_V.T
         G_CLF[3] = (-1)
@@ -187,7 +207,7 @@ class ControlLyapunovQP(ControllerQP):
         lie_of_h_wrt_g = gradient_h.dot(base_dynamics)
         alpha_h = alpha_function(h_value)
 
-        G_CBF1 = np.array([dimension_opt])
+        G_CBF1 = np.zeros([dimension_opt])
         G_CBF1[0:2] = (-1)*lie_of_h_wrt_g
         h_CBF1 = alpha_h + lie_of_h_wrt_f
 
@@ -197,7 +217,7 @@ class ControlLyapunovQP(ControllerQP):
         # grad_q_h_D_w =
         beta_h_D = self.beta_function(h_D)
         
-        G_CBF2 = np.array([dimension_opt])
+        G_CBF2 = np.zeros([dimension_opt])
         G_CBF2[0:2] = (-1)*lie_of_hD_wrt_g
         G_CBF2[2] = (-1)*grad_q_h_D_w
         h_CBF2 = lie_of_hD_wrt_f + beta_h_D
@@ -219,7 +239,7 @@ class ControlLyapunovQP(ControllerQP):
         np.array of the form [n x x]
         """
         # Derivative of function
-        if isinstance(matrix_function, LinearSystem):
+        if isinstance(matrix_function, StaticControlDynamics):
             # zero value
             dim = matrix_function.dimension
             return np.zeros((dim, dim))
@@ -245,10 +265,12 @@ class ControlLyapunovQP(ControllerQP):
         # No specific function given -> interpretation
         return  np.exp(-0.5*(h/delta)**2)
 
+    def derivative_of_sigma(self, h, delta=1, delta_pos=1e-6):
+        return (self.sigma(h+delta_pos/2.0)-self.sigma(h-delta_pos/2.0))/delta_pos
+
     def extended_class_function(self, barrier_function_value):
         """ Not described in paper - assumption of zero value. 'lambda'-function """
         return barrier_function_value
-
 
     def alpha_function(self, value):
         return value
@@ -269,7 +291,8 @@ def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
     dimension = 2
 
     f_x = LinearSystem(A_matrix=np.zeros((dimension, dimension)))
-    g_x = LinearSystem(A_matrix=np.eye(dimension))
+    g_x = StaticControlDynamics(A_matrix=np.eye(dimension))
+    # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     barrier_function = CirclularBarrier(
         radius=1.5,
@@ -315,7 +338,7 @@ def plot_main_vector_field():
         A_matrix=np.array([[-6, 0],
                            [0, -1]])
         )
-    g_x = LinearSystem(A_matrix=np.eye(dimension))
+    # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     # closed_loop_ds = ClosedLoopQP(f_x=f_x, g_x=g_x)
     # closed_loop_ds.evaluate_with_control(position, control)

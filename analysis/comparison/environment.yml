@@ -1,4 +1,4 @@
-name: avoidance_qp
+name: avoidance_comparison
 channels:
   - defaults
   - conda-forge
