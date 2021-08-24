@@ -24,26 +24,29 @@ from dynamic_obstacle_avoidance.containers import BaseContainer
 
 from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
 from _base_qp import ControllerQP
+from navigation import SphereToStarTransformer
 
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
 
-class StarshapeTransformContainer(BaseContainer):
+
+class SphereWorldOptimizer(BaseContainer):
     """
     Obstacle space transformation & optimization according to:
     'Safety of Dynamical Systems With MultipleNon-Convex
     Unsafe Sets UsingControl Barrier Functions'
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, lambda_constant=None, *args, **kwargs):
+        super().__init__( *args, **kwargs)
 
         # Use navigation container for trasnformations
-        self.navigation_container = NavigationContainer()
-        self.navigation_container._obstacle_list = self._obstacle_list
+        self.sphere_to_star_transformer = SphereToStarTransformer()
+        self.sphere_to_star_transformer._obstacle_list = self._obstacle_list
         
-    # def add(self):
-        # pass
-
+        if lambda_constant is not None:
+            self.sphere_to_star_transformer.lambda_constant = lambda_constant
+            
+        
     @property
     def dimension(self):
         return self._obstacle_list[0].dimension
@@ -392,8 +395,9 @@ def plot_spherial_dynamic_container():
     """ Plot surrounding in different actions. """
     x_lim = [-4, 4]
     y_lim = [-4, 6]
-    
-    sphere_world = StarshapeTransformContainer()
+
+    # Set to 1000 as describe din paper.
+    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
     
     sphere_world.append(
         Sphere(

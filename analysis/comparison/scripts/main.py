@@ -34,7 +34,8 @@ def O_n(vector):
                          [ vector[0]]])
     else:
         raise NotImplementedError("Warning not defined for higher dimenions.")
-    
+
+
 @dataclass
 class GammaOperator_g_v():
     """
