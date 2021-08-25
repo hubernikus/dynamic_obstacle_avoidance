@@ -4,6 +4,7 @@ Replicating the paper of
 """
 from abc import ABC, abstractmethod
 import time
+import copy
 
 import numpy as np
 from numpy import linalg as LA
@@ -22,13 +23,16 @@ from vartools.states import ObjectPose
 from dynamic_obstacle_avoidance.obstacles import Obstacle, Sphere
 from dynamic_obstacle_avoidance.containers import BaseContainer
 
-from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier,
+from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
 from barrier_functions import BarrierFromObstacleList
+
 from _base_qp import ControllerQP
 from navigation import SphereToStarTransformer
+from double_blob_obstacle import DoubleBlob
 
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
+
 
 class SphereWorldOptimizer(BaseContainer):
     """
@@ -38,16 +42,19 @@ class SphereWorldOptimizer(BaseContainer):
 
     Inputs a star-world shape and transforms it to a sphere world
     """
-    def __init__(self, lambda_constant=None, *args, **kwargs):
+    def __init__(self, lambda_constant=None, attractor_position=None, *args, **kwargs):
         super().__init__( *args, **kwargs)
 
         # Use navigation container for trasnformations
-        self.sphere_to_star_transformer = SphereToStarTransformer()
+        self.sphere_to_star_transformer = SphereToStarTransformer(
+            attractor_position=attractor_position)
         self.sphere_to_star_transformer._obstacle_list = self._obstacle_list
         
         if lambda_constant is not None:
             self.sphere_to_star_transformer.lambda_constant = lambda_constant
             
+        self.initial_sphere_world_list = None
+        self.sphere_world_list = None
         
     @property
     def dimension(self):
@@ -61,16 +68,28 @@ class SphereWorldOptimizer(BaseContainer):
         # return self._obstacle_list
 
         # TODO: -> update trafo function
-        self.initial_sphere_world_list = self._obstacle_list
-        self.sphere_world_list = self._obstacle_list
+        self.initial_sphere_world_list = (
+            self.sphere_to_star_transformer.transform_obstacle_to_spheres(
+            self._obstacle_list))
+        self.sphere_world_list = copy.deepcopy(self.initial_sphere_world_list)
 
-    def get_position_in_sphere_world(self, position):
-        """ Default sphere world assumption. """
-        return position
+    def transform_to_sphereworld(self, position):
+        return self.sphere_to_star_transformer.transform_to_sphereworld(position)
+    
+    def transform_from_sphereworld(self, position):
+        return self.sphere_to_star_transformer.transform_from_sphereworld(position)
 
-    def get_velocity_in_sphere_world(self, velocity):
-        """ Default sphere world assumption. """
-        return velocity
+    def transform_to_sphereworld_velocity(self, position, velocity, delta_time=1e-3):
+        return self.sphere_to_star_transformer.transform_to_sphereworld_velocity(
+            position, velocity, delta_time)
+
+    # def get_position_in_sphere_world(self, position):
+        # """ Default sphere world assumption. """
+        # return position
+
+    # def get_velocity_in_sphere_world(self, velocity):
+        # """ Default sphere world assumption. """
+        # return velocity
 
     @property
     def it_boundary(self):
@@ -305,12 +324,19 @@ class NonconvexAvoidanceCBF(VelocityController):
         
         self.obstacle_container.update(position, velocity, delta_time)
 
+    def update_in_sphere_world(self, position, velocity, delta_time):
+        self.obstacle_container.update(position, velocity, delta_time)
+
     def evaluate(self, position):
-        position = self.transform_to_sphereworld(position)
+        position = self.obstacle_container.transform_to_sphereworld(position)
         velocity = self.qp_control_optimizer.get_optimal_control(position)
         # velocity = np.zeros(self.dimension)
         velocity = self.obstacle_container.transform_from_sphereworld(
             velocity, trafo_type='velocity')
+        return velocity
+
+    def evaluate_in_sphere_world(self, position):
+        velocity = self.qp_control_optimizer.get_optimal_control(position)
         return velocity
     
 
@@ -476,24 +502,46 @@ def plot_spherial_dynamic_container():
     ax.set_ylim(y_lim)
 
 
-def animation_spherical_wold(it_max=100, delta_time=0.01, wait_time=0.01):
+def plot_obstacles_boundary(ax, controller):
+    # Initial set up
+    for ii in range(len(controller.obstacle_container)):
+        # obs = sphere_world.sphere_world_list[ii]
+        obs = controller.obstacle_container[ii]
+        obs.draw_obstacle()
+        boundary_points = obs.boundary_points_global
+        ax.plot(boundary_points[0, :], boundary_points[1, :], 'k')
+        ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
+
+    
+def animation_spherical_wold(
+    start_position, it_max=100, delta_time=0.01, wait_time=0.1):
     x_lim = [-4, 4]
     y_lim = [-4, 6]
     dimension = 2
 
     # Set to 1000 as describe din paper.
-    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
+    sphere_world = SphereWorldOptimizer(
+        attractor_position=np.array([0, 0]),
+        lambda_constant=1000)
     
+    # sphere_world.append(
+        # Sphere(
+        # center_position=np.array([1, 1]),
+        # radius=0.4,
+        # ))
+
     sphere_world.append(
-        Sphere(
-        center_position=np.array([1, 1]),
-        radius=0.4,
-        ))
+        DoubleBlob(
+            a_value=1, b_value=1.1,
+            center_position=[0, 3],
+            is_boundary=False,
+            ))
+
 
     sphere_world.append(
         Sphere(
         center_position=np.array([0, 0]),
-        radius=3,
+        radius=8,
         is_boundary=True,
         ))
 
@@ -509,30 +557,44 @@ def animation_spherical_wold(it_max=100, delta_time=0.01, wait_time=0.01):
                                        qp_control_optimizer=qp_controller)
     
     fig, ax = plt.subplots(figsize=(7.5, 6))
-    # Initial set up
-    for ii in range(len(sphere_world)):
-        obs = sphere_world.sphere_world_list[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        ax.plot(boundary_points[0, :], boundary_points[1, :], 'k')
-        ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
-
+    plot_obstacles_boundary(ax, controller)
+    
     n_obs_plus_boundary = len(sphere_world)
 
     trajectory = np.zeros((dimension, it_max+1))
     trajectory[:, 0] = start_position
+
+    traj_spher = np.zeros((dimension, it_max+1))
+    traj_spher[:, 0] = controller.obstacle_container.transform_to_sphereworld(start_position)
 
     plt_outline = [None] * n_obs_plus_boundary 
     plt_center = [None] * (n_obs_plus_boundary-1)
     plt_positions = None
     # Main loop
     for it in range(it_max):
-        velocity = controller.evaluate(position=trajectory[:, it])
+        # update_in_sphere_world
+        # velocity = controller.evaluate(position=trajectory[:, it])
+        # velocity = controller.evaluate(position=trajectory[:, it])
+        # trajectory[:, it+1] = trajectory[:, it] + velocity*delta_time
         
-        trajectory[:, it+1] = trajectory[:, it] + velocity*delta_time
+        vel_sphere = controller.evaluate_in_sphere_world(position=traj_spher[:, it])
+        traj_spher[:, it+1] = traj_spher[:, it] + vel_sphere*delta_time
 
-        time.sleep(wait_time)
+        trajectory[:, it+1] = controller.obstacle_container.transform_from_sphereworld(
+            traj_spher[:, it+1])
         
+        plot_obstacles_boundary(ax, controller)
+
+        ax.plot(traj_spher[0, :it+1], traj_spher[1, :it+1], 'r')
+        ax.plot(traj_spher[0, 0], traj_spher[1, 0], 'r*')
+        ax.plot(traj_spher[0, it+1], traj_spher[1, it+1], 'ro')
+        
+        # plt.show()
+        # time.sleep(wait_time)
+        plt.pause(wait_time)
+        ax.clear()
+
+    if False:
         # Plot everything
         for ii in range(len(sphere_world)):
             obs = sphere_world.sphere_world_list[ii]
@@ -543,6 +605,7 @@ def animation_spherical_wold(it_max=100, delta_time=0.01, wait_time=0.01):
             if not obs.is_boundary:
                 ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
 
+
 if (__name__) == "__main__":
     plt.ion()
     solvers.options['show_progress'] = False
@@ -552,6 +615,6 @@ if (__name__) == "__main__":
     # plot_integrate_trajectory()
     
     # plot_spherial_dynamic_container()
-    animation_spherical_wold()
+    animation_spherical_wold(start_position=np.array([0.1, 5]))
 
     plt.show()

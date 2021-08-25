@@ -84,15 +84,16 @@ class BarrierFromObstacleList(BarrierFunction):
         
         barrier_values = np.zeros(n_obs)
         for ii in range(n_obs):
-            pos_local = self._obstacle_list[ii].transform_global2local(position)
+            pos_local = self._obstacle_list[ii].transform_global2relative(position)
             norm_pos = LA.norm(pos_local)
             gamma = self._obstacle_list[ii].get_gamma(pos_local)
             
             rad_local = norm_pos / gamma
 
-            barrier_values[ii] = norm_pos - rad_local
+            if self._obstacle_list[ii].is_boundary:
+                barrier_values[ii] =  rad_local - rad_local
+            else:
+                barrier_values[ii] = norm_pos - rad_local
 
-        
-        breakpoint()
-    
+        return np.prod(barrier_values)
     

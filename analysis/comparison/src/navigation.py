@@ -3,7 +3,6 @@ Navigation Function & Sphere-Starshape Trafo according to Rimon & Koditscheck
 """
 # Author: Lukas Huber
 # License: BSD (c) 2021
-
 from math import pi
 
 import numpy as np
@@ -54,12 +53,14 @@ class SphereToStarTransformer(BaseContainer):
 
     NOTE: only applicable when space is GLOBALLY known(!)
     """
-    def __init__(self, lambda_constant=1, *args, **kwargs):
+    def __init__(self, lambda_constant=1, attractor_position=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.lambda_constant = lambda_constant
         # For easy trial&error
         self.default_kappa_factor = 2
+
+        self.attractor_position = attractor_position
 
     @property
     def attractor_position(self):
@@ -114,7 +115,27 @@ class SphereToStarTransformer(BaseContainer):
             position=position,
             function=self.evaluate_navigation_function)
         return (-1)*gradient
-    
+
+    def transform_from_sphereworld(self, position):
+        """ Numerical guessing / transforming to estimate the backtrafo."""
+        # TODO: this is possibly the worst ever implementation
+        # -> try to find reverse transformation (but how?)
+        pos_sphere_real = position
+        pos_star_guess = position
+
+        accepted_error = 1e-3
+        it_max = 100
+        for ii in range(it_max):
+            pos_sphere_guess = self.transform_to_sphereworld(pos_star_guess)
+            delta_pos = pos_sphere_real - pos_sphere_guess
+
+            if LA.norm(delta_pos) < accepted_error:
+                print(f"Converged after {ii}")
+                break
+            
+            pos_star_guess = pos_star_guess + delta_pos
+        return pos_star_guess
+        
     def transform_to_sphereworld(self, position):
         """ h(x) -  """
         # rel_pos_obstacle = np.zeros((self.dimension, self.n_obstacles))
@@ -132,6 +153,26 @@ class SphereToStarTransformer(BaseContainer):
 
             position_starshape += analytic_switches[ii]*(mu*rel_obs_position + self[ii].position)
         return position_starshape
+
+    def transform_to_sphereworld_velocity(self, position, velocity, delta_time=1e-3):
+        """ Returns transformed 'velocity' in sphere world at 'position'. """
+        pos0 = position
+        pos1 = position + delta_time*velocity
+
+        pos0_trafo = self.transform_to_sphereworld(pos0)
+        pos1_trafo = self.transform_to_sphereworld(pos1)
+        return (pos1_trafo - pos0_trafo)/delta_time
+
+    def transform_obstacle_to_spheres(self, obstacle_list):
+        sphere_list = []
+        
+        for obs in range(obstacle_list):
+            sphere_list.append(
+                Sphere(
+                radius=obs.get_minimal_distance,
+                center_position=obs.center_position,
+                ))
+        return center_position
 
 
 class NavigationContainer(SphereToStarTransformer):
@@ -227,5 +268,3 @@ class NavigationContainer(SphereToStarTransformer):
         phi = (rel_dist_attractor**2
                / (rel_dist_attractor**kappa_factor + beta_prod)**(1.0/kappa_factor))
         return phi
-    
-    

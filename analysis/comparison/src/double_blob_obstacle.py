@@ -20,6 +20,11 @@ class DoubleBlob(Obstacle):
         # Only defined for dimension==2
         self.dimension = 2
 
+    def get_minimal_distance(self):
+        if self.boundary_points_local is None:
+            self.draw_obstacle(n_grid=50)
+        return np.min(LA.norm(self.boundary_points_local, axis=0))
+
     def barrier_function(self, position):
         """ Barrier funciton in local-frame."""
         x1, x2 = position[0], position[1]
