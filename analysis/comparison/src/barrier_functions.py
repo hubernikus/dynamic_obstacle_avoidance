@@ -18,6 +18,9 @@ class BarrierFunction(ABC):
         pass
 
     def evaluate_gradient(self, position):
+        return self.get_gradient(position)
+    
+    def get_gradient(self, position):
         """ Default numerical function. Replace them with the analytical function if possible."""
         return get_numerical_gradient(function=self.get_barrier_value, position=position)
 
@@ -68,3 +71,12 @@ class DoubleBlobBarrier(BarrierFunction):
         gradient = (4*LA.norm(relative_position)**2*relative_position
                       - 2*self.blob_matrix.dot(relative_position))
         return gradient
+
+class BarrierFromObstacleList(BarrierFunction):
+    def __init__(self):
+        pass
+
+    def get_barrier_value(self, position):
+        breakpoint()
+    
+    

@@ -2,8 +2,7 @@
 Replicating the paper of
 'Safety of Dynamical Systems With MultipleNon-Convex Unsafe Sets UsingControl Barrier Functions'
 """
-from dataclasses import dataclass
-from typing import Callable
+import time
 
 import numpy as np
 from numpy import linalg as LA
@@ -35,6 +34,8 @@ class SphereWorldOptimizer(BaseContainer):
     Obstacle space transformation & optimization according to:
     'Safety of Dynamical Systems With MultipleNon-Convex
     Unsafe Sets UsingControl Barrier Functions'
+
+    Inputs a star-world shape and transforms it to a sphere world
     """
     def __init__(self, lambda_constant=None, *args, **kwargs):
         super().__init__( *args, **kwargs)
@@ -286,7 +287,6 @@ def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
 
     dimension = 2
 
-
     f_x = LinearSystem(
         A_matrix=np.array([[-6, 0],
                            [0, -1]])
@@ -390,6 +390,66 @@ def plot_barrier_function():
     plt.grid()
     ax.set_aspect('equal', adjustable='box')
 
+
+def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
+    x_lim = [-4, 4]
+    y_lim = [-4, 6]
+
+    # Set to 1000 as describe din paper.
+    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
+    
+    sphere_world.append(
+        Sphere(
+        center_position=np.array([1, 1]),
+        radius=0.4,
+        ))
+
+    sphere_world.append(
+        Sphere(
+        center_position=np.array([0, 0]),
+        radius=3,
+        is_boundary=True,
+        ))
+
+    sphere_world.transform_obstacles_to_sphere_world()
+    
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    # Initial set up
+    for ii in range(len(sphere_world)):
+        obs = sphere_world.sphere_world_list[ii]
+        obs.draw_obstacle()
+        boundary_points = obs.boundary_points_global
+        ax.plot(boundary_points[0, :], boundary_points[1, :], 'k')
+        ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
+
+    n_obs_plus_boundary = len(sphere_world)
+
+    trajectory = np.zeros((dimension, it_max+1))
+    trajectory[:, 0] = start_position
+
+    plt_outline = [None] * n_obs_plus_boundary 
+    plt_center = [None] * (n_obs_plus_boundary-1)
+    plt_positions = None
+    # Main loop
+    for it in range(it_max):
+        velocity = 
+        
+        trajectory[:, it+1] = trajectory[:, it] + velocity*delta_time
+
+        time.sleep(wait_time)
+        
+        # Plot everything
+        for ii in range(len(sphere_world)):
+            obs = sphere_world.sphere_world_list[ii]
+            obs.draw_obstacle()
+            plt_outline[ii] = boundary_points = obs.boundary_points_global
+            plt_center[ii] = ax.plot(boundary_points[0, :], boundary_points[1, :], 'k')
+            
+            if not obs.is_boundary:
+                ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
+        
+        
+    
 
 def plot_spherial_dynamic_container():
     """ Plot surrounding in different actions. """
