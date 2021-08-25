@@ -36,7 +36,7 @@ class Ellipse(Obstacle):
     """
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
-                 margin_absolut=0,
+                 # margin_absolut=0,
                  is_deforming=False,
                  expansion_speed_axes=None,
                  hull_with_respect_to_reference=False,
@@ -57,6 +57,7 @@ class Ellipse(Obstacle):
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
         elif not a is None:
+            raise Exception("A is depreciated. Use 'axes_lenght' instead.")
             self.axes_length = np.array(a) # TODO: depreciated, remove
         else:
             warnings.warn("No axis length given!")
@@ -69,13 +70,12 @@ class Ellipse(Obstacle):
         else:
             self.curvature = np.ones((self.dim))
 
-        self.margin_absolut = margin_absolut
+        # Done in parent class
+        # self.margin_absolut = margin_absolut
 
         self.hull_with_respect_to_reference = hull_with_respect_to_reference
 
         self.is_convex = True
-        
-        # Reference to other arrays
         
         # No go zone assuming a uniform margin around the obstacle
         self.edge_margin_points = np.zeros((self.dim, 0))
@@ -91,8 +91,6 @@ class Ellipse(Obstacle):
         self.ind_edge_ref = 0
         self.ind_edge_tang = 1
 
-        self.margin_absolut = margin_absolut # why again???
-        
     @property
     def a(self): # TODO: remove
         raise Exception("'a' is depriciated, use 'axes_length' instead")

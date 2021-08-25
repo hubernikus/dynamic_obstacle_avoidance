@@ -25,16 +25,27 @@ class DoubleBlob(Obstacle):
         x1, x2 = position[0], position[1]
         return ((x1-self.aa)**2 + x2**2)*((x1+self.aa)**2 + x2**2) - self.bb**4
 
-    def get_local_radius(self, position, in_global_frame=False,
-                         it_max=100, convergence_margin=1e-4):
-        # Numerical evaluation based on barrier_function
+    def get_local_radius_not_working(self, position, in_global_frame=False,
+                                   it_max=100, convergence_margin=1e-4):
+        # A trial to find an analyitical description of the boundary
         if in_global_frame:
             position = self.transform_global2relative(position)
 
         # Find numerically position where barrier_funciton==0
         h_barrier = self.barrier_function(position)
 
-        if abs(h_barrier) < convergence_margin:
+        rad_local = LA.norm(position) - h_barrier
+        return rad_local
+
+    def get_local_radius(self, position, in_global_frame=False,
+                         it_max=100, atol=1e-4, null_value=0) -> float:
+        """ Return numerical evaluation of the local radius based on barrier_function. """
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        # Find numerically position where barrier_funciton==0
+        h_barrier = self.barrier_function(position)
+        if np.isclose(h_barrier, null_value, atol=1e-4):
             return LA.norm(position)
         elif h_barrier > 0:
             pos_out = position
@@ -45,7 +56,7 @@ class DoubleBlob(Obstacle):
                 pos_new = pos_in*2.0
                 h_barrier = self.barrier_function(pos_new)
                 
-                if abs(h_barrier) < convergence_margin:
+                if np.isclose(h_barrier, null_value, atol=1e-4):
                     return LA.norm(pos_new)
                 
                 elif h_barrier > 0:
@@ -60,7 +71,7 @@ class DoubleBlob(Obstacle):
             pos_new = 0.5*(pos_out + pos_in)
             h_barrier = self.barrier_function(pos_new)
             
-            if abs(h_barrier) < convergence_margin:
+            if np.isclose(h_barrier, null_value, atol=1e-4):
                 return LA.norm(pos_new)
             
             elif h_barrier > 0:
@@ -68,7 +79,6 @@ class DoubleBlob(Obstacle):
                 
             else:
                 pos_in = pos_new
-
         return LA.norm(pos_new)
         
     def get_gamma(self, position, in_global_frame=False, it_max=100):
@@ -80,7 +90,7 @@ class DoubleBlob(Obstacle):
     def get_normal_direction(self, position):
         pass
 
-    def draw_obstacle(self, n_grid=30):
+    def draw_obstacle(self, n_grid=50):
         angles = np.linspace(0, 2*pi, n_grid)
         dirs = np.vstack((np.cos(angles), np.sin(angles)))
         local_rad = [self.get_local_radius(dirs[:, dd]) for dd in range(dirs.shape[1])]

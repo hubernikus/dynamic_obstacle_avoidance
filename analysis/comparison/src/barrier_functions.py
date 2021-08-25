@@ -8,6 +8,7 @@ from numpy import linalg as LA
 
 from vartools.math import get_numerical_gradient, get_numerical_hessian
 
+# def get_barrier_from_gamma():
 
 class BarrierFunction(ABC):
     def evaluate(self, position):
@@ -73,10 +74,25 @@ class DoubleBlobBarrier(BarrierFunction):
         return gradient
 
 class BarrierFromObstacleList(BarrierFunction):
-    def __init__(self):
-        pass
+    def __init__(self, obstacle_list):
+        self._obstacle_list = obstacle_list
 
     def get_barrier_value(self, position):
+        """ Transform the gamma-function [1, infinity] to a barrier function [0, infinity]
+        Assumption of proportional-gamma"""
+        n_obs = len(self._obstacle_list)
+        
+        barrier_values = np.zeros(n_obs)
+        for ii in range(n_obs):
+            pos_local = self._obstacle_list[ii].transform_global2local(position)
+            norm_pos = LA.norm(pos_local)
+            gamma = self._obstacle_list[ii].get_gamma(pos_local)
+            
+            rad_local = norm_pos / gamma
+
+            barrier_values[ii] = norm_pos - rad_local
+
+        
         breakpoint()
     
     

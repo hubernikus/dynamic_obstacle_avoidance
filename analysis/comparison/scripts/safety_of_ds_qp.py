@@ -2,6 +2,7 @@
 Replicating the paper of
 'Safety of Dynamical Systems With MultipleNon-Convex Unsafe Sets UsingControl Barrier Functions'
 """
+from abc import ABC, abstractmethod
 import time
 
 import numpy as np
@@ -21,13 +22,13 @@ from vartools.states import ObjectPose
 from dynamic_obstacle_avoidance.obstacles import Obstacle, Sphere
 from dynamic_obstacle_avoidance.containers import BaseContainer
 
-from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
+from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier,
+from barrier_functions import BarrierFromObstacleList
 from _base_qp import ControllerQP
 from navigation import SphereToStarTransformer
 
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
-
 
 class SphereWorldOptimizer(BaseContainer):
     """
@@ -220,13 +221,9 @@ class SphereWorldOptimizer(BaseContainer):
     def gamma_function(self, value):
         return value
 
-
 class ClosedLoopQP(ControllerQP):
     """
-    System of the form:
-
-    dot x = f_x * x + g_x * u
-
+    System of the form:     dot x = f_x * x + g_x * u
     with a controller to avoid the barrier function h(x)
     
     Properties
@@ -234,9 +231,8 @@ class ClosedLoopQP(ControllerQP):
     f_x
     g_x
     barrier_function
-    
     """
-    def __init__(self, f_x, g_x, barrier_function: Obstacle):
+    def __init__(self, f_x, g_x, barrier_function: Obstacle = None):
         self.f_x = f_x
         self.g_x = g_x
         self.barrier_function = barrier_function
@@ -277,6 +273,45 @@ class ClosedLoopQP(ControllerQP):
     def evaluate_with_control(self, position, control):
         """ Controller acts on internal dynamics. """
         return self.f_x.evaluate(position) + self.g_x.evaluate(position)*control
+
+
+class VelocityController(ABC):
+    @abstractmethod
+    def evaluate(self, position):
+        """ Returns the obstacle avoidance at a certain position. """
+        pass
+    
+class NonconvexAvoidanceCBF(VelocityController):
+    """
+    Attributes
+    ----------
+    obstacle_container: SphereWorldOptimizer obstacle container.
+    qp_control_optimizer: optimizes the path based on dynamics & 'modified' outside
+    """
+    def __init__(self, obstacle_container: SphereWorldOptimizer,
+                 qp_control_optimizer: ControllerQP):
+        self.obstacle_container = obstacle_container
+        
+        self.qp_control_optimizer = qp_control_optimizer
+        self.qp_control_optimizer.barrier_function = BarrierFromObstacleList(
+            self.obstacle_container)
+
+    def update(self, position, delta_time=0.01):
+        position = self.obstacle_container.transform_to_sphereworld(position)
+        
+        velocity = self.qp_control_optimizer.evaluate_base_dynamics(position)
+        velocity = self.obstacle_container.transform_to_sphereworld(
+            velocity, trafo_type='velocity')
+        
+        self.obstacle_container.update(position, velocity, delta_time)
+
+    def evaluate(self, position):
+        position = self.transform_to_sphereworld(position)
+        velocity = self.qp_control_optimizer.get_optimal_control(position)
+        # velocity = np.zeros(self.dimension)
+        velocity = self.obstacle_container.transform_from_sphereworld(
+            velocity, trafo_type='velocity')
+        return velocity
     
 
 def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
@@ -391,7 +426,6 @@ def plot_barrier_function():
     ax.set_aspect('equal', adjustable='box')
 
 
-
 def plot_spherial_dynamic_container():
     """ Plot surrounding in different actions. """
     x_lim = [-4, 4]
@@ -442,9 +476,10 @@ def plot_spherial_dynamic_container():
     ax.set_ylim(y_lim)
 
 
-def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
+def animation_spherical_wold(it_max=100, delta_time=0.01, wait_time=0.01):
     x_lim = [-4, 4]
     y_lim = [-4, 6]
+    dimension = 2
 
     # Set to 1000 as describe din paper.
     sphere_world = SphereWorldOptimizer(lambda_constant=1000)
@@ -462,7 +497,16 @@ def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
         is_boundary=True,
         ))
 
-    sphere_world.transform_obstacles_to_sphere_world()
+    f_x = LinearSystem(
+        A_matrix=np.array([[-6, 0],
+                           [0, -1]])
+        )
+    g_x = LinearSystem(A_matrix=np.eye(dimension))
+
+    qp_controller = ClosedLoopQP(f_x=f_x, g_x=g_x)
+
+    controller = NonconvexAvoidanceCBF(obstacle_container=sphere_world,
+                                       qp_control_optimizer=qp_controller)
     
     fig, ax = plt.subplots(figsize=(7.5, 6))
     # Initial set up
@@ -483,7 +527,7 @@ def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
     plt_positions = None
     # Main loop
     for it in range(it_max):
-        velocity = 
+        velocity = controller.evaluate(position=trajectory[:, it])
         
         trajectory[:, it+1] = trajectory[:, it] + velocity*delta_time
 
@@ -498,8 +542,6 @@ def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
             
             if not obs.is_boundary:
                 ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
-        
-    
 
 if (__name__) == "__main__":
     plt.ion()
@@ -509,6 +551,7 @@ if (__name__) == "__main__":
     # plot_barrier_function()
     # plot_integrate_trajectory()
     
-    plot_spherial_dynamic_container()
+    # plot_spherial_dynamic_container()
+    animation_spherical_wold()
 
     plt.show()

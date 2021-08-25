@@ -30,5 +30,3 @@ class ControllerQP():
             return np.zeros((dim, dim, dim))
         else:
             raise NotImplementedError("Not implemented for other types...")
-
-

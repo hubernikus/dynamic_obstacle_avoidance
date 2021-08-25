@@ -108,4 +108,5 @@ if (__name__) == "__main__":
         Tester = TestEllipses()
         Tester.test_visualization_ellipse_with_ref_point_outside(visualize=visualize)
         Tester.test_ellipse_reference_point_inside(visualize=visualize)
-        Tester.test_visualization_circular_reference_point_outside(visualize=visualize)
+        Tester.test_visualization_circular_reference_point_outside(
+            visualize=visualize)

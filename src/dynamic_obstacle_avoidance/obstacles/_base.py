@@ -52,7 +52,7 @@ class Obstacle(ABC):
                  name=None,
                  is_dynamic=False, is_deforming=False,
                  # reference_point=None,
-                 # margin_absolut=0, 
+                 margin_absolut=0, 
                  x0=None, dimension=None,
                  linear_velocity=None, angular_velocity=None, xd=None, w=None,
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
@@ -65,9 +65,10 @@ class Obstacle(ABC):
             self.name = "obstacle{}".format(Obstacle.id_counter)
         else:
             self.name = name
-            
+
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
+        self.margin_absolut = margin_absolut
         self.sigma = sigma
         
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
@@ -187,6 +188,10 @@ class Obstacle(ABC):
     @property
     def dimension(self):
         return self.dim
+
+    @dimension.setter
+    def dimension(self, value):
+        self.dim = value
 
     @property
     def repulsion_coeff(self):
