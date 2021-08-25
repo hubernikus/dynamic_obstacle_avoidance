@@ -285,9 +285,11 @@ class Ellipse(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        if (not gamma_type=="proportional" or gamma_distance is not None
-            or self.gamma_distance is not None):
-            warnings.warn("Implement linear gamma type.")
+        if gamma_type is not None:
+            if (not gamma_type=="proportional" or gamma_distance is not None
+                or self.gamma_distance is not None):
+                warnings.warn("Implement linear gamma type.")
+                # raise Exception("Now it's enough")
             
         Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))**(
             1.0/(2*np.mean(self.curvature)))

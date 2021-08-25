@@ -21,13 +21,25 @@ def get_rotation_matrix(rotation):
                      [-sin_r, cos_r]])
 
 
-def get_beta(obstacle, position):
+def get_beta_circle(obstacle, position):
     """ Beta value based on 'gamma' such that beta>0 in free space."""
     # return obstacle.get_gamma(position, in_global_frame=True) - 1
     if obstacle.is_boundary:
         return obstacle.radius**2 - LA.norm(position - obstacle.position)**2
     else:
         return LA.norm(position - obstacle.position)**2 - obstacle.radius**2
+
+def get_beta(obstacle, position):
+    """ Beta / barrier function such that beta=0 when on boundary."""
+    gamma = obstacle.get_gamma(position)
+    return (gamma - 1)
+    # norm_pos = LA.norm(position)
+    # if obstacle.is_boundary:
+        # if 
+        # local_radius = norm_pos * gamma
+    # else:
+        # local_radius = norm_pos / gamma
+        # beta = norm_pos - local_radius
     
 
 def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position=None):

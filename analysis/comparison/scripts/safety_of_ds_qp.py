@@ -549,6 +549,7 @@ def animation_spherical_wold(
         A_matrix=np.array([[-6, 0],
                            [0, -1]])
         )
+    
     g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     qp_controller = ClosedLoopQP(f_x=f_x, g_x=g_x)
@@ -562,11 +563,12 @@ def animation_spherical_wold(
     n_obs_plus_boundary = len(sphere_world)
 
     trajectory = np.zeros((dimension, it_max+1))
-    trajectory[:, 0] = start_position
+    # trajectory[:, 0] = start_position
 
     traj_spher = np.zeros((dimension, it_max+1))
     traj_spher[:, 0] = controller.obstacle_container.transform_to_sphereworld(start_position)
-
+    breakpoint()
+               
     plt_outline = [None] * n_obs_plus_boundary 
     plt_center = [None] * (n_obs_plus_boundary-1)
     plt_positions = None
@@ -591,8 +593,20 @@ def animation_spherical_wold(
         
         # plt.show()
         # time.sleep(wait_time)
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        print(f"Loop #{it}")
+
         plt.pause(wait_time)
+        
         ax.clear()
+
+        if not len(plt.get_fignums()):
+            # No figure active
+            print("Animation ended by closing of figures.")
+            break
 
     if False:
         # Plot everything

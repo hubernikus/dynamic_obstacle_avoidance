@@ -32,6 +32,7 @@ class DoubleBlob(Obstacle):
 
     def get_local_radius_not_working(self, position, in_global_frame=False,
                                    it_max=100, convergence_margin=1e-4):
+        # (!) Currently not working
         # A trial to find an analyitical description of the boundary
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -70,7 +71,6 @@ class DoubleBlob(Obstacle):
                 
                 else:    # h_barrier < 0:
                     pos_in = pos_new
-                    delta_dist = delta_dist*2.0
 
         for ii in range(it_max):
             pos_new = 0.5*(pos_out + pos_in)

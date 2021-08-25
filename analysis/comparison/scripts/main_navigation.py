@@ -253,7 +253,7 @@ def plot_sphere_world_and_nav_function():
 
 if (__name__) == "__main__":
     plt.close('all')
-    # plot_star_and_sphere_world()
-    plot_sphere_world_and_nav_function()
+    plot_star_and_sphere_world()
+    # plot_sphere_world_and_nav_function()
     print('Done')
     pass
