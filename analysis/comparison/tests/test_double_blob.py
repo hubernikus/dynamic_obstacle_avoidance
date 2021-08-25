@@ -94,10 +94,12 @@ def draw_barrier_value():
     
 
 if (__name__) == "__main__":
-    # unittest.main(argv=['first-arg-is-ignored'], exit=False)
-    visualize = True
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    
+    visualize = False
     if visualize:
         plt.close('all')
         plt.ion()
         draw_double_blob()
+        # draw_barrier_value()
         plt.show()

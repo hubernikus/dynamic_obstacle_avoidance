@@ -48,7 +48,11 @@ class DoubleBlob(Obstacle):
         """ Return numerical evaluation of the local radius based on barrier_function. """
         if in_global_frame:
             position = self.transform_global2relative(position)
-
+            
+        if not LA.norm(position):
+            # At origin -> return smallest axes (semi-random)
+            return min(self.aa, self.bb)
+            
         # Find numerically position where barrier_funciton==0
         h_barrier = self.barrier_function(position)
         if np.isclose(h_barrier, null_value, atol=1e-4):
