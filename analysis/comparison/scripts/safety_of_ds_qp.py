@@ -391,6 +391,57 @@ def plot_barrier_function():
     ax.set_aspect('equal', adjustable='box')
 
 
+
+def plot_spherial_dynamic_container():
+    """ Plot surrounding in different actions. """
+    x_lim = [-4, 4]
+    y_lim = [-4, 6]
+
+    # Set to 1000 as describe din paper.
+    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
+    
+    sphere_world.append(
+        Sphere(
+        center_position=np.array([1, 1]),
+        radius=0.4,
+        ))
+
+    sphere_world.append(
+        Sphere(
+        center_position=np.array([0, 0]),
+        radius=3,
+        is_boundary=True,
+        ))
+
+    sphere_world.transform_obstacles_to_sphere_world()
+
+    pos = np.array([0.5, 0.5])
+    vel = np.array([0, 0])
+
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    plt.plot(pos[0], pos[1], 'bo')
+
+    for ii in range(len(sphere_world)):
+        obs = sphere_world.sphere_world_list[ii]
+        obs.draw_obstacle()
+        boundary_points = obs.boundary_points_global
+        plt.plot(boundary_points[0, :], boundary_points[1, :], 'k')
+        plt.plot(obs.center_position[0], obs.center_position[1], 'k+')
+    
+    sphere_world.update(position=pos, velocity=vel)
+
+    for ii in range(len(sphere_world)):
+        obs = sphere_world.sphere_world_list[ii]
+        obs.draw_obstacle()
+        boundary_points = obs.boundary_points_global
+        plt.plot(boundary_points[0, :], boundary_points[1, :], 'g')
+        plt.plot(obs.center_position[0], obs.center_position[1], 'g+')
+
+    ax.set_aspect('equal', adjustable='box')
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+
 def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
     x_lim = [-4, 4]
     y_lim = [-4, 6]
@@ -448,57 +499,6 @@ def animation_spherical_wold(it_max=1000, delta_time=0.01, wait_time=0.01):
             if not obs.is_boundary:
                 ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
         
-        
-    
-
-def plot_spherial_dynamic_container():
-    """ Plot surrounding in different actions. """
-    x_lim = [-4, 4]
-    y_lim = [-4, 6]
-
-    # Set to 1000 as describe din paper.
-    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
-    
-    sphere_world.append(
-        Sphere(
-        center_position=np.array([1, 1]),
-        radius=0.4,
-        ))
-
-    sphere_world.append(
-        Sphere(
-        center_position=np.array([0, 0]),
-        radius=3,
-        is_boundary=True,
-        ))
-
-    sphere_world.transform_obstacles_to_sphere_world()
-
-    pos = np.array([0.5, 0.5])
-    vel = np.array([0, 0])
-
-    fig, ax = plt.subplots(figsize=(7.5, 6))
-    plt.plot(pos[0], pos[1], 'bo')
-
-    for ii in range(len(sphere_world)):
-        obs = sphere_world.sphere_world_list[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        plt.plot(boundary_points[0, :], boundary_points[1, :], 'k')
-        plt.plot(obs.center_position[0], obs.center_position[1], 'k+')
-    
-    sphere_world.update(position=pos, velocity=vel)
-
-    for ii in range(len(sphere_world)):
-        obs = sphere_world.sphere_world_list[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        plt.plot(boundary_points[0, :], boundary_points[1, :], 'g')
-        plt.plot(obs.center_position[0], obs.center_position[1], 'g+')
-
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
     
 
 if (__name__) == "__main__":
