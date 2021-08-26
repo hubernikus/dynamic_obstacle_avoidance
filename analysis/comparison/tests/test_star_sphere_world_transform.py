@@ -16,7 +16,7 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from sphere_world_optimizer import SphereWorldOptimizer, ClosedLoopQP
 from navigation import NavigationContainer
 
-class StarSphereWorldTransform(unittest.TestCase):
+class TestStarSphereWorldTransform(unittest.TestCase):
     def test_object_hull_to_circle_trafo(self):
         pass
 
@@ -130,11 +130,8 @@ def plot_star_and_sphere_world():
         # pass
 
 
-
-
 if (__name__) == "__main__":
     # unittest.main(argv=['first-arg-is-ignored'], exit=False)
-    
     visualize = True
     if visualize:
         plt.close('all')

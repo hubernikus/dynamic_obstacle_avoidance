@@ -12,7 +12,7 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from double_blob_obstacle import DoubleBlob
 
 
-class DoubleBlobTest(unittest.TestCase):
+class TestDoubleBlob(unittest.TestCase):
     def test_double_blob_creation(self):
         double_blob = DoubleBlob(
             a_value=1, b_value=1.1,
