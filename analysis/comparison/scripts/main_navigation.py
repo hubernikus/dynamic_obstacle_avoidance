@@ -23,20 +23,20 @@ from dynamic_obstacle_avoidance.containers import BaseContainer
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 
-from navigation import NavigationContainer
+from navigation import NavigationContainer, get_rotation_matrix
 
 
-def plot_sphere_world_and_nav_function():
+def plot_sphere_world_and_nav_function(save_figure=False, default_kappa_factor=1):
     dimension = 2
     x_lim = [-5.5, 5.5]
     y_lim = [-5.5, 5.5]
     
     obstacle_container = NavigationContainer()
     
-    obstacle_container.attractor_position = np.array([4.9, 0])
+    # obstacle_container.attractor_position = np.array([4.9, 0])
 
     rot_matr = get_rotation_matrix(rotation=45./180*pi)
-    obstacle_container.attractor_position = rot_matr @ np.array([4.9, 0])
+    obstacle_container.attractor_position = rot_matr @ np.array([4.7, 0])
     obstacle_container.append(
         Sphere(
             radius=5,
@@ -74,7 +74,7 @@ def plot_sphere_world_and_nav_function():
             )
     ####################################
     # FOR DEBUGGING
-    obstacle_container.default_kappa_factor = 5
+    obstacle_container.default_kappa_factor = default_kappa_factor
     ####################################
             
     fig, ax = plt.subplots(figsize=(7.5, 6))
@@ -105,8 +105,8 @@ def plot_sphere_world_and_nav_function():
     cs = ax.contour(positions[0, :].reshape(n_grid, n_grid),
                     positions[1, :].reshape(n_grid, n_grid),
                     navigation_values.reshape(n_grid, n_grid),
-                    levels=41,
-                    # levels=np.linspace(1e-6, 5.0, 41),
+                    # levels=41,
+                    levels=np.linspace(1e-6, 10.0, 41),
                     # cmap=cm.YlGnBu,
                     linewidth=0.2, edgecolors='k'
                     )
@@ -144,6 +144,7 @@ def plot_sphere_world_and_nav_function():
         ax.plot(boundary_points[0, :], boundary_points[1, :], 'k-')
         ax.plot(obstacle_container[it_obs].center_position[0],
                 obstacle_container[it_obs].center_position[1], 'k+')
+
     
     cbar = fig.colorbar(cs,
                         # ticks=np.linspace(-10, 0, 11)
@@ -153,34 +154,54 @@ def plot_sphere_world_and_nav_function():
     if plot_trajcetory:
         n_traj = 10000
         delta_time = 0.01
-        positions = np.zeros((dimension, n_traj))
-        start_position = np.array([-3.23, 2.55])
-        start_position = np.array([-0.76, 0.93])
-        start_position = np.array([-0.59, 1.45])
         
-        positions[:, 0] = start_position
-        for ii in range(positions.shape[1]-1):
-            vel = obstacle_container.evaluate_dynamics(positions[:, ii])
-            positions[:, ii+1] = delta_time*vel + positions[:, ii]
+        start_position_list = [
+            [-3.23, 2.55],
+            [-0.76, 0.93],
+            [-3.92, -1.67]
+            ]
+        for start_position in start_position_list:
+            positions = np.zeros((dimension, n_traj))
+            positions[:, 0] = start_position
+            for ii in range(positions.shape[1]-1):
+                vel = obstacle_container.evaluate_dynamics(positions[:, ii])
+                positions[:, ii+1] = delta_time*vel + positions[:, ii]
 
-            if LA.norm(vel) < 1e-2:
-                positions = positions[:, :ii+1]
-                print(f"Zero veloctiy - stop loop at it={ii}")
-                break
+                if LA.norm(vel) < 1e-2:
+                    positions = positions[:, :ii+1]
+                    print(f"Zero veloctiy - stop loop at it={ii}")
+                    break
 
-        plt.plot(positions[0, :], positions[1, :], 'r-')
-        plt.plot(positions[0, 0], positions[1, 0], 'ro')
-            
+            plt.plot(positions[0, :], positions[1, :], 'r-')
+            plt.plot(positions[0, 0], positions[1, 0], 'r.')
+
+    ax.plot(obstacle_container.attractor_position[0],
+            obstacle_container.attractor_position[1], 'rx',
+            markeredgewidth=4, markersize=13, label='Attractor')
+    
+    plt.legend()
+
+    plt.title(r"$\kappa$ = {}".format(obstacle_container.default_kappa_factor))
     ax.set_aspect('equal', adjustable='box')
 
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
 
-    
+    if save_figure:
+        epsilon = obstacle_container.get_epsilon_factor()
+        # fig_name = ("sphere_to_star_world_with_lambda"
+        fig_name = ("navigation_function_and_trajectory_with_kappa"
+                    + str(obstacle_container.default_kappa_factor).replace(".", ""))
+        plt.savefig('figures/' + fig_name + '.png', bbox_inches='tight')
+
 
 if (__name__) == "__main__":
     plt.close('all')
-    plot_star_and_sphere_world()
-    # plot_sphere_world_and_nav_function()
+    plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=1)
+    plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=2)
+    plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=3)
+    plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=4)
+    plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=5)
+    # plot_sphere_world_and_nav_function(save_figure=True, default_kappa_factor=10)
     print('Done')
     pass

@@ -29,9 +29,9 @@ def get_beta_circle(obstacle, position):
     else:
         return LA.norm(position - obstacle.position)**2 - obstacle.radius**2
 
-def get_beta(obstacle, position):
+def get_beta(obstacle, position, in_global_frame=True):
     """ Beta / barrier function such that beta=0 when on boundary."""
-    gamma = obstacle.get_gamma(position)
+    gamma = obstacle.get_gamma(position, in_global_frame=in_global_frame)
     return (gamma - 1)
     # norm_pos = LA.norm(position)
     # if obstacle.is_boundary:
@@ -48,9 +48,12 @@ def get_starset_deforming_factor(obstacle, beta, position=None, rel_obs_position
         if position is None:
             raise Exception("Wrong input arguments. 'position' or 'rel_obs_position' needed.")
         rel_obs_position = position - self[ii].position
-        
+
+    # Min dist <=> radius of star-world representation
     min_dist = obstacle.get_minimal_distance()
-    return min_dist*(1+beta)/LA.norm(rel_obs_position)
+    rel_radius = LA.norm(rel_obs_position)/(1+beta)
+    
+    return min_dist/rel_radius
 
 
 class SphereToStarTransformer(BaseContainer):
@@ -65,7 +68,7 @@ class SphereToStarTransformer(BaseContainer):
 
     NOTE: only applicable when space is GLOBALLY known(!)
     """
-    def __init__(self, lambda_constant=1, attractor_position=None, *args, **kwargs):
+    def __init__(self, lambda_constant=1000, attractor_position=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.lambda_constant = lambda_constant
@@ -110,7 +113,7 @@ class SphereToStarTransformer(BaseContainer):
         
         ind_zero = np.isclose(beta_values, 0)
         if np.sum(ind_zero) == 0:
-            beta_bar = beta_values / np.tile(np.prod(beta_values), (beta_values.shape[0]))
+            beta_bar = np.tile(np.prod(beta_values), (beta_values.shape[0])) / beta_values
         elif np.sum(ind_zero) == 1:
             beta_bar = np.zeros(beta_values.shape)
             beta_bar[ind_zero] = 1
@@ -118,8 +121,9 @@ class SphereToStarTransformer(BaseContainer):
             raise Exception("Two zero-value beta's detected. This indicates an invalid \n"
                             + "environment of intersecting obstacles.")
 
-        scaled_dist = beta_bar*rel_dist_attractor
+        scaled_dist = beta_bar*rel_dist_attractor**2
         switch_value = scaled_dist / (scaled_dist + self.lambda_constant*beta_values)
+        # breakpoint()
         return switch_value
 
     def evaluate_dynamics(self, position):
@@ -152,19 +156,44 @@ class SphereToStarTransformer(BaseContainer):
         """ h(x) -  """
         # rel_pos_obstacle = np.zeros((self.dimension, self.n_obstacles))
         rel_pos_attractor = self.get_relative_attractor_position(position)
-        position_starshape = np.zeros(position.shape)
         beta_values = self.get_beta_values(position)
         analytic_switches = self.get_analytic_switches(
             rel_pos_attractor=rel_pos_attractor, beta_values=beta_values)
+
+        # TODO: they don't really need to be temporarily safed after loop...
+        position_starshape = np.zeros((position.shape[0], beta_values.shape[0]))
+        # position_starshape = np.zeros(position.shape)
+
+        weighted_points = [] # Debug only
         
         for ii in range(self.n_obstacles):
             rel_obs_position = position - self[ii].position
+            # rel_obs_position = rel_obs_position/LA.norm(rel_obs_position)
             
             mu = get_starset_deforming_factor(
                 self[ii], beta=beta_values[ii], rel_obs_position=rel_obs_position)
 
-            position_starshape += analytic_switches[ii]*(mu*rel_obs_position + self[ii].position)
-        return position_starshape
+            # mu[ii] = 1
+            position_starshape[:, ii] = analytic_switches[ii]*(mu*rel_obs_position
+                                                               + self[ii].position)
+
+            weighted_points.append((mu*rel_obs_position + self[ii].position))
+            
+        if False:
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.plot(position[0], position[1], 'g*')
+            for pp in weighted_points:
+                plt.plot(pp[0], pp[1], 'ro')
+            breakpoint()
+            
+        switch_goal = 1 - np.sum(analytic_switches)
+        x_g = self.attractor_position
+        q_g = self.attractor_position
+        pos_summed = (np.sum(position_starshape, axis=1)
+                              + switch_goal*(position - x_g + q_g))
+        # breakpoint()
+        return pos_summed
 
     def transform_to_sphereworld_velocity(self, position, velocity, delta_time=1e-3):
         """ Returns transformed 'velocity' in sphere world at 'position'. """
