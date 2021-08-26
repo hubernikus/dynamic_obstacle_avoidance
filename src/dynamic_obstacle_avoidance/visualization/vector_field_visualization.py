@@ -171,7 +171,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
                    noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
     if pos_attractor is not None:
-        ax.plot(pos_attractor[0], pos_attractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
+        ax.plot(pos_attractor[0], pos_attractor[1], 'k*', linewidth=18.0, markersize=18, zorder=5)
 
     obs_polygon = []
     obs_polygon_sf = []
