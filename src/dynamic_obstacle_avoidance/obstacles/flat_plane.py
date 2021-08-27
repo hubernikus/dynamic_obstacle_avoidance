@@ -9,8 +9,15 @@ from numpy import linalg as LA
 from ._base import Obstacle
 
 class FlatPlane(Obstacle):
+    """
+    Flat Plan which has refernce_direct=normal_direction
+
+    Properties
+    ----------
+    position
+    """
     def __init__(self, position, normal, reference_distance=1,
-                 drawing_width=1, drawing_height=1,
+                 width=1, height=1,
                  obstacle_color=None):
         self.position = position
         
@@ -21,8 +28,10 @@ class FlatPlane(Obstacle):
         self.reference_distance = reference_distance
 
         # For displaying purposes
-        self.drawing_width = drawing_width
-        self.drawing_height = drawing_height
+        self.width = width
+        self.height = height
+
+        self.dim = self.position.shape[0]
 
     def get_normal_direction(self, position, in_global_frame=False):
         return self.normal
@@ -44,14 +53,16 @@ class FlatPlane(Obstacle):
         self.boundary_points_local = np.zeros((self.dimension, 4))
         
         self.boundary_points_local[:, 0] = (
-            np.array([self.normal[1], -self.normal[0]])*self.drawing_width/2.0)
+            np.array([self.normal[1], -self.normal[0]])*self.width/2.0)
         
         self.boundary_points_local[:, 1] = (self.boundary_points_local[:, 0]
-            - self.normal*self.drawing_heigh)
+            - self.normal*self.height)
 
         self.boundary_points_local[:, 2] = (self.boundary_points_local[:, 1]
-            - np.array([self.normal[1], -self.normal[0]])*self.drawing_width)
+            - np.array([self.normal[1], -self.normal[0]])*self.width)
 
         self.boundary_points_local[:, 3] = (self.boundary_points_local[:, 2]
-            - self.normal*self.drawing_heigh)
+            - self.normal*self.height)
 
+        # if not self.margin_absolut: # zero margin
+        self.boundary_points_margin_local = self.boundary_points_local
