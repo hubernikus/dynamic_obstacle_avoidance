@@ -8,6 +8,7 @@ from .polygon import Polygon, Cuboid
 from .flower import StarshapedFlower
 from .human_ellipse import TrackedPedestrian, HumanEllipse
 from .boundary_cuboid_with_gap import BoundaryCuboidWithGaps
+from .flat_plane import FlatPlane
 
 __all__ = ['Obstacle',
            'Ellipse',
@@ -16,5 +17,6 @@ __all__ = ['Obstacle',
            'Cuboid',
            'Polygon',
            'StarshapedFlower',
+           'FlatPlane'
            ]
 
