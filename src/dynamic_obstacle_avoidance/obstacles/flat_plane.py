@@ -8,6 +8,7 @@ from numpy import linalg as LA
 
 from ._base import Obstacle
 
+
 class FlatPlane(Obstacle):
     """
     Flat Plan which has refernce_direct=normal_direction
@@ -16,10 +17,11 @@ class FlatPlane(Obstacle):
     ----------
     position
     """
-    def __init__(self, position, normal, reference_distance=1,
+    def __init__(self, center_position, normal, reference_distance=1,
                  width=1, height=1,
                  obstacle_color=None):
-        self.position = position
+        super().__init__(center_position=center_position)
+        # self.position = position
         
         self.normal = normal / LA.norm(normal)
         self.orientation = None
@@ -31,7 +33,9 @@ class FlatPlane(Obstacle):
         self.width = width
         self.height = height
 
-        self.dim = self.position.shape[0]
+        # self.dim = self.position.shape[0]
+        # self._rotation_matrix = 
+
 
     def get_normal_direction(self, position, in_global_frame=False):
         return self.normal

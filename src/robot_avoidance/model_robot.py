@@ -5,10 +5,10 @@ Dummy robot models for cluttered obstacle environment + testing
 
 from math import pi
 
+from scipy.spatial.transform import Rotation
+
 import numpy as np
 from numpy import linalg as LA
-
-import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import FlatPlane
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
@@ -21,9 +21,9 @@ class RobotArm():
     pass
 
 
-class ModelRobot(RobotArm):
+class ModelRobot2D(RobotArm):
     """
-    Velocity base controller.
+    Model Robot in 2D with Various Joints.
     """
     def __init__(self):
         self.n_joints = 3
@@ -31,9 +31,30 @@ class ModelRobot(RobotArm):
 
         # In radiaon
         self._joint_state = np.zeros(self.n_joints)
+        self._joint_axes_of_rotation = [2, 2, 2]   # important for 3D
         self._joint_velocity = np.zeros(self.n_joints)
         
         self.base_position = np.array([0, 0])
+
+        self.dimension = 2
+
+        self.transformation_matrices = self.get_transformation_matrices()
+
+    def get_transformation_matrices(self):
+        """ Transformation matrices.
+        Note, they are expressed in 3D to have compatibility. """
+        dim = 3
+        
+        self.transformation_matrices = np.zeros((dim+1, dim+1, self.n_joints))
+        self.transformation_matrices[ii][-1, -1, :] = 1
+        
+        # From 1 - 3
+        for ii in range(self.n_joints):
+            rot_temp = Rotation.from_euler([0, 0, self._joint_state])
+            self.transformation_matrices.append())
+            self.transformation_matrices[ii][:dim, :dim, ii] = 
+        
+        return self.transformation_matrices
 
     def set_joint_state(self, value, input_unit='rad'):
         if value.shape[0] != self.n_joints:
@@ -87,38 +108,3 @@ class ModelRobot(RobotArm):
         self._joint_state = self._joint_state + self._joint_velocity*delta_time
 
 
-def dummy_robot_avoidance():
-    x_lim = [-4, 4]
-    y_lim = [-0.2, 3.5]
-    fig, ax = plt.subplots(figsize=(12, 6))
-    
-    my_robot = ModelRobot()
-    my_robot.set_joint_state(np.array([30, -60, 30]), input_unit='deg')
-                             
-    my_robot.draw_robot(ax=ax)
-
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
-    
-    ax.set_aspect('equal', adjustable='box')
-
-    # Creat environment
-    obstacle_environment = ObstacleContainer()
-    obstacle_environment.append(
-        FlatPlane(position=np.array([0, 0]),
-                  normal=np.array([0, 1]),
-                  width=10, height=1,
-                  ))
-    for obs in obstacle_environment:
-        obs.draw_obstacle()
-        
-    plot_obstacles(ax, obstacle_environment, x_lim, y_lim)
-    plt.show()
-
-
-if (__name__) == "__main__":
-    plt.close('all')
-    plt.ion()
-    dummy_robot_avoidance()
-    
-        

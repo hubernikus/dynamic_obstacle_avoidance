@@ -15,6 +15,14 @@ Allows obstacle avoidance based on the dynamical-system method for a robot arm
 5. DS based modulation for critical points
    > increase avoidance / repulsion
    > mostly consider local environment
+   > Move up / down the 'link' chain to ensure base goes in the right direction
+   >> Start desired direction for end-effector
+   >> move down the link [IK] to get velocity at next point
+   >> Modulate, repeat
+   >> Outcome: desired velocity at each link
+   >> Bottom / base up: Desired velocity
+
+   # Maybe: find closes gamma point alongt links
 
 6. Inverse kinematics of motion at critical points
 
@@ -55,5 +63,4 @@ class RobotArmAvoider():
 
     def update(self):
         pass
-
 

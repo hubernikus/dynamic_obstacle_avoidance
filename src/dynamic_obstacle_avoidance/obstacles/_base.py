@@ -31,21 +31,20 @@ def local_frame_check_return_velocity(func, in_global_frame=False):
         velocity = self.transform_global2relative_dir(velocity)
         return velocity
 
-        
 class Obstacle(ABC):
     """ (Virtual) base class of obstacles 
     This class defines obstacles to modulate the DS around it
     """
     id_counter = 0
     active_counter = 0
-    
+    # TODO: clean up & cohesion vs inhertiance! (decouble /lighten class)
     def __repr__(self):
         if self.is_boundary:
             return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
         else:
             return "Obstacle <<{}>> is of Type  <{}>".format(self.name, type(self).__name__)
 
-    def __init__(self, orientation=None, sigma=1,  center_position=np.array([0, 0]),
+    def __init__(self, center_position=None, orientation=None,
                  tail_effect=True, has_sticky_surface=True,
                  sf=1, repulsion_coeff=1,
                  reactivity=1,
@@ -58,6 +57,7 @@ class Obstacle(ABC):
                  func_w=None, func_xd=None,  x_start=0, x_end=0, timeVariant=False,
                  Gamma_ref=0, is_boundary=False, hirarchy=0, ind_parent=-1,
                  gamma_distance=None,
+                 sigma=None,
                  # *args, **kwargs # maybe random arguments
                  ):
         
@@ -69,7 +69,8 @@ class Obstacle(ABC):
         self.sf = sf # TODO - rename
         # self.delta_margin = delta_margin
         self.margin_absolut = margin_absolut
-        self.sigma = sigma
+        if sigma is not None:
+            raise Exception("Remove sigma argument.")
         
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
