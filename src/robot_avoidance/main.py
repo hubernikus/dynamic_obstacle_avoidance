@@ -2,7 +2,7 @@
 Example to stage an robot-arm obstacle avoidance.
 """
 # Author: Lukas Hubero
-
+import time
 from math import pi
 
 import numpy as np
@@ -34,32 +34,39 @@ def dummy_robot_movement():
 
     # attractor_position = np.array([3.0, -1.0])
     attractor_position = np.array([1.0, -1.0])
+    attractor_position = np.array([3.0, 3.0])
     
     linear_ds = LinearSystem(attractor_position=attractor_position)
-
+    
     it_max = 1000
-    dt_sleep = 0.01
-    delta_time = 0.01
+    dt_sleep = 0.001
+    delta_time = 0.03
+    
+    dim = 2
+    
+    position_list = np.zeros((dim, it_max))
     for ii in range(it_max):
-        position = my_robot.get_ee_in_base()
-        desired_velocity =  linear_ds.evaluate(position=position)
+        position_list[:, ii] = my_robot.get_ee_in_base()
+        desired_velocity =  linear_ds.evaluate(position=position_list[:, ii])
         
         if LA.norm(desired_velocity) < 1e-1:
             print(f"Converged at it={ii}")
             break
-
+        
         joint_control = my_robot.get_inverse_kinematics(desired_velocity)
-
-        my_robot.update_state(joint_velocity_control=joint_control, delta_time=delta_time,
-                              # input_unit='deg',
-                              )
-
+        
+        my_robot.update_state(joint_velocity_control=joint_control, delta_time=delta_time)
+        
+        # t = time.process_time()
         ax.clear()
         my_robot.draw_robot(ax=ax)
+        plt.plot(position_list[0, :ii], position_list[1, :ii], '-', color='k')
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
     
         ax.set_aspect('equal', adjustable='box')
+        # elapsed_time = time.process_time() - t
+        # print('time_plt', elapsed_time)
         
         plt.pause(dt_sleep)
 
@@ -118,5 +125,3 @@ if (__name__) == "__main__":
     dummy_robot_movement()
     
     # dummy_robot_avoidance()
-    
-

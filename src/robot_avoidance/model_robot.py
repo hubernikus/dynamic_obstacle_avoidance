@@ -24,12 +24,20 @@ except ImportError:
 
 
 class RobotArm():
+    def __init__(self, max_joint_velocity=pi/2):
+        self.max_joint_velocity = max_joint_velocity
+        
     def update_state(self, joint_velocity_control, delta_time=0.01, input_unit='rad'):
         if input_unit == 'deg':
             joint_velocity_control = joint_velocity_control*pi/180
         elif input_unit != 'rad':
             raise Exception("Unkown joint-control input.")
-        
+
+        ind_max = np.abs(joint_velocity_control) > self.max_joint_velocity
+        if any(ind_max): # bigger than zero
+            joint_velocity_control[ind_max] = np.copysign(
+                self.max_joint_velocity, joint_velocity_control[ind_max])
+            
         self._joint_state = self._joint_state + joint_velocity_control*delta_time
 
     def get_jacobian(self):
@@ -49,6 +57,8 @@ class ModelRobot2D(RobotArm):
     Model Robot in 2D with Various Joints.
     """
     def __init__(self):
+        super().__init__()
+        
         self.n_joints = 4
         self._link_lengths = np.array([0.5, 1, 1, 1])
 
