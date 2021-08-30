@@ -20,18 +20,22 @@ from robot_arm_avoider import RobotArmAvoider
 try:
     from jacobians.model_robot_2d import _get_jacobian
 except ImportError:
-    print("Jacobian function found. -- Limited functionality.")
-
-    
+    print("Jacobian-file found. -- Limited functionality.")
 
 
 class RobotArm():
+    def update_state(self, joint_velocity_control, delta_time=0.01, input_unit='rad'):
+        if input_unit == 'deg':
+            joint_velocity_control = joint_velocity_control*pi/180
+        elif input_unit != 'rad':
+            raise Exception("Unkown joint-control input.")
+        
+        self._joint_state = self._joint_state + joint_velocity_control*delta_time
+
     def get_jacobian(self):
         """ Returns end-effector velocity based on current joint state. """
         return _get_jacobian(
             ll=self._link_lengths, qq=self._joint_state)
-
-    pass
 
 
 class ModelRobot2D(RobotArm):
@@ -158,5 +162,3 @@ class ModelRobot2D(RobotArm):
             pos_joint_low = pos_joint_high
 
     
-    def update_state(self, joint_velocity_control, delta_time=0.01):
-        self._joint_state = self._joint_state + joint_velocity_control*delta_time
