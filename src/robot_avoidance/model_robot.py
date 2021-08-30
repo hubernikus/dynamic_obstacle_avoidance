@@ -37,6 +37,12 @@ class RobotArm():
         return _get_jacobian(
             ll=self._link_lengths, qq=self._joint_state)
 
+    def get_inverse_kinematics(self, desired_velocity):
+        """ Inverse kinematics solving. """
+        jacobian = self.get_jacobian()
+        desired_velocity = LA.pinv(jacobian[:2, :]) @ desired_velocity
+        return desired_velocity
+
 
 class ModelRobot2D(RobotArm):
     """
@@ -64,9 +70,9 @@ class ModelRobot2D(RobotArm):
     def n_links(self):
         return self.n_joints
     
-    def get_joint_stat_plus0(self):
-        """ Allows for easier iteration, since 0-angle for base link is added."""
-        return np.hstack((self._joint_state, 0))
+    # def get_joint_stat_plus0(self):
+        # """ Allows for easier iteration, since 0-angle for base link is added."""
+        # return np.hstack((self._joint_state, 0))
 
     def get_ee_in_base(self):
         """ Transform ee to base. """

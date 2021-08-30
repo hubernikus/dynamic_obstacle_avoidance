@@ -14,6 +14,8 @@ from dynamic_obstacle_avoidance.obstacles import FlatPlane, Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
+from vartools.dynamical_systems import LinearSystem
+
 from robot_arm_avoider import RobotArmAvoider
 from model_robot import ModelRobot2D
 
@@ -27,15 +29,48 @@ def dummy_robot_movement():
     my_robot = ModelRobot2D()
     my_robot.set_joint_state(np.array([0, 30, -10, -20]),
                              input_unit='deg')
-                             
-    my_robot.draw_robot(ax=ax)
-
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
     
-    ax.set_aspect('equal', adjustable='box')
+    # position = my_robot.get_ee_in_base()
 
-    breakpoint()
+    # attractor_position = np.array([3.0, -1.0])
+    attractor_position = np.array([1.0, -1.0])
+    
+    linear_ds = LinearSystem(attractor_position=attractor_position)
+
+    it_max = 1000
+    dt_sleep = 0.01
+    delta_time = 0.01
+    for ii in range(it_max):
+        position = my_robot.get_ee_in_base()
+        desired_velocity =  linear_ds.evaluate(position=position)
+        
+        if LA.norm(desired_velocity) < 1e-1:
+            print(f"Converged at it={ii}")
+            break
+
+        joint_control = my_robot.get_inverse_kinematics(desired_velocity)
+
+        my_robot.update_state(joint_velocity_control=joint_control, delta_time=delta_time,
+                              # input_unit='deg',
+                              )
+
+        ax.clear()
+        my_robot.draw_robot(ax=ax)
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+    
+        ax.set_aspect('equal', adjustable='box')
+        
+        plt.pause(dt_sleep)
+
+        if ii % 10:
+            print(f"it={ii}")
+            
+        if not plt.fignum_exists(fig.number):
+            print("Stopped animation on closing of the figure..")
+            break
+
+    print("Done.")
 
 
 def dummy_robot_avoidance():
