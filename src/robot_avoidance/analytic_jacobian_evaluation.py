@@ -125,48 +125,6 @@ def analytic_evaluation_jacobian(robot, symplify_expression: bool = True):
         
     print("Jacobian function written to file.")
 
-def test_similarity_of_analytic_and_numerical_rotation_matr(visualize=False):
-    """ Test the forward transform-matrix for different joint-state configurations. """
-    my_robot = ModelRobot2D()
-
-    initial_pos_list = [
-        [30, -10, -20, 30],
-        [10, 20, 30, 30],
-        [10, -60, 130, 30],
-        [90, 120, 170, -30],
-        ]
-    
-    for initial_pos in initial_pos_list:
-        initial_pos = np.array(initial_pos)
-        my_robot.set_joint_state(initial_pos, input_unit='deg')
-
-        trafo_matr = _get_sympy_transformation_matrix(my_robot)
-        init_pose = my_robot._joint_state
-        for ii in range(init_pose.shape[0]):
-            qq = sympy.symbols("qq["+str(ii)+"]")
-            trafo_matr = trafo_matr.subs(qq, init_pose[ii])
-            ll = sympy.symbols("ll["+str(ii)+"]")
-            trafo_matr = trafo_matr.subs(ll, my_robot._link_lengths[ii])
-
-        trafo_matr_eval = np.round(np.array(trafo_matr.evalf()).astype(float), 3)
-        position_analytical = trafo_matr_eval[:2, -1]
-
-        my_robot.set_joint_state(initial_pos, input_unit='deg')
-        ee_pos0 = my_robot.get_ee_in_base()
-
-        if visualize:
-            import matplotlib.pyplot as plt
-            x_lim = [-0.2, 4.5]
-            y_lim = [-4, 4]
-            fig, ax = plt.subplots(1, 1, figsize=(6, 5))
-            my_robot.draw_robot(ax=ax)
-
-        # print(f"{position_analytical=}")
-        # print(f"{ee_pos0=}")
-        assert np.allclose(ee_pos0, position_analytical, rtol=1e-2), \
-               "Analytical & numerical Transformation are not close to each other..."
-
-    print("Test for analyitical vs. numerical transform is done.")
 
 
 if (__name__) == "__main__":
