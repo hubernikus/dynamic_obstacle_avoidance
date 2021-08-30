@@ -34,8 +34,15 @@ class FlatPlane(Obstacle):
         self.height = height
 
         # self.dim = self.position.shape[0]
-        # self._rotation_matrix = 
+        # self._rotation_matrix =
 
+    @property
+    def normal(self):
+        return self._normal
+
+    @normal.setter
+    def normal(self, value):
+        self._normal = np.array(value)
 
     def get_normal_direction(self, position, in_global_frame=False):
         return self.normal
@@ -55,18 +62,18 @@ class FlatPlane(Obstacle):
         if self.dimension != 2:
             raise NotImplementedError("Drawing of obstacle not implemented for dim!=2")
         self.boundary_points_local = np.zeros((self.dimension, 4))
-        
-        self.boundary_points_local[:, 0] = (
-            np.array([self.normal[1], -self.normal[0]])*self.width/2.0)
+
+        tangent = np.array([-self.normal[1], self.normal[0]])
+        self.boundary_points_local[:, 0] = self.center_position - tangent*self.width/2.0
         
         self.boundary_points_local[:, 1] = (self.boundary_points_local[:, 0]
             - self.normal*self.height)
 
         self.boundary_points_local[:, 2] = (self.boundary_points_local[:, 1]
-            - np.array([self.normal[1], -self.normal[0]])*self.width)
+            + tangent*self.width)
 
         self.boundary_points_local[:, 3] = (self.boundary_points_local[:, 2]
-            - self.normal*self.height)
+            + self.normal*self.height)
 
         # if not self.margin_absolut: # zero margin
         self.boundary_points_margin_local = self.boundary_points_local
