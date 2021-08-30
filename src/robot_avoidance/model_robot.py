@@ -4,7 +4,6 @@ Dummy robot models for cluttered obstacle environment + testing
 
 """
 # Author: Lukas Huber
-
 from math import pi
 
 from scipy.spatial.transform import Rotation
@@ -17,10 +16,21 @@ from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from robot_arm_avoider import RobotArmAvoider
-from get_2d_jacobian_matrix import get_2d_jacobian_matrix
+
+try:
+    from jacobians.model_robot_2d import _get_jacobian
+except ImportError:
+    print("Jacobian function found. -- Limited functionality.")
+
+    
 
 
 class RobotArm():
+    def get_jacobian(self):
+        """ Returns end-effector velocity based on current joint state. """
+        return _get_jacobian(
+            ll=self._link_lengths, qq=self._joint_state)
+
     pass
 
 
@@ -40,6 +50,8 @@ class ModelRobot2D(RobotArm):
         self.base_position = np.array([0, 0])
 
         self.dimension = 2
+
+        self.name = "model_robot_2d"
 
         # self.transformation_matrices = self.get_transformation_matrices()
         # self.total_transformation = self.get_total_transformation(self.transformation_matrices)
@@ -145,10 +157,6 @@ class ModelRobot2D(RobotArm):
 
             pos_joint_low = pos_joint_high
 
-    def get_jacobian(self):
-        """ Returns end-effector velocity based on current joint state. """
-        return get_2d_jacobian_matrix(
-            ll=self._link_lengths, qq=self._joint_state)
-
+    
     def update_state(self, joint_velocity_control, delta_time=0.01):
         self._joint_state = self._joint_state + joint_velocity_control*delta_time

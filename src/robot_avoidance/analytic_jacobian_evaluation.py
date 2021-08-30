@@ -4,6 +4,8 @@ Functions for the evluation of the hessian
 NOTE: this class requires the sympy module for jacobian evaluation
       (if desired -> move it somewhere else)
 """
+import os
+
 import numpy as np
 from numpy import linalg as LA
 
@@ -73,26 +75,34 @@ def _get_sympy_transformation_matrix(robot):
         
     return tot_trafo
 
-def analytic_evaluation_jacobian(robot):
-    """ Symbolic evaluation of the jacobian."""
+def analytic_evaluation_jacobian(robot, symplify_expression: bool = True):
+    """ Symbolic evaluation of the jacobian.
+
+    Arguments
+    ---------
+    symplify_expression: bool to decided whether to simplify analtic expression
+        (since it's relatively time-intense (<5 seconds))
+    """
     tot_trafo = _get_sympy_transformation_matrix(robot)
-    import sympy
     angles = _get_sympy_angles(robot)
 
-    # base_rot_matr = _sympy_get_rotation_matrix_from_euler(alpha, beta, gamma)
-    # Jacobian implemented only for the 2D case
+    # Differentiation 
     jacobian = sympy.zeros(2+1, robot.n_joints)
     for ii in range(robot.n_joints):
         jacobian[:2, ii] = sympy.diff(tot_trafo[:2, -1] , angles[ii])
         jacobian[2, ii] = 1 # is it 1 in 2D (?!)
+        
+    if symplify_expression:
+        jacobian = sympy.simplify(jacobian)
 
-    jacobian_file = "get_2d_jacobian_matrix.py"
+    jacobian_file = os.path.join("jacobians",
+                                 robot.name + ".py")
     with open(jacobian_file, 'w') as outfile:
         # Define header
         outfile.write("import numpy as np \n")
         outfile.write("from numpy import cos, sin \n\n")
 
-        outfile.write("def get_2d_jacobian_matrix(ll, qq):\n")
+        outfile.write("def _get_jacobian(ll, qq):\n")
         outfile.write("    return np.array([")
         for ii in range(jacobian.shape[0]):
             line_str_list = [] 
@@ -112,8 +122,8 @@ def analytic_evaluation_jacobian(robot):
 
             outfile.write("".join(line_str_list))
         outfile.write("])")
-    print("Done")
-
+        
+    print("Jacobian function written to file.")
 
 def test_similarity_of_analytic_and_numerical_rotation_matr(visualize=False):
     """ Test the forward transform-matrix for different joint-state configurations. """
@@ -160,8 +170,8 @@ def test_similarity_of_analytic_and_numerical_rotation_matr(visualize=False):
 
 
 if (__name__) == "__main__":
-    # print("Done")
     # analytic_evaluation_jacobian(robot=ModelRobot2D())
+    
     plt.close('all')
     plt.ion()
     
