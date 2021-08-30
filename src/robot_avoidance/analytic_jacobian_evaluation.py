@@ -126,13 +126,10 @@ def analytic_evaluation_jacobian(robot, symplify_expression: bool = True):
     print("Jacobian function written to file.")
 
 
-
 if (__name__) == "__main__":
     # analytic_evaluation_jacobian(robot=ModelRobot2D())
     
     plt.close('all')
     plt.ion()
     
-    test_similarity_of_analytic_and_numerical_rotation_matr(visualize=False)
-
     pass
