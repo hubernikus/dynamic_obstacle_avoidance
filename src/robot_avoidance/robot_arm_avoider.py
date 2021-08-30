@@ -58,7 +58,7 @@ class RobotArmAvoider():
         gamma = np.prod(gamma_list-1) + 1
         return gamma
 
-    def evaluate_motino(self):
+    def evaluate_motion(self):
         pass
 
     def update(self):
