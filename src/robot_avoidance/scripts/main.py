@@ -34,7 +34,7 @@ def dummy_robot_movement():
 
     # attractor_position = np.array([3.0, -1.0])
     attractor_position = np.array([1.0, -1.0])
-    attractor_position = np.array([3.0, 3.0])
+    # attractor_position = np.array([3.0, 3.0])
     
     linear_ds = LinearSystem(attractor_position=attractor_position)
     
