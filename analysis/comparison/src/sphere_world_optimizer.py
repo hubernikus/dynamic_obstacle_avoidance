@@ -106,11 +106,9 @@ class SphereWorldOptimizer(BaseContainer):
         """
         # Create QP-solver of the form
         # min ( 1/2 x.T P x + q.T x ) 
-        # s.t 
-        #     A x < b
+        # s.t    A x < b
         #
         # sol = solver.qp(P, q, A, b)
-        # self.sphere_world_list = self.get_obstacles_in_sphere_world()
         dim = self.dimension
 
         q_i = []

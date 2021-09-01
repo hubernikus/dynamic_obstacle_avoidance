@@ -6,6 +6,10 @@ from abc import ABC, abstractmethod
 import numpy as np
 from numpy import linalg as LA
 
+import matplotlib.pyplot as plt
+
+from dynamic_obstacle_avoidance.obstacles import Sphere
+
 from vartools.math import get_numerical_gradient, get_numerical_hessian
 
 # def get_barrier_from_gamma():
@@ -29,6 +33,19 @@ class BarrierFunction(ABC):
         """ Default numerical function. Replace them with the analytical function if possible."""
         return get_numerical_hessian(function=self.get_barrier_value, position=position)
 
+    def draw_barrier_safe_value(self, ax, polygon_color='#00ff00ff'):
+        if self._obs is None:
+            self.create_obs()
+            
+        if self._obs.boundary_points is None:
+            self._obs.draw_obstacle()
+            
+        x_obs = self._obs.boundary_points_global_closed
+        obs_polygon = plt.Polygon(x_obs.T, alpha=1.0, zorder=-3)
+        obs_polygon.set_color(polygon_color)
+
+        ax.add_patch(obs_polygon)
+        
 
 class CirclularBarrier(BarrierFunction):
     def __init__(self, radius=1, center_position=None, *args, **kwargs):
@@ -39,16 +56,26 @@ class CirclularBarrier(BarrierFunction):
             self.center_position = center_position
 
         self.radius = radius
+
+        self._obs = None
     
     def get_barrier_value(self, position):
         relative_position = position - self.center_position
         # return 0.5*LA.norm(relative_position)**2 - 0.5*self.radius**2
         return LA.norm(relative_position)**2 - self.radius**2
 
+    # def get_gradient(self, position):
+        # relative_position = position - self.center_position
+        # return super().get_gradient(relative_position)
+
     def get_hessian(self, position):
         # return np.eye(self.dimension)
         return 2*np.eye(self.dimension)
-    
+
+    def create_obs(self):
+        self._obs = Sphere(
+            center_position=self.center_position,
+            radius=self.radius)
 
 class DoubleBlobBarrier(BarrierFunction):
     def __init__(self, blob_matrix, center_position=None, *args, **kwargs):
@@ -58,6 +85,8 @@ class DoubleBlobBarrier(BarrierFunction):
             self.center_position = np.zeros(self.dim)
         else:
             self.center_position = center_position
+
+        self._obs is None
 
     def get_barrier_value(self, position):
         """ Out of the book double-blob hull value."""
@@ -72,6 +101,12 @@ class DoubleBlobBarrier(BarrierFunction):
         gradient = (4*LA.norm(relative_position)**2*relative_position
                       - 2*self.blob_matrix.dot(relative_position))
         return gradient
+
+    def create_obs(self):
+        self._obs = DoubleBob(
+            a_value=self.blob_matrix[0],
+            b_value=self.blob_matrix[0], 
+            )
 
 class BarrierFromObstacleList(BarrierFunction):
     def __init__(self, obstacle_list):
@@ -96,4 +131,4 @@ class BarrierFromObstacleList(BarrierFunction):
                 barrier_values[ii] = norm_pos - rad_local
 
         return np.prod(barrier_values)
-    
+

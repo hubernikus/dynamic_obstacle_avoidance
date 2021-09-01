@@ -5,7 +5,7 @@ import numpy as np
 from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
-
+i
 from vartools.dynamical_systems import DynamicalSystem, LinearSystem
 from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.dynamical_systems import SinusAttractorSystem

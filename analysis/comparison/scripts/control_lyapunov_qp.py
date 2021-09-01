@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 from vartools.dynamical_systems import DynamicalSystem, LinearSystem
-from vartools.dynamical_systems import plot_dynamical_system_streamplot
+from vartools.dynamical_systems import plot_dynamical_system_quiver
+
 from vartools.math import get_numerical_gradient, get_numerical_hessian
 from vartools.math import get_numerical_gradient_of_vectorfield
 from vartools.math import get_numerical_hessian_fast
@@ -24,16 +25,31 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from _base_qp import ControllerQP
 from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
+from control_dynamics import StaticControlDynamics 
 
-# Add folder to path
-# import sys
-# path_qp = os.path.join(
-    # "/home/lukas/Code/dynamic_obstacle_avoidance", "analysis", "comparison_qp")
-# if not path_qp in sys.path:
-    # sys.path.append(path_qp)
-    
-# from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
+
+class F1(DynamicalSystem):
+    # def evaluate(self, position):
+        # (?!) is it really this function...?
+        # return 0.1*LA.norm(position)*np.array([1, 1])
+        
+    def evaluate(self, position):
+        return np.zeros(self.dimension)
+        
+    # def evaluate(self, position):
+        # return (-0.1)*position
+
+
+class F2(DynamicalSystem):
+    def evaluate(self, position):
+        return 0.1*(LA.norm(position) -
+                    position.reshape(1, -1) @ position.reshape(-1, ))*np.array([1, 1])
+    
+
+class ZeroDynamics(DynamicalSystem):
+    def evaluate(self, position):
+        return np.zeros(self.dimension)
 
 def O_n(vector):
     """ cross-product operator (?!) ^w x = O_n(x) w
@@ -44,20 +60,6 @@ def O_n(vector):
     else:
         raise NotImplementedError("Warning not defined for higher dimenions.")
 
-class ControlDynamics():
-    pass
-
-class StaticControlDynamics(ControlDynamics):
-    def __init__(self, A_matrix):
-        self.A_matrix = np.array(A_matrix)
-
-    @property
-    def dimension(self):
-        return self.A_matrix.shape[1]
-        
-    def evaluate(self, position):
-        return self.A_matrix
-        
 
 @dataclass
 class GammaOperator_g_v():
@@ -85,7 +87,7 @@ class GammaOperator_g_v():
 
             
 class ControlLyapunovFunction():
-    def __init__(self, ll=[1, 6]):
+    def __init__(self, ll=[6, 1]):
         self.ll = ll
         self.dimension = 2
 
@@ -100,6 +102,7 @@ class ControlLyapunovFunction():
 
     def get_hessian(self, position):
         return np.diag(self.ll)
+    
 
 class ControlLyapunovQP(ControllerQP):
     """
@@ -113,11 +116,16 @@ class ControlLyapunovQP(ControllerQP):
                  control_lyapunov_function: ControlLyapunovFunction,
                  p: float = 5, q: float = 5, epsilon: float = 0.1):
         super().__init__(f_x=f_x, g_x=g_x, barrier_function=barrier_function)
+        
         self.control_lyapunov_function = control_lyapunov_function
         self.p = p
         self.q = q
         self.epsilon = epsilon
 
+    @property
+    def QQ(self):
+        return self.QQ
+    
     # TODO:
     # h_D
     # ∇_Q
@@ -134,7 +142,72 @@ class ControlLyapunovQP(ControllerQP):
     #
     # G = g^t g
 
+    def evaluate_with_control(self, position, control, max_control=1):
+        f_x = self.evaluate_base_dynamics(position)
+        g_x = self.evaluate_control_dynamics(position)
+
+        control_norm = LA.norm(control)
+        if control_norm > max_control:
+            control = control/control_norm*max_control
+            
+        return f_x + g_x @ control
+        
+
     def get_optimal_control(self, position):
+    # def get_optimal_control_simple(self, position):
+        # Create QP-solver of the form
+        # min ( 1/2 x.T P x + q.T x ) 
+        # s.t    G x < h
+        #
+        # sol = solver.qp(P, q, G, h)
+        h_value = self.barrier_function.evaluate(position)
+        gradient_h = self.barrier_function.evaluate_gradient(position)
+
+        control_lyapunov = self.control_lyapunov_function.evaluate(position)
+        gradient_V = self.control_lyapunov_function.evaluate_gradient(position)
+
+        # Dynamics
+        f_x = self.evaluate_base_dynamics(position)
+        g_x = self.evaluate_control_dynamics(position)
+
+        # minimize ( 1/2 ‖u‖^2 + 1/2 p δ^2 )
+        # s.t.  L_f V(x) + L_g V(x) u + γ(V(x)) ≤ δ    (CLF)
+        #       L_f h(x) + L_g h(x) u + α(h(x)) ≥ 0    (CBF)
+        dim = 2
+        
+        PP = 0.5*np.diag([1, 1, self.p])
+        qq = np.zeros(dim + 1)
+
+        GG = np.zeros((2, dim + 1))
+        hh = np.zeros(2)
+
+        # CLF
+        lie_of_V_wrt_f = gradient_V @ f_x
+        lie_of_V_wrt_g = gradient_V @ g_x
+        gamma_of_V = self.gamma_function(control_lyapunov)
+
+        GG[0, :2] = lie_of_V_wrt_g
+        GG[0, 2] = -1
+        hh[0] = (-1)*(lie_of_V_wrt_f + gamma_of_V)
+
+        # CBF
+        lie_of_h_wrt_f = gradient_h @ f_x
+        lie_of_h_wrt_g = gradient_h @ g_x
+        alpha_of_h = self.alpha_function(h_value)
+
+        GG[1, :2] = (-1)*lie_of_h_wrt_g
+        hh[1] = lie_of_h_wrt_f + alpha_of_h
+        
+        sol = solvers.qp(matrix(PP, tc='d'), matrix(qq, tc='d'),
+                         matrix(GG, tc='d'), matrix(hh, tc='d'))
+
+        if LA.norm(position - 0):
+            pass
+        
+        return np.array(sol['x'][0:2]).squeeze()
+
+    
+    def get_optimal_control_hard(self, position):
         h_value = self.barrier_function.evaluate(position)
         gradient_h = self.barrier_function.evaluate_gradient(position)
         hessian_h = self.barrier_function.get_hessian(position)
@@ -150,7 +223,7 @@ class ControlLyapunovQP(ControllerQP):
             position=position, function=self.evaluate_base_dynamics)
 
         # g(x) in R^[dimension x input]
-        control_dynamics= self.evaluate_control_dynamics(position)
+        control_dynamics = self.evaluate_control_dynamics(position)
         GG = control_dynamics @ control_dynamics.T
 
         gamma_g_grad_h = self.gamma_g_v(position=position,
@@ -186,7 +259,7 @@ class ControlLyapunovQP(ControllerQP):
 
         # x = [u1, u2, w, delta]
         dimension_opt = 4
-        P = matrix(np.diag([1, 1, self.q, self.p]))
+        P = matrix(0.5*np.diag([1, 1, self.q, self.p]))
         q = matrix(np.zeros((dimension_opt, 1)))
         
         # CLF
@@ -226,7 +299,8 @@ class ControlLyapunovQP(ControllerQP):
         h = np.array(h_CLF, h_CBF1, h_CBF2)
 
         sol = solvers.qp(P, q, G, h)
-        return sol['x'][0:2]
+
+        return (sol['x'][0:2], sol['x'][3])
 
     def gamma_g_v(self, position, vector, matrix_function):
         """
@@ -280,19 +354,17 @@ class ControlLyapunovQP(ControllerQP):
     
     def gamma_function(self, value):
         return value
-    
 
-def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
-    # start_position = [-4, 4]
-    # start_position = [4, 4]
-    x_lim = [-5, 5]
-    y_lim = [-2, 6.5]
 
+def plot_quiver(n_grid=20):
     dimension = 2
+    x_lim = [-7, 7]
+    y_lim = [-3, 9.0]
 
-    f_x = LinearSystem(A_matrix=np.zeros((dimension, dimension)))
+    f_x = F1(dimension=2)
+    # f_x = ZeroDynamics(dimension=2)
+    
     g_x = StaticControlDynamics(A_matrix=np.eye(dimension))
-    # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     barrier_function = CirclularBarrier(
         radius=1.5,
@@ -308,43 +380,114 @@ def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
         control_lyapunov_function=control_lyapunov_function,
         p=5, q=5, epsilon=0.1)
 
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid),
+                                 np.linspace(y_lim[0], y_lim[1], n_grid))
+    
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+    velocities = np.zeros(positions.shape)
+    for ii in range(positions.shape[1]):
+        velocities[:, ii] = dynamics.evaluate(positions[:, ii])
+
+
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    
+    barrier_function.draw_barrier_safe_value(ax=ax)
+    
+    ax.quiver(positions[0, :], positions[1, :],
+              velocities[0, :], velocities[1, :], color="blue")
+
+    ax.grid()
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    
+
+def plot_integrate_trajectory(delta_time=0.01, n_steps=1000):
+    # start_position = [-4, 4]
+    # start_position = [4, 4]
+    x_lim = [-7, 7]
+    y_lim = [-3, 9.0]
+
+    dimension = 2
+
+    f_x = F1(dimension=2)
+    g_x = StaticControlDynamics(A_matrix=np.eye(dimension))
+    
+    barrier_function = CirclularBarrier(
+        radius=1.5,
+        center_position=np.array([0, 3]),
+        )
+
+    control_lyapunov_function = ControlLyapunovFunction(ll=[6, 1])
+
+    dynamics = ControlLyapunovQP(
+        f_x=f_x,
+        g_x=g_x,
+        barrier_function=barrier_function,
+        control_lyapunov_function=control_lyapunov_function,
+        p=5, q=5, epsilon=0.1)
+
     start_position_list = [
-        # [4, 4],
-        [-4, 6]
+        [-2, 3],
+        [-4, 4],
+        [-4, 6],
+        [-2, 7],
+        [0.01, 8],
+        [2, 7],
+        [4, 6],
+        [4, 4],
+        [2, 3],
         ]
     
     fig, ax = plt.subplots(figsize=(7.5, 6))
 
+    barrier_function.draw_barrier_safe_value(ax=ax)
+
+    conv_vel = 1e-2
     for start_position in start_position_list:
         position = np.zeros((dimension, n_steps+1))
         position[:, 0] = start_position
         for ii in range(n_steps):
             vel = dynamics.evaluate(position[:, ii])
             position[:, ii+1] = position[:, ii] + vel*delta_time
+
+            if LA.norm(vel) < conv_vel:
+                break
             
-        ax.plot(position[0, :], position[1, :])
+        ax.plot(position[0, :], position[1, :], '-', color='blue', alpha=1)
     # ax.plot(barrier_function.center_position[0], barrier_function.center_position[1], 'k*')
     
+    # start_pos
+    start_position = np.array(start_position_list).T
+    ax.scatter(start_position[0, :], start_position[1, :], s=80, facecolors='none', edgecolors='b')
+    
     ax.plot(0, 0, 'k*')
-    ax.set_aspect('equal', adjustable='box')
+    
+    # ax.set_aspect('equal', adjustable='box')
+    
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
+    
+    ax.set_xlabel(r"$x_1$")
+    ax.set_ylabel(r"$x_2$")
+
     ax.grid()
     
     
-def plot_main_vector_field():
-    dimension = 2
-    f_x = LinearSystem(
-        A_matrix=np.array([[-6, 0],
-                           [0, -1]])
-        )
+def plot_main_vector_fields():
+    # f_x = LinearSystem(
+    #     A_matrix=np.array([[-6, 0],
+    #                        [0, -1]])
+    #     )
     # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     # closed_loop_ds = ClosedLoopQP(f_x=f_x, g_x=g_x)
     # closed_loop_ds.evaluate_with_control(position, control)
 
-    plot_dynamical_system_streamplot(
-        dynamical_system=f_x, x_lim=[-10, 10], y_lim=[-10, 10])
+    plot_dynamical_system_quiver(
+        dynamical_system=F1(dimension=2), x_lim=[-10, 10], y_lim=[-10, 10])
+
+    plot_dynamical_system_quiver(
+        dynamical_system=F2(dimension=2), x_lim=[-10, 10], y_lim=[-10, 10])
 
 
 def plot_barrier_function():
@@ -394,12 +537,96 @@ def plot_barrier_function():
     ax.set_aspect('equal', adjustable='box')
 
 
+def plot_control_lyapunov_gradient_and_value():
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    
+    x_lim = [-5, 5]
+    y_lim = [-2, 6]
+
+    n_grid = 20
+    
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid),
+                                 np.linspace(y_lim[0], y_lim[1], n_grid),
+                                 )
+
+    control_lyapunov = ControlLyapunovFunction(ll=[6, 1])
+
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+
+    gradient = np.zeros(positions.shape)
+    values = np.zeros(positions.shape[1])
+    
+    for ii in range(positions.shape[1]):
+        values[ii] = control_lyapunov.evaluate(positions[:, ii])
+        gradient[:, ii] = control_lyapunov.evaluate_gradient(positions[:, ii])
+    
+    cs = ax.contourf(positions[0, :].reshape(n_grid, n_grid),
+                     positions[1, :].reshape(n_grid, n_grid),
+                     values.reshape(n_grid, n_grid),
+                     np.linspace(1e-7, 50.0, 21),
+                     )
+
+    ax.quiver(positions[0, :], positions[1, :],
+              gradient[0, :], gradient[1, :], color="black", zorder=5)
+    
+    
+    cbar = fig.colorbar(cs,
+                        # ticks=np.linspace(-10, 0, 11)
+                        )
+
+
+def plot_control_barrier_gradient_and_value():
+    fig, ax = plt.subplots(figsize=(7.5, 6))
+    
+    x_lim = [-5, 5]
+    y_lim = [-2, 6]
+
+    n_grid = 20
+    
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid),
+                                 np.linspace(y_lim[0], y_lim[1], n_grid),
+                                 )
+
+    barrier_function = CirclularBarrier(
+        radius=1.5,
+        center_position=np.array([0, 3])
+        )
+
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+
+    gradient = np.zeros(positions.shape)
+    barrier_value = np.zeros(positions.shape[1])
+    
+    for ii in range(positions.shape[1]):
+        barrier_value[ii] = barrier_function.evaluate(positions[:, ii])
+        gradient[:, ii] = barrier_function.evaluate_gradient(positions[:, ii])
+    
+    cs = ax.contourf(positions[0, :].reshape(n_grid, n_grid),
+                     positions[1, :].reshape(n_grid, n_grid),
+                     barrier_value.reshape(n_grid, n_grid),
+                     np.linspace(-10.0, 10.0, 5),
+                     )
+
+    ax.quiver(positions[0, :], positions[1, :],
+              gradient[0, :], gradient[1, :], color="black", zorder=5)
+    
+    
+    cbar = fig.colorbar(cs,
+                        # ticks=np.linspace(-10, 0, 11)
+                        )
+    
+
 if (__name__) == "__main__":
     plt.ion()
+    plt.close('all')
     solvers.options['show_progress'] = False
-    # plot_main_vector_field()
+    # plot_main_vector_fields()
     
     # plot_barrier_function()
     plot_integrate_trajectory()
+    
+    plot_quiver()
 
+    # plot_control_barrier_gradient_and_value()
+    # plot_control_lyapunov_gradient_and_value()
     plt.show()

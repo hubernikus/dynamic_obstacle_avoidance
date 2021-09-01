@@ -9,7 +9,6 @@ import copy
 import numpy as np
 from numpy import linalg as LA
 
-# from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
 
 import matplotlib.pyplot as plt
@@ -33,244 +32,21 @@ from _base_qp import ControllerQP
 from navigation import SphereToStarTransformer
 from double_blob_obstacle import DoubleBlob
 from sphere_world_optimizer import SphereWorldOptimizer, ClosedLoopQP
-
-
-class VelocityController(ABC):
-    @abstractmethod
-    def evaluate(self, position):
-        """ Returns the obstacle avoidance at a certain position. """
-        pass
-    
-class NonconvexAvoidanceCBF(VelocityController):
-    """
-    Attributes
-    ----------
-    obstacle_container: SphereWorldOptimizer obstacle container.
-    qp_control_optimizer: optimizes the path based on dynamics & 'modified' outside
-    """
-    def __init__(self, obstacle_container: SphereWorldOptimizer,
-                 qp_control_optimizer: ControllerQP):
-        self.obstacle_container = obstacle_container
-        
-        self.qp_control_optimizer = qp_control_optimizer
-        self.qp_control_optimizer.barrier_function = BarrierFromObstacleList(
-            self.obstacle_container)
-
-    def update(self, position, delta_time=0.01):
-        position = self.obstacle_container.transform_to_sphereworld(position)
-        
-        velocity = self.qp_control_optimizer.evaluate_base_dynamics(position)
-        velocity = self.obstacle_container.transform_to_sphereworld(
-            velocity, trafo_type='velocity')
-        
-        self.obstacle_container.update(position, velocity, delta_time)
-
-    def update_in_sphere_world(self, position, velocity, delta_time):
-        self.obstacle_container.update(position, velocity, delta_time)
-
-    def evaluate(self, position):
-        position = self.obstacle_container.transform_to_sphereworld(position)
-        velocity = self.qp_control_optimizer.get_optimal_control(position)
-        # velocity = np.zeros(self.dimension)
-        velocity = self.obstacle_container.transform_from_sphereworld(
-            velocity, trafo_type='velocity')
-        return velocity
-
-    def evaluate_in_sphere_world(self, position):
-        velocity = self.qp_control_optimizer.get_optimal_control(position)
-        return velocity
-    
-
-def plot_integrate_trajectory(delta_time=0.005, n_steps=1000):
-    # start_position = [-4, 4]
-    # start_position = [4, 4]
-    x_lim = [-5, 5]
-    y_lim = [-2, 6.5]
-
-    dimension = 2
-
-    f_x = LinearSystem(
-        A_matrix=np.array([[-6, 0],
-                           [0, -1]])
-        )
-    g_x = LinearSystem(A_matrix=np.eye(dimension))
-
-    # barrier_function = DoubleBlobBarrier(
-        # blob_matrix=np.array([[10.0, 0.0],
-                              # [0.0, -1.0]]),
-        # center_position=np.array([0.0, 3.0]))
-
-    barrier_function = CirclularBarrier(
-        radius=1.0,
-        center_position=np.array([0, 3]),
-        )
-
-    dynamics = ClosedLoopQP(f_x=f_x, g_x=g_x, barrier_function=barrier_function)
-
-    start_position_list = [
-        [4, 4],
-        [-4, 4] 
-        ]
-    
-    fig, ax = plt.subplots(figsize=(7.5, 6))
-
-    for start_position in start_position_list:
-        position = np.zeros((dimension, n_steps+1))
-        position[:, 0] = start_position
-        for ii in range(n_steps):
-            vel = dynamics.evaluate(position[:, ii])
-            position[:, ii+1] = position[:, ii] + vel*delta_time
-            
-        ax.plot(position[0, :], position[1, :])
-    # ax.plot(barrier_function.center_position[0], barrier_function.center_position[1], 'k*')
-    
-    ax.plot(0, 0, 'k*')
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
-    ax.grid()
-    
-    
-def plot_main_vector_field():
-    dimension = 2
-    f_x = LinearSystem(
-        A_matrix=np.array([[-6, 0],
-                           [0, -1]])
-        )
-    g_x = LinearSystem(A_matrix=np.eye(dimension))
-
-    # closed_loop_ds = ClosedLoopQP(f_x=f_x, g_x=g_x)
-    # closed_loop_ds.evaluate_with_control(position, control)
-
-    plot_dynamical_system_streamplot(
-        dynamical_system=f_x, x_lim=[-10, 10], y_lim=[-10, 10])
-
-
-def plot_barrier_function():
-    fig, ax = plt.subplots(figsize=(7.5, 6))
-    
-    x_lim = [-5, 5]
-    y_lim = [-2, 6]
-
-    n_grid = 100
-    
-    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], n_grid),
-                                 np.linspace(y_lim[0], y_lim[1], n_grid),
-                                 )
-    
-    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-    values = np.zeros(positions.shape[1])
-
-    barrier_function = DoubleBlobBarrier(
-        blob_matrix=np.array([[10, 0],
-                              [0, -1]]),
-        center_position=np.array([0, 3]))
-
-    barrier_function = CirclularBarrier(
-        radius=1.0,
-        center_position=np.array([0, 3])
-        )
-    
-    for ii in range(positions.shape[1]):
-        values[ii] = barrier_function.get_barrier_value(positions[:, ii])
-
-    cs = ax.contourf(positions[0, :].reshape(n_grid, n_grid),
-                    positions[1, :].reshape(n_grid, n_grid),
-                    values.reshape(n_grid, n_grid),
-                    np.linspace(-10.0, 0.0, 11),
-                    # np.linspace(-10.0, 0.0, 2),
-                    # vmin=-0.1, vmax=0.1,
-                    # np.linspace(-10, 10.0, 101),
-                    # cmap=cm.YlGnBu,
-                    # linewidth=0.2, edgecolors='k'
-                    )
-    
-    cbar = fig.colorbar(cs,
-                        # ticks=np.linspace(-10, 0, 11)
-                        )
-
-    plt.grid()
-    ax.set_aspect('equal', adjustable='box')
-
-
-def plot_spherial_dynamic_container():
-    """ Plot surrounding in different actions. """
-    x_lim = [-4, 4]
-    y_lim = [-4, 6]
-
-    # Set to 1000 as describe din paper.
-    sphere_world = SphereWorldOptimizer(lambda_constant=1000)
-    
-    sphere_world.append(
-        Sphere(
-        center_position=np.array([1, 1]),
-        radius=0.4,
-        ))
-
-    sphere_world.append(
-        Sphere(
-        center_position=np.array([0, 0]),
-        radius=3,
-        is_boundary=True,
-        ))
-
-    sphere_world.transform_obstacles_to_sphere_world()
-
-    pos = np.array([0.5, 0.5])
-    vel = np.array([0, 0])
-
-    fig, ax = plt.subplots(figsize=(7.5, 6))
-    plt.plot(pos[0], pos[1], 'bo')
-
-    for ii in range(len(sphere_world)):
-        obs = sphere_world.sphere_world_list[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        plt.plot(boundary_points[0, :], boundary_points[1, :], 'k')
-        plt.plot(obs.center_position[0], obs.center_position[1], 'k+')
-    
-    sphere_world.update(position=pos, velocity=vel)
-
-    for ii in range(len(sphere_world)):
-        obs = sphere_world.sphere_world_list[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        plt.plot(boundary_points[0, :], boundary_points[1, :], 'g')
-        plt.plot(obs.center_position[0], obs.center_position[1], 'g+')
-
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
-
-
-def plot_obstacles_boundary(ax, controller):
-    # Initial set up
-    for ii in range(len(controller.obstacle_container)):
-        # obs = sphere_world.sphere_world_list[ii]
-        obs = controller.obstacle_container[ii]
-        obs.draw_obstacle()
-        boundary_points = obs.boundary_points_global
-        ax.plot(boundary_points[0, :], boundary_points[1, :], 'k')
-        ax.plot(obs.center_position[0], obs.center_position[1], 'k+')
+from control_dynamics import StaticControlDynamics
 
     
-def animation_spherical_wold(
+def animation_double_worlds(
     start_position, it_max=100, delta_time=0.01, wait_time=0.1):
-    x_lim = [-4, 4]
+    x_lim = [-2, 6]
     y_lim = [-4, 6]
     dimension = 2
 
     # Set to 1000 as describe din paper.
+    # Does this work or do we need barrier function (!?)
     sphere_world = SphereWorldOptimizer(
         attractor_position=np.array([0, 0]),
         lambda_constant=1000)
     
-    # sphere_world.append(
-        # Sphere(
-        # center_position=np.array([1, 1]),
-        # radius=0.4,
-        # ))
-
     sphere_world.append(
         DoubleBlob(
             a_value=1, b_value=1.1,
@@ -278,27 +54,23 @@ def animation_spherical_wold(
             is_boundary=False,
             ))
 
-
-    sphere_world.append(
-        Sphere(
-        center_position=np.array([0, 0]),
-        radius=8,
-        is_boundary=True,
-        ))
-
     f_x = LinearSystem(
         A_matrix=np.array([[-6, 0],
                            [0, -1]])
         )
-    
-    g_x = LinearSystem(A_matrix=np.eye(dimension))
+
+    g_x = StaticControlDynamics(A_matrix=np.eye(dimension))
+    # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     qp_controller = ClosedLoopQP(f_x=f_x, g_x=g_x)
 
-    controller = NonconvexAvoidanceCBF(obstacle_container=sphere_world,
-                                       qp_control_optimizer=qp_controller)
+    controller_sphere = NonconvexAvoidanceCBF(obstacle_container=sphere_world,
+                                              qp_control_optimizer=qp_controller)
     
-    fig, ax = plt.subplots(figsize=(7.5, 6))
+    # fig, ax = plt.subplots(figsize=(7.5, 6))
+    fig, axs = plt.subplots(2, 1, figsize=(7.5, 6))
+    axs = ax
+    
     plot_obstacles_boundary(ax, controller)
     
     n_obs_plus_boundary = len(sphere_world)
@@ -308,7 +80,6 @@ def animation_spherical_wold(
 
     traj_spher = np.zeros((dimension, it_max+1))
     traj_spher[:, 0] = controller.obstacle_container.transform_to_sphereworld(start_position)
-    breakpoint()
                
     plt_outline = [None] * n_obs_plus_boundary 
     plt_center = [None] * (n_obs_plus_boundary-1)
@@ -370,6 +141,6 @@ if (__name__) == "__main__":
     # plot_integrate_trajectory()
     
     # plot_spherial_dynamic_container()
-    animation_spherical_wold(start_position=np.array([0.1, 5]))
+    animation_spherical_wold(start_position=np.array([4.0, 5]))
 
     plt.show()

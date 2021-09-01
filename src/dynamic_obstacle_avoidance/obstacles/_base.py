@@ -71,6 +71,7 @@ class Obstacle(ABC):
         self.margin_absolut = margin_absolut
         if sigma is not None:
             raise Exception("Remove sigma argument.")
+        self.sigma = 1
         
         self.tail_effect = tail_effect # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
