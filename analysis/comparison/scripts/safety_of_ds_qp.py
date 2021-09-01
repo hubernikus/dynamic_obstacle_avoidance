@@ -37,6 +37,8 @@ from control_dynamics import StaticControlDynamics
     
 def animation_double_worlds(
     start_position, it_max=100, delta_time=0.01, wait_time=0.1):
+    # obs hex-color:  '#ff9955ff'
+    # traj-color: '#008000ff'
     x_lim = [-2, 6]
     y_lim = [-4, 6]
     dimension = 2
@@ -53,30 +55,28 @@ def animation_double_worlds(
             center_position=[0, 3],
             is_boundary=False,
             ))
+    
+    sphere_world.transform_obstacles_to_sphere_world()
 
     f_x = LinearSystem(
         A_matrix=np.array([[-6, 0],
                            [0, -1]])
         )
-
+    
     g_x = StaticControlDynamics(A_matrix=np.eye(dimension))
-    # g_x = LinearSystem(A_matrix=np.eye(dimension))
 
     qp_controller = ClosedLoopQP(f_x=f_x, g_x=g_x)
 
-    controller_sphere = NonconvexAvoidanceCBF(obstacle_container=sphere_world,
-                                              qp_control_optimizer=qp_controller)
+    controller = NonconvexAvoidanceCBF(obstacle_container=sphere_world,
+                                       qp_control_optimizer=qp_controller)
     
     # fig, ax = plt.subplots(figsize=(7.5, 6))
-    fig, axs = plt.subplots(2, 1, figsize=(7.5, 6))
-    axs = ax
-    
-    plot_obstacles_boundary(ax, controller)
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+    # ax = axs[0]
     
     n_obs_plus_boundary = len(sphere_world)
 
     trajectory = np.zeros((dimension, it_max+1))
-    # trajectory[:, 0] = start_position
 
     traj_spher = np.zeros((dimension, it_max+1))
     traj_spher[:, 0] = controller.obstacle_container.transform_to_sphereworld(start_position)
@@ -84,13 +84,29 @@ def animation_double_worlds(
     plt_outline = [None] * n_obs_plus_boundary 
     plt_center = [None] * (n_obs_plus_boundary-1)
     plt_positions = None
+    
     # Main loop
     for it in range(it_max):
-        # update_in_sphere_world
-        # velocity = controller.evaluate(position=trajectory[:, it])
-        # velocity = controller.evaluate(position=trajectory[:, it])
-        # trajectory[:, it+1] = trajectory[:, it] + velocity*delta_time
+        vel_sphere = controller.evaluate_in_sphere_world(position=traj_spher[:, it])
+        # traj_spher[:, it+1] = traj_spher[:, it] + vel_sphere*delta_time
+
+        for ax in axs:
+            ax.clear()
+            ax.set_aspect('equal', adjustable='box')
+            
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
+
+        for obs in sphere_world:
+            obs.plot_obstacle(ax=axs[0], fill_color='#ff9955', outline_color="black")
+            
+        for obs in sphere_world.initial_sphere_world_list:
+            obs.plot_obstacle(ax=axs[1], fill_color=None, outline_color="black")
+            # obs.plot_obstacle(ax=axs[1], fill_color='#ff9955', outline_color="black")
         
+
+        break
+
         vel_sphere = controller.evaluate_in_sphere_world(position=traj_spher[:, it])
         traj_spher[:, it+1] = traj_spher[:, it] + vel_sphere*delta_time
 
@@ -99,22 +115,19 @@ def animation_double_worlds(
         
         plot_obstacles_boundary(ax, controller)
 
+        ax.clear()
+        
         ax.plot(traj_spher[0, :it+1], traj_spher[1, :it+1], 'r')
         ax.plot(traj_spher[0, 0], traj_spher[1, 0], 'r*')
         ax.plot(traj_spher[0, it+1], traj_spher[1, it+1], 'ro')
         
         # plt.show()
         # time.sleep(wait_time)
-        ax.set_aspect('equal', adjustable='box')
-        ax.set_xlim(x_lim)
-        ax.set_ylim(y_lim)
-
+        
         print(f"Loop #{it}")
 
         plt.pause(wait_time)
         
-        ax.clear()
-
         if not len(plt.get_fignums()):
             # No figure active
             print("Animation ended by closing of figures.")
@@ -133,14 +146,7 @@ def animation_double_worlds(
 
 
 if (__name__) == "__main__":
+    plt.close('all')
     plt.ion()
     solvers.options['show_progress'] = False
-    # plot_main_vector_field()
-    
-    # plot_barrier_function()
-    # plot_integrate_trajectory()
-    
-    # plot_spherial_dynamic_container()
-    animation_spherical_wold(start_position=np.array([4.0, 5]))
-
-    plt.show()
+    animation_double_worlds(start_position=np.array([4.0, 5]))

@@ -230,7 +230,8 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
 
         if not reference_point is None:
             if not obs[n].is_boundary or draw_wall_reference:
-                ax.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
+                ax.plot(reference_point[0],reference_point[1],
+                        'k+', linewidth=18, markeredgewidth=4, markersize=13)
             if reference_point_number:
                 ax.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
             # add group, too

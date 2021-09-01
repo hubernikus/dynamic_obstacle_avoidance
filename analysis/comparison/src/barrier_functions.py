@@ -6,13 +6,11 @@ from abc import ABC, abstractmethod
 import numpy as np
 from numpy import linalg as LA
 
-import matplotlib.pyplot as plt
-
 from dynamic_obstacle_avoidance.obstacles import Sphere
 
 from vartools.math import get_numerical_gradient, get_numerical_hessian
-
 # def get_barrier_from_gamma():
+
 
 class BarrierFunction(ABC):
     def evaluate(self, position):
@@ -36,15 +34,7 @@ class BarrierFunction(ABC):
     def draw_barrier_safe_value(self, ax, polygon_color='#00ff00ff'):
         if self._obs is None:
             self.create_obs()
-            
-        if self._obs.boundary_points is None:
-            self._obs.draw_obstacle()
-            
-        x_obs = self._obs.boundary_points_global_closed
-        obs_polygon = plt.Polygon(x_obs.T, alpha=1.0, zorder=-3)
-        obs_polygon.set_color(polygon_color)
-
-        ax.add_patch(obs_polygon)
+        self._obs.plot_obstacle(ax=ax, polygon_color=polygon_color)
         
 
 class CirclularBarrier(BarrierFunction):
@@ -131,4 +121,3 @@ class BarrierFromObstacleList(BarrierFunction):
                 barrier_values[ii] = norm_pos - rad_local
 
         return np.prod(barrier_values)
-

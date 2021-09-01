@@ -11,6 +11,7 @@ from numpy import linalg as LA
 from vartools.math import get_numerical_gradient
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
+from dynamic_obstacle_avoidance.obstacles import Sphere
 
 
 def get_rotation_matrix(rotation):
@@ -206,14 +207,15 @@ class SphereToStarTransformer(BaseContainer):
 
     def transform_obstacle_to_spheres(self, obstacle_list):
         sphere_list = []
-        
-        for obs in range(obstacle_list):
+
+        for obs in obstacle_list:
+            # breakpoint()
             sphere_list.append(
                 Sphere(
-                radius=obs.get_minimal_distance,
+                radius=obs.get_minimal_distance(),
                 center_position=obs.center_position,
                 ))
-        return center_position
+        return sphere_list
 
 
 class NavigationContainer(SphereToStarTransformer):

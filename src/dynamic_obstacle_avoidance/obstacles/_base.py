@@ -11,6 +11,8 @@ from functools import lru_cache
 import numpy as np
 import numpy.linalg as LA
 
+import matplotlib.pyplot as plt
+
 from scipy.spatial.transform import Rotation # scipy rotation
 
 from vartools.angle_math import *
@@ -183,6 +185,9 @@ class Obstacle(ABC):
 
         Obstacle.id_counter += 1  # New obstacle created
         Obstacle.active_counter += 1
+
+        # Needed for drawing polygon
+        self.obs_polygon = None
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -648,6 +653,27 @@ class Obstacle(ABC):
         """ Create obstacle boundary points and stores them as attribute."""
         pass
 
+    def plot_obstacle(self, ax, fill_color='#00ff00ff', outline_color=None):
+        """ Plots obstacle on given axes. """
+        if self.boundary_points is None:
+            self.draw_obstacle()
+            
+        x_obs = self.boundary_points_global_closed
+        # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
+        if fill_color is not None:
+            self.obs_polygon = plt.Polygon(x_obs.T)
+            self.obs_polygon.set_color(fill_color)
+
+            ax.add_patch(self.obs_polygon)
+            # Somehow only appears when additionally a 'plot is generated' (BUG?)
+            ax.plot([], [])
+            
+        if outline_color is not None:
+            ax.plot(x_obs[0, :], x_obs[1, :], '-', color=outline_color)
+
+        ax.plot(self.center_position[0], self.center_position[1],
+                'k+', linewidth=18, markeredgewidth=4, markersize=13)
+
     def get_surface_derivative_angle_num(
         self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, rel_delta_dir=1e-6):
         """ Numerical evaluation of surface derivative. """
@@ -771,7 +797,6 @@ class Obstacle(ABC):
         Input: 
         - Position (2D) & 
         - Orientation (float)  """
-        
         if self.dim>2:
             raise NotImplementedError("Implement for dimension >2.")
 
