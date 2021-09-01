@@ -4,12 +4,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="control",
+    name="robot_avoidance",
     version="0.1",
-    description="This package implements a GPR evaluation with a ZMQ interface",
+    description="This package allows the obstacle avoidance for robot arms.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     # url="https://github.com/pypa/sampleproject",
+                 },
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -17,9 +18,8 @@ setuptools.setup(
         "Operating System :: Unix",
     ],
     install_requires=[
-        "zmq==0.0.0",
-        # "sklearn",
-        # "scikit-learn==0.23.2"
+        # "zmq==0.0.0",
+        "zmq==0.0.0"
     ],
     python_requires='>=3',
 )
