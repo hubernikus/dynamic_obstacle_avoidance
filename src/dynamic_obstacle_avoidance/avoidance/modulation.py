@@ -96,7 +96,7 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     return E, D, Gamma, E_orth
 
 
-def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
+def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor=None, weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
     """
     This function modulates the dynamical system at position x and dynamics xd such that it
     avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
@@ -137,14 +137,10 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
     else:
         return initial_velocity      # Trivial solution
 
-    if type(attractor) == str:
-        if attractor == 'default':       # Define attractor position
-            attractor = np.zeros((d))
-            N_attr = 1
-        else:
-            N_attr = 0            
-    else:
+    if attractor is not None:
         N_attr = 1
+    else:
+        N_attr = 0
 
     if evaluate_in_global_frame:
         pos_relative = np.tile(position, (N_obs, 1)).T

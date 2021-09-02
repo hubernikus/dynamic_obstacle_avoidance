@@ -56,6 +56,8 @@ class Polygon(Obstacle):
         """
         if center_position is None:
             center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+        else:
+            center_position = np.array(center_position)
         # self.center_position = center_position
         kwargs['center_position'] = center_position
 
