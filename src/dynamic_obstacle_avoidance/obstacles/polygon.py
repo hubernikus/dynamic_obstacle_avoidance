@@ -34,30 +34,37 @@ class Polygon(Obstacle):
 
     This class defines obstacles to modulate the DS around it
     At current stage the function focuses on Ellipsoids, 
-    but can be extended to more general obstacles. """
-    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
-                 # reference_point=None,
-                 margin_absolut=0,
-                 center_position=None,
-                 *args, **kwargs):
-        self.edge_points = np.array(edge_points)
+    but can be extended to more general obstacles.
 
+    Attributes
+    ----------
+    edge_points:
+    
+    """
+    def __init__(self,
+                 edge_points: np.ndarray, absolute_edge_position: bool = True,
+                 indeces_of_tiles: np.ndarray = None, ind_open: int = None, 
+                 # reference_point=None,
+                 margin_absolut: float = 0,
+                 center_position: np.ndarray = None,
+                 *args, **kwargs):
+        """
+        Arguments
+        ---------
+        absolute_edge_position: bool to define if edge_points is in the local or absolute 
+            (global) frame
+        """
         if center_position is None:
             center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+        # self.center_position = center_position
         kwargs['center_position'] = center_position
 
-        if ind_open is None:
-            # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
-            ind_open = []
-            
-        if (sys.version_info > (3, 0)): # TODO: remove in future
-            super().__init__(*args, **kwargs)
-        else:
-            super(Polygon, self).__init__(*args, **kwargs)
-
+        self.edge_points = np.array(edge_points)
         if absolute_edge_position:
-            self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
+            self.edge_points = self.edge_points-np.tile(
+                center_position, (self.edge_points.shape[1], 1)).T
 
+        self.dim = center_position.shape[0]
         if self.dim==2:
             self.n_planes_edge = self.edge_points.shape[1]
             self.n_planes = self.edge_points.shape[1] # with reference
@@ -69,11 +76,22 @@ class Polygon(Obstacle):
             self.n_planes_edge = self.n_planes
             
             # TODO: How hard would it be to find flexible tiles?
-            
         else:
             raise NotImplementedError("Not yet implemented for dimensions higher than 3")
+
+
+        if (sys.version_info > (3, 0)): # TODO: remove in future
+            super().__init__(*args, **kwargs)
+        else:
+            super(Polygon, self).__init__(*args, **kwargs)
+
+        if ind_open is None:
+            # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
+            ind_open = []
+            
         
-        self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+        self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
+            self.edge_points)
 
         # Reference to other arrays
         # self.edge_points -- # Points of 'the no-go zone'
@@ -887,7 +905,9 @@ class Polygon(Obstacle):
 
 
 class Cuboid(Polygon):
-    def __init__(self, axes_length=[1, 1], margin_absolut=0, expansion_speed_axes=None, wall_thickness=None, relative_expansion_speed=None, *args, **kwargs):
+    def __init__(self, axes_length=[1, 1], margin_absolut=0,
+                 expansion_speed_axes=None, wall_thickness=None,
+                 relative_expansion_speed=None, *args, **kwargs):
         """
         This class defines obstacles to modulate the DS around it
         At current stage the function focuses on Ellipsoids, 
