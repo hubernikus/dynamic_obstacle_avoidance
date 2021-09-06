@@ -28,30 +28,36 @@ def run_animation(
     x_lim=[-1.5, 2], y_lim=[-0.5, 2.5],
     it_max=1000, delta_time=0.03,
     ):
+    main_avoider = RobotArmAvoider(initial_dynamics, my_robot, obstacle_environment)
+
     vel_trimmer = ConstVelocityDecreasingAtAttractor(
         const_velocity=1.0, distance_decrease=0.1,
         attractor_position=initial_dynamics.attractor_position)
     
     # plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
     # my_robot.draw_robot(ax=ax)
-    
+    # dt_sleep = 0.001
     dt_sleep = 0.001
     dim = 2
     
     position_list = np.zeros((dim, it_max))
-    trajectory_joint = np.zeros((dim, it_max, my_robot.n_joints-1))
+    trajectory_joint = np.zeros((dim, it_max, my_robot.n_joints))
     
     fig, ax = plt.subplots(figsize=(10, 8))
     for ii in range(it_max):
+        if ii > 0:
+            main_avoider.get_influence_weight_evaluation_points()
+        
         position_list[:, ii] = my_robot.get_ee_in_base()
         
-        for jj in range(my_robot.n_joints-1):
-            trajectory_joint[:, ii, jj] = my_robot.get_joint_in_base(level=jj+2)
+        for jj in range(my_robot.n_joints):
+            trajectory_joint[:, ii, jj] = my_robot.get_joint_in_base(
+                level=jj+1, relative_point_position=0.0)
         
-        desired_velocity =  initial_dynamics.evaluate(position=position_list[:, ii])
+        desired_velocity = initial_dynamics.evaluate(position=position_list[:, ii])
 
         # Modulate
-        desired_velocity = obs_avoidance_interpolation_moving(
+        desired_velocity1 = obs_avoidance_interpolation_moving(
             position_list[:, ii],
             desired_velocity, obs=obstacle_environment)
         
@@ -71,7 +77,7 @@ def run_animation(
         my_robot.draw_robot(ax=ax)
         # plt.plot(position_list[0, :ii], position_list[1, :ii], '--', color='k')
         plt.plot(position_list[0, :ii], position_list[1, :ii], '.', color='k')
-        for jj in range(my_robot.n_joints-1):
+        for jj in range(my_robot.n_joints):
             plt.plot(trajectory_joint[0, :ii, jj], trajectory_joint[1, :ii, jj], '.', color='k')
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
@@ -156,11 +162,11 @@ def three_link_robot_around_block(evaluate_jacobian=False):
     from robot_avoidance.jacobians.robot_arm_3link import _get_jacobian
     my_robot.set_jacobian(function=_get_jacobian)
 
-    margin_absolut = 0.2
+    margin_absolut = 0.1
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
         Cuboid(center_position=np.array([0.2, 2.4]),
-               axes_length=[0.2, 2.2],
+               axes_length=[0.4, 2.4],
                margin_absolut=margin_absolut,
                orientation=-30*pi/180,
                tail_effect=False,
@@ -168,7 +174,7 @@ def three_link_robot_around_block(evaluate_jacobian=False):
     
     obstacle_environment.append(
         Cuboid(center_position=np.array([1.2, 0.25]),
-               axes_length=[0.2, 1.35],
+               axes_length=[0.4, 1.45],
                margin_absolut=margin_absolut,
                orientation=0*pi/180,
                tail_effect=False,

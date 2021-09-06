@@ -2,10 +2,14 @@
 """
 Test script for obstacle avoidance algorithm - specifically the normal function evaluation
 """
-
 import unittest
 
+from math import pi
+
 import numpy as np
+
+from robot_avoidance.model_robot import RobotArm2D
+
 
 class TestAnalyticalFunctionEvaluation(unittest.TestCase):
     def test_similarity_of_analytic_and_numerical_rotation_matr(self, visualize=False):
@@ -107,6 +111,61 @@ class TestAnalyticalFunctionEvaluation(unittest.TestCase):
                 ax.set_aspect('equal', adjustable='box')
                 my_robot.draw_robot(ax=ax)
 
+    def test_forward_kinematics(self, visualize=False):
+        # Assumption of already created jacobian
+        from robot_avoidance.jacobians.robot_arm_3link import _get_jacobian
+        
+        my_robot = RobotArm2D(link_lengths=np.array([1, 1, 1]))
+        my_robot.set_joint_state(
+            np.array([90, 0, 0]),
+            input_unit='deg')
+        
+        my_robot.name = "robot_arm_3link"
+        my_robot.set_jacobian(function=_get_jacobian)
+
+        for level in range(my_robot.n_joints+1):
+            joint_vel_0 = pi
+            joint_velocity = np.array([joint_vel_0, 0, 0])
+            relative_point_position = 0.0
+
+            pos = my_robot.get_joint_in_base(level, relative_point_position)
+            vel = my_robot.get_joint_vel_at_linklevel_and_position(
+                joint_velocity, level, relative_point_position)
+
+            perp_vel = np.array([-pos[1], pos[0]]) * joint_vel_0
+
+            self.assertTrue(np.allclose(perp_vel, vel))
+        
+        if visualize:
+            fig, ax = plt.subplots(1, 1, figsize=(12, 7.5))
+            my_robot.draw_robot(ax=ax)
+            
+            ax.set_xlim([-3, 3])
+            ax.set_ylim([-0.3, 4])
+            
+            ax.set_aspect('equal', adjustable='box')
+            ax.grid() 
+           
+            pos = my_robot.get_joint_in_base(level, relative_point_position)
+            
+            vel = my_robot.get_joint_vel_at_linklevel_and_position(
+                joint_velocity, level, relative_point_position)
+
+            vel = vel*0.1
+            
+            ax.plot(pos[0], pos[1], 'ko')
+            # ax.arrow(pos[0], pos[1], vel[0], vel[1], color='k')
+            ax.plot(pos[0]+vel[0], pos[1]+vel[1], 'k*')
+            # breakpoint()
+
 
 if (__name__)=="__main__":
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    # unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    
+    visualize = True
+    if visualize:
+        import matplotlib.pyplot as plt
+        plt.close('all')
+        
+        my_tester = TestAnalyticalFunctionEvaluation()
+        # my_tester.test_forward_kinematics(visualize=True)
