@@ -22,6 +22,7 @@ setuptools.setup(
     install_requires=[
         # "zmq==0.0.0",
         "zmq==0.0.0"
+        "sympy===0.0.0",
     ],
     python_requires='>=3',
 )

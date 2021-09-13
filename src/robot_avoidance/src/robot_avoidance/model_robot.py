@@ -46,7 +46,6 @@ class RobotArm():
         else:
             raise Exception(f"Unpexpected input_unit argument: '{input_unit}'")
 
-        
     def update_state(self, joint_velocity_control, delta_time=0.01, input_unit='rad'):
         if input_unit == 'deg':
             joint_velocity_control = joint_velocity_control*pi/180
@@ -63,17 +62,16 @@ class RobotArm():
     def get_jacobian(self, link_lengths=None, joint_state=None):
         """ Returns end-effector velocity based on current joint state. """
         if link_lengths is None:
-            self._link_lengths
+            link_lengths = self._link_lengths
         # elif link_lengths.shape[0] < self.n_links + 1:
             # link_lengths = np.hstack((link_lengths,
                                       # np.zeros(self.n_links+1 - link_lengths.shape[0])))
         
         if joint_state is None:
-            self._joint_state
+            joint_state = self._joint_state
         # elif joint_state.shape[0] < self.n_links + 1:
             # joint_state = np.hstack((joint_state,
                                      # np.zeros(self.n_links+1 - joint_state.shape[0])))
-            
         return self._my_jacobian(ll=link_lengths, qq=joint_state)
 
     def set_jacobian(self, function):

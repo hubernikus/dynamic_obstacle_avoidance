@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
-from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+# from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from vartools.dynamical_systems import LinearSystem
@@ -33,6 +34,9 @@ def run_animation(
     vel_trimmer = ConstVelocityDecreasingAtAttractor(
         const_velocity=1.0, distance_decrease=0.1,
         attractor_position=initial_dynamics.attractor_position)
+
+    dynamic_avoider = DynamicModulationAvoider(
+        initial_dynamics=initial_dynamics, environment=obstacle_environment)
     
     # plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
     # my_robot.draw_robot(ax=ax)
@@ -45,21 +49,23 @@ def run_animation(
     
     fig, ax = plt.subplots(figsize=(10, 8))
     for ii in range(it_max):
-        if ii > 0:
-            main_avoider.get_influence_weight_evaluation_points()
+        # if ii > 0:
+            # main_avoider.get_influence_weight_evaluation_points()
         
         position_list[:, ii] = my_robot.get_ee_in_base()
         
         for jj in range(my_robot.n_joints):
             trajectory_joint[:, ii, jj] = my_robot.get_joint_in_base(
                 level=jj+1, relative_point_position=0.0)
+
+        dynamic_avoider = dynamic_avoider.evaluate(position=position_list[:, ii])
         
-        desired_velocity = initial_dynamics.evaluate(position=position_list[:, ii])
+        # desired_velocity = initial_dynamics.evaluate(position=position_list[:, ii])
 
         # Modulate
-        desired_velocity1 = obs_avoidance_interpolation_moving(
-            position_list[:, ii],
-            desired_velocity, obs=obstacle_environment)
+        # desired_velocity = obs_avoidance_interpolation_moving(
+            # position_list[:, ii],
+            # desired_velocity, obs=obstacle_environment)
         
         desired_velocity = vel_trimmer.limit(position=position_list[:, ii],
                                              velocity=desired_velocity)
@@ -194,5 +200,5 @@ if (__name__) == "__main__":
     plt.close('all')
     plt.ion()
     
-    # simple_2link_robot()
+    simple_2link_robot()
     three_link_robot_around_block()

@@ -20,7 +20,7 @@ import matplotlib.image as mpimg
 
 from scipy import ndimage
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from vartools.dynamical_systems import LinearSystem
 
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
@@ -266,7 +266,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
     return 
     
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacle_color=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacle_color=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=None, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
     """ 
     Draw obstacle and vectorfield. Several parameters and defaults 
     allow easy customization of plot.
@@ -348,9 +348,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ########## STOP REMOVE ###########
     
     if dynamical_system is None:
+        dynamical_system = LinearSystem(attractor_position=np.zeros(dim)).evaluate
         # Default ds
-        def dynamical_system(x, MAX_SPEED=3.0):
-            return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)
+        # def dynamical_system(x, MAX_SPEED=3.0):
+            # return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)
 
     # Forced to attracting Region
     if attractingRegion:      

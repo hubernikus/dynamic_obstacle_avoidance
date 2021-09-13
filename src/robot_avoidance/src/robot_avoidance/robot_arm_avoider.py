@@ -30,26 +30,30 @@ Allows obstacle avoidance based on the dynamical-system method for a robot arm
    [additional / increased weight the further it is ahead for end-effector]
    # OR NOT TRUE(?!) since lower joints have more certainty of going the right path (...)
 """
-
 import numpy as np
 from numpy import linalg as LA
 
+from dynamic_obstacle_avoidance.avoidance import ObstacleAvoiderWithInitialDynamcis
+
+
 class RobotArmAvoider():
-    def __init__(self, initial_dynamics, robot_arm, obstacle_environment):
-        self.initial_dynamics = initial_dynamics
+    def __init__(self, obstacle_avoider: ObstacleAvoiderWithInitialDynamcis, robot_arm) -> None:
+        self.obstacle_avoider = obstacle_avoider
+        # self.initial_dynamics = initial_dynamics
         self.robot_arm = robot_arm
-        self.obstacle_environment = obstacle_environment
+        # self.obstacle_environment = obstacle_environment
 
         # Evaluations points per link
         self.n_eval = 4
         
         self.dim = 2
 
-    def get_relative_joints_distances(self):
+    def get_relative_joint_distance(self, pp, jj):
         """ Array with displacement of each joint along desired direction."""
         return (pp+1)/self.n_eval*self.robot_arm.link_lengths[jj]
         
-    def get_influence_weight_evaluation_points(self, relative_joint_distances):
+    def get_influence_weight_evaluation_points(self):
+        """ Get  """
         evaluation_points = np.zeros((
             self.dim, self.n_eval, self.robot_arm.n_links))
         gamma_values = np.zeros((
@@ -59,7 +63,7 @@ class RobotArmAvoider():
             for jj in range(self.robot_arm.n_links):
                 evaluation_points[:, pp, jj] = self.robot_arm.get_joint_in_base(
                     level=jj,
-                    relative_point_position=relative_joint_distances[pp, jj])
+                    relative_point_position=self.get_relative_joint_distance(pp, jj))
                 gamma_values[pp, jj] = self.get_gamma_product(evaluation_points[:, pp, jj])
         return evaluation_points, gamma_values
 
@@ -101,12 +105,13 @@ class RobotArmAvoider():
             
         return joint_weight, point_weight_list
 
-    def get_ee_velocity(self, position):
-        desired_velocity = initial_dynamics.evaluate(position=position_list[:, ii])
+    # def get_ee_velocity(self, position):
+        # return self.obstacle_avoider.evaluate(position=position_list[:, ii])
+        # desired_velocity = initial_dynamics.evaluate(position=position_list[:, ii])
         
-        desired_velocity1 = obs_avoidance_interpolation_moving(
-            position_list[:, ii],
-            desired_velocity, obs=obstacle_environment)
+        # desired_velocity1 = obs_avoidance_interpolation_moving(
+            # position_list[:, ii],
+            # desired_velocity, obs=obstacle_environment)
 
     def get_joint_velocity(self, position):
         velocity_ee = self.get_ee_velocity(position)
@@ -120,18 +125,20 @@ class RobotArmAvoider():
             if point_weight is None:
                 continue
 
-            arm_velocities = np.array((self.dim, point_weight.shape[0]))
-            for jj in range(point_weight.shape[0]):
-                if not point_weight[jj][pp]:
+            # ik_velocities = np.zeros((self.dim, point_weight.shape[0]))
+            # ik_modulated_velocities = np.zeros((self.dim, point_weight.shape[0]))
+            jonit_control_ik_modulated = np.zeros((self.dim, point_weight.shape[0]))
+            
+            for pp in range(point_weight.shape[0]):
+                if not point_weight[pp]:
                     continue
 
-                arm_velocities[pp] = robot_arm.get_joint_vel_at_linklevel_and_position(
+                ik_velocities = robot_arm.get_joint_vel_at_linklevel_and_position(
                     joint_velocity=joint_control, level=jj,
-                    relative_point_position)
-        
-        
-        
-    
+                    relative_point_position=self.get_relative_point_position(pp, jj))
+            
+                
+                
     def get_gamma_product(self, position):
         gamma_list = np.zeros(len(self.obstacle_environment))
         for ii, obs in enumerate(self.obstacle_environment):

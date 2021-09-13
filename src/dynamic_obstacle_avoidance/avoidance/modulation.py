@@ -15,7 +15,7 @@ import sys
 
 from vartools.directional_space import get_directional_weighted_sum
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.avoidance.utils import *
 
 def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):

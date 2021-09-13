@@ -12,6 +12,7 @@ import warnings
 
 from dynamic_obstacle_avoidance.avoidance.utils  import *
 
+
 class BaseContainer(ABC):
     def __init__(self, obs_list=None):
         self._obstacle_list = []
@@ -86,7 +87,6 @@ class BaseContainer(ABC):
     def has_environment(self):
         return bool(len(self))
 
-
     def check_collision(self, position: np.ndarray) -> bool:
         """ Returns collision with environment (type Bool)
         
@@ -117,4 +117,3 @@ class BaseContainer(ABC):
         for it in range(positions.shape[1]):
             collision_array[it] = self.check_collision(positions[:, it])
         return collision_array
-    

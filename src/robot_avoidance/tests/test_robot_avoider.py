@@ -96,6 +96,7 @@ class TestRobotAvoider(unittest.TestCase):
             input_unit='deg')
 
         points, gamma = my_avoider.get_influence_weight_evaluation_points()
+        
         joint_weight, point_weight_list = my_avoider.evaluate_velocity_at_points(points, gamma)
 
         for ii, weight in enumerate(joint_weight):
@@ -121,20 +122,27 @@ class TestRobotAvoider(unittest.TestCase):
             for pp, weights in enumerate(point_weight_list):
                 if weights is None:
                     continue
-                
+
+                weights = (weights**5)*1e7
                 # plt.scatter(points[0, :, pp], points[1, :, pp], s=(weights*10)**5, zorder=3)
-                plt.scatter(points[0, :, pp], points[1, :, pp], s=(weights*100), zorder=3)
+                plt.scatter(points[0, :, pp], points[1, :, pp], s=(weights), zorder=3)
                 # pp_weights
                 
             # for pp in range(evaluation_points.shape[1]):
             # ax.plot(evaluation_points[0, :], evaluation_points[1, :], 'k.')
+            # breakpoint()
+            
 
-            breakpoint()
+        # Check if all the sum of weights is equal to 1
+        sum_weights = 0
+        for weights in point_weight_list:
+            if weights is not None:
+                sum_weights += np.sum(weights)
+        self.assertTrue(np.isclose(sum_weights, 1), "Sum weights equal to 1")
 
 
 if (__name__) == "__main__":
     # unittest.main(argv=['first-arg-is-ignored'], exit=False)
-    
     visualize = True
     if visualize:
         import matplotlib.pyplot as plt
