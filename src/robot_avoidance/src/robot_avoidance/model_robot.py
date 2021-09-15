@@ -46,32 +46,29 @@ class RobotArm():
         else:
             raise Exception(f"Unpexpected input_unit argument: '{input_unit}'")
 
-    def update_state(self, joint_velocity_control, delta_time=0.01, input_unit='rad'):
+    def update_state(self, joint_velocity_control, delta_time=0.01, input_unit='rad',
+                     check_max_velocity=True):
         if input_unit == 'deg':
             joint_velocity_control = joint_velocity_control*pi/180
         elif input_unit != 'rad':
             raise Exception("Unkown joint-control input.")
 
-        ind_max = np.abs(joint_velocity_control) > self.max_joint_velocity
-        if any(ind_max): # bigger than zero
-            joint_velocity_control[ind_max] = np.copysign(
-                self.max_joint_velocity, joint_velocity_control[ind_max])
-            
+        if check_max_velocity:
+            ind_max = np.abs(joint_velocity_control) > self.max_joint_velocity
+            if any(ind_max): # bigger than zero
+                joint_velocity_control[ind_max] = np.copysign(
+                    self.max_joint_velocity, joint_velocity_control[ind_max])
+
         self._joint_state = self._joint_state + joint_velocity_control*delta_time
 
     def get_jacobian(self, link_lengths=None, joint_state=None):
         """ Returns end-effector velocity based on current joint state. """
+        # TODO: store jacobian for current state for speed
         if link_lengths is None:
             link_lengths = self._link_lengths
-        # elif link_lengths.shape[0] < self.n_links + 1:
-            # link_lengths = np.hstack((link_lengths,
-                                      # np.zeros(self.n_links+1 - link_lengths.shape[0])))
-        
         if joint_state is None:
             joint_state = self._joint_state
-        # elif joint_state.shape[0] < self.n_links + 1:
-            # joint_state = np.hstack((joint_state,
-                                     # np.zeros(self.n_links+1 - joint_state.shape[0])))
+        
         return self._my_jacobian(ll=link_lengths, qq=joint_state)
 
     def set_jacobian(self, function):
@@ -158,26 +155,45 @@ class RobotArm2D(RobotArm):
 
         return position[:2]
 
+    def get_joint_orientation_in_base(
+        self, level: int = None):
+        orientation = np.sum(self._joint_state[:level+1])
+        return orientation
+
     def get_inverse_kinematics(self, desired_velocity):
         """ Inverse kinematics solving. """
-        jacobian = self.get_jacobian()
+        jacobian = self.get_jacobian(self._link_lengths, self._joint_state)
         desired_joint_velocity = LA.pinv(jacobian[:2, :]) @ desired_velocity
         return desired_joint_velocity
 
-    def get_forward_kinematics(self, joint_velocity,
-                               link_lengths=None, joint_state=None):
+    def get_forward_kinematics(self, joint_velocity):
         """ Inverse kinematics solving. """
-        if link_lengths is None:
-            link_lengths = self._link_lengths
-            
-        if joint_state is None:
-            joint_state= self._joint_state
-            
-        jacobian = self.get_jacobian(link_lengths, joint_state)
+        jacobian = self.get_jacobian(self._link_lengths, self._joint_state)
         velocity = jacobian[:2, :] @ joint_velocity
         return velocity
 
-    def get_joint_vel_at_linklevel_and_position(
+    def get_jacobian_of_level_and_relative_position(
+        self, level: int, relative_point_position: float = 0) -> np.ndarray:
+        if level > self.n_links:
+            raise Exception(f"level = {level} "
+                            + "-> To high level for evaluation (<= {self.n_links}).")
+        
+        link_lengths = np.zeros(self.n_links)
+        link_lengths[:level] = self._link_lengths[:level]
+        
+        if level < self.n_links:
+            link_lengths[level] = relative_point_position
+        elif relative_point_position:
+            raise Exception("Relative position not considered for full arm-length")
+
+        joint_state = np.zeros(self.n_links)
+        joint_state[:level+1] = self._joint_state[:level+1]
+
+        # breakpoint()
+        return self.get_jacobian(link_lengths, joint_state)
+
+    # def get_orientation_from_
+    def get_cartesian_vel_from_joint_velocity_on_link(
         self, joint_velocity: np.ndarray, level: int, relative_point_position: float = 0
         ) -> np.ndarray:
         """ Returns the (cartesian 2D) velocity of a point at x-position on link at level
@@ -193,24 +209,32 @@ class RobotArm2D(RobotArm):
 
         Returns
         -------
-        velocity in 2D as array of floats
+        velocity (cartesian) in 2D as array of floats
         """
-        if level > self.n_links:
-            raise Exception(f"level = {level} "
-                            + "-> To high level for evaluation (<= {self.n_links}).")
+        jacobian = self.get_jacobian_of_level_and_relative_position(
+            level, relative_point_position)
+        velocity = jacobian[:2, :] @ joint_velocity
+        return velocity
+
+    def get_joint_command_from_desired_cartesian_vel_on_link(
+        self, velocity, level: int, relative_poin_position: float = 0):
+        """
+        Returns control of
         
-        link_lengths = np.zeros(self.n_links)
-        link_lengths[:level] = self._link_lengths[:level]
+        see previous function for more info.
+        """
+        jacobian = self.get_jacobian_of_level_and_relative_position(
+            level, relative_point_position)
+
+        if relative_poin_position:
+            level_plus_last_link = level + 1 
+        else:
+            level_plus_last_link = level
         
-        if level < self.n_links:
-            link_lengths[level] = relative_point_position
-
-        joint_state = np.zeros(self.n_links)
-        joint_state[:level] = self._joint_state[:level]
-
-        return self.get_forward_kinematics(
-            joint_velocity, link_lengths, joint_state)
-
+        jacobian = jacobian[:, :level_plus_last_link]
+        velocity = LA.pinv(jacobian[:2, :]) @ joint_velocity
+        
+        return velocity
         
     def set_velocity(self, value, input_unit='rad'):
         if input_unit=='rad':

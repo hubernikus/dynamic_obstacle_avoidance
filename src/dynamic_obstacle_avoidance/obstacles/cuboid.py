@@ -161,7 +161,9 @@ class Cuboid(Polygon):
 
         return LA.norm(intersection[-1])
 
-    def get_gamma(self, position, in_global_frame=False, gamma_type=GammaType.EUCLEDIAN):
+    def get_gamma(self, position, in_global_frame=False, gamma_type=GammaType.EUCLEDIAN,
+                  gamma_distance=None):
+        # gamma_distance is not used -> should it be removed (?!)
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -180,11 +182,7 @@ class Cuboid(Polygon):
             raise NotImplementedError("Implement othr gamma-types if desire.")
         return gamma
 
-    def get_distance_to_hullEdge(self, position, in_global_frame=False, *args, **kwargs):
+    def get_distance_to_hullEdge(self, *args, **kwargs):
         # New naming convention -> remove in the future..
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-            
-        radius = self.get_local_radius(*args, **kwargs)
+        return self.get_local_radius(*args, **kwargs)
 
-        return position - radius

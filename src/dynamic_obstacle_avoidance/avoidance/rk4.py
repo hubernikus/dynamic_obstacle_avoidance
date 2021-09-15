@@ -28,26 +28,26 @@ def obs_avoidance_rk4(dt, x, obs, obs_avoidance, ds, x0=False):
 
     # k1
     xd = ds(x, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x, xd, obs)
     k1 = dt*xd
 
     # k2
     xd = ds(x+0.5*k1, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+0.5*k1, xd, obs)
     k2 = dt*xd
 
     # k3
     xd = ds(x+0.5*k2, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+0.5*k2, xd, obs)
     
     k3 = dt*xd
 
     # k4
     xd = ds(x+k3, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+k3, xd, obs)
     k4 = dt*xd
 

@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt   # TODO: remove for production
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
+from dynamic_obstacle_avoidance.utils import *
 
 def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   factor_repulsion=0.1,

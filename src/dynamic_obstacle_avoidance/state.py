@@ -7,7 +7,7 @@
 import numpy as np
 import time
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
+# from dynamic_obstacle_avoidance.avoidance.utils import *
 
 import matplotlib.pyplot as plt    # Only for debugging
 

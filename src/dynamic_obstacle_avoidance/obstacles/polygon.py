@@ -22,7 +22,7 @@ from vartools.angle_math import angle_is_in_between, angle_difference_directiona
 from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-from dynamic_obstacle_avoidance.avoidance.utils import get_tangents2ellipse
+from dynamic_obstacle_avoidance.utils import get_tangents2ellipse
 
 
 def is_one_point(point1, point2, margin=1e-9):

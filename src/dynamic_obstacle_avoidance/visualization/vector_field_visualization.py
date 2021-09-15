@@ -23,10 +23,13 @@ from scipy import ndimage
 from vartools.dynamical_systems import LinearSystem
 
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
-from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
+from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
 
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
+
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_rk4
+
 
 # Show plot in a reactive manner
 plt.ion()
@@ -53,8 +56,10 @@ def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, d
         
         for it_count in range(max_simu_step):
             x_pos[:, it_count+1] = obs_avoidance_rk4(
-                dt, x_pos[:, it_count], obs, x0=attractorPos,
-                obs_avoidance=obs_avoidance_interpolation_moving)
+                dt, x_pos[:, it_count], obs,
+                # x0=attractorPos,
+                obs_avoidance=obs_avoidance_interpolation_moving,
+                ds=LinearSystem(attractor_position=attractorPos).evaluate)
 
             # Check convergence
             if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos) < convergence_margin):
@@ -148,8 +153,9 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     for iSim in range(max_simu_step):
         for j in range(n_points):
             x_pos[:, iSim+1,j] = obs_avoidance_rk4(
-                dt, x_pos[:,iSim, j], obs, x0=attractorPos,
-                obs_avoidance=obs_avoidance_interpolation_moving)
+                dt, x_pos[:,iSim, j], obs, 
+                obs_avoidance=obs_avoidance_interpolation_moving,
+                ds=LinearSystem(attractor_position=attractorPos).evaluate)
 
          # Check convergence
         if (np.sum((x_pos[:, iSim+1, :]-np.tile(attractorPos, (n_points,1)).T)**2)

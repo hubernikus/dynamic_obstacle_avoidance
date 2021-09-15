@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import warnings
 
-from dynamic_obstacle_avoidance.avoidance.utils  import *
+from dynamic_obstacle_avoidance.utils import *
 
 
 class BaseContainer(ABC):

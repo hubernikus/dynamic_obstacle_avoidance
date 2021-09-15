@@ -8,6 +8,8 @@ from math import sin, cos, pi, ceil
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
+from enum import Enum
+
 import numpy as np
 import numpy.linalg as LA
 
@@ -17,9 +19,17 @@ from scipy.spatial.transform import Rotation # scipy rotation
 
 from vartools.angle_math import *
 from vartools.states import ObjectPose
-from dynamic_obstacle_avoidance.state import State # TODO: make obstacle a state-object
 
-import matplotlib.pyplot as plt     # TODO: remove after debugging!
+
+class GammaType(Enum):
+    """ Different gamma-types for caclulation of 'distance' / barrier-measure.
+    The gamma value is given in [1 - infinity] outside the obstacle
+    except (!) the barrier type is from"""
+    RELATIVE = 0
+    EUCLEDIAN = 1
+    SCALED_EUCLEDIAN = 2
+    BARRIER = 3
+
 
 # Utils (!)
 def local_frame_check_return_velocity(func, in_global_frame=False):
