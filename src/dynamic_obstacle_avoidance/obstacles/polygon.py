@@ -6,12 +6,15 @@ Polygon Obstacle for Avoidance Calculations
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import time
-import warnings
 import sys
+import warnings
 import copy
+import time
+
 from math import pi
+
 import numpy as np
+from numpy import linalg as LA
 
 from vartools.directional_space import get_angle_space, get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
@@ -25,6 +28,7 @@ from dynamic_obstacle_avoidance.avoidance.utils import get_tangents2ellipse
 def is_one_point(point1, point2, margin=1e-9):
     """ Check if it the two points coincide [1-norm] """
     return np.allclose(point1, point2, rtol=1e-9)
+
 
 class Polygon(Obstacle):
     """ Class to define Star Shaped Polygons
@@ -80,7 +84,6 @@ class Polygon(Obstacle):
             # TODO: How hard would it be to find flexible tiles?
         else:
             raise NotImplementedError("Not yet implemented for dimensions higher than 3")
-
 
         if (sys.version_info > (3, 0)): # TODO: remove in future
             super().__init__(*args, **kwargs)
@@ -186,9 +189,10 @@ class Polygon(Obstacle):
         dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
-    
     def get_minimal_distance(self):
-        dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        dist_edges = np.linalg.norm(self.edge_points -
+                                    np.tile(self.center_position,
+                                            (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
     
@@ -599,12 +603,12 @@ class Polygon(Obstacle):
             if np.sum(ind_nonzero):
                 mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
                 
-                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
+                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
                 if self.is_boundary:
-                    mag_position = (dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
+                    mag_position = (
+                        dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
 
                 Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/gamma_distance + 1
-        
             
         elif gamma_type=="proportional":
             # TODO: extend rule to include points with Gamma < 1 for both cases
@@ -616,13 +620,10 @@ class Polygon(Obstacle):
             if np.sum(ind_nonzero):
                 mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
                 # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
-                # if self.is_boundary:
                 Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
-                # else:
-                    # Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.get_maximal_distance() + 1
-
+                
             if self.is_boundary:
-                pow_boundary_gamma=2
+                pow_boundary_gamma = 2
                 Gamma = self.get_boundaryGamma(Gamma)**pow_boundary_gamma
 
         elif gamma_type=="norm2":
@@ -630,18 +631,26 @@ class Polygon(Obstacle):
 
             delta_Gamma = np.min(distances2plane) - self.margin_absolut
             ind_outside = (distances2plane > 0)
-            delta_Gamma = (np.linalg.norm(distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
+            delta_Gamma = (np.linalg.norm(
+                distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
+            
             normalization_factor = np.max(self.normalDistance2center)
             # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
             Gamma = 1 + delta_Gamma / normalization_factor
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
         
+        if not self.is_boundary:
+            # TODO: implement better... in base class maybe(?!) / general
+            warnings.warn("Unit-Gamma type for Polygon implemented.")
+            dist_center = LA.norm(position)
+            local_radius = dist_center / Gamma
+            Gamma = dist_center-local_radius + 1
+
         if not multiple_positions:
             return Gamma[0]
-                
-        return Gamma
-
+        else:
+            return Gamma
     
     def get_normal_direction(self, position, in_global_frame=False, normalize=True, normal_calulation_type="distance"):
         # breakpoint()
@@ -901,106 +910,7 @@ class Polygon(Obstacle):
             if not self.reference_point_is_inside:
                 self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
                     self.edge_points)
+                    
             self.reference_point_is_inside = True
             self.n_planes = self.n_planes_edge
             self.ind_edge_ref = None
-
-
-class Cuboid(Polygon):
-    def __init__(self, axes_length=[1, 1], margin_absolut=0,
-                 expansion_speed_axes=None, wall_thickness=None,
-                 relative_expansion_speed=None, *args, **kwargs):
-        """
-        This class defines obstacles to modulate the DS around it
-        At current stage the function focuses on Ellipsoids, 
-        but can be extended to more general obstacles
-        """
-        self.axes_length = np.array(axes_length)
-
-        # Different expansion models [relative vs. absolute]
-        self._expansion_speed_axes = None
-        self._relative_expansion_speed = None
-        
-        if expansion_speed_axes is not None:
-            self._expansion_speed_axes = np.array(expansion_speed_axes)
-            is_deforming = True
-        elif relative_expansion_speed is not None:
-            self._relative_expansion_speed = np.array(relative_expansion_speed)
-            is_deforming = True
-        else:
-            is_deforming = False
-
-        self.dim = self.axes_length.shape[0] # Dimension of space
-        
-        if not self.dim == 2:
-            raise ValueError("Cuboid not yet defined for dimensions= {}".format(self.dim))
-
-        edge_points = self.get_edge_points_from_axes()
-        
-        if sys.version_info > (3, 0):
-            super().__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
-
-        else:
-            super(Cuboid, self).__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
-
-        self.wall_thickness = wall_thickness
-        
-    @property
-    def axes_length(self):
-        return self._axes_length
-    
-    @axes_length.setter
-    def axes_length(self, value):
-        self._axes_length = np.maximum(value, np.zeros(value.shape))
-
-    @property
-    def global_outer_edge_points(self):
-        if self.wall_thickness is not None:
-            outer_axes_length = self.axes_length + 2*self.wall_thickness
-            edge_points = self.get_edge_points_from_axes(axes_length=outer_axes_length)
-            edge_points = self.transform_relative2global(edge_points)
-            return edge_points
-        else:
-            return None
-
-    @property
-    def expansion_speed_axes(self):
-        if self._expansion_speed_axes is not None:
-            return self._expansion_speed_axes
-        else:
-            return self._relative_expansion_speed * self.axes_length
-
-    @expansion_speed_axes.setter
-    def expansion_speed_axes(self, value):
-        self._expansion_speed_axes = value
-
-    def get_reference_length(self):
-        return np.linalg.norm(self.axes_length)/2.0 + self.margin_absolut
-
-    def get_relative_expansion(self, delta_time):
-        if self._relative_expansion_speed is not None:
-            exp_speed = self._relative_expansion_speed
-        else:
-            exp_speed = self._expansion_speed_axes / self.axes_length
-        return 1 + exp_speed * delta_time
-        
-    def get_edge_points_from_axes(self, axes_length=None):
-        if axes_length is None:
-            axes_length = self.axes_length
-            
-        edge_points = np.zeros((self.dim, 4))
-        edge_points[:, 2] = axes_length/2.0 * np.array([1, 1])
-        edge_points[:, 3] = axes_length/2.0 * np.array([-1, 1])
-        edge_points[:, 0] = axes_length/2.0 * np.array([-1, -1])
-        edge_points[:, 1] = axes_length/2.0 * np.array([1, -1])
-        
-        return edge_points
-        
-    def update_deforming_obstacle(self, delta_time):
-        rel_expansion = self.get_relative_expansion(delta_time)
-        self.axes_length = self.axes_length * rel_expansion
-        self.wall_thickness = self.wall_thickness*rel_expansion
-        self.edge_points = self.get_edge_points_from_axes()
-
-        self.draw_obstacle()
-
