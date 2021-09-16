@@ -216,7 +216,8 @@ class TestRobotAvoider(unittest.TestCase):
         self.assertTrue(np.allclose(vel_perp, velocity_ik))
 
         # Specific state evaluation
-        my_robot.set_joint_state(np.array([ 3.19710803, -2.05862884, -1.49232649]))
+        # my_robot.set_joint_state(np.array([ 3.19710803, -2.05862884, -1.49232649]))
+        my_robot.set_joint_state(np.array([ 3.06120267, -2.14156296, -1.23929867])))
 
         if visualize:
             x_lim = [-3.5, 3.5]

@@ -28,6 +28,10 @@ class ObstacleAvoiderWithInitialDynamcis():
         self.maximum_speed = maximum_speed
 
     def get_gamma_product(self, position, gamma_type=GammaType.EUCLEDIAN):
+        if not len(self.environment):
+            # Very large number
+            return 1e20
+        
         gamma_list = np.zeros(len(self.environment))
         for ii, obs in enumerate(self.environment):
             # gamma_type needs to be implemented for all obstacles

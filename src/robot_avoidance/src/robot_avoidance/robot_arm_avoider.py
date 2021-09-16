@@ -30,7 +30,6 @@ Allows obstacle avoidance based on the dynamical-system method for a robot arm
    [additional / increased weight the further it is ahead for end-effector]
    # OR NOT TRUE(?!) since lower joints have more certainty of going the right path (...)
 """
-import matplotlib.pyplot as plt
 
 import numpy as np
 from numpy import linalg as LA
@@ -78,7 +77,7 @@ class RobotArmAvoider():
         # breakpoint()
         return gamma_values
 
-    def get_weight_from_gamma(self, gammas, cutoff_gamma, gamma0=1.0, frac_gamma_nth=0.4):
+    def get_weight_from_gamma(self, gammas, cutoff_gamma, gamma0=1.0, frac_gamma_nth=0.5):
         """
         Arguments
         ---------
@@ -94,7 +93,7 @@ class RobotArmAvoider():
         weights = weights / self.robot_arm.n_joints
         return weights
         
-    def get_influence_weight_at_points(self, evaluation_points=None, cutoff_gamma=2.0):
+    def get_influence_weight_at_points(self, evaluation_points=None, cutoff_gamma=1.5):
         """ Get weights for evaluation of joint & corresponding joint positions. """
         if evaluation_points is None:
             evaluation_points = self.get_evaluation_points()
@@ -109,6 +108,9 @@ class RobotArmAvoider():
         joint_weights = np.zeros(min_gammas_joints.shape)
         joint_weights[ind_nonzero] = self.get_weight_from_gamma(
             min_gammas_joints[ind_nonzero], cutoff_gamma=cutoff_gamma)
+
+        # Leverage weight: higher weight at end of effector
+        joint_weights = joint_weights * np.arange(1, self.robot_arm.n_links+1)
         
         weight_sum = np.sum(joint_weights)
         if weight_sum > 1:
@@ -162,7 +164,156 @@ class RobotArmAvoider():
         
         return joint_weights, point_weight_list
 
-    def get_joint_avoidance_velocity(self, max_joint_vel=1.0, max_cart_vel=0.3):
+    def get_joint_avoidance_velocity(self, max_joint_vel=1.0, max_cart_vel=0.3, ax=None):
+        """
+        Arguments
+        ----------
+        max_joint_vel: Crop after IK output each individual joint velocity (singularity...)
+        max_cart_vel: Scale modulated velocity at 
+        ax: if ax-input is given -> draw arrow
+        """
+        dim = 2
+        # Weight of each joint & corresponding weights of 'sub-samples'
+        evaluation_points = self.get_evaluation_points()
+        joint_weight_list, point_weight_list = self.get_influence_weight_at_points(
+            evaluation_points)
+        
+        # Actual command after considering each of the joints
+        joint_control_weighted = np.zeros(self.robot_arm.n_joints)
+
+        # if sum(joint_weight_list) < 1:
+        # Base IK - with end-effector following a DS
+        velocity_mod = self.obstacle_avoider.evaluate(evaluation_points[:, -1, -1])
+
+        joint_control_ik = self.robot_arm.get_inverse_kinematics(velocity_mod)
+
+        # Adapt weights to only act when actually moving
+        # -> since weight in [0, 1], we know that increased weight will have increased influence
+        only_dynamic_active = True
+        if only_dynamic_active:
+            # breakpoint()
+            # print(joint_weight_list)
+            
+            joint_vel_weight_base = 1.0
+            power_weight = np.zeros(joint_control_ik.shape)
+            ind_nonzero = joint_control_ik != 0
+            power_weight[ind_nonzero] = (joint_vel_weight_base
+                                         / np.abs(joint_control_ik[ind_nonzero]))
+
+            joint_weight_list = joint_weight_list ** power_weight
+            # print(joint_weight_list)
+        
+        joint_control_weighted = (1-np.sum(joint_weight_list)) * joint_control_ik
+            
+        # Get velocity of link with respect to obstacle-envirnment & corresponding weights
+        for jj, point_weight in enumerate(point_weight_list):
+            # Assign velocity coming from previous IK / wegihts
+            rel_pos = self.get_relative_joint_distance(self.n_eval-1, jj)
+            joint_control_up_till_now = np.zeros(joint_control_weighted.shape)
+            joint_control_up_till_now[:jj] = joint_control_weighted[:jj]
+            
+            velocity_control = self.robot_arm.get_cartesian_vel_from_joint_velocity_on_link(
+                joint_velocity=joint_control_up_till_now, level=jj,
+                relative_point_position=rel_pos)
+
+            velocity_ik = self.robot_arm.get_cartesian_vel_from_joint_velocity_on_link(
+                joint_velocity=joint_control_ik, level=jj,
+                relative_point_position=rel_pos)
+            
+            diff_velocity = velocity_ik - velocity_control
+
+            if jj == 0:
+                start_link_pos = self.robot_arm.get_joint_in_base(
+                    level=jj, relative_point_position=0)
+            else:
+                start_link_pos = evaluation_points[:, -1, jj-1]
+
+            control_velocity = np.cross(
+                evaluation_points[:, -1, jj] - start_link_pos, diff_velocity)
+            # print('jj', jj)
+            # print('control_velocity', control_velocity)
+            # breakpoint()
+            # joint_control_weighted[jj] += (1-np.sum(joint_weight_list[jj+1:]))*control_velocity
+            # joint_control_weighted[jj] += (np.sum(joint_weight_list[:jj+1]))*control_velocity
+            joint_control_weighted[jj] += (np.sum(joint_weight_list[:jj]))*control_velocity
+            
+            if point_weight is None:
+                continue
+
+            # orientation = self.robot_arm.get_joint_orientation_in_base(level=jj)
+            # joint_dir = np.array([np.cos(orientation), np.sin(orientation)])
+            # joint_direction_perp = np.array([-np.sin(orientation), np.cos(orientation)])
+
+            # Linear and angular velocity at joint end
+            velocity_linear = np.zeros(dim)
+            velocity_angular = 0
+
+            for pp in range(point_weight.shape[0]):
+                if not point_weight[pp]:
+                    continue
+                
+                velocity_mod_weighted = self.obstacle_avoider.evaluate(
+                    evaluation_points[:, pp, jj])
+
+                velocity_mod_weighted = velocity_mod_weighted * point_weight[pp]
+                velocity_linear += velocity_mod_weighted
+                
+                dir_from_joint_base = evaluation_points[:, pp, jj] - evaluation_points[:, 0, jj]
+                velocity_angular += np.cross(dir_from_joint_base, velocity_mod_weighted)
+
+                if ax is not None:
+                    fac_arrow = 0.1
+                    
+                    # arr_ik = ax.arrow(
+                        # evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
+                        # fac_arrow*velocity_ik[0], fac_arrow*velocity_ik[1],
+                        # color='b', width=0.01, zorder=10)
+                    
+                    arr_mod = ax.arrow(
+                        evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
+                        fac_arrow*velocity_mod_weighted[0], fac_arrow*velocity_mod_weighted[1],
+                        color='g', width=0.01, zorder=10)
+                    
+                    # arr_ctrl = ax.arrow(
+                        # evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
+                        # fac_arrow*velocity_control[0], fac_arrow*velocity_control[1],
+                        # color='r', width=0.01, zorder=10)
+
+            joint_control_mod_ik = self.robot_arm.get_inverse_kinematics_at_level(
+                velocity_linear, velocity_angular, level=jj)
+            
+            # Only assign joint_control_modulated after the pp-loop to not affect
+            # the 'velocity_control' measurement.
+            # weight = np.sum(joint_weight_list[:jj+1])
+            # joint_control_weighted[jj] += weight * joint_control_ik[jj]
+
+            # Assign previous joints too
+            joint_control_weighted[:jj+1] += joint_weight_list[jj] * joint_control_mod_ik
+
+            # print(f'control ik', joint_control_ik)
+            # print('jj', jj)
+            # print(f'control total', joint_control_weighted)
+
+            # arr_ik.set_label("Initial Ctrl")
+            arr_mod.set_label("Initial Ctrl")
+            # arr_ctrl.set_label("Initial Ctrl")
+            
+        # print(f"joint_state = {self.robot_arm._joint_state}")
+        # print(f"joint_weight_list = {joint_weight_list}")
+        
+        # print(f"joint_control_ik = {joint_control_ik}")
+        # print(f"joint_control_weighted = {joint_control_weighted}")
+        
+        # print()
+        # breakpoint()
+        
+        return joint_control_weighted
+
+
+
+
+
+    def get_joint_avoidance_velocity_old(self, max_joint_vel=1.0, max_cart_vel=0.3):
         position = self.robot_arm.get_ee_in_base()
         velocity_ee = self.obstacle_avoider.evaluate(position=position)
         
@@ -250,17 +401,17 @@ class RobotArmAvoider():
 
                     fac_arrow = 0.1
                     
-                    arr_ik = plt.arrow(
+                    arr_ik = ax.arrow(
                         evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         fac_arrow*velocity_ik[0], fac_arrow*velocity_ik[1],
                         color='b', width=0.01, zorder=10)
                     
-                    arr_mod = plt.arrow(
+                    arr_mod = ax.arrow(
                         evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         fac_arrow*velocity_modulated[0], fac_arrow*velocity_modulated[1],
                         color='g', width=0.01, zorder=10)
                     
-                    arr_ctrl = plt.arrow(
+                    arr_ctrl = ax.arrow(
                         evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         fac_arrow*velocity_control[0], fac_arrow*velocity_control[1],
                         color='r', width=0.01, zorder=10)
@@ -282,16 +433,16 @@ class RobotArmAvoider():
             arr_ik.set_label("Initial Ctrl")
             arr_mod.set_label("Initial Ctrl")
             arr_ctrl.set_label("Initial Ctrl")
-            # plt.arrow(0, 0, 0, 0, color='b', width=0.01, zorder=10, label="IK velocity")
-            # plt.arrow(0, 0, 0, 0, color='g', width=0.01, zorder=10, label="Modulated")
+            # ax.arrow(0, 0, 0, 0, color='b', width=0.01, zorder=10, label="IK velocity")
+            # ax.arrow(0, 0, 0, 0, color='g', width=0.01, zorder=10, label="Modulated")
 
-            # plt.legend(True)
+            # ax.legend(True)
 
-        # print(f"joint_position: {self.robot_arm._joint_state}")
+        print(f"joint_position={self.robot_arm._joint_state}")
         # print(f"joint_weight: {joint_weight_list}")
         print()
-        print(f"control_ik= {np.round(joint_control_ik, 2)}")
-        print(f"control_mo= {np.round(joint_control_modulated, 2)}")
+        # print(f"control_ik= {np.round(joint_control_ik, 2)}")
+        # print(f"control_mo= {np.round(joint_control_modulated, 2)}")
         
         return joint_control_modulated
 

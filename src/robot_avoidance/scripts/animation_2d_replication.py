@@ -99,7 +99,7 @@ class RobotAnimation():
             my_robot.update_state(joint_velocity_control=joint_control, delta_time=delta_time,
                                   check_max_velocity=False)
             
-            joint_control = main_avoider.get_joint_avoidance_velocity()
+            joint_control = main_avoider.get_joint_avoidance_velocity(ax=ax)
             # print(f"mod: {joint_control=}")
             
             # if ii <= 5:
@@ -197,7 +197,9 @@ def simple_2link_robot(evaluate_jacobian=False):
 def three_link_robot_around_block(evaluate_jacobian=False):
     my_robot = RobotArm2D(link_lengths=np.array([1, 1, 1]))
     my_robot.set_joint_state(np.array([70+90, -30, -30]), input_unit='deg')
-    
+
+    # (!)
+    # my_robot.set_joint_state(np.array([ 1.84782286, -1.72426276, -0.2256878 ]))
     my_robot.name = "robot_arm_3link"
 
     if evaluate_jacobian:
@@ -210,27 +212,30 @@ def three_link_robot_around_block(evaluate_jacobian=False):
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
         Cuboid(axes_length=[0.4, 2.4],
-               # center_position=np.array([0.2, 2.4]),
-               center_position=np.array([-0.2, 2.4]),
+               center_position=np.array([0.2, 2.4]),
+               # center_position=np.array([-0.2, 2.4]),
                margin_absolut=margin_absolut,
                orientation=-30*pi/180,
                tail_effect=False,
-               repulsion_coeff=1.5,
+               repulsion_coeff=1.4,
                ))
     
     obstacle_environment.append(
-        Cuboid(axes_length=[0.4, 1.5],
-               # center_position=np.array([1.2, 0.25]),
-               center_position=np.array([0.9, 0.25]),
+        Cuboid(axes_length=[0.4, 1.3],
+               center_position=np.array([1.2, 0.25]),
+               # center_position=np.array([0.9, 0.25]),
                margin_absolut=margin_absolut,
-               orientation=0*pi/180,
+               orientation=10*pi/180,
                tail_effect=False,
-               repulsion_coeff=1.5,
+               repulsion_coeff=1.4,
                ))
+
+    # obstacle_environment = ObstacleContainer()
     
-    # attractor_position = np.array([2, 2])
-    attractor_position = np.array([1.7, 0.7])
-    initial_dynamics = LinearSystem(attractor_position=attractor_position) 
+    attractor_position = np.array([1.5, 1.4])
+    # attractor_position = np.array([1.7, 0.7])
+    initial_dynamics = LinearSystem(attractor_position=attractor_position,
+                                    maximum_velocity=1, distance_decrease=0.3) 
 
     RobotAnimation().start_animator(
         my_robot, initial_dynamics, obstacle_environment,

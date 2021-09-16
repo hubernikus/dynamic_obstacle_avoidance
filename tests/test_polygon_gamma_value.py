@@ -103,7 +103,8 @@ class TestPolygon(unittest.TestCase):
                    ))
 
         attractor_position = np.array([2, 0.7])
-        initial_dynamics = LinearSystem(attractor_position=attractor_position) 
+        initial_dynamics = LinearSystem(attractor_position=attractor_position,
+                                        maximum_velocity=1, distance_decrease=0.3) 
 
         dynamic_avoider = DynamicModulationAvoider(
             initial_dynamics=initial_dynamics, environment=obstacle_environment)
@@ -152,7 +153,9 @@ class TestPolygon(unittest.TestCase):
             cbar = fig.colorbar(cs)
 
             # breakpoint()
-            ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
+            # ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
+                          # velocities[0, :, :].T, velocities[1, :, :].T, color='k')
+            ax.quiver(positions[0, :, :].T, positions[1, :, :].T,
                           velocities[0, :, :].T, velocities[1, :, :].T, color='k')
 
             plt.plot(dynamic_avoider.initial_dynamics.attractor_position[0],
@@ -186,4 +189,5 @@ if (__name__)=="__main__":
         my_tester = TestPolygon()
         
         # my_tester.test_single_polygon(visualize=True)
-        my_tester.test_polygon_multigamma(visualize=True, save_figure=True, n_resolution=100)
+        # my_tester.test_polygon_multigamma(visualize=True, save_figure=True, n_resolution=100)
+        my_tester.test_polygon_multigamma(visualize=True, save_figure=False, n_resolution=20)

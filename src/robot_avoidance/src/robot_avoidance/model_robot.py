@@ -160,14 +160,42 @@ class RobotArm2D(RobotArm):
         orientation = np.sum(self._joint_state[:level+1])
         return orientation
 
+    def get_inverse_kinematics_at_level(
+        self, linear_velocity: np.ndarray, angular_velocity: float, level: int) -> np.ndarray:
+        """ Return array of desired joint_velocities of length 'level. """
+        link_lengths = np.zeros(self.n_links)
+        link_lengths[:level+1] = self._link_lengths[:level+1]
+
+        joint_state = np.zeros(self.n_links)
+        joint_state[:level+1] = self._joint_state[:level+1]
+        
+        jacobian = self.get_jacobian(link_lengths, )
+        jacobian = jacobian[:, :level+1]
+        
+        desired_joint_velocity = (LA.pinv(jacobian)
+                                  @ np.hstack((linear_velocity, angular_velocity)) )
+        
+        if self.max_joint_velocity is not None:
+            ind_max = np.abs(desired_joint_velocity) > self.max_joint_velocity
+            desired_joint_velocity[ind_max] = np.copysign(
+                self.max_joint_velocity, desired_joint_velocity[ind_max])
+            
+        return desired_joint_velocity
+        
     def get_inverse_kinematics(self, desired_velocity):
         """ Inverse kinematics solving. """
         jacobian = self.get_jacobian(self._link_lengths, self._joint_state)
         desired_joint_velocity = LA.pinv(jacobian[:2, :]) @ desired_velocity
+        
+        if self.max_joint_velocity is not None:
+            ind_max = np.abs(desired_joint_velocity) > self.max_joint_velocity
+            desired_joint_velocity[ind_max] = np.copysign(
+                self.max_joint_velocity, desired_joint_velocity[ind_max])
+            
         return desired_joint_velocity
 
     def get_forward_kinematics(self, joint_velocity):
-        """ Inverse kinematics solving. """
+        """ Forward kinematics solving. """
         jacobian = self.get_jacobian(self._link_lengths, self._joint_state)
         velocity = jacobian[:2, :] @ joint_velocity
         return velocity
