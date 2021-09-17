@@ -16,6 +16,8 @@ from math import pi
 import numpy as np
 from numpy import linalg as LA
 
+import shapely
+
 from vartools.directional_space import get_angle_space, get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.angle_math import angle_is_in_between, angle_difference_directional
@@ -24,6 +26,7 @@ from vartools.angle_math import *
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.utils import get_tangents2ellipse
 
+from ._base import Obstacle, GammaType
 
 def is_one_point(point1, point2, margin=1e-9):
     """ Check if it the two points coincide [1-norm] """
@@ -113,6 +116,14 @@ class Polygon(Obstacle):
         # if not reference_point is None:
             # self.set_reference_point(reference_point, in_global_frame=False)
 
+        # Create shapely object
+        # TODO update shapely position (!?)
+        edge = self.edge_points
+        
+        edge = np.vstack((edge.T, edge[:, 0]))
+        self._shapely = shapely.geometry.Polygon(edge).buffer(self.margin_absolut)
+        
+        
     @property
     def hull_edge(self):
         # TODO: remove // change
@@ -568,65 +579,57 @@ class Polygon(Obstacle):
         return normal_vector
 
 
-    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional", gamma_distance=None):
+    def get_gamma_old(
+        self, position, in_global_frame=False, norm_order=2, include_special_surface=True,
+        gamma_type=GammaType.RELATIVE, gamma_distance=None):
         """ 
         Get distance-measure from surface of the obstacle.
         INPUT: position: list or array of position
         OUTPUT
         RAISE ERROR:Function is partially defined for only the 2D case 
         """
-        if isinstance(position, list):
-            position = np.array(position)
-
+        # TOOD: redo different gamma types
         if in_global_frame:
             position = self.transform_global2relative(position)
         
-        multiple_positions = (len(position.shape)>1)
-        if multiple_positions:
-            n_points = position.shape[1]
-            
-        else:
-            n_points = 1
-            position = position.reshape((self.dim, n_points))
-
-        Gamma = np.zeros(n_points)
-        Gamma_new = np.zeros(n_points)
-
         if self.gamma_distance is not None:
             gamma_distance = self.gamma_distance
 
-        if gamma_distance is not None:
+        if gamma_type is GammaType.EUCLEDIAN:
             # Proportionally reduce gamma distance with respect to paramter
             dist2hulledge = self.get_distance_to_hullEdge(position)
-            ind_nonzero = dist2hulledge>0
             
-            if np.sum(ind_nonzero):
-                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
+            if dist2hulledge > 0:
+                mag_position = np.linalg.norm(position)
                 
                 # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
                 if self.is_boundary:
-                    mag_position = (
-                        dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
+                    mag_position = (dist2hulledge * dist2hulledge / mag_position)
 
-                Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/gamma_distance + 1
+                Gamma = (mag_position-dist2hulledge) + 1
+                
+            else:
+                Gamma = 0
             
-        elif gamma_type=="proportional":
+        elif gamma_type==GammaType.RELATIVE:
             # TODO: extend rule to include points with Gamma < 1 for both cases
             # dist2hull = np.ones(self.edge_points.shape[1])*(-1)
             dist2hulledge = self.get_distance_to_hullEdge(position)
-
-            ind_nonzero = dist2hulledge>0
             
-            if np.sum(ind_nonzero):
-                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
-                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
-                Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
+            if dist2hulledge:
+                mag_position = np.linalg.norm(position)
+                
+                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
+                Gamma = (mag_position/dist2hulledge)
+
+            else:
+                Gamma = 0
                 
             if self.is_boundary:
                 pow_boundary_gamma = 2
                 Gamma = self.get_boundaryGamma(Gamma)**pow_boundary_gamma
 
-        elif gamma_type=="norm2":
+        elif gamma_type==GammaType.OTHER:
             distances2plane = self.get_distance_to_hullEdge(position)
 
             delta_Gamma = np.min(distances2plane) - self.margin_absolut
@@ -637,6 +640,7 @@ class Polygon(Obstacle):
             normalization_factor = np.max(self.normalDistance2center)
             # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
             Gamma = 1 + delta_Gamma / normalization_factor
+            
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
         
@@ -647,10 +651,7 @@ class Polygon(Obstacle):
             local_radius = dist_center / Gamma
             Gamma = dist_center-local_radius + 1
 
-        if not multiple_positions:
-            return Gamma[0]
-        else:
-            return Gamma
+        return Gamma
     
     def get_normal_direction(self, position, in_global_frame=False, normalize=True, normal_calulation_type="distance"):
         # breakpoint()
@@ -914,3 +915,55 @@ class Polygon(Obstacle):
             self.reference_point_is_inside = True
             self.n_planes = self.n_planes_edge
             self.ind_edge_ref = None
+
+
+    def get_local_radius(self, position, in_global_frame=False):
+        """ Get local / radius or the surface intersection point by using shapely. """
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        shapely_line = shapely.geometry.LineString([[0, 0], position])
+        intersection = self._shapely.intersection(shapely_line).coords
+
+        # If position is inside, the intersection point is equal to the position-point,
+        # in that case redo the calulation with an extended line to obtain the actual
+        # radius-point
+        if np.allclose(intersection[-1], position):
+            # Point is assumed to be inside
+            point_dist = LA.norm(position)
+            if not point_dist:
+                # Return nonzero value to avoid 0-division conflicts
+                return self.get_minimal_distance()
+
+            # Make sure position is outside the boundary (random mutiple factor)
+            position = position / point_dist * self.get_maximal_distance() * 5.0
+            
+            shapely_line = shapely.geometry.LineString([[0, 0], position])
+            intersection = self._shapely.intersection(shapely_line).coords
+
+        return LA.norm(intersection[-1])
+
+    def get_gamma(self, position, in_global_frame=False, gamma_type=GammaType.EUCLEDIAN,
+                  gamma_distance=None):
+        # gamma_distance is not used -> should it be removed (?!)
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        dist_center = LA.norm(position)
+        local_radius = self.get_local_radius(position)
+
+        # Choose proporitional
+        if gamma_type == GammaType.EUCLEDIAN:
+            if dist_center < local_radius:
+                # Return proportional inside to have -> [0, 1]
+                gamma = dist_center / local_radius
+            else:
+                gamma = (dist_center - local_radius) + 1
+
+        else:
+            raise NotImplementedError("Implement othr gamma-types if desire.")
+        return gamma
+
+    def get_distance_to_hullEdge(self, *args, **kwargs):
+        # New naming convention -> remove in the future..
+        return self.get_local_radius(*args, **kwargs)

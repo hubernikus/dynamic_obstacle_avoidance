@@ -79,7 +79,7 @@ class TestPolygon(unittest.TestCase):
             cbar = fig.colorbar(cs)
 
         
-    def test_polygon_multigamma(self, visualize=False, save_figure=False,
+    def test_cuboids_multigamma(self, visualize=False, save_figure=False,
                                 n_resolution=50,
                                 ):
         margin_absolut = 0.1
@@ -153,10 +153,10 @@ class TestPolygon(unittest.TestCase):
             cbar = fig.colorbar(cs)
 
             # breakpoint()
-            # ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
-                          # velocities[0, :, :].T, velocities[1, :, :].T, color='k')
-            ax.quiver(positions[0, :, :].T, positions[1, :, :].T,
+            ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
                           velocities[0, :, :].T, velocities[1, :, :].T, color='k')
+            # ax.quiver(positions[0, :, :].T, positions[1, :, :].T,
+                          # velocities[0, :, :].T, velocities[1, :, :].T, color='k')
 
             plt.plot(dynamic_avoider.initial_dynamics.attractor_position[0],
                      dynamic_avoider.initial_dynamics.attractor_position[1],
@@ -174,7 +174,105 @@ class TestPolygon(unittest.TestCase):
             
             # print('gamma', gamma)
             # breakpoint()
+
+    def test_polygon_multigamma(self, visualize=False, save_figure=False,
+                                n_resolution=50,
+                                ):
+        wall_width = 0.02
+        margin_absolut = 0.05
+        edge_points = [[0.5-wall_width, 1+margin_absolut],
+                       [0.5+wall_width, 1+margin_absolut],
+                       [0.5+wall_width, 2.0-wall_width],
+                       [1.5, 2.0-wall_width],
+                       [1.5, 2.0+wall_width],
+                       [0.5-wall_width, 2.0+wall_width],
+                       ]
+
+        center_position = np.array([0.5, 2.0])
+        attractor_position = np.array([-1, 0])
+
+        obstacle_environment = ObstacleContainer()
+        obstacle_environment.append(
+            Polygon(edge_points=np.array(edge_points).T,
+                    center_position=center_position,
+                    margin_absolut=margin_absolut,
+                    absolute_edge_position=True,
+                    tail_effect=False,
+                    repulsion_coeff=1.4,
+                    ))
+
+        obstacle_environment.append(
+            Cuboid(axes_length=[0.9, wall_width*2],
+                   center_position=np.array(
+            [1, (-1)*(margin_absolut+wall_width)]),
+                   margin_absolut=margin_absolut,
+                   tail_effect=False,
+                   ))
+
+        attractor_position = np.array([2, 0.7])
+        initial_dynamics = LinearSystem(attractor_position=attractor_position,
+                                        maximum_velocity=1, distance_decrease=0.3) 
+
+        dynamic_avoider = DynamicModulationAvoider(
+            initial_dynamics=initial_dynamics, environment=obstacle_environment)
+
+        if visualize:
+            fig, ax = plt.subplots(figsize=(14, 9))
+            x_lim = [-1.5, 2]
+            y_lim = [-0.5, 2.5]
             
+            plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
+
+            dim = 2
+            x_vals = np.linspace(x_lim[0], x_lim[1], n_resolution)
+            y_vals = np.linspace(y_lim[0], y_lim[1], n_resolution)
+    
+            gamma_values = np.zeros((n_resolution, n_resolution))
+            positions = np.zeros((dim, n_resolution, n_resolution))
+            # velocities = np.zeros((dim, n_resolution, n_resolution))
+
+            for ix in range(n_resolution):
+                for iy in range(n_resolution):
+                    positions[:, ix, iy] = [x_vals[ix], y_vals[iy]]
+            
+                    gamma_values[ix, iy] = dynamic_avoider.get_gamma_product(
+                        positions[:, ix, iy])
+                    
+                    if gamma_values[ix, iy] <= 1:
+                        continue
+                    
+                    # velocities[:, ix, iy] = dynamic_avoider.evaluate(positions[:, ix, iy])
+
+            cs = ax.contourf(positions[0, :, :], positions[1, :, :],  gamma_values, 
+                             np.arange(1.0, 5.0, 0.2),
+                             # cmap=plt.get_cmap('autumn'),
+                             cmap=plt.get_cmap('hot'),
+                             extend='max', alpha=0.6, zorder=-3)
+            
+            cbar = fig.colorbar(cs)
+
+            # breakpoint()
+            # ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
+                          # velocities[0, :, :].T, velocities[1, :, :].T, color='k')
+            # ax.quiver(positions[0, :, :].T, positions[1, :, :].T,
+                          # velocities[0, :, :].T, velocities[1, :, :].T, color='k')
+
+            plt.plot(dynamic_avoider.initial_dynamics.attractor_position[0],
+                     dynamic_avoider.initial_dynamics.attractor_position[1],
+                     'k*', markeredgewidth=2, markersize=10)
+
+            if save_figure:
+                figName = "gamma_danger_field_for_multipolygon_and_vector_field"
+                plt.savefig('figures/' + figName + '.png', bbox_inches='tight')
+
+            position = np.array([-0.39436336,  1.14369659])
+            gamma = dynamic_avoider.get_gamma_product(position)
+
+            plt.plot(position[0], position[1], 'ko')
+            
+            # print('gamma', gamma)
+            # breakpoint()
+
 
 if (__name__)=="__main__":
     run_all = False
@@ -190,4 +288,4 @@ if (__name__)=="__main__":
         
         # my_tester.test_single_polygon(visualize=True)
         # my_tester.test_polygon_multigamma(visualize=True, save_figure=True, n_resolution=100)
-        my_tester.test_polygon_multigamma(visualize=True, save_figure=False, n_resolution=20)
+        my_tester.test_polygon_multigamma(visualize=True, save_figure=False, n_resolution=100)

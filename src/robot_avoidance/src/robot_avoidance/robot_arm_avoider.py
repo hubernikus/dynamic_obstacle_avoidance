@@ -204,6 +204,7 @@ class RobotArmAvoider():
             # print(joint_weight_list)
         
         joint_control_weighted = (1-np.sum(joint_weight_list)) * joint_control_ik
+        # print('start weighted', joint_control_weighted)
             
         # Get velocity of link with respect to obstacle-envirnment & corresponding weights
         for jj, point_weight in enumerate(point_weight_list):
@@ -290,14 +291,19 @@ class RobotArmAvoider():
             # Assign previous joints too
             joint_control_weighted[:jj+1] += joint_weight_list[jj] * joint_control_mod_ik
 
-            # print(f'control ik', joint_control_ik)
-            # print('jj', jj)
+            # print("jj", jj)
+            # print(f"control ik ", joint_control_ik)
+            # print(f'control mod', joint_control_mod_ik)
             # print(f'control total', joint_control_weighted)
+            
+            # print('jj', jj)
+            
 
             # arr_ik.set_label("Initial Ctrl")
-            arr_mod.set_label("Initial Ctrl")
+            # arr_mod.set_label("Initial Ctrl")
             # arr_ctrl.set_label("Initial Ctrl")
-            
+
+        # print()
         # print(f"joint_state = {self.robot_arm._joint_state}")
         # print(f"joint_weight_list = {joint_weight_list}")
         

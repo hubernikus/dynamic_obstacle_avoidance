@@ -21,7 +21,7 @@ import shapely
 
 from vartools.angle_math import *
 
-from ._base import Obstacle, GammaType
+from ._base import GammaType
 from .polygon  import Polygon
 
 
@@ -163,6 +163,8 @@ class Cuboid(Polygon):
 
     def get_gamma(self, position, in_global_frame=False, gamma_type=GammaType.EUCLEDIAN,
                   gamma_distance=None):
+        # TODO: gamma, radius, hull edge
+        # should be implemented in parent class & can be removed here...
         # gamma_distance is not used -> should it be removed (?!)
         if in_global_frame:
             position = self.transform_global2relative(position)

@@ -1,12 +1,9 @@
-#!/USSR/bin/python3
-# coding: utf-8
-''' 
+""" 
 Learn obstacles with different methods. 
-'''
-
-__author__ = "Lukas Huber"
-__date__ =  "2020-08-19"
-__email__ =  "lukas.huber@epfl.ch"
+"""
+# Author: Lukas Huber
+# Created:  2020-08-19
+# Email: lukas.huber@epfl.ch
 
 import sys
 import warnings
@@ -27,6 +24,7 @@ import sklearn
 from sklearn.cluster import DBSCAN
 
 debug_viz = False
+
 
 def get_obstacle_from_scan(sensor_data, center_dist_scaling=1.5,
                            clustering_minimal_distance=0.2, clustering_min_samples=5,
@@ -173,7 +171,7 @@ class RegressionObstacle(ObstacleFromData):
         
 
     def set_surface_points(self, surface_points=None, angles=None, magnitudes=None, in_global_frame=True):
-        ''' Set surface angles&magnitude as either points OR angles&magnitudes. '''
+        """ Set surface angles&magnitude as either points OR angles&magnitudes. """
         if not surface_points is None:
             if in_global_frame:
                 surface_points = self.transform_global2relative(surface_points)
@@ -190,7 +188,7 @@ class RegressionObstacle(ObstacleFromData):
             raise ValueError("Not properly defined error.")
 
     def reduce_angle_resolution(self, angular_resolution=1000):
-        ''' Down-sample points (check if not doubling at 2*pi) '''
+        """ Down-sample points (check if not doubling at 2*pi) """
         int_angles = np.round(
             self.surface_angles/(2*pi)*angular_resolution+angular_resolution/2.0, 0
             )
@@ -214,7 +212,7 @@ class RegressionObstacle(ObstacleFromData):
         
 
     def get_point_on_surface(self, position, in_global_frame=True):
-        ''' Get surface point value based on position. '''
+        """ Get surface point value based on position. """
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -233,7 +231,7 @@ class RegressionObstacle(ObstacleFromData):
 
     
     def predict(self, angle, convert_to_relative=True):
-        ''' Get prediction value based on angle OR position'''
+        """ Get prediction value based on angle OR position"""
             
         shape_angle = angle.shape
         # TODO: include shape
@@ -247,12 +245,12 @@ class RegressionObstacle(ObstacleFromData):
         return dist_origin2surf.reshape(shape_angle)
         
     def set_center_pos(self, center_position, reset_reference=True):
-        ''' Set center position and reset reference point.'''
+        """ Set center position and reset reference point."""
         self.center_position = center_position
         self.reference_point = np.zeros(self.dim)
 
     def convert_to_relative_angle(self, angle):
-        ''' ??? '''
+        """ ??? """
         # TODO -- use relative angle
         # OR use circular regression
                 
@@ -430,7 +428,7 @@ class RegressionObstacle(ObstacleFromData):
 
 
 class GaussianEllipseObstacle(ObstacleFromData):
-    '''Fit GMM on radial values '''
+    """Fit GMM on radial values """
     def __init__(self, center_position, 
                  surface_points,
                  points_per_component=15, radial_coordinates=False,
@@ -495,7 +493,7 @@ class GaussianEllipseObstacle(ObstacleFromData):
 
 
 class PolygonWithLearnedSurface(Polygon):
-    ''' Currently only for boundary polygons with no points outside the free space. '''
+    """ Currently only for boundary polygons with no points outside the free space. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -550,8 +548,6 @@ class PolygonWithLearnedSurface(Polygon):
             # plt.legend()
             plt.ion()
             plt.show()
-            
-            
         return normal_vector
 
     
