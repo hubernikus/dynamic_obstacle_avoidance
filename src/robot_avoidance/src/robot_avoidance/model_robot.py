@@ -287,9 +287,10 @@ class RobotArm2D(RobotArm):
     def draw_robot(self, ax,
                    # link_color='orange', joint_color='black',
                    link_color='#f0b01d', joint_color='#a37917',
+                   link_line_width=8, joint_marker_size=12,
                    ):
         ax.plot(self.base_position[0], self.base_position[1], 'o',
-                markersize=16, color=joint_color)
+                markersize=joint_marker_size*1.5, color=joint_color)
         # joint_state_plus_0 = self.get_joint_stat_plus0()
         joint_state = self._joint_state
         pos_joint_low = self.base_position
@@ -304,12 +305,12 @@ class RobotArm2D(RobotArm):
             
             ax.plot([pos_joint_low[0], pos_joint_high[0]],
                     [pos_joint_low[1], pos_joint_high[1]], '-',
-                    linewidth=8,
+                    linewidth=link_line_width,
                     color=link_color, zorder=1)
             
             ax.plot(pos_joint_high[0], pos_joint_high[1], 'o',
                     # markeredgewidth=2,
-                    markersize=12,
+                    markersize=joint_marker_size,
                     color=joint_color, zorder=2)
             pos_joint_low = pos_joint_high
 

@@ -196,7 +196,9 @@ def multi_robot_picture(
             print(f"it={ii}")
 
         if ii in it_draw_list:
-            my_robot.draw_robot(ax=ax)
+            my_robot.draw_robot(ax=ax,
+                                link_line_width=2, link_color='black',
+                                joint_marker_size=4, joint_color='black')
 
     plt.plot(position_list[0, 1:ii+1], position_list[1, 1:ii+1], ':', color='k')
     # for jj in range(my_robot.n_joints):
@@ -327,7 +329,6 @@ def three_link_robot_around_block(evaluate_jacobian=False):
         my_robot, initial_dynamics, obstacle_environment,
         x_lim=[-3, 3], y_lim=[-0.5, 3.5],
         delta_time=0.05)
-
 
 
 if (__name__) == "__main__":
