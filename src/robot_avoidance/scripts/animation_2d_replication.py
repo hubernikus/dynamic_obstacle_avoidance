@@ -152,7 +152,8 @@ def multi_robot_picture(
     my_robot, initial_dynamics, obstacle_environment,
     x_lim=[-1.5, 2], y_lim=[-0.5, 2.5],
     it_max=1000, delta_time=0.03, dt_sleep=0.1,
-    save_figure=False, it_draw_list=[]):
+    save_figure=False,
+    it_draw_list=[], figure_name=None):
     
     vel_trimmer = ConstVelocityDecreasingAtAttractor(
         const_velocity=1.0, distance_decrease=0.1,
@@ -215,8 +216,9 @@ def multi_robot_picture(
     ax.grid()
 
     if save_figure:
-        fig_name = "2d_robot_arm_edge_avoidance"
-        plt.savefig('figures/' + fig_name + '.png', bbox_inches='tight')
+        if figure_name is None:
+            figure_name = "2d_robot_arm_edge_avoidance"
+        plt.savefig('figures/' + figure_name + '.png', bbox_inches='tight')
 
     print("Done")
     
@@ -325,16 +327,23 @@ def three_link_robot_around_block(evaluate_jacobian=False):
     initial_dynamics = LinearSystem(attractor_position=attractor_position,
                                     maximum_velocity=1, distance_decrease=0.3) 
 
-    RobotAnimation().start_animator(
+    # RobotAnimation().start_animator(
+        # my_robot, initial_dynamics, obstacle_environment,
+        # x_lim=[-3, 3], y_lim=[-0.5, 3.5],
+        # delta_time=0.05)
+
+    multi_robot_picture(
         my_robot, initial_dynamics, obstacle_environment,
         x_lim=[-3, 3], y_lim=[-0.5, 3.5],
-        delta_time=0.05)
+        delta_time=0.05,
+        save_figure=True, it_draw_list=[1, 25, 40, 60, 100],
+        figure_name="three_link_robot_around_block")
 
 
 if (__name__) == "__main__":
     plt.close('all')
     plt.ion()
     
-    simple_2link_robot()
-      # three_link_robot_around_block()
+    # simple_2link_robot()
+    three_link_robot_around_block()
     

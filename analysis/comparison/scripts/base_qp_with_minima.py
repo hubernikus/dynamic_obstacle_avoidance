@@ -355,12 +355,12 @@ def animation_double_worlds(
 if (__name__) == "__main__":
     plt.ion()
     solvers.options['show_progress'] = False
-    # plot_main_vector_field()
+    plot_main_vector_field()
     
     # plot_barrier_function()
     # plot_integrate_trajectory()
     
     # plot_spherial_dynamic_container()
-    animation_spherical_wold(start_position=np.array([4.0, 5]))
+    # animation_spherical_wold(start_position=np.array([4.0, 5]))
 
     plt.show()

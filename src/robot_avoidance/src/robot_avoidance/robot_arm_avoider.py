@@ -77,7 +77,8 @@ class RobotArmAvoider():
         # breakpoint()
         return gamma_values
 
-    def get_weight_from_gamma(self, gammas, cutoff_gamma, gamma0=1.0, frac_gamma_nth=0.5):
+    def get_weight_from_gamma(self, gammas, cutoff_gamma, n_points,
+                              gamma0=1.0, frac_gamma_nth=0.5):
         """
         Arguments
         ---------
@@ -90,7 +91,7 @@ class RobotArmAvoider():
         weights = weights / frac_gamma_nth
         weights = 1.0 / weights
         weights = ((weights - frac_gamma_nth) / (1-frac_gamma_nth))
-        weights = weights / self.robot_arm.n_joints
+        weights = weights / n_points
         return weights
         
     def get_influence_weight_at_points(self, evaluation_points=None, cutoff_gamma=1.5):
@@ -107,7 +108,8 @@ class RobotArmAvoider():
 
         joint_weights = np.zeros(min_gammas_joints.shape)
         joint_weights[ind_nonzero] = self.get_weight_from_gamma(
-            min_gammas_joints[ind_nonzero], cutoff_gamma=cutoff_gamma)
+            min_gammas_joints[ind_nonzero], cutoff_gamma=cutoff_gamma,
+            n_points=self.robot_arm.n_joints)
 
         # Leverage weight: higher weight at end of effector
         joint_weights = joint_weights * np.arange(1, self.robot_arm.n_links+1)
@@ -142,7 +144,8 @@ class RobotArmAvoider():
                 point_weight_list[jj][-1] = 1
 
             point_weight_list[jj][ind_nonzero] = self.get_weight_from_gamma(
-                gamma_values[ind_nonzero, jj], cutoff_gamma=cutoff_gamma)
+                gamma_values[ind_nonzero, jj], cutoff_gamma=cutoff_gamma,
+                n_points=self.n_eval)
 
             # Leverage weight: higher weight at end of effector
             point_weight_list[jj] = (point_weight_list[jj]
@@ -191,6 +194,7 @@ class RobotArmAvoider():
         # -> since weight in [0, 1], we know that increased weight will have increased influence
         only_dynamic_active = True
         if only_dynamic_active:
+            # TODO: put this into 'get_influence_weight_at_points'-function
             # breakpoint()
             # print(joint_weight_list)
             
@@ -224,6 +228,7 @@ class RobotArmAvoider():
             diff_velocity = velocity_ik - velocity_control
 
             if jj == 0:
+                # Get the base of the robot
                 start_link_pos = self.robot_arm.get_joint_in_base(
                     level=jj, relative_point_position=0)
             else:
