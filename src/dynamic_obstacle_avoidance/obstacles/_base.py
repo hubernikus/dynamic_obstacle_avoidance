@@ -137,11 +137,16 @@ class Obstacle(ABC):
 
         if linear_velocity is None:
             if xd is None:
-                linear_velocity=np.zeros(self.dim)
+                self.linear_velocity = np.zeros(self.dim)
             else:
-                linear_velocity = xd
+                self.linear_velocity = xd
+        else:
+            self.linear_velocity = linear_velocity
 
-        self.linear_velocity = linear_velocity
+        if angular_velocity is None:
+            self.angular_velocity = np.zeros(self.dim)
+        else:
+            self.angular_velocity = angular_velocity
 
         # TODO: remove
         # Special case of moving obstacle (Create subclass) 
@@ -353,43 +358,47 @@ class Obstacle(ABC):
         breakpoint()
         return self._linear_velocity_const
 
-    @property
-    def velocity_const(self):
-        return self._linear_velocity_const
+    # @property
+    # def velocity_const(self):
+        # return self._linear_velocity_const
+
+    # @property
+    # def linear_velocity_const(self):
+        # return self._linear_velocity_const
+
+    # @linear_velocity_const.setter
+    # def linear_velocity_const(self, value):
+        # if isinstance(value, list):
+            # value = np.array(value)
+        # self._linear_velocity_const = value
 
     @property
-    def linear_velocity_const(self):
-        return self._linear_velocity_const
-
-    @linear_velocity_const.setter
-    def linear_velocity_const(self, value):
-        if isinstance(value, list):
-            value = np.array(value)
-        self._linear_velocity_const = value
-
-    @property
-    def linear_velocity(self):
+    def linear_velocity(self) -> np.ndarray:
         return self._linear_velocity
 
     @linear_velocity.setter
-    def linear_velocity(self, value):
+    def linear_velocity(self, value: np.ndarray):
         self._linear_velocity = value
-        self._linear_velocity_const = value
+        # self._linear_velocity_const = value
 
     @property
-    def angular_velocity(self):
+    def angular_velocity(self) -> np.ndarray:
         return self._angular_velocity
 
-    @property
-    def angular_velocity_const(self):
-        return self._angular_velocity_const
-
-    @angular_velocity_const.setter
-    def angular_velocity_const(self, value):
-        if isinstance(value, list):
-            value = np.array(value)
-        self._angular_velocity_const = value
+    @angular_velocity.setter
+    def angular_velocity(self, value: np.ndarray):
         self._angular_velocity = value
+
+    # @property
+    # def angular_velocity_const(self):
+        # return self._angular_velocity_const
+
+    # @angular_velocity_const.setter
+    # def angular_velocity_const(self, value):
+        # if isinstance(value, list):
+            # value = np.array(value)
+        # self._angular_velocity_const = value
+        # self._angular_velocity = value
 
     @property
     def w(self): # TODO: remove
@@ -833,11 +842,15 @@ class Obstacle(ABC):
             new_linear_velocity = (position-self.position)/dt
             
             # Periodicity of oscillation
-            delta_orientation = angle_difference_directional(orientation, self.orientation)
+            delta_orientation = angle_difference_directional(
+                orientation, self.orientation)
             new_angular_velocity = delta_orientation/dt
             # import pdb; pdb.set_trace()
-            self.linear_velocity = k_linear_velocity*self.linear_velocity + (1-k_linear_velocity)*new_linear_velocity
-            self.center_position = k_position*(self.linear_velocity*dt + self.center_position) + (1-k_position)*(position)
+            self.linear_velocity = (k_linear_velocity*self.linear_velocity
+                                    + (1-k_linear_velocity)*new_linear_velocity)
+            self.center_position = (
+                k_position*(self.linear_velocity*dt + self.center_position)
+                + (1-k_position)*(position))
 
             # Periodic Weighted Average
             self.angular_velocity = k_angular_velocity*self.angular_velocity + (1-k_angular_velocity)*new_angular_velocity 
@@ -883,7 +896,7 @@ class Obstacle(ABC):
 
         return dist_to_center/Gamma
     
-    def get_reference_point(self, in_global_frame=False): # Inherit
+    def get_reference_point(self, in_global_frame=False):
         if in_global_frame:
             return self.transform_relative2global(self.reference_point)
         else:

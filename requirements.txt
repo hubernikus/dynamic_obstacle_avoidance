@@ -1,22 +1,9 @@
-# Requirement
-
-# python=3.9
-# For ipython / notebook, visualization & interaction
-ipython
+# Requirements
 matplotlib
 
-# Jupyter Notebook
-jupyter
-#jupyterlab
-#notebook
-#ipykernel
-#jupyterlab
-
-# 
 numpy
 
 scipy
 PyYAML
 
-# sciki
 shapely

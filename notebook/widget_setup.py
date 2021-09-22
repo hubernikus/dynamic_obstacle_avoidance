@@ -96,27 +96,33 @@ def widgetFunction_referencePoint(
 
     if draw_style=="Simulated streamline":
         n_points = 6
-        points_init = np.vstack((np.ones(n_points)*x_lim[1],
-                                 np.linspace(y_lim[0], y_lim[1], n_points)))
+        points_init = np.vstack((
+            np.ones(n_points)*x_lim[1],
+            np.linspace(y_lim[0], y_lim[1], n_points)))
+        
         points_init = points_init[:, 1:-1]
+
+        print(obs[0].global_reference_point)
         Simulation_vectorFields(
             x_lim, y_lim, point_grid=70, obs=obs, pos_attractor=pos_attractor,
             figName='linearSystem_avoidanceCircle', noTicks=False,
+            automatic_reference_point=False,
             figureSize=(13.,10),
             draw_vectorField=False, points_init=points_init)
         
     elif draw_style=="Vectorfield":
         Simulation_vectorFields(
             x_lim, y_lim, point_grid=70, obs=obs, pos_attractor=pos_attractor,
+            automatic_reference_point=False,
             figName='linearSystem_avoidanceCircle', noTicks=False,
-            figureSize=(13.,10), draw_vectorField=True )
+            figureSize=(13.,10), draw_vectorField=True)
         
     else:
         Simulation_vectorFields(
             x_lim, y_lim, point_grid=70, obs=obs, pos_attractor=pos_attractor,
+            automatic_reference_point=False,
             figName='linearSystem_avoidanceCircle', noTicks=False,
             figureSize=(13.,10), draw_vectorField=False)
-
 
 
 class WidgetClass_intersection():
@@ -164,13 +170,13 @@ class WidgetClass_intersection():
             
     def update(self, check_vectorfield=True):
         obs_cp = self.obs[:self.n_obstacles]
+        obs_cp = GradientContainer(obs_list=obs_cp)
         
         Simulation_vectorFields(
             self.x_lim, self.y_lim, point_grid=70, obs=obs_cp,
             pos_attractor=self.pos_attractor, figName='linearSystem_avoidanceCircle',
             noTicks=False, figureSize=(13.,10),
             draw_vectorField=check_vectorfield, show_obstacle_number=True)
-        
 
 def run_obstacle_description():
     #%matplotlib gtk
@@ -246,11 +252,13 @@ def example_reference_point():
     )
 
     # Main function
-    interact_manual(widgetFunction_referencePoint, x1=x1_widget, x2=x2_widget,
-                    orientation=angle_widget, draw_style=draw_style,
-                    refPoint_dir=referencePoint_direction, refPoint_rat=referencePoint_excentricity, 
-                   x_low=fixed(x_lim[0]), x_high=fixed(x_lim[1]), 
-                    y_low=fixed(y_lim[0]), y_high=fixed(y_lim[1]));
+    interact_manual(
+        widgetFunction_referencePoint, x1=x1_widget, x2=x2_widget,
+        orientation=angle_widget, draw_style=draw_style,
+        refPoint_dir=referencePoint_direction,
+        refPoint_rat=referencePoint_excentricity, 
+        x_low=fixed(x_lim[0]), x_high=fixed(x_lim[1]), 
+        y_low=fixed(y_lim[0]), y_high=fixed(y_lim[1]))
 
     print("")
     # Change parameters and press <<Run Interact>> to apply.
@@ -341,22 +349,30 @@ def example_dynamic_modulation():
     ani.show()
 
     style = {'description_width': 'initial'}
+    
     velx_widget = FloatSlider(
         description='Linear velocity \( \dot  x_1\)',
         min=-5.0, max=5.0, step=0.1, value=0, style=style)
+    
     vely_widget = FloatSlider(
         description='Linear velocity \( \dot  x_2\)',
         min=-5.0, max=5.0, step=0.1, value=0, style=style)
+    
     velAng_widget = FloatSlider(
         description='Angular velocity \( \omega\)',
         min=-5.0, max=5.0, step=0.1, value=0, style=style)
 
     # obs_number = widgets.Dropdown(options=[ii+1 for ii in range(len(obs))],value=0, description='#', disabled=False)
-    obs_number = widgets.Dropdown(options=[ii+1 for ii in range(len(obs))],value=1, description='#', disabled=False)
+    obs_number = widgets.Dropdown(
+        options=[ii+1 for ii in range(len(obs))],value=1,
+        description='#', disabled=False)
 
     print("The video can be paused and continued by pressing onto the image.")
     print("")
     print("Modify the parameters for the obstacle:")
 
-    interact_manual(ani.set_velocity, obs_number=obs_number, vel_x =velx_widget, vel_y=vely_widget, vel_rot=velAng_widget, iteration_at_one=fixed(True));
+    interact_manual(
+        ani.set_velocity, obs_number=obs_number,
+        vel_x =velx_widget, vel_y=vely_widget, vel_rot=velAng_widget,
+        iteration_at_one=fixed(True))
 

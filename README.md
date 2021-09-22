@@ -11,13 +11,40 @@ git clone --recurse-submodules https://github.com/epfl-lasa/dynamic_obstacle_avo
 ```
 (Make sure submodules are there if various_tools librarys is not installed.
 
-```
+Go to file directory:
+
+```sh
 cd dynamic_obstacle_avoidance
+
+``` 
+
+Create and activate your environment with your favorite package manager, here we choose conda:
+```sh
 conda env create -f environment.yml
 conda activate dynamic_obstacle_avoidance
+``` 
+
+Now you can move forward to install the requirement using pip:
+```
 pip install -r requirements.txt
 python setup.py develop
 ```
+
+OR:
+``` sh
+pip install -e .
+
+```
+
+Note, that if you want to be able to test 
+``` sh
+pip install -r requirements_dev.txt
+```
+and use jupyter notebook additionally install
+``` sh
+pip install -r requirements_notebook.txt
+```
+
 
 Next step is to install the dependency library:
 ```

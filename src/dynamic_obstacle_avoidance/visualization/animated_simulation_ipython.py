@@ -68,7 +68,7 @@ class Animated_ipython():
     """An animated scatter plot using matplotlib.animations.FuncAnimation."""
     def __init__(
         self, x0, obs=[], N_simuMax = 600, dt=0.01,
-        attractorPos='default', convergenceMargin=0.01,
+        attractorPos=None, convergenceMargin=0.01,
         x_range=[-10,10], y_range=[-10,10], zRange=[-10,10],
         sleepPeriod=0.03, RK4_int = False, dynamicalSystem=None,
         hide_ticks=True, figSize=(8,5), show_obstacle_number=False):
@@ -78,8 +78,8 @@ class Animated_ipython():
         self.obs = obs
         self.N_simuMax = N_simuMax
         self.dt = dt
-        if attractorPos == 'default':
-            self.attractorPos = self.dim*[0.0]
+        if attractorPos is None:
+            self.attractorPos = np.zeros(self.dim)
         else:
             self.attractorPos = attractorPos
             
@@ -110,7 +110,7 @@ class Animated_ipython():
             dynamicalSystem = LinearSystem(
                 attractor_position=self.attractorPos).evaluate
             
-        dynamicalSystem = self.dynamicalSystem
+        self.dynamicalSystem = dynamicalSystem
 
         self.converged = False
     
@@ -248,7 +248,7 @@ class Animated_ipython():
         
         # Numerical hull of ellipsoid
         for n in range(len(self.obs)):
-            self.obs[n].draw_ellipsoid(numPoints=50) # 50 points resolution
+            self.obs[n].draw_obstacle(numPoints=50) # 50 points resolution
 
         for n in range(len(self.obs)):
             if self.dim==2:
@@ -277,7 +277,9 @@ class Animated_ipython():
             center, = self.ax.plot([],[],'k.')    
             self.centers.append(center)
             if self.show_obstacle_number:
-                annot = self.ax.annotate('{}'.format(n+1), xy=np.array(self.obs[n].x0)+0.16, textcoords='data', size=16, weight="bold")
+                annot = self.ax.annotate('{}'.format(
+                    n+1), xy=np.array(self.obs[n].center_position)+0.16,
+                                         textcoords='data', size=16, weight="bold")
                 self.number_obs.append(annot)
             
             cent_dyn, = self.ax.plot([],[], 'k+',  linewidth=18, markeredgewidth=4, markersize=13)
@@ -350,12 +352,13 @@ class Animated_ipython():
                     print('Convergence with tolerance of {} reached after {} iterations.'.format(sum(self.lastConvergences), self.iSim+1) )
                     self.ani.event_source.stop()
 
-    def set_velocity(self, obs_number=0, vel_x =0.0, vel_y=0.0, vel_rot=0, iteration_at_one=False):
+    def set_velocity(
+        self, obs_number=0, vel_x =0.0, vel_y=0.0, vel_rot=0, iteration_at_one=False):
         if iteration_at_one:
             obs_number -= 1
             
-        self.obs[obs_number].xd = np.array([vel_x, vel_y])
-        self.obs[obs_number].w = vel_rot
+        self.obs[obs_number].linear_velocity = np.array([vel_x, vel_y])
+        self.obs[obs_number].angular_velocity = vel_rot
         
         plt.show()
     
