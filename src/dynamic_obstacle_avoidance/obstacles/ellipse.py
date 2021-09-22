@@ -278,7 +278,7 @@ class Ellipse(Obstacle):
             Gamma = self.get_relative_gamma_at_position(position, in_global_frame=in_global_frame)
             if Gamma is None:
                 raise NotImplementedError("Relative Gamma evalaution not implemented "
-                                      "outside of evalaution point.")
+                                          "outside of evalaution point.")
             
             return Gamma
             
@@ -296,7 +296,6 @@ class Ellipse(Obstacle):
 
         if self.is_boundary:
             Gamma = 1./Gamma
-            
         return Gamma
     
     def get_normal_ellipse(self, position):
@@ -570,7 +569,7 @@ class Ellipse(Obstacle):
                 intersections = np.zeros(self.dim)
                 intersections[0] = (-B+sqrtD)/(2*A)
 
-                if (intersections[0] - edge_point[0])/direction[0]>0:
+                if (intersections[0] - edge_point[0])/direction[0]<0:
                     intersections[0] = (-B-sqrtD)/(2*A)
                 intersections[1] = intersections[0]*m + c
 

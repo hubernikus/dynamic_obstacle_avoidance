@@ -300,6 +300,7 @@ def obstacle_avoidance_rotational(
         return initial_velocity
 
     if hasattr(obstacle_list, 'update_relative_reference_point'):
+        # TODO: directly return gamma_array
         obstacle_list.update_relative_reference_point(position=position)
 
     dimension = position.shape[0]
@@ -390,7 +391,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-        
+    
     rotated_velocity = rotated_velocity * magnitude
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper

@@ -218,7 +218,7 @@ class MultiBoundaryContainer(RotationContainer):
 
         for ii_self in np.arange(self.n_obstacles)[~ind_inside]:
             self[ii_self].reset_relative_reference()
-
+            
     def reset_relative_references(self):
         """ Reset all relative references. """
         for ii_self in range(self.n_obstacles):
