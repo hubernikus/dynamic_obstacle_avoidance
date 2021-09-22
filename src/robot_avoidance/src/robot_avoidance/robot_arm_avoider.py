@@ -236,6 +236,10 @@ class RobotArmAvoider():
 
             control_velocity = np.cross(
                 evaluation_points[:, -1, jj] - start_link_pos, diff_velocity)
+            
+            # TODO: is this control velocity really correct (!?)
+            # Compare with paper...
+            
             # print('jj', jj)
             # print('control_velocity', control_velocity)
             # breakpoint()
@@ -284,7 +288,7 @@ class RobotArmAvoider():
                         # evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         # fac_arrow*velocity_control[0], fac_arrow*velocity_control[1],
                         # color='r', width=0.01, zorder=10)
-
+                
             joint_control_mod_ik = self.robot_arm.get_inverse_kinematics_at_level(
                 velocity_linear, velocity_angular, level=jj)
             

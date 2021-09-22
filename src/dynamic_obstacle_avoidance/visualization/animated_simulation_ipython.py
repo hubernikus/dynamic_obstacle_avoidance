@@ -1,9 +1,8 @@
-'''
+"""
 Dynamic Simulation - Obstacle Avoidance Algorithm
-
-@author LukasHuber
-@date 2018-05-24
-'''
+"""
+# Author: Lukas Huber
+# Date: 2018-05-24
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
@@ -17,16 +16,18 @@ from matplotlib.animation import FuncAnimation
 import matplotlib._pylab_helpers
 from matplotlib import animation
 
+from vartools.dynamical_systems import LinearSystem
+
 # 3D Animatcoion utils
 # from mpl_toolkits.mplot3d import Axes3D
 # import mpl_toolkits.mplot3d.art3d as art3d
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
+# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+# from dynamic_obstacle_avoidance.obstacles import Ellipse
+# from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 
 plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
 
@@ -38,20 +39,24 @@ def samplePointsAtBorder_ipython(number_of_points, x_range, y_range, obs=[]):
     N_x = int(np.ceil(dx/(2*(dx+dy))*(number_of_points))+2)
     N_y = int(np.ceil(dx/(2*(dx+dy))*(number_of_points))-0)
 
-    x_init = np.vstack((np.linspace(x_range[0],x_range[1], num=N_x), np.ones(N_x)*y_range[0]))
+    x_init = np.vstack((
+        np.linspace(x_range[0],x_range[1], num=N_x), np.ones(N_x)*y_range[0]))
 
-    x_init = np.hstack((x_init, 
-                        np.vstack((np.linspace(x_range[0],x_range[1], num=N_x),
-                                   np.ones(N_x)*y_range[1] )) ))
+    x_init = np.hstack((
+        x_init, 
+        np.vstack((np.linspace(x_range[0],x_range[1], num=N_x),
+                   np.ones(N_x)*y_range[1] )) ))
 
     ySpacing=(y_range[1]-y_range[0])/(N_y+1)
-    x_init = np.hstack((x_init, 
-                        np.vstack((np.ones(N_y)*x_range[0],
-                                   np.linspace(y_range[0]+ySpacing,y_range[1]-ySpacing, num=N_y) )) ))
+    x_init = np.hstack((
+        x_init, 
+        np.vstack((np.ones(N_y)*x_range[0],
+                   np.linspace(y_range[0]+ySpacing,y_range[1]-ySpacing, num=N_y) )) ))
 
-    x_init = np.hstack((x_init, 
-                        np.vstack((np.ones(N_y)*x_range[1],
-                                   np.linspace(y_range[0]+ySpacing,y_range[1]-ySpacing, num=N_y) )) ))
+    x_init = np.hstack((
+        x_init, 
+        np.vstack((np.ones(N_y)*x_range[1],
+                   np.linspace(y_range[0]+ySpacing,y_range[1]-ySpacing, num=N_y) )) ))
     if len(obs):
         collisions = obs_check_collision(x_init, obs)
         x_init = x_init[:,collisions[0]]
@@ -61,7 +66,12 @@ def samplePointsAtBorder_ipython(number_of_points, x_range, y_range, obs=[]):
 ##### Anmation Function #####
 class Animated_ipython():
     """An animated scatter plot using matplotlib.animations.FuncAnimation."""
-    def __init__(self, x0, obs=[], N_simuMax = 600, dt=0.01, attractorPos='default', convergenceMargin=0.01, x_range=[-10,10], y_range=[-10,10], zRange=[-10,10], sleepPeriod=0.03, RK4_int = False, dynamicalSystem=linearAttractor, hide_ticks=True, figSize=(8,5), show_obstacle_number=False):
+    def __init__(
+        self, x0, obs=[], N_simuMax = 600, dt=0.01,
+        attractorPos='default', convergenceMargin=0.01,
+        x_range=[-10,10], y_range=[-10,10], zRange=[-10,10],
+        sleepPeriod=0.03, RK4_int = False, dynamicalSystem=None,
+        hide_ticks=True, figSize=(8,5), show_obstacle_number=False):
         self.dim = x0.shape[0]
 
         # Initialize class variables
@@ -95,7 +105,12 @@ class Animated_ipython():
 
         # Simulation parameters
         self.RK4_int = RK4_int
-        self.dynamicalSystem = dynamicalSystem
+
+        if dynamicalSystem is None:
+            dynamicalSystem = LinearSystem(
+                attractor_position=self.attractorPos).evaluate
+            
+        dynamicalSystem = self.dynamicalSystem
 
         self.converged = False
     

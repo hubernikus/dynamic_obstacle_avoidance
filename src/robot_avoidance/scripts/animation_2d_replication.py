@@ -344,6 +344,6 @@ if (__name__) == "__main__":
     plt.close('all')
     plt.ion()
     
-    # simple_2link_robot()
-    three_link_robot_around_block()
+    simple_2link_robot()
+    # three_link_robot_around_block()
     
