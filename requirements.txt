@@ -1,11 +1,9 @@
-# Requirement
-# python=3.9
-ipython
-numpy
+# Requirements
 matplotlib
+
+numpy
+
 scipy
 PyYAML
-# sciki
+
 shapely
-
-

@@ -16,10 +16,12 @@ from shapely import affinity
 import matplotlib.pyplot as plt     # TODO: remove for production
 
 from vartools.angle_math import *
-from vartools.angle_math import  angle_modulo, angle_difference_directional_2pi
+from vartools.angle_math import angle_modulo, angle_difference_directional_2pi
+from vartools.directional_space import get_directional_weighted_sum
 
 from dynamic_obstacle_avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacles import Obstacle
+
 
 class Ellipse(Obstacle):
     """ Ellipse type obstacle

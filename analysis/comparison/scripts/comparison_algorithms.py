@@ -22,6 +22,12 @@ class F1(DynamicalSystem):
         return 0.1*LA.norm(position)*np.array([1, 1])
         # return 0.1*LA.norm(position)*np.array([1, 1])
 
+class F1(DynamicalSystem):
+    def evaluate(self, position):
+        return 0.1*LA.norm(position)*np.array([1, 1])
+        # return 0.1*LA.norm(position)*np.array([1, 1])
+
+
 
 def visualize_f1():
     f1_dynamics = F1(dimension=2)

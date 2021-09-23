@@ -62,14 +62,17 @@ def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, d
                 ds=LinearSystem(attractor_position=attractorPos).evaluate)
 
             # Check convergence
-            if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos) < convergence_margin):
+            if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos)
+                < convergence_margin):
                 x_pos = x_pos[:, :it_count+2]
                 print("Convergence reached after {} iterations.".format(it_count))
                 break
 
-            if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count]) < convergence_margin):
+            if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count])
+                < convergence_margin):
                 x_pos = x_pos[:, :it_count+2]
-                print("Stopping at local minimum after {} iterations.".format(it_count))
+                print("Stopping at local minimum after {} iterations.".format(
+                    it_count))
                 break
 
             it_count += 1
@@ -167,17 +170,21 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
         it_count += 1
     
     for j in range(n_points):
-        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4, color='r')
-        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13, zorder=5)
+        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', linewidth=4, color='r')
+        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*',
+                markeredgewidth=4, markersize=13, zorder=5)
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color=None,
-                   show_obstacle_number=False, reference_point_number=False, drawVelArrow=True,
-                   noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--', alpha_obstacle=0.8):
+def plot_obstacles(
+    ax, obs, x_range, y_range, pos_attractor=None, obstacle_color=None,
+    show_obstacle_number=False, reference_point_number=False, drawVelArrow=True,
+    noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--',
+    alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
     if pos_attractor is not None:
-        ax.plot(pos_attractor[0], pos_attractor[1], 'k*', linewidth=18.0, markersize=18, zorder=5)
+        ax.plot(pos_attractor[0], pos_attractor[1], 'k*',
+                linewidth=18.0, markersize=18, zorder=5)
 
     obs_polygon = []
     obs_polygon_sf = []
@@ -200,10 +207,13 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
                 outer_boundary = obs[n].global_outer_edge_points
                 
             if outer_boundary is None:
-                outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
-                                           [y_range[0], y_range[0], y_range[1], y_range[1]]])
+                outer_boundary = np.array(
+                    [[x_range[0], x_range[1], x_range[1], x_range[0]],
+                     [y_range[0], y_range[0], y_range[1], y_range[1]]])
+                
             outer_boundary = outer_boundary.T
-            boundary_polygon = plt.Polygon(outer_boundary, alpha=alpha_obstacle, zorder=-4)
+            boundary_polygon = plt.Polygon(
+                outer_boundary, alpha=alpha_obstacle, zorder=-4)
             boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
@@ -224,33 +234,32 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacle_color
         ax.add_patch(obs_polygon_sf[n])
         ax.add_patch(obs_polygon[n])
 
-
         if show_obstacle_number:
-            ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
+            ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16,
+                        textcoords='data', size=16, weight="bold")
 
         if not obs[n].is_boundary or draw_wall_reference:
             ax.plot(obs[n].center_position[0], obs[n].center_position[1], 'k.')
 
         # automatic adaptation of center
-        reference_point = obs[n].get_reference_point(in_global_frame=True)
-
-        if not reference_point is None:
-            if not obs[n].is_boundary or draw_wall_reference:
-                ax.plot(reference_point[0],reference_point[1],
-                        'k+', linewidth=18, markeredgewidth=4, markersize=13)
-            if reference_point_number:
-                ax.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
-            # add group, too
+        if not obs[n].is_boundary or draw_wall_reference:
+            reference_point = obs[n].get_reference_point(in_global_frame=True)
+            ax.plot(reference_point[0],reference_point[1],
+                    'k+', linewidth=18, markeredgewidth=4, markersize=13)
+        if reference_point_number:
+            ax.annotate('{}'.format(n), xy=reference_point+0.08,
+                        textcoords='data', size=16, weight="bold")  #
 
         if drawVelArrow and np.linalg.norm(obs[n].linear_velocity)>0:
             # col=[0.5,0,0.9]
             col = [255/255., 51/255., 51/255.]
             fac=5 # scaling factor of velocity
-            ax.arrow(obs[n].center_position[0], obs[n].center_position[1],
-                         obs[n].linear_velocity[0]/fac, obs[n].linear_velocity[1]/fac,
-                         # head_width=0.3, head_length=0.3, linewidth=10,
-                         head_width=0.1, head_length=0.1, linewidth=3,
-                         fc=col, ec=col, alpha=1)
+            ax.arrow(
+                obs[n].center_position[0], obs[n].center_position[1],
+                obs[n].linear_velocity[0]/fac, obs[n].linear_velocity[1]/fac,
+                # head_width=0.3, head_length=0.3, linewidth=10,
+                head_width=0.1, head_length=0.1, linewidth=3,
+                fc=col, ec=col, alpha=1)
 
     ax.set_aspect('equal', adjustable='box')
     
@@ -337,7 +346,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         
         pos1 = [-2.807, 0.480]
         pos2 = [-3.017, 0.337]
-
+        
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]
 
@@ -354,7 +363,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ########## STOP REMOVE ###########
     
     if dynamical_system is None:
-        dynamical_system = LinearSystem(attractor_position=np.zeros(dim)).evaluate
+        dynamical_system = LinearSystem(attractor_position=pos_attractor).evaluate
         # Default ds
         # def dynamical_system(x, MAX_SPEED=3.0):
             # return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)

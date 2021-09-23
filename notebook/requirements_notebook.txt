@@ -1,0 +1,6 @@
+# Jupyter Notebook
+jupyter
+#jupyterlab
+#notebook
+#ipykernel
+#jupyterlab
