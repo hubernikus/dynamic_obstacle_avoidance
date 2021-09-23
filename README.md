@@ -52,12 +52,14 @@ cd lib/various_tools/
 python setup.py develop
 ```
 
+## Getting Started
+The `example` folder contains a jupyter notebook & general example for static & dynamic simulation in multi-obstacle environment.
+
 ## Unit Testing
 In order to run all the test-scripts, run in the command line in the main folder:
 ```
 python -m unittest discover tests
 ```
-
 
 ### 3D Plotting
 In order to get nice 3D plots, additionally install mayavi (http://docs.enthought.com/mayavi/mayavi/index.html) & PyQt5
