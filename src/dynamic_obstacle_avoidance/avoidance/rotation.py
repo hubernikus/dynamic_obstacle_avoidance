@@ -392,7 +392,7 @@ def obstacle_avoidance_rotational(
 
     # Magnitude such that zero on the surface of an obstacle
     magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
-        
+    
     rotated_velocity = rotated_velocity * magnitude
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
