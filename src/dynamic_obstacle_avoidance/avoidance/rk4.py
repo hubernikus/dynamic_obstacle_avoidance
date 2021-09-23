@@ -1,14 +1,26 @@
 """ Runge Kutta 4 algorithm for general obstacle avoidance"""
-
 import numpy as np
 
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_nonlinear_hirarchy
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import linearAttractor
+
  
-def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_moving, ds=linearAttractor, x0=False):
-    """ Fourth order integration of obstacle avoidance differential equation """
-    # NOTE: The movement of the obstacle is considered as small, hence position and movement changed are not considered. This will be fixed in future iterations.
+def obs_avoidance_rk4(dt, x, obs, obs_avoidance, ds, x0=False):
+    """ Fourth order integration of obstacle avoidance differential equation
+    Paramters
+    ---------
+    dt: time step [s]
+    x: position 
+    obs: obstacle list
+    obs_avoidance: Obstacle Avoidance algorithm
+    ds: initial dynamics
+
+    Returns
+    -------
+    Runge-Kutta step of the obstacle avoidance
+    """
+    # NOTE: The movement of the obstacle is considered as small, hence
+    # position and movement changed are not considered. This will be fixed in future iterations.
     # TODO: More General Implementation (find library)
 
     if type(x0)==bool:
@@ -16,26 +28,26 @@ def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_movi
 
     # k1
     xd = ds(x, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x, xd, obs)
     k1 = dt*xd
 
     # k2
     xd = ds(x+0.5*k1, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+0.5*k1, xd, obs)
     k2 = dt*xd
 
     # k3
     xd = ds(x+0.5*k2, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+0.5*k2, xd, obs)
     
     k3 = dt*xd
 
     # k4
     xd = ds(x+k3, x0)
-    xd = velConst_attr(x, xd, x0)
+    # xd = velConst_attr(x, xd, x0)
     xd = obs_avoidance(x+k3, xd, obs)
     k4 = dt*xd
 
@@ -46,7 +58,7 @@ def obs_avoidance_rk4(dt, x, obs, obs_avoidance=obs_avoidance_interpolation_movi
     return x
 
 
-def obs_avoidance_rungeKutta(dt, x, obs, obs_avoidance=obs_avoidance_nonlinear_hirarchy, ds_init=linearAttractor, center_position=False, order=4):
+def obs_avoidance_rungeKutta(dt, x, obs, obs_avoidance, ds_init, center_position=False, order=4):
     # Fourth order integration of obstacle avoidance differential equation
     # NOTE: The movement of the obstacle is considered as small, hence position and movement changed are not considered. This will be fixed in future iterations.
     dim = np.array(x).shape[0]

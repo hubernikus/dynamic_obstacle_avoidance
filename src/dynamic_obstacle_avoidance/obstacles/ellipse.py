@@ -16,12 +16,10 @@ from shapely import affinity
 import matplotlib.pyplot as plt     # TODO: remove for production
 
 from vartools.angle_math import *
-from vartools.angle_math import  angle_modulo, angle_difference_directional_2pi
+from vartools.angle_math import angle_modulo, angle_difference_directional_2pi
+from vartools.directional_space import get_directional_weighted_sum
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
-
+from dynamic_obstacle_avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 
@@ -36,7 +34,7 @@ class Ellipse(Obstacle):
     """
     def __init__(self, axes_length=None, curvature=None,
                  a=None, p=None,
-                 margin_absolut=0,
+                 # margin_absolut=0,
                  is_deforming=False,
                  expansion_speed_axes=None,
                  hull_with_respect_to_reference=False,
@@ -57,6 +55,7 @@ class Ellipse(Obstacle):
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
         elif not a is None:
+            raise Exception("A is depreciated. Use 'axes_lenght' instead.")
             self.axes_length = np.array(a) # TODO: depreciated, remove
         else:
             warnings.warn("No axis length given!")
@@ -69,13 +68,12 @@ class Ellipse(Obstacle):
         else:
             self.curvature = np.ones((self.dim))
 
-        self.margin_absolut = margin_absolut
+        # Done in parent class
+        # self.margin_absolut = margin_absolut
 
         self.hull_with_respect_to_reference = hull_with_respect_to_reference
 
         self.is_convex = True
-        
-        # Reference to other arrays
         
         # No go zone assuming a uniform margin around the obstacle
         self.edge_margin_points = np.zeros((self.dim, 0))
@@ -91,27 +89,21 @@ class Ellipse(Obstacle):
         self.ind_edge_ref = 0
         self.ind_edge_tang = 1
 
-        self.margin_absolut = margin_absolut # why again???
-        
     @property
     def a(self): # TODO: remove
-        warnings.warn("'a' is depriciated, use 'axes_length' instead")
-        return self.axes_length
+        raise Exception("'a' is depriciated, use 'axes_length' instead")
 
     @a.setter # TODO:remove
     def a(self, value):
-        warnings.warn("'a' is depriciated, use 'axes_length' instead")
-        self.axes_length = value
+        raise Exception("'a' is depriciated, use 'axes_length' instead")
 
     @property
     def axes(self): # TODO: remove
-        warnings.warn("'axes' is depriciated, use 'axes_length' instead")
-        return self.axes_length
+        raise Exception("'axes' is depriciated, use 'axes_length' instead")
 
     @axes.setter # TODO:remove
     def axes(self, value):
-        warnings.warn("'axes' is depriciated, use 'axes_length' instead")        
-        self.axes_length = value
+        raise Exception("'axes' is depriciated, use 'axes_length' instead")
 
     @property
     def axes_length(self):
@@ -175,11 +167,12 @@ class Ellipse(Obstacle):
             return self.axes_length + self.margin_absolut
     
     def get_minimal_distance(self):
-        return np.min(self.a)
+        """ Minimal distance or minimal radius."""
+        return np.min(self.axes_length)
 
     def get_maximal_distance(self):
-        # Eucledian
-        return np.sqrt(np.sum(self.a*2))
+        """ Minimal distance or maximal radius."""
+        return np.sqrt(np.sum(self.axes_length*2))
         
     def get_reference_length(self):
         """ Get a characeteric (or maximal) length of the obstacle. 
@@ -202,10 +195,10 @@ class Ellipse(Obstacle):
             normal_vector[:, ii] = np.array([normal_vector[1, ii], -normal_vector[0, ii],])
 
         for ii in range(self.n_planes):
-            normalDistance2center[ii] = normal_vector[:, ii].T.dot(self.edge_reference_points[:, ii, 1])
+            normalDistance2center[ii] = normal_vector[:, ii].T.dot(
+                self.edge_reference_points[:, ii, 1])
 
-        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1)) 
-
+        normal_vector = normal_vector/np.tile(np.linalg.norm(normal_vector, axis=0), (self.dim, 1))
         return normal_vector, normalDistance2center
         
     def get_distance_to_hullEdge(self, position, hull_edge=None, in_global_frame=False):
@@ -290,9 +283,11 @@ class Ellipse(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        if (not gamma_type=="proportional" or gamma_distance is not None
-            or self.gamma_distance is not None):
-            warnings.warn("Implement linear gamma type.")
+        if gamma_type is not None:
+            if (not gamma_type=="proportional" or gamma_distance is not None
+                or self.gamma_distance is not None):
+                warnings.warn("Implement linear gamma type.")
+                # raise Exception("Now it's enough")
             
         Gamma = np.sum((np.abs(position)/self.axes_with_margin)**(2*self.curvature))**(
             1.0/(2*np.mean(self.curvature)))
@@ -387,8 +382,8 @@ class Ellipse(Obstacle):
             normal_vector = self.transform_relative2global_dir(normal_vector)
 
         # Invert normal direction to be consistent!
-        if self.dim==2:
-            normal_vector = (-1)*normal_vector
+        # if self.dim==2:
+        normal_vector = (-1)*normal_vector
             
         return normal_vector
 
@@ -495,8 +490,9 @@ class Ellipse(Obstacle):
             norm = self.transform_relative2global(norm)
         return norm
 
-    def get_intersection_with_surface(self, edge_point=None, direction=None, axes=None,
-                                      center_ellipse=None, only_positive_direction=True, in_global_frame=False):
+    def get_intersection_with_surface(
+        self, edge_point=None, direction=None, axes=None, center_ellipse=None,
+        only_positive_direction=True, in_global_frame=False):
         """Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
 
         edge_point / c : Starting point of line
@@ -749,29 +745,33 @@ class Ellipse(Obstacle):
         ellr = affinity.rotate(ell,  self.orientation*180.0/pi)
         self.shape = ellr
         
-    def draw_obstacle(self, numPoints=20, update_core_boundary_points=True, point_density=2*pi/50):
-        """ Creates points for obstacle and obstacle margin. """
+    def draw_obstacle(self, n_grid=50, update_core_boundary_points=True,
+                      point_density=2*pi/50, numPoints=None):
+        """ Creates points for obstacle and obstacle margin.
+        n_grid is used for 3D drawing"""
+        if numPoints is not None:
+            warnings.warn("'numPoints' depreciated - use 'n_grid' instead.")
         p = self.curvature
         a = self.axes_length
 
         if update_core_boundary_points:
             if self.dim==2 :
-                theta = np.linspace(-pi,pi, num=numPoints)
-                # resolution = numPoints # Resolution of drawing #points
-                boundary_points = np.zeros((self.dim, numPoints))
+                theta = np.linspace(-pi,pi, num=n_grid)
+                # resolution = n_grid # Resolution of drawing #points
+                boundary_points = np.zeros((self.dim, n_grid))
                 boundary_points[0,:] = a[0]*np.cos(theta)
                 boundary_points[1,:] = np.copysign(a[1], theta)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))
                 self.boundary_points = boundary_points
 
             elif self.dim==3:
-                numPoints = [numPoints, ceil(numPoints/2)]
-                theta, phi = np.meshgrid(np.linspace(-pi,pi, num=numPoints[0]),np.linspace(-pi/2,pi/2,num=numPoints[1]) ) #
-                numPoints = numPoints[0]*numPoints[1]
-                # resolution = numPoints # Resolution of drawing #points
+                n_grid = [n_grid, ceil(n_grid/2)]
+                theta, phi = np.meshgrid(np.linspace(-pi,pi, num=n_grid[0]),np.linspace(-pi/2,pi/2,num=n_grid[1]) ) #
+                n_grid = n_grid[0]*n_grid[1]
+                # resolution = n_grid # Resolution of drawing #points
                 theta = theta.T
                 phi = phi.T
 
-                boundary_points = np.zeros((self.dim, numPoints))
+                boundary_points = np.zeros((self.dim, n_grid))
                 boundary_points[0,:] = (a[0]*np.cos(phi)*np.cos(theta)).reshape((1,-1))
                 boundary_points[1,:] = (a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1]))).reshape((1,-1))
                 boundary_points[2,:] = (a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) ).reshape((1,-1))
@@ -783,7 +783,6 @@ class Ellipse(Obstacle):
         if self.dim==2:
             boundary_points_margin = np.zeros((self.dim, 0))
             if not self.reference_point_is_inside:
-                
                 angle_tangents = np.zeros(2)
                 for ii in range(angle_tangents.shape[0]):
                     angle_tangents[ii] = np.arctan2(self.edge_reference_points[1, self.ind_edge_tang, ii], self.edge_reference_points[0, self.ind_edge_tang, ii])
@@ -803,8 +802,12 @@ class Ellipse(Obstacle):
             
             # Margin points
             cos_theta, sin_theta = np.cos(theta), np.sin(theta)
-            power = 2*self.curvature
+            power = 2*self.curvature[0]
+            # try:
             factor = 1.0/((cos_theta/a[0])**power + (sin_theta/a[1])**power)**(1.0/power)
+            # except:
+                # breakpoint()
+            
 
             if self.reference_point_is_inside:
                 boundary_points_margin = np.hstack(( boundary_points_margin, factor*np.vstack((cos_theta, sin_theta)) ))
@@ -819,36 +822,33 @@ class Ellipse(Obstacle):
             
             self.boundary_points_margin_local = boundary_points_margin
 
-        if self.dim==3:
-            # a = a+self.margin_absolut
-            # boundary_points_margin = []
-            # boundary_points_margin = np.hstack((
-            #     boundary_points_margin,
-            #     np.vstack((a[0]*np.cos(phi)*np.cos(theta),
-            #                a[1]*np.copysign(1, theta)*np.cos(phi)*(1 - np.cos(theta)**(2*p[0]))**(1./(2.*p[1])),
-            #                a[2]*np.copysign(1,phi)*(1 - (np.copysign(1,theta)*np.cos(phi)*(1 - 0 ** (2*p[2]) - np.cos(theta)**(2*p[0]))**(1/(2**p[1])))**(2*p[1]) - (np.cos(phi)*np.cos(theta)) ** (2*p[0])) ** (1/(2*p[2])) )) ))
-                
-            # self.boundary_points_margin_local = boundary_points_margin
-            # self.boundary_points_margin_local = boundary_points_margin
+        elif self.dim==3:
             axes_length = self.axes_length
 
             # Set of all spherical angles:
-            n_u = int(np.floor(np.sqrt(numPoints)))
-            n_v = int(np.ceil(numPoints/n_u))
+            # n_u = int(np.floor(np.sqrt(n_grid)))
+            # n_v = int(np.ceil(n_grid/n_u))
+            n_u = n_v = n_grid
             
-            u = np.linspace(0, 2 * np.pi, n_u)
+            u = np.linspace(0, 2*np.pi, n_u)
             v = np.linspace(0, np.pi, n_v)
 
-            self.boundary_points_local = []
+            boundary_points_local = []
             
             # Cartesian coordinates that correspond to the spherical angles:
             # (this is the equation of an ellipsoid):
             # self.boundary_points
-            self.boundary_points_local.append(axes_length[0] * np.outer(np.cos(u), np.sin(v)))
-            self.boundary_points_local.append(axes_length[1] * np.outer(np.sin(u), np.sin(v)))
-            self.boundary_points_local.append(axes_length[2] * np.outer(np.ones_like(u), np.cos(v)))
+            boundary_points_local.append(axes_length[0] * np.outer(np.cos(u), np.sin(v)))
+            boundary_points_local.append(axes_length[1] * np.outer(np.sin(u), np.sin(v)))
+            boundary_points_local.append(axes_length[2] * np.outer(np.ones_like(u), np.cos(v)))
 
-            return self.transform_relative2global(self.boundary_points_local)
+            boundary_points_local = np.array(boundary_points_local).reshape(self.dim, n_grid*n_grid)
+            boundary_points_global = self.transform_relative2global(boundary_points_local)
+
+            return boundary_points_global.reshape(self.dim, n_grid, n_grid)
+
+        else:
+            raise ValueError("Drawing of obstacle not implemented in high-dimensional space.")
         
         return self.transform_relative2global(self._boundary_points_margin)
 
@@ -857,7 +857,6 @@ class Ellipse(Obstacle):
         """ Extend the hull of non-boundary, convex obstacles such that the reference point lies in
         inside the boundary again.
         """
-        
         if in_global_frame:
             position =  transform_polar2cartesian(magnitude=10, angle=angle-self.orientation)
         else:
@@ -916,7 +915,8 @@ class Ellipse(Obstacle):
         self.draw_obstacle()
 
 
-class CircularObstacle(Ellipse):
+
+class Sphere(Ellipse):
     """ Ellipse obstacle with equal axes """
     def __init__(self, radius=None, axes_length=None, *args, **kwargs):
         if not radius is None:
@@ -993,3 +993,8 @@ class CircularObstacle(Ellipse):
 
         self.update_position_and_orientation(position=position, orientation=orientation,
                                              time_current=time_current)
+
+
+class CircularObstacle(Sphere):
+    # TODO: redunant - remove
+    pass

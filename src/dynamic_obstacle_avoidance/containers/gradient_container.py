@@ -1,4 +1,5 @@
-"""Container encapsulates all obstacles.
+"""
+Container encapsulates all obstacles.
 Gradient container finds the dynamic reference point through gradient descent.
 """
 # Author: "LukasHuber"
@@ -10,9 +11,12 @@ import numpy as np
 import copy
 import time 
 
-from dynamic_obstacle_avoidance.containers import ObstacleContainer
+from dynamic_obstacle_avoidance.utils import get_reference_weight
+
 from dynamic_obstacle_avoidance.obstacles import CircularObstacle
-from dynamic_obstacle_avoidance.avoidance.utils import get_reference_weight
+
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
+
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
@@ -119,6 +123,16 @@ class GradientContainer(ObstacleContainer):
                     new_dist_matr[ii, jj] = self._distance_matrix[ii, jj]
                     
             self._distance_matrix = new_dist_matr
+
+    @property
+    def index_wall(self):
+        ind_wall = None
+
+        for it, obs in zip(range(self.n_obstacles), self._obstacle_list):
+            if obs.is_boundary:
+                ind_wall = it
+                break
+        return ind_wall
 
     def get_distance(self, ii, jj=None):
         """Distance between obstacles ii and jj"""

@@ -1,26 +1,19 @@
+"""
+Container to describe obstacles & wall environemnt.
+"""
 # Author Lukas Huber 
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
 # License: BSD (c) 2021
+from abc import ABC, abstractmethod
 
-import time
 import numpy as np
-import copy
-from math import pi
-import warnings, sys
+import warnings
 
-import matplotlib.pyplot as plt
-
-from vartools.angle_math import *
-from vartools.dynamicalsys.closedform import evaluate_linear_dynamical_system
-
-from dynamic_obstacle_avoidance.avoidance.utils  import *
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection_matrix
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
+from dynamic_obstacle_avoidance.utils import *
 
 
-class BaseContainer(list):
+class BaseContainer(ABC):
     def __init__(self, obs_list=None):
         self._obstacle_list = []
 
@@ -94,32 +87,33 @@ class BaseContainer(list):
     def has_environment(self):
         return bool(len(self))
 
-    def set_convergence_direction(self, dynamical_system=None, attractor_position=None):
-        """ Define a convergence direction / mode.
-        It is implemented as 'locally-linear' for a multi-boundary-environment.
-
-        Parameters
-        ----------
-        attractor_position: if non-none value: linear-system is chosen as desired function
-        dynamical_system: if non-none value: linear-system is chosen as desired function
-        """
-        if dynamical_system is not None:
-            self._convergence_ds = dynamical_system
-            
-        elif attractor_position is not None:
-            self._convergence_ds = lambda x: evaluate_linear_dynamical_system(
-                x, center_position=attractor_position)
-            
-        elif self._attractor_position is not None:
-            self._convergence_ds = lambda x: evaluate_linear_dynamical_system(
-                x, center_position=self._attractor_position)
-        else:
-            raise ValueError("Unown convergence direction.")
+    def check_collision(self, position: np.ndarray) -> bool:
+        """ Returns collision with environment (type Bool)
         
-    def get_convergence_direction(self, position, it_obs=None):
-        """ Return 'convergence direction' at input 'position'."""
-        return self._convergence_ds(position)
+        Convention for this model is that:
+        > Obstacles are mutually additive, i.e. no collision with any obstacle
+        > Boundaries are mutually subractive, i.e. collision free with at least one boundary.
+        """
+        gamma_list_boundary = []
+        for oo in range(self.n_obstacles):
+            gamma = self[oo].get_gamma(position, in_global_frame=True)
 
+            if self[oo].is_boundary:
+                gamma_list_boundary.append(gamma)
+                
+            elif gamma <= 1:
+                # Collided with an obstacle
+                return True
 
+        if len(gamma_list_boundary):
+            # At least one boundary
+            return all(np.array(gamma_list_boundary) <= 1)
+        else:
+            return False
 
-
+    def check_collision_array(self, positions: np.ndarray) -> np.ndarray:
+        """ Return array of checked collisions of type bool. """
+        collision_array = np.zeros(positions.shape[1], dtype=bool)
+        for it in range(positions.shape[1]):
+            collision_array[it] = self.check_collision(positions[:, it])
+        return collision_array

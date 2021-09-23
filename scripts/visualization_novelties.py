@@ -2,6 +2,9 @@
 '''
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
 '''
+# Author:  Lukas Huber
+# Email: lukas.huber@epfl.ch
+# Created: 2018-02-15
 
 import sys
 import os
@@ -13,26 +16,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
-# Add obstacle avoidance without 'setting' up
-# directory_path = rospack.get_path('qolo_modulation')
-# directory_path = "/home/lukas/Code/ObstacleAvoidance/dynamic_obstacle_avoidance/"
-# path_avoidance = os.path.join(directory_path, "src")
-# if not path_avoidance in sys.path:
-# sys.path.append(path_avoidance)
+from vartools.dynamical_systems import LinearSystem
 
 # Custom libraries
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.visualization.animation_qolo import DynamicAnimationQOLO
+# from dynamic_obstacle_avoidance.visualization.animation_qolo import DynamicAnimationQOLO
+# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.flower_shape import StarshapedFlower
 
-__author__ =  "LukasHuber"
-__email__ = "lukas.huber@epfl.ch"
-__date__ =  "2018-02-15"
+from dynamic_obstacle_avoidance.obstacles import Ellipse
+from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
+
+from dynamic_obstacle_avoidance.containers import GradientContainer
+
 
 
 def visualize_simple_ellipse(
@@ -215,7 +211,9 @@ def visualize_repulsive_cube(
     y_lim = [-2, 2]
 
     figsize = (10, 10.0)
-    pos_attractor = [-1, 0]
+
+    pos_attractor = np.array([-1, 0])
+    dynamics = LinearSystem(attractor_position=pos_attractor)
     
     obs = GradientContainer() # create empty obstacle list
     # obs.append(Polygon(
@@ -249,8 +247,10 @@ def visualize_repulsive_cube(
     Simulation_vectorFields(
         x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
         saveFigure=False, figName=None,
-        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        noTicks=True, draw_vectorField=True,  automatic_reference_point=False,
+        point_grid=n_resolution, show_streamplot=True,
+        normalize_vectors=False,
+        dynamicalSystem=dynamics.evaluate,
         figureSize=figsize,
         reference_point_number=False, showLabel=False,
         fig_and_ax_handle=(fig, ax),
@@ -261,14 +261,18 @@ def visualize_repulsive_cube(
     # fig, ax = plt.subplots(figsize=figsize)
     # ax = axes.flat[1]
     ax = plt.subplot(2, 1, 2)
-    line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02,
-                                   line_color=[102./255, 204./255, 0./255])
+    line = plt_speed_line_and_qolo(
+    points_init=point_init, attractorPos=pos_attractor, obs=obs,
+    fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
+    
 
     Simulation_vectorFields(
         x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
         saveFigure=False, figName=None,
-        noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        noTicks=True, draw_vectorField=True,  automatic_reference_point=False,
+        point_grid=n_resolution, show_streamplot=True,
+        normalize_vectors=False,
+        dynamicalSystem=dynamics.evaluate,
         figureSize=figsize,
         reference_point_number=False, showLabel=False,
         fig_and_ax_handle=(fig, ax),
@@ -616,7 +620,7 @@ if (__name__) == "__main__":
 
     # visualize_intersecting_ellipse(save_figures=False, n_resolution=20)
     
-    # visualize_repulsive_cube(n_resolution=100, save_figure=True)
+    visualize_repulsive_cube(n_resolution=100, save_figure=True)
     
     # visualize_circular_boundary(n_resolution=100, save_figure=True)
 
@@ -632,7 +636,7 @@ if (__name__) == "__main__":
 
     # visualize_dynamic_boundary(save_figure=False, dynamic_simulation=True)
 
-    visualize_crowd_scene(n_resolution=20)
+    # visualize_crowd_scene(n_resolution=20)
 
     
     

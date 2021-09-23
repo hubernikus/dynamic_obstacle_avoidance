@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from vartools.angle_math import *
 
-from dynamic_obstacle_avoidance.avoidance.utils  import *
+from dynamic_obstacle_avoidance.utils  import *
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import Intersection_matrix
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
@@ -330,12 +330,8 @@ class ObstacleContainer(BaseContainer):
                 
                 if ind_end in fill_list[ii]:
                     it_list.append(np.array(fill_list[ii] == ind_end)[0])
-                # while (ii<len(fill_list[-1])):
-                    # if temp_list[ii]==ind_end:
-                    # it_list[-1] = ii
                     return it_list
-                    # path_not_found = False
-                    # break
+
                 
                 # Check for Duplicates
                 jj = 0
@@ -345,34 +341,6 @@ class ObstacleContainer(BaseContainer):
                         continue
                     jj += 1
                 flat_list.append(fill_list[-1])
-
-
-            # # Increment
-            # increment_level = len(it_list)
-            # while(increment_level>0):
-            #     it_list[increment_level] += 1
-                
-            #     eval_list = siblings_list
-            #     for ii in range(len(it_list)-1):
-            #         eval_list = eval_list[it_list]
-
-            #         if len(eval_list)==0:
-            #             it_list[increment_level] = 0
-            #             increment_level -= 1
-            #             break
-
-            #         if (ii==increment_level and
-            #             it_list[increment_level] > len(eval_list)):
-            #             it_list[increment_level] = 0
-            #             increment_level -= 1
-            #             break
-
-            # siblings_list.append(copy.deepcopy(siblings_list))
-            
-            # if it_list[-1]>=len(eval_list):
-                # it_list[0]
-            
-            # break
     
     def get_siblings(self, ind):
         # TODO: use intersection matrix instead / maybe not

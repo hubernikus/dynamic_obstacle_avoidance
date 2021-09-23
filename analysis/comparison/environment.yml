@@ -1,0 +1,6 @@
+name: avoidance_comparison
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9

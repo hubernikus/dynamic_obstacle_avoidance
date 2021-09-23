@@ -20,13 +20,16 @@ import matplotlib.image as mpimg
 
 from scipy import ndimage
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from vartools.dynamical_systems import LinearSystem
 
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
-from dynamic_obstacle_avoidance.avoidance.utils import obs_check_collision_2d
+from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
 
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import get_dynamic_center_obstacles
+
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_rk4
+
 
 # Show plot in a reactive manner
 plt.ion()
@@ -53,21 +56,23 @@ def plt_speed_line_and_qolo(points_init, attractorPos, obs, max_simu_step=500, d
         
         for it_count in range(max_simu_step):
             x_pos[:, it_count+1] = obs_avoidance_rk4(
-                dt, x_pos[:, it_count], obs, x0=attractorPos,
-                obs_avoidance=obs_avoidance_interpolation_moving)
+                dt, x_pos[:, it_count], obs,
+                # x0=attractorPos,
+                obs_avoidance=obs_avoidance_interpolation_moving,
+                ds=LinearSystem(attractor_position=attractorPos).evaluate)
 
             # Check convergence
-            if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos) < convergence_margin):
-                
+            if (np.linalg.norm(x_pos[:, it_count+1] - attractorPos)
+                < convergence_margin):
                 x_pos = x_pos[:, :it_count+2]
-                
                 print("Convergence reached after {} iterations.".format(it_count))
                 break
 
-            if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count]) < convergence_margin):
+            if (np.linalg.norm(x_pos[:, it_count+1]-x_pos[:, it_count])
+                < convergence_margin):
                 x_pos = x_pos[:, :it_count+2]
-                
-                print("Stopping at local minimum after {} iterations.".format(it_count))
+                print("Stopping at local minimum after {} iterations.".format(
+                    it_count))
                 break
 
             it_count += 1
@@ -151,8 +156,9 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
     for iSim in range(max_simu_step):
         for j in range(n_points):
             x_pos[:, iSim+1,j] = obs_avoidance_rk4(
-                dt, x_pos[:,iSim, j], obs, x0=attractorPos,
-                obs_avoidance=obs_avoidance_interpolation_moving)
+                dt, x_pos[:,iSim, j], obs, 
+                obs_avoidance=obs_avoidance_interpolation_moving,
+                ds=LinearSystem(attractor_position=attractorPos).evaluate)
 
          # Check convergence
         if (np.sum((x_pos[:, iSim+1, :]-np.tile(attractorPos, (n_points,1)).T)**2)
@@ -164,20 +170,28 @@ def plot_streamlines(points_init, ax, obs=[], attractorPos=[0,0],
         it_count += 1
     
     for j in range(n_points):
-        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', lineWidth=4, color='r')
-        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*', markeredgewidth=4, markersize=13, zorder=5)
+        ax.plot(x_pos[0, :, j], x_pos[1, :, j], '--', linewidth=4, color='r')
+        ax.plot(x_pos[0, 0, j], x_pos[1, 0, j], 'k*',
+                markeredgewidth=4, markersize=13, zorder=5)
     # return x_pos
 
     
-def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=None, show_obstacle_number=False, reference_point_number=False, drawVelArrow=True, noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--'):
+def plot_obstacles(
+    ax, obs, x_range, y_range, pos_attractor=None, obstacle_color=None,
+    show_obstacle_number=False, reference_point_number=False, drawVelArrow=True,
+    noTicks=False, showLabel=True, draw_wall_reference=False, border_linestyle='--',
+    alpha_obstacle=0.8):
     """ Plot all obstacles & attractors """
-
     if pos_attractor is not None:
-        ax.plot(pos_attractor[0], pos_attractor[1], 'k*',linewidth=18.0, markersize=18, zorder=5)
+        ax.plot(pos_attractor[0], pos_attractor[1], 'k*',
+                linewidth=18.0, markersize=18, zorder=5)
 
     obs_polygon = []
     obs_polygon_sf = []
 
+    if obstacle_color is None:
+        obstacle_color = np.array([176, 124, 124])/255.
+    
     for n in range(len(obs)):
         
         if obs[n].boundary_points is None:
@@ -193,23 +207,26 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
                 outer_boundary = obs[n].global_outer_edge_points
                 
             if outer_boundary is None:
-                outer_boundary = np.array([[x_range[0], x_range[1], x_range[1], x_range[0]],
-                                           [y_range[0], y_range[0], y_range[1], y_range[1]]])
+                outer_boundary = np.array(
+                    [[x_range[0], x_range[1], x_range[1], x_range[0]],
+                     [y_range[0], y_range[0], y_range[1], y_range[1]]])
+                
             outer_boundary = outer_boundary.T
-            boundary_polygon = plt.Polygon(outer_boundary, alpha=1.0, zorder=-4)
-            boundary_polygon.set_color(np.array([176, 124, 124])/255.)
+            boundary_polygon = plt.Polygon(
+                outer_boundary, alpha=alpha_obstacle, zorder=-4)
+            boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
             obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=0.8, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
 
-            if obstacleColor is None:
-                obs_polygon[n].set_color(np.array([176,124,124])/255)
-            else:
-                obs_polygon[n].set_color(obstacleColor[n])
+            # if obstacle_color is None:
+                # obs_polygon[n].set_color(np.array([176,124,124])/255)
+            # else:
+            obs_polygon[n].set_color(obstacle_color)
             
         obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])
@@ -217,40 +234,42 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
         ax.add_patch(obs_polygon_sf[n])
         ax.add_patch(obs_polygon[n])
 
-
         if show_obstacle_number:
-            ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16, textcoords='data', size=16, weight="bold")
+            ax.annotate('{}'.format(n+1), xy=np.array(obs[n].center_position)+0.16,
+                        textcoords='data', size=16, weight="bold")
 
         if not obs[n].is_boundary or draw_wall_reference:
             ax.plot(obs[n].center_position[0], obs[n].center_position[1], 'k.')
 
         # automatic adaptation of center
-        reference_point = obs[n].get_reference_point(in_global_frame=True)
-
-        if not reference_point is None:
-            if not obs[n].is_boundary or draw_wall_reference:
-                ax.plot(reference_point[0],reference_point[1], 'k+', linewidth=18, markeredgewidth=4, markersize=13)
-            if reference_point_number:
-                ax.annotate('{}'.format(n), xy=reference_point+0.08, textcoords='data', size=16, weight="bold")  #
-            # add group, too
+        if not obs[n].is_boundary or draw_wall_reference:
+            reference_point = obs[n].get_reference_point(in_global_frame=True)
+            ax.plot(reference_point[0],reference_point[1],
+                    'k+', linewidth=18, markeredgewidth=4, markersize=13)
+        if reference_point_number:
+            ax.annotate('{}'.format(n), xy=reference_point+0.08,
+                        textcoords='data', size=16, weight="bold")  #
 
         if drawVelArrow and np.linalg.norm(obs[n].linear_velocity)>0:
             # col=[0.5,0,0.9]
             col = [255/255., 51/255., 51/255.]
             fac=5 # scaling factor of velocity
-            ax.arrow(obs[n].center_position[0], obs[n].center_position[1],
-                         obs[n].linear_velocity[0]/fac, obs[n].linear_velocity[1]/fac,
-                         # head_width=0.3, head_length=0.3, linewidth=10,
-                         head_width=0.1, head_length=0.1, linewidth=3,
-                         fc=col, ec=col, alpha=1)
+            ax.arrow(
+                obs[n].center_position[0], obs[n].center_position[1],
+                obs[n].linear_velocity[0]/fac, obs[n].linear_velocity[1]/fac,
+                # head_width=0.3, head_length=0.3, linewidth=10,
+                head_width=0.1, head_length=0.1, linewidth=3,
+                fc=col, ec=col, alpha=1)
 
     ax.set_aspect('equal', adjustable='box')
-
+    
     ax.set_xlim(x_range)
     ax.set_ylim(y_range)
 
     if noTicks:
-        ax.tick_params(axis='both', which='major',bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
+        ax.tick_params(axis='both', which='major',
+                       bottom=False, top=False, left=False, right=False,
+                       labelbottom=False, labelleft=False)
 
     if showLabel:
         ax.set_xlabel(r'$\xi_1$', fontsize=16)
@@ -262,7 +281,7 @@ def plot_obstacles(ax, obs, x_range, y_range, pos_attractor=None, obstacleColor=
     return 
     
 
-def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacleColor=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=linearAttractor, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
+def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[], sysDyn_init=False, pos_attractor=None, saveFigure=False, figName='default', noTicks=True, showLabel=True, figureSize=(12.,9.5), obs_avoidance_func=obs_avoidance_interpolation_moving, attractingRegion=False, drawVelArrow=False, colorCode=False, streamColor=[0.05,0.05,0.7], obstacle_color=None, plotObstacle=True, plotStream=True, fig_and_ax_handle=None, alphaVal=1, dynamical_system=None, draw_vectorField=True, points_init=[], show_obstacle_number=False, automatic_reference_point=True, nonlinear=True, show_streamplot=True, reference_point_number=False, normalize_vectors=True, tangent_eigenvalue_isometric=True, draw_wall_reference=False, gamma_distance=None, vector_field_only_outside=True, print_info=False, **kwargs):
     """ 
     Draw obstacle and vectorfield. Several parameters and defaults 
     allow easy customization of plot.
@@ -296,7 +315,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if not plotObstacle:
         warnings.warn('x_label & ticks not implemented')
     
-    plot_obstacles(ax, obs, x_range, y_range, pos_attractor, obstacleColor, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
+    plot_obstacles(ax, obs, x_range, y_range, pos_attractor, obstacle_color, show_obstacle_number, reference_point_number, drawVelArrow, noTicks, showLabel, draw_wall_reference=draw_wall_reference, **kwargs)
 
     # Show certain streamlines
     if np.array(points_init).shape[0]:
@@ -325,9 +344,9 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     if n_samples:  # nonzero
         it_start = 0
         
-        pos1 = [-2.807, 0.480]
-        pos2 = [-3.017, 0.337]
-
+        pos1 = [-3.018, 1.042]
+        pos2 = [-3.016, 1.187]
+        
         x_sample_range = [pos1[0], pos2[0]]
         y_sample_range = [pos1[1], pos2[1]]
 
@@ -344,9 +363,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
     ########## STOP REMOVE ###########
     
     if dynamical_system is None:
+        dynamical_system = LinearSystem(attractor_position=pos_attractor).evaluate
         # Default ds
-        def dynamical_system(x, MAX_SPEED=3.0):
-            return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)
+        # def dynamical_system(x, MAX_SPEED=3.0):
+            # return linear_ds_max_vel(x, attractor=pos_attractor, vel_max=MAX_SPEED)
 
     # Forced to attracting Region
     if attractingRegion:      
@@ -394,7 +414,10 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
 
     if sysDyn_init:
         fig_init, ax_init = plt.subplots(figsize=(5,2.5))
-        res_init = ax_init.streamplot(XX, YY, xd_init[0,:,:], xd_init[1,:,:], color=[(0.3,0.3,0.3)])
+        res_init = ax_init.streamplot(XX, YY, xd_init[0,:,:], xd_init[1,:,:],
+                                      # color=[(0.3,0.3,0.3)]
+                                      color='blue',
+                                      )
         
         ax_init.plot(pos_attractor[0], pos_attractor[1], 'k*', zorder=5)
         plt.gca().set_aspect('equal', adjustable='box')
@@ -411,7 +434,7 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
             np.round((end_time-start_time)/(n_calculations)*1000),5) )
         print('Modulation calulcation total: {} s'.format(np.round(end_time-start_time), 4))
 
-    if plotStream:
+    if plotStream and point_grid:
         if colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
             strm = res_ifd = ax.streamplot(

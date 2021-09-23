@@ -1,27 +1,20 @@
-#!/USSR/bin/python3
+#!/USSR/bin/python3.9
 """
-UNIT TESTING
-
-Test script for obstacle avoidance algorithm
-Test normal formation
+Test script for obstacle avoidance algorithm - specifically the normal function evaluation
 """
-
-
+import unittest
+import copy
 import sys
 import os
 from math import pi
 
-import unittest
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import GradientContainer
-
+from dynamic_obstacle_avoidance.containers import GradientContainer
 from dynamic_obstacle_avoidance.obstacles import Cuboid, CircularObstacle, Ellipse
 from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
 from dynamic_obstacle_avoidance.obstacles import BoundaryCuboidWithGaps
-
 
 class TestRotational(unittest.TestCase):
     def helper_normals_template(self, plot_normals=False, assert_check=True, obs=None,
@@ -242,6 +235,38 @@ class TestRotational(unittest.TestCase):
             gap_points_relative=np.array([[-5, -1], [-5, 1]]).T
         )
         self.helper_normals_template(plot_normals=plot_normals, obs=obs, test_name="BoundaryGap")
+
+    def test_normal_3d_ellipse(self,):
+        from scipy.spatial.transform import Rotation # scipy rotation
+        
+        obs = Ellipse(
+            center_position=np.array([0.2, 1, -0.4]), 
+            axes_length=np.array([0.1, 0.3, 0.2]),
+            orientation=Rotation.from_rotvec([0.1, 0.4, 0.3]),
+            tail_effect=False,
+            )
+
+        xyz_lim = [-1, 1]
+        x_lim = copy.deepcopy(xyz_lim)
+        y_lim = copy.deepcopy(xyz_lim)
+        z_lim = copy.deepcopy(xyz_lim)
+        
+        n_tests = 100
+        for ii in range(n_tests):
+            position = np.random.rand(3)
+            position[0] = position[0]*(x_lim[1] - x_lim[0]) + x_lim[0]
+            position[1] = position[1]*(y_lim[1] - y_lim[0]) + y_lim[0]
+            position[2] = position[2]*(z_lim[1] - z_lim[0]) + z_lim[0]
+            
+            if obs.get_gamma(position, in_global_frame=True) < 1:
+                continue
+            
+            normal_vector = obs.get_normal_direction(position=position, in_global_frame=True)
+            reference_vector = obs.get_reference_direction(position=position, in_global_frame=True)
+
+            self.assertTrue(
+                        normal_vector.dot(reference_vector) >= 0,
+                        "Reference and Normal not in same direction for 3d.")
 
     def test_various_setups(self):
         """ Additional setup (function parameters) for unittesting."""

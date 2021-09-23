@@ -1,0 +1,11 @@
+# Requirement
+# python=3.9
+ipython
+numpy
+matplotlib
+scipy
+# PyYAML
+# sciki
+shapely
+cvxopt
+

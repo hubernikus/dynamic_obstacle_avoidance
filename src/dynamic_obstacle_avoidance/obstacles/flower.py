@@ -1,4 +1,3 @@
-#!/USSR/bin/python3
 """ """
 # Author: Lukas Huber 
 # Email: lukas.huber@epfl.ch
@@ -13,13 +12,11 @@ import numpy as np
 from vartools.angle_math import angle_modulo
 from vartools.angle_math import *
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
+from dynamic_obstacle_avoidance.utils import *
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-
-visualize_debug = False
 
 
 class StarshapedFlower(Obstacle):
