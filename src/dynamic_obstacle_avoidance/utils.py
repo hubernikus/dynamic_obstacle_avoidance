@@ -13,11 +13,11 @@ from numpy import pi
 from vartools.angle_math import *
 from vartools.linalg import get_orthogonal_basis
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
 def get_relative_obstacle_velocity(
-    position, obstacle_list, E_orth, weights,
-    ind_obstacles=None, gamma_list=None, cut_off_gamma=1e-6):
+    position:  np.ndarray, obstacle_list, E_orth: np.ndarray, weights: list,
+    ind_obstacles: int = None, gamma_list: list = None, cut_off_gamma: float = 1e-6):
     """ Get the relative obstacle velocity
 
     Parameters

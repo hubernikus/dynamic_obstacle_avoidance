@@ -18,9 +18,10 @@ from vartools.directional_space import get_directional_weighted_sum_from_unit_di
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 from vartools.directional_space import UnitDirection, DirectionBase
 
-from dynamic_obstacle_avoidance.avoidance.utils import compute_weights
-from dynamic_obstacle_avoidance.avoidance.utils import get_weight_from_inv_of_gamma
-from dynamic_obstacle_avoidance.avoidance.utils import get_relative_obstacle_velocity
+from dynamic_obstacle_avoidance.utils import compute_weights
+from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
+from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
+
 
 class WeightOutOfBoundError(Exception):
     def __init__(self, weight):

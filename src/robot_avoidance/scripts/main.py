@@ -64,7 +64,7 @@ def dummy_robot_movement():
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
     
-        ax.set_aspect('equal', adjustable='box')
+        ax.set_aspect('equal', adjpustable='box')
         # elapsed_time = time.process_time() - t
         # print('time_plt', elapsed_time)
         

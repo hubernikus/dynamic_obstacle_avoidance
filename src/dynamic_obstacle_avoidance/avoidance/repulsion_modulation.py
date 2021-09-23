@@ -12,8 +12,7 @@ import sys
 import numpy as np
 import numpy.linalg as LA
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+from dynamic_obstacle_avoidance.utils import *
 
 
 def obs_avoidance_nonlinear_hirarchy(position_absolut, ds_init, obs, attractor=True, gamma_limit=1.0, weight_pow=2, repulsive_gammaMargin=0.01):

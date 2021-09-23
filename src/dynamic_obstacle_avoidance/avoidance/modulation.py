@@ -15,10 +15,12 @@ import sys
 
 from vartools.directional_space import get_directional_weighted_sum
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.avoidance.utils import *
+from dynamic_obstacle_avoidance.utils import *
 
-def compute_diagonal_matrix(Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True, tangent_power=5, treat_obstacle_special=True):
+
+def compute_diagonal_matrix(
+    Gamma, dim, is_boundary=False, rho=1, repulsion_coeff=1.0, tangent_eigenvalue_isometric=True,
+    tangent_power=5, treat_obstacle_special=True):
     """ Compute diagonal Matrix"""
     if Gamma <= 1 and treat_obstacle_special:
         # Point inside the obstacle
@@ -60,11 +62,14 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
     return E, E_orth
 
 
-def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
+def compute_modulation_matrix(
+    x_t, obs, matrix_singularity_margin=pi/2.0*1.05, angular_vel_weight=0):
     # TODO: depreciated remove
     """
-     The function evaluates the gamma function and all necessary components needed to construct the modulation function, to ensure safe avoidance of the obstacles.
-    Beware that this function is constructed for ellipsoid only, but the algorithm is applicable to star shapes.
+    The function evaluates the gamma function and all necessary components needed to construct
+    the modulation function, to ensure safe avoidance of the obstacles.
+    Beware that this function is constructed for ellipsoid only, but the algorithm is applicable
+    to star shapes.
     
     Input
     x_t [dim]: The position of the robot in the obstacle reference frame
@@ -96,7 +101,11 @@ def compute_modulation_matrix(x_t, obs, matrix_singularity_margin=pi/2.0*1.05, a
     return E, D, Gamma, E_orth
 
 
-def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attractor='none', weightPow=2, repulsive_gammaMargin=0.01, repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True, zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True, gamma_distance=None, xd=None):
+def obs_avoidance_interpolation_moving(
+    position, initial_velocity, obs=[], attractor=None, weightPow=2, repulsive_gammaMargin=0.01,
+    repulsive_obstacle=False, velocicity_max=None, evaluate_in_global_frame=True,
+    zero_vel_inside=False, cut_off_gamma=1e6, x=None, tangent_eigenvalue_isometric=True,
+    gamma_distance=None, xd=None):
     """
     This function modulates the dynamical system at position x and dynamics xd such that it
     avoids all obstacles obs. It can furthermore be forced to converge to the attractor. 
@@ -137,14 +146,10 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
     else:
         return initial_velocity      # Trivial solution
 
-    if type(attractor) == str:
-        if attractor == 'default':       # Define attractor position
-            attractor = np.zeros((d))
-            N_attr = 1
-        else:
-            N_attr = 0            
-    else:
+    if attractor is not None:
         N_attr = 1
+    else:
+        N_attr = 0
 
     if evaluate_in_global_frame:
         pos_relative = np.tile(position, (N_obs, 1)).T
@@ -206,7 +211,8 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
             rho=obs[n].reactivity,
         )
 
-        E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
+        E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(
+            obs[n], pos_relative[:, n], in_global_frame=evaluate_in_global_frame)
 
     # Linear and angular roation of velocity
     xd_obs = np.zeros((dim))
@@ -260,7 +266,8 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
             
         xd_obs = xd_obs + xd_obs_n*weight[n]
 
-    relative_velocity = initial_velocity - xd_obs      # Computing the relative velocity with respect to the obstacle
+    # Computing the relative velocity with respect to the obstacle
+    relative_velocity = initial_velocity - xd_obs      
     
     relative_velocity_hat = np.zeros((dim, N_obs))
     relative_velocity_hat_magnitude = np.zeros((N_obs))
@@ -298,10 +305,19 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
                   )):
                 D[0, 0, n] = 1       # No effect in 'radial direction'
 
-            relative_velocity_hat[:, n] = E[:, :, n].dot(D[:, :, n]).dot(relative_velocity_trafo)
+            stretched_velocity = D[:, :, n].dot(relative_velocity_trafo)
+
+            if D[0, 0, n] < 0:
+                # Repulsion in tangent direction, too, have really active repulsion
+                factor_tangent_repulsion = 2
+                tang_vel_norm = LA.norm(relative_velocity_trafo[1:])
+                stretched_velocity[0] += (-1)*D[0, 0, n]*tang_vel_norm * factor_tangent_repulsion
+            
+            relative_velocity_hat[:, n] = E[:, :, n].dot(stretched_velocity)
 
             if not evaluate_in_global_frame:
-                relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(relative_velocity_hat[:, n])
+                relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(
+                    relative_velocity_hat[:, n])
                 # import pdb; pdb.set_trace()
 
         # TODO: review sticky surface feature [!]
@@ -328,7 +344,8 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
                     # eigenvalue_magnitude = 1 - 1./abs(Gamma_mag)**sticky_surface_power
 
                 if not evaluate_in_global_frame:
-                    relative_velocity_temp = obs[n].transform_global2relative_dir(relative_velocity_hat[:, n])
+                    relative_velocity_temp = obs[n].transform_global2relative_dir(
+                        relative_velocity_hat[:, n])
                 else:
                     relative_velocity_temp = relative_velocity_hat[:, n]
                     
@@ -336,12 +353,13 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
                 
                 eigenvalue_magnitude = min(eigenvalue_magnitude/tang_vel, 1) if tang_vel else 0
 
-                relative_velocity_hat[:, n] = relative_velocity_hat[:, n]*relative_velocity_norm * eigenvalue_magnitude
+                relative_velocity_hat[:, n] = (relative_velocity_hat[:, n]
+                                               * relative_velocity_norm * eigenvalue_magnitude)
                 
                 if not evaluate_in_global_frame:
-                    relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(relative_velocity_hat[:, n])
+                    relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(
+                        relative_velocity_hat[:, n])
 
-                # import pdb; pdb.set_trace()
 
         if repulsive_obstacle:
             # Emergency move away from center in case of a collision
@@ -366,7 +384,9 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
     relative_velocity_hat_normalized = np.zeros(relative_velocity_hat.shape)
     ind_nonzero = (relative_velocity_hat_magnitude>0)
     if np.sum(ind_nonzero):
-        relative_velocity_hat_normalized[:, ind_nonzero] = relative_velocity_hat[:, ind_nonzero]/np.tile(relative_velocity_hat_magnitude[ind_nonzero], (dim, 1))
+        relative_velocity_hat_normalized[:, ind_nonzero] = (
+            relative_velocity_hat[:, ind_nonzero]
+            /np.tile(relative_velocity_hat_magnitude[ind_nonzero], (dim, 1)))
 
     if N_attr:
         # TODO: implement properly & test
@@ -394,26 +414,4 @@ def obs_avoidance_interpolation_moving(position, initial_velocity, obs=[], attra
         if velocity_norm > velocicity_max:
             vel_final = vel_final/velocity_norm * velocicity_max
             
-    # Transforming back from object frame of reference to inertial frame of reference
-    if False:
-        # print(f'{initial_velocity=}')
-        # print(f'{relative_velocity=}')
-        # E0 = E[:, :, 0]
-        # D0 = D[:, :, 0]
-        # print(f'{E0=}')
-        # print(f'{D0=}')
-        # print(f'{vel_final=}')
-        
-        plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'ko')
-        plt.plot(obs[-1].center_position[0], obs[-1].center_position[1], 'k+')
-        
-        plt.quiver(position[0], position[1], E0[0, 0], E0[1, 0], color='blue', label='Reference')
-        plt.quiver(position[0], position[1], E0[0, 1], E0[1, 1], color='red', label='Tangent')
-        
-        plt.legend()
-        plt.ion()
-        plt.show()
-        
-        breakpoint()
-        
     return vel_final

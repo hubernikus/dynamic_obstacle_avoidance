@@ -6,12 +6,17 @@ Polygon Obstacle for Avoidance Calculations
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import time
-import warnings
 import sys
+import warnings
 import copy
+import time
+
 from math import pi
+
 import numpy as np
+from numpy import linalg as LA
+
+import shapely
 
 from vartools.directional_space import get_angle_space, get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
@@ -19,12 +24,14 @@ from vartools.angle_math import angle_is_in_between, angle_difference_directiona
 from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-from dynamic_obstacle_avoidance.avoidance.utils import get_tangents2ellipse
+from dynamic_obstacle_avoidance.utils import get_tangents2ellipse
 
+from ._base import Obstacle, GammaType
 
 def is_one_point(point1, point2, margin=1e-9):
     """ Check if it the two points coincide [1-norm] """
     return np.allclose(point1, point2, rtol=1e-9)
+
 
 class Polygon(Obstacle):
     """ Class to define Star Shaped Polygons
@@ -34,30 +41,39 @@ class Polygon(Obstacle):
 
     This class defines obstacles to modulate the DS around it
     At current stage the function focuses on Ellipsoids, 
-    but can be extended to more general obstacles. """
-    def __init__(self,  edge_points, indeces_of_tiles=None, ind_open=None, absolute_edge_position=True,
-                 # reference_point=None,
-                 margin_absolut=0,
-                 center_position=None,
-                 *args, **kwargs):
-        self.edge_points = np.array(edge_points)
+    but can be extended to more general obstacles.
 
+    Attributes
+    ----------
+    edge_points:
+    
+    """
+    def __init__(self,
+                 edge_points: np.ndarray, absolute_edge_position: bool = True,
+                 indeces_of_tiles: np.ndarray = None, ind_open: int = None, 
+                 # reference_point=None,
+                 margin_absolut: float = 0,
+                 center_position: np.ndarray = None,
+                 *args, **kwargs):
+        """
+        Arguments
+        ---------
+        absolute_edge_position: bool to define if edge_points is in the local or absolute 
+            (global) frame
+        """
         if center_position is None:
             center_position = np.sum(self.edge_points, axis=1)/self.edge_points.shape[1]
+        else:
+            center_position = np.array(center_position)
+        # self.center_position = center_position
         kwargs['center_position'] = center_position
 
-        if ind_open is None:
-            # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
-            ind_open = []
-            
-        if (sys.version_info > (3, 0)): # TODO: remove in future
-            super().__init__(*args, **kwargs)
-        else:
-            super(Polygon, self).__init__(*args, **kwargs)
-
+        self.edge_points = np.array(edge_points)
         if absolute_edge_position:
-            self.edge_points = self.edge_points-np.tile(self.center_position, (self.edge_points.shape[1], 1)).T
+            self.edge_points = self.edge_points-np.tile(
+                center_position, (self.edge_points.shape[1], 1)).T
 
+        self.dim = center_position.shape[0]
         if self.dim==2:
             self.n_planes_edge = self.edge_points.shape[1]
             self.n_planes = self.edge_points.shape[1] # with reference
@@ -69,11 +85,21 @@ class Polygon(Obstacle):
             self.n_planes_edge = self.n_planes
             
             # TODO: How hard would it be to find flexible tiles?
-            
         else:
             raise NotImplementedError("Not yet implemented for dimensions higher than 3")
+
+        if (sys.version_info > (3, 0)): # TODO: remove in future
+            super().__init__(*args, **kwargs)
+        else:
+            super(Polygon, self).__init__(*args, **kwargs)
+
+        if ind_open is None:
+            # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
+            ind_open = []
+            
         
-        self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(self.edge_points)
+        self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
+            self.edge_points)
 
         # Reference to other arrays
         # self.edge_points -- # Points of 'the no-go zone'
@@ -90,6 +116,14 @@ class Polygon(Obstacle):
         # if not reference_point is None:
             # self.set_reference_point(reference_point, in_global_frame=False)
 
+        # Create shapely object
+        # TODO update shapely position (!?)
+        edge = self.edge_points
+        
+        edge = np.vstack((edge.T, edge[:, 0]))
+        self._shapely = shapely.geometry.Polygon(edge).buffer(self.margin_absolut)
+        
+        
     @property
     def hull_edge(self):
         # TODO: remove // change
@@ -166,9 +200,10 @@ class Polygon(Obstacle):
         dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
-    
     def get_minimal_distance(self):
-        dist_edges = np.linalg.norm(self.edge_points- np.tile(self.center_position, (self.edge_points.shape[1], 1)).T, axis=0)
+        dist_edges = np.linalg.norm(self.edge_points -
+                                    np.tile(self.center_position,
+                                            (self.edge_points.shape[1], 1)).T, axis=0)
         return np.max(dist_edges)
 
     
@@ -544,84 +579,79 @@ class Polygon(Obstacle):
         return normal_vector
 
 
-    def get_gamma(self, position, in_global_frame=False, norm_order=2, include_special_surface=True, gamma_type="proportional", gamma_distance=None):
+    def get_gamma_old(
+        self, position, in_global_frame=False, norm_order=2, include_special_surface=True,
+        gamma_type=GammaType.RELATIVE, gamma_distance=None):
         """ 
         Get distance-measure from surface of the obstacle.
         INPUT: position: list or array of position
         OUTPUT
         RAISE ERROR:Function is partially defined for only the 2D case 
         """
-        if isinstance(position, list):
-            position = np.array(position)
-
+        # TOOD: redo different gamma types
         if in_global_frame:
             position = self.transform_global2relative(position)
         
-        multiple_positions = (len(position.shape)>1)
-        if multiple_positions:
-            n_points = position.shape[1]
-            
-        else:
-            n_points = 1
-            position = position.reshape((self.dim, n_points))
-
-        Gamma = np.zeros(n_points)
-        Gamma_new = np.zeros(n_points)
-
         if self.gamma_distance is not None:
             gamma_distance = self.gamma_distance
 
-        if gamma_distance is not None:
+        if gamma_type is GammaType.EUCLEDIAN:
             # Proportionally reduce gamma distance with respect to paramter
             dist2hulledge = self.get_distance_to_hullEdge(position)
-            ind_nonzero = dist2hulledge>0
             
-            if np.sum(ind_nonzero):
-                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
+            if dist2hulledge > 0:
+                mag_position = np.linalg.norm(position)
                 
-                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
+                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
                 if self.is_boundary:
-                    mag_position = (dist2hulledge[ind_nonzero] * dist2hulledge[ind_nonzero] / mag_position)
+                    mag_position = (dist2hulledge * dist2hulledge / mag_position)
 
-                Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/gamma_distance + 1
-        
+                Gamma = (mag_position-dist2hulledge) + 1
+                
+            else:
+                Gamma = 0
             
-        elif gamma_type=="proportional":
+        elif gamma_type==GammaType.RELATIVE:
             # TODO: extend rule to include points with Gamma < 1 for both cases
             # dist2hull = np.ones(self.edge_points.shape[1])*(-1)
             dist2hulledge = self.get_distance_to_hullEdge(position)
-
-            ind_nonzero = dist2hulledge>0
             
-            if np.sum(ind_nonzero):
-                mag_position = np.linalg.norm(position[:, ind_nonzero], axis=0)
-                # Dvidie by laragest-axes factor to avoid weird behavior with elongated ellipses
-                # if self.is_boundary:
-                Gamma[ind_nonzero] = (mag_position/dist2hulledge[ind_nonzero])
-                # else:
-                    # Gamma[ind_nonzero] = (mag_position-dist2hulledge[ind_nonzero])/self.get_maximal_distance() + 1
+            if dist2hulledge:
+                mag_position = np.linalg.norm(position)
+                
+                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
+                Gamma = (mag_position/dist2hulledge)
 
+            else:
+                Gamma = 0
+                
             if self.is_boundary:
-                pow_boundary_gamma=2
+                pow_boundary_gamma = 2
                 Gamma = self.get_boundaryGamma(Gamma)**pow_boundary_gamma
 
-        elif gamma_type=="norm2":
+        elif gamma_type==GammaType.OTHER:
             distances2plane = self.get_distance_to_hullEdge(position)
 
             delta_Gamma = np.min(distances2plane) - self.margin_absolut
             ind_outside = (distances2plane > 0)
-            delta_Gamma = (np.linalg.norm(distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
+            delta_Gamma = (np.linalg.norm(
+                distances2plane[ind_outside], ord=norm_order)-self.margin_absolut)
+            
             normalization_factor = np.max(self.normalDistance2center)
             # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
             Gamma = 1 + delta_Gamma / normalization_factor
+            
         else:
             raise TypeError("Unknown gmma_type {}".format(gamma_type))
         
-        if not multiple_positions:
-            return Gamma[0]
-                
-        return Gamma
+        if not self.is_boundary:
+            # TODO: implement better... in base class maybe(?!) / general
+            warnings.warn("Unit-Gamma type for Polygon implemented.")
+            dist_center = LA.norm(position)
+            local_radius = dist_center / Gamma
+            Gamma = dist_center-local_radius + 1
 
+        return Gamma
     
     def get_normal_direction(self, position, in_global_frame=False, normalize=True, normal_calulation_type="distance"):
         # breakpoint()
@@ -881,104 +911,59 @@ class Polygon(Obstacle):
             if not self.reference_point_is_inside:
                 self.normal_vector, self.normalDistance2center = self.calculate_normalVectorAndDistance(
                     self.edge_points)
+                    
             self.reference_point_is_inside = True
             self.n_planes = self.n_planes_edge
             self.ind_edge_ref = None
 
 
-class Cuboid(Polygon):
-    def __init__(self, axes_length=[1, 1], margin_absolut=0, expansion_speed_axes=None, wall_thickness=None, relative_expansion_speed=None, *args, **kwargs):
-        """
-        This class defines obstacles to modulate the DS around it
-        At current stage the function focuses on Ellipsoids, 
-        but can be extended to more general obstacles
-        """
-        self.axes_length = np.array(axes_length)
+    def get_local_radius(self, position, in_global_frame=False):
+        """ Get local / radius or the surface intersection point by using shapely. """
+        if in_global_frame:
+            position = self.transform_global2relative(position)
 
-        # Different expansion models [relative vs. absolute]
-        self._expansion_speed_axes = None
-        self._relative_expansion_speed = None
-        
-        if expansion_speed_axes is not None:
-            self._expansion_speed_axes = np.array(expansion_speed_axes)
-            is_deforming = True
-        elif relative_expansion_speed is not None:
-            self._relative_expansion_speed = np.array(relative_expansion_speed)
-            is_deforming = True
-        else:
-            is_deforming = False
+        shapely_line = shapely.geometry.LineString([[0, 0], position])
+        intersection = self._shapely.intersection(shapely_line).coords
 
-        self.dim = self.axes_length.shape[0] # Dimension of space
-        
-        if not self.dim == 2:
-            raise ValueError("Cuboid not yet defined for dimensions= {}".format(self.dim))
+        # If position is inside, the intersection point is equal to the position-point,
+        # in that case redo the calulation with an extended line to obtain the actual
+        # radius-point
+        if np.allclose(intersection[-1], position):
+            # Point is assumed to be inside
+            point_dist = LA.norm(position)
+            if not point_dist:
+                # Return nonzero value to avoid 0-division conflicts
+                return self.get_minimal_distance()
 
-        edge_points = self.get_edge_points_from_axes()
-        
-        if sys.version_info > (3, 0):
-            super().__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
-
-        else:
-            super(Cuboid, self).__init__(*args, is_deforming=is_deforming, edge_points=edge_points, absolute_edge_position=False, margin_absolut=margin_absolut, **kwargs)
-
-        self.wall_thickness = wall_thickness
-        
-    @property
-    def axes_length(self):
-        return self._axes_length
-    
-    @axes_length.setter
-    def axes_length(self, value):
-        self._axes_length = np.maximum(value, np.zeros(value.shape))
-
-    @property
-    def global_outer_edge_points(self):
-        if self.wall_thickness is not None:
-            outer_axes_length = self.axes_length + 2*self.wall_thickness
-            edge_points = self.get_edge_points_from_axes(axes_length=outer_axes_length)
-            edge_points = self.transform_relative2global(edge_points)
-            return edge_points
-        else:
-            return None
-
-    @property
-    def expansion_speed_axes(self):
-        if self._expansion_speed_axes is not None:
-            return self._expansion_speed_axes
-        else:
-            return self._relative_expansion_speed * self.axes_length
-
-    @expansion_speed_axes.setter
-    def expansion_speed_axes(self, value):
-        self._expansion_speed_axes = value
-
-    def get_reference_length(self):
-        return np.linalg.norm(self.axes_length)/2.0 + self.margin_absolut
-
-    def get_relative_expansion(self, delta_time):
-        if self._relative_expansion_speed is not None:
-            exp_speed = self._relative_expansion_speed
-        else:
-            exp_speed = self._expansion_speed_axes / self.axes_length
-        return 1 + exp_speed * delta_time
-        
-    def get_edge_points_from_axes(self, axes_length=None):
-        if axes_length is None:
-            axes_length = self.axes_length
+            # Make sure position is outside the boundary (random mutiple factor)
+            position = position / point_dist * self.get_maximal_distance() * 5.0
             
-        edge_points = np.zeros((self.dim, 4))
-        edge_points[:, 2] = axes_length/2.0 * np.array([1, 1])
-        edge_points[:, 3] = axes_length/2.0 * np.array([-1, 1])
-        edge_points[:, 0] = axes_length/2.0 * np.array([-1, -1])
-        edge_points[:, 1] = axes_length/2.0 * np.array([1, -1])
-        
-        return edge_points
-        
-    def update_deforming_obstacle(self, delta_time):
-        rel_expansion = self.get_relative_expansion(delta_time)
-        self.axes_length = self.axes_length * rel_expansion
-        self.wall_thickness = self.wall_thickness*rel_expansion
-        self.edge_points = self.get_edge_points_from_axes()
+            shapely_line = shapely.geometry.LineString([[0, 0], position])
+            intersection = self._shapely.intersection(shapely_line).coords
 
-        self.draw_obstacle()
+        return LA.norm(intersection[-1])
 
+    def get_gamma(self, position, in_global_frame=False, gamma_type=GammaType.EUCLEDIAN,
+                  gamma_distance=None):
+        # gamma_distance is not used -> should it be removed (?!)
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
+        dist_center = LA.norm(position)
+        local_radius = self.get_local_radius(position)
+
+        # Choose proporitional
+        if gamma_type == GammaType.EUCLEDIAN:
+            if dist_center < local_radius:
+                # Return proportional inside to have -> [0, 1]
+                gamma = dist_center / local_radius
+            else:
+                gamma = (dist_center - local_radius) + 1
+
+        else:
+            raise NotImplementedError("Implement othr gamma-types if desire.")
+        return gamma
+
+    def get_distance_to_hullEdge(self, *args, **kwargs):
+        # New naming convention -> remove in the future..
+        return self.get_local_radius(*args, **kwargs)

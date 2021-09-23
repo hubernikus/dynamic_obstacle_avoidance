@@ -1,17 +1,17 @@
-""" Library for the Modulation of Linear Systems
-Copyright (c) 2021 under MIT license
 """
-__author__ = "Lukas Huber"
-__date__ = "2021-20-01"
-__info__ = "Obstacle avoidance for star-shaped obstacle in linear DS"
+Library for the Modulation of Linear Systems
+Obstacle avoidance for star-shaped obstacle in linear DS
+"""
+# Author: Lukas Huber
+# Created: 2021-20-01
+# License BSD (c) 2021
 
 import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt   # TODO: remove for production
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.avoidance.utils import *
+from dynamic_obstacle_avoidance.utils import *
 
 def obs_avoidance_potential_field(position, velocity, obs=[], xd=None,
                                   factor_repulsion=0.1,
@@ -234,8 +234,6 @@ def obs_avoidance_orthogonal_moving(position, xd, obs=[], attractor='none', weig
         if not evaluate_in_global_frame:
             xd_hat = obs[n].transform_relative2global_dir(xd_hat)
 
-
-    # import pdb; pdb.set_trace()
     vel_final = xd_hat
     # Transforming back from object frame of reference to inertial frame of reference
     return vel_final

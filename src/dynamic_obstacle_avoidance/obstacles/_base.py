@@ -8,6 +8,8 @@ from math import sin, cos, pi, ceil
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
+from enum import Enum
+
 import numpy as np
 import numpy.linalg as LA
 
@@ -17,9 +19,17 @@ from scipy.spatial.transform import Rotation # scipy rotation
 
 from vartools.angle_math import *
 from vartools.states import ObjectPose
-from dynamic_obstacle_avoidance.state import State # TODO: make obstacle a state-object
 
-import matplotlib.pyplot as plt     # TODO: remove after debugging!
+
+class GammaType(Enum):
+    """ Different gamma-types for caclulation of 'distance' / barrier-measure.
+    The gamma value is given in [1 - infinity] outside the obstacle
+    except (!) the barrier type is from"""
+    RELATIVE = 0
+    EUCLEDIAN = 1
+    SCALED_EUCLEDIAN = 2
+    BARRIER = 3
+
 
 # Utils (!)
 def local_frame_check_return_velocity(func, in_global_frame=False):
@@ -68,18 +78,10 @@ class Obstacle(ABC):
         else:
             self.name = name
 
-        self.sf = sf # TODO - rename
-        # self.delta_margin = delta_margin
-        self.margin_absolut = margin_absolut
-        if sigma is not None:
-            raise Exception("Remove sigma argument.")
-        self.sigma = 1
+        self.is_boundary = is_boundary
         
-        self.tail_effect = tail_effect # Modulation if moving away behind obstacle
-        self.has_sticky_surface = has_sticky_surface
-
         # Obstacle attitude / 
-        if not x0 is None:
+        if not x0 is None: # TODO: remove
             raise NotImplementedError("Wrong name")
             center_position = x0        # TODO remove and rename
         self.position = center_position
@@ -87,10 +89,24 @@ class Obstacle(ABC):
 
         # Dimension of space
         self.dim = len(self.center_position)
-        
-        # Dimension of space 
-        self.d = len(self.center_position)      # TODO remove
+        self.d = len(self.center_position)      # TODO: depreciated -> remove
 
+        # Relative Reference point // Dyanmic center
+        # if reference_point is None:
+        self.reference_point = np.zeros(self.dim) # TODO remove and rename
+        self.reference_point_is_inside = True
+
+        # Margin
+        self.sf = sf # TODO: depreciated -> remove
+        # self.delta_margin = delta_margin
+        self.margin_absolut = margin_absolut
+        if sigma is not None:
+            raise Exception("Remove / rename sigma argument.")
+        self.sigma = 1 # TODO: rename sigma argument
+        
+        self.tail_effect = tail_effect # Modulation if moving away behind obstacle
+        self.has_sticky_surface = has_sticky_surface
+        
         self._rotation_matrix = None
         self.orientation = orientation
             
@@ -142,21 +158,16 @@ class Obstacle(ABC):
 
         self.update_timestamp()
 
-        # Trees of stars // move to 'properties'
+        # Trees of stars // move 'container'
         self.hirarchy = hirarchy
         self.ind_parent = ind_parent
         self.ind_children = []
 
-        # Relative Reference point // Dyanmic center
-        # if reference_point is None:
-        self.reference_point = np.zeros(self.dim) # TODO remove and rename
-        self.reference_point_is_inside = True
         
         # Set reference point value to None
         self.reset_relative_reference() 
 
         self.Gamma_ref = Gamma_ref
-        self.is_boundary = is_boundary
 
         self.is_convex = False        # Needed?
         self.is_non_starshaped = False

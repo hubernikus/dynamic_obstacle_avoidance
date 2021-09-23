@@ -18,12 +18,8 @@ import matplotlib.pyplot as plt     # TODO: remove for production
 from vartools.angle_math import *
 from vartools.angle_math import  angle_modulo, angle_difference_directional_2pi
 
-from dynamic_obstacle_avoidance.avoidance.utils import *
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
-
+from dynamic_obstacle_avoidance.utils import *
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-
 
 class Ellipse(Obstacle):
     """ Ellipse type obstacle
