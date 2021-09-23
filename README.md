@@ -25,32 +25,27 @@ conda activate dynamic_obstacle_avoidance
 ``` 
 
 Now you can move forward to install the requirement using pip:
-```
-pip install -r requirements.txt
-python setup.py develop
-```
-
-OR:
 ``` sh
 pip install -e .
-
 ```
-
-Note, that if you want to be able to test 
-``` sh
-pip install -r requirements_dev.txt
-```
-and use jupyter notebook additionally install
-``` sh
-pip install -r requirements_notebook.txt
-```
-
 
 Next step is to install the dependency library:
 ```
 cd lib/various_tools/
 python setup.py develop
 ```
+
+If you want to be able to test/develop additionally install
+``` sh
+pip install -r requirements_dev.txt
+```
+
+For the use of the jupyter notebook additionally install
+(found in the examples/notebook folder)
+``` sh
+pip install -r requirements_notebook.txt
+```
+
 
 ## Getting Started
 The `example` folder contains a jupyter notebook & general example for static & dynamic simulation in multi-obstacle environment.

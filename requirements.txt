@@ -1,9 +1,4 @@
-# Requirements
-matplotlib
-
 numpy
-
+matplotlib
 scipy
-PyYAML
-
 shapely

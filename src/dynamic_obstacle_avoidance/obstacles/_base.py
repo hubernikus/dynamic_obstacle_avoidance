@@ -31,8 +31,8 @@ class GammaType(Enum):
     BARRIER = 3
 
 
-# Utils (!)
 def local_frame_check_return_velocity(func, in_global_frame=False):
+    # Move to Utils (?!)
     # Wrapper / Is this really useful / easily possible(?!)
     def wrapper():
         if in_global_frame:
