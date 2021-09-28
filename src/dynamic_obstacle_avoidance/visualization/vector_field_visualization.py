@@ -267,9 +267,8 @@ def plot_obstacles(
     ax.set_ylim(y_range)
 
     if noTicks:
-        ax.tick_params(axis='both', which='major',
-                       bottom=False, top=False, left=False, right=False,
-                       labelbottom=False, labelleft=False)
+        ax.tick_params(axis='both', which='major', labelbottom=False, labelleft=False,
+                       bottom=False, top=False, left=False, right=False)
 
     if showLabel:
         ax.set_xlabel(r'$\xi_1$', fontsize=16)

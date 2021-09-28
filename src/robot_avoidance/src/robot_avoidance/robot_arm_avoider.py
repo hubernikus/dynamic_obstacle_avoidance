@@ -38,14 +38,20 @@ from dynamic_obstacle_avoidance.avoidance import ObstacleAvoiderWithInitialDynam
 
 
 class RobotArmAvoider():
-    def __init__(self, obstacle_avoider: ObstacleAvoiderWithInitialDynamcis, robot_arm) -> None:
+    """
+    Class which avoids obstacles based on robot-arm
+    """
+    def __init__(self,
+                 obstacle_avoider: ObstacleAvoiderWithInitialDynamcis,
+                 robot_arm,
+                 n_eval: int = 4) -> None:
         self.obstacle_avoider = obstacle_avoider
         # self.initial_dynamics = initial_dynamics
         self.robot_arm = robot_arm
         # self.obstacle_environment = obstacle_environment
 
         # Evaluations points per link
-        self.n_eval = 4
+        self.n_eval = n_eval
         self.dim = 2
 
     def get_relative_joint_distance(self, pp, jj):
@@ -258,6 +264,15 @@ class RobotArmAvoider():
             velocity_linear = np.zeros(dim)
             velocity_angular = 0
 
+            if ax is not None:
+                fac_arrow = 0.1
+
+                arr_mod = ax.arrow(
+                    evaluation_points[0, -1, jj], evaluation_points[1, -1, jj],
+                    fac_arrow*velocity_ik[0], fac_arrow*velocity_ik[1],
+                    color='b', width=0.01, zorder=10)
+                
+
             for pp in range(point_weight.shape[0]):
                 if not point_weight[pp]:
                     continue
@@ -278,11 +293,11 @@ class RobotArmAvoider():
                         # evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         # fac_arrow*velocity_ik[0], fac_arrow*velocity_ik[1],
                         # color='b', width=0.01, zorder=10)
-                    
+
                     arr_mod = ax.arrow(
                         evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],
                         fac_arrow*velocity_mod_weighted[0], fac_arrow*velocity_mod_weighted[1],
-                        color='g', width=0.01, zorder=10)
+                        color='r', width=0.01, zorder=10)
                     
                     # arr_ctrl = ax.arrow(
                         # evaluation_points[0, pp, jj], evaluation_points[1, pp, jj],

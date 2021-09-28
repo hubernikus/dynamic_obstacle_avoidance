@@ -4,14 +4,10 @@ Library for the Modulation of Linear Systems
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
 # License: BSD (c) 2021
-
-import matplotlib.pyplot as plt
+import warnings
 
 import numpy as np
 import numpy.linalg as LA
-
-import warnings
-import sys
 
 from vartools.directional_space import get_directional_weighted_sum
 

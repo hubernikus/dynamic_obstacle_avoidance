@@ -146,7 +146,7 @@ class TestRobotAvoider(unittest.TestCase):
                 sum_weights += np.sum(weights)
         self.assertTrue(np.isclose(sum_weights, 1), "Sum weights equal to 1")
 
-    def test_3link_robot_arm(self, visualize=False):
+    def test_3link_robot_arm(self, visualize=False, save_figure=False):
         my_robot = RobotArm2D(link_lengths=np.array([1, 1, 1]))
         my_robot.set_joint_state(np.array([70+90, -30, -30]), input_unit='deg')
         # my_robot.set_joint_state(np.array([ 2.84362939, -1.92357885, -0.91727301]
@@ -184,7 +184,8 @@ class TestRobotAvoider(unittest.TestCase):
             initial_dynamics=initial_dynamics, environment=obstacle_environment)
 
         main_avoider = RobotArmAvoider(
-            obstacle_avoider=dynamic_avoider, robot_arm= my_robot)
+            obstacle_avoider=dynamic_avoider, robot_arm= my_robot,
+            n_eval=4,)
 
         position = my_robot.get_ee_in_base()
         # joint_control = main_avoider.get_joint_avoidance_velocity(position)
@@ -206,10 +207,11 @@ class TestRobotAvoider(unittest.TestCase):
         jj = 0
         pp = 3
 
-        rel_pos = main_avoider.get_relative_joint_distance(pp, jj)                
+        rel_pos = main_avoider.get_relative_joint_distance(pp, jj)
+            
         velocity_ik = main_avoider.robot_arm.get_cartesian_vel_from_joint_velocity_on_link(
             joint_velocity=joint_control_ik, level=jj,
-            relative_point_position=rel_pos)
+            relative_point_position=rel_pos, )
 
         # dir_link = np.
         vel_perp = np.array([-0.17101007, -0.46984631])
@@ -217,11 +219,13 @@ class TestRobotAvoider(unittest.TestCase):
 
         # Specific state evaluation
         # my_robot.set_joint_state(np.array([ 3.19710803, -2.05862884, -1.49232649]))
-        my_robot.set_joint_state(np.array([ 3.06120267, -2.14156296, -1.23929867])))
+        my_robot.set_joint_state(np.array([ 1.65, -0.7, -1.23929867]))
 
         if visualize:
-            x_lim = [-3.5, 3.5]
-            y_lim = [-0.5, 4]
+            # x_lim = [-3.5, 3.5]
+            # y_lim = [-0.5, 4]
+            x_lim = [-1.0, 2.0]
+            y_lim = [-0.03, 2.5]
             
             fig, ax = plt.subplots(1, 1, figsize=(12, 7.5))
             
@@ -230,9 +234,24 @@ class TestRobotAvoider(unittest.TestCase):
 
             ax.set_aspect('equal', adjustable='box')
             ax.grid()
-            
-        # my_robot._joint_state = np.array([3.79865222, -1.93878503, -1.44184556])
-        joint_control = main_avoider.get_joint_avoidance_velocity()
+
+            ax.tick_params(axis='both', which='major', labelbottom=False, labelleft=False,
+                           bottom=False, top=False, left=False, right=False)
+
+            main_avoider.n_eval = 3
+
+            joint_control = main_avoider.get_joint_avoidance_velocity(ax=ax)
+            if save_figure:
+                figure_name = "robot_arm_with_avoidance_arrows"
+                plt.savefig('figures/' + figure_name + '.png', bbox_inches='tight')
+
+            plt.plot(initial_dynamics.attractor_position[0],
+                     initial_dynamics.attractor_position[1], 'k*',
+                     # linewidth=18.0,
+                     markersize=10)
+
+        else:
+            joint_control = main_avoider.get_joint_avoidance_velocity()
 
 
 if (__name__) == "__main__":
@@ -245,4 +264,4 @@ if (__name__) == "__main__":
         my_tester = TestRobotAvoider()
         # my_tester.test_evaluation_points(visualize=True)
         # my_tester.test_evaluation_weight(visualize=True)
-        my_tester.test_3link_robot_arm(visualize=True)
+        my_tester.test_3link_robot_arm(visualize=True, save_figure=True)
