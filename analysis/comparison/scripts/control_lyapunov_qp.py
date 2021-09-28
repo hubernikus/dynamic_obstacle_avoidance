@@ -415,6 +415,7 @@ def plot_integrate_trajectory(delta_time=0.01, n_steps=1000):
     barrier_function = CirclularBarrier(
         radius=1.5,
         center_position=np.array([0, 3]),
+        tail_effect
         )
 
     control_lyapunov_function = ControlLyapunovFunction(ll=[6, 1])
@@ -625,7 +626,7 @@ if (__name__) == "__main__":
     # plot_barrier_function()
     plot_integrate_trajectory()
     
-    plot_quiver()
+    # plot_quiver()
 
     # plot_control_barrier_gradient_and_value()
     # plot_control_lyapunov_gradient_and_value()

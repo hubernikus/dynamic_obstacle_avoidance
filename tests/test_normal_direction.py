@@ -234,7 +234,8 @@ class TestRotational(unittest.TestCase):
             orientation=orientation,
             gap_points_relative=np.array([[-5, -1], [-5, 1]]).T
         )
-        self.helper_normals_template(plot_normals=plot_normals, obs=obs, test_name="BoundaryGap")
+        self.helper_normals_template(
+            plot_normals=plot_normals, obs=obs, test_name="BoundaryGap")
 
     def test_normal_3d_ellipse(self,):
         from scipy.spatial.transform import Rotation # scipy rotation

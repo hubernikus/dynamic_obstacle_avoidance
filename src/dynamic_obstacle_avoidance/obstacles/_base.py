@@ -81,9 +81,10 @@ class Obstacle(ABC):
         self.is_boundary = is_boundary
         
         # Obstacle attitude / 
-        if not x0 is None: # TODO: remove
+        if x0 is not None: # TODO: remove
             raise NotImplementedError("Wrong name")
-            center_position = x0        # TODO remove and rename
+            # center_position = x0        # TODO remove and rename
+        # breakpoint()
         self.position = center_position
         self.center_position = self.position
 
@@ -673,7 +674,9 @@ class Obstacle(ABC):
         """ Create obstacle boundary points and stores them as attribute."""
         pass
 
-    def plot_obstacle(self, ax, fill_color='#00ff00ff', outline_color=None):
+    def plot_obstacle(self,
+                      ax, fill_color='#00ff00ff', outline_color=None,
+                      plot_center_position=True):
         """ Plots obstacle on given axes. """
         if self.boundary_points is None:
             self.draw_obstacle()
@@ -691,8 +694,9 @@ class Obstacle(ABC):
         if outline_color is not None:
             ax.plot(x_obs[0, :], x_obs[1, :], '-', color=outline_color)
 
-        ax.plot(self.center_position[0], self.center_position[1],
-                'k+', linewidth=18, markeredgewidth=4, markersize=13)
+        if plot_center_position:
+            ax.plot(self.center_position[0], self.center_position[1],
+                    'k.', linewidth=18, markeredgewidth=4, markersize=13)
 
     def get_surface_derivative_angle_num(
         self, angle_dir, null_dir=None, NullMatrix=None, in_global_frame=False, rel_delta_dir=1e-6):

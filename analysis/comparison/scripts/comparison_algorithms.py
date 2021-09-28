@@ -141,8 +141,6 @@ def plot_comparision_lyapunov_comparison(
 
 
 def plot_lyapunov_conversion_minima(start_position_list, obs_list):
-    
-    
     pass
 
     

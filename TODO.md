@@ -3,13 +3,16 @@
 
 ## Bug Fixes
 > Obstacle avoidance - fix flexible boundaries with shapely (?)
+> Check global2relative_dir function... -> is there a bug with zero direction (?)
 > ..
 
 ## Features
 > Repulsive-factor based on relative-obstacle velocity (!)
+> Automated github-testing
 > ..
 
 ## Optimization / Restructuring
+> extend & adapt testing
 > ..
 
 ## Add-Ons

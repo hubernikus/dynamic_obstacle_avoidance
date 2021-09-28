@@ -21,7 +21,7 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 
 from vartools.dynamical_systems import LinearSystem
 from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
-
+ 
 
 def simple_vectorfield():
     """ Simple robot avoidance. """

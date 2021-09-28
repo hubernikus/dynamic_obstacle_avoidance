@@ -15,6 +15,7 @@ class DoubleBlob(Obstacle):
     def __init__(self, a_value, b_value, *args, **kwargs):
         self.aa = a_value
         self.bb = b_value
+        # breakpoint()
         super().__init__(*args, **kwargs)
 
         # Only defined for dimension==2
@@ -90,19 +91,56 @@ class DoubleBlob(Obstacle):
                 pos_in = pos_new
         return LA.norm(pos_new)
         
-    def get_gamma(self, position, in_global_frame=False, it_max=100):
+    def get_gamma(self, position, in_global_frame=False, it_max=100,
+                  gamma_distance=None, gamma_type=None):
+        if gamma_distance is not None:
+            # Legacy error -> remove this keyword argument...
+            pass
+        
+        if gamma_type is not None:
+            # Not implemented yet. Just default type for now.
+            pass
+        
         if in_global_frame:
             position = self.transform_global2relative(position)
         radius = self.get_local_radius(position)
         return LA.norm(position) / radius
 
-    def get_normal_direction(self, position):
-        pass
+    def get_normal_direction(self,
+                             position, delta_angle=1e-2,
+                             in_global_frame=False, normalize=True):
+        """ Calculate the normal direction. """
+        # Numerical calculation  of the normal direction based on local-radius
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+            
+        angle = np.arctan2(position[1], position[0])
+
+        angles = [angle - delta_angle*0.5, angle + delta_angle*0.5]
+        surf_pos = np.zeros((self.dimension, len(angles)))
+        
+        for aa, ang in enumerate(angles):
+            pos = np.array([np.cos(ang), np.sin(ang)])
+            radius = self.get_local_radius(pos)
+
+            surf_pos[:, aa] = pos / LA.norm(pos) * radius
+
+        tangent = surf_pos[:, 1] - surf_pos[:, 0]
+        normal = np.array([-tangent[1], tangent[0]])
+        
+        if normalize:
+            normal = normal / LA.norm(normal)
+
+        if in_global_frame:
+            normal = self.transform_relative2global_dir(normal)
+
+        return normal
 
     def draw_obstacle(self, n_grid=50):
         angles = np.linspace(0, 2*pi, n_grid)
         dirs = np.vstack((np.cos(angles), np.sin(angles)))
-        local_rad = [self.get_local_radius(dirs[:, dd]) for dd in range(dirs.shape[1])]
+        local_rad = [self.get_local_radius(
+            dirs[:, dd]) for dd in range(dirs.shape[1])]
 
         self.boundary_points_local = dirs * np.tile(local_rad, (self.dimension, 1))
         
