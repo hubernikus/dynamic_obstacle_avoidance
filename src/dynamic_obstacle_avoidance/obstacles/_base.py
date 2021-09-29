@@ -19,6 +19,7 @@ from scipy.spatial.transform import Rotation # scipy rotation
 
 from vartools.angle_math import *
 from vartools.states import ObjectPose
+from vartools.directional_space import get_angle_space_inverse
 
 
 class GammaType(Enum):
