@@ -456,7 +456,7 @@ def main(save_figure=False, n_points=100, case=[1]):
 
 
 if (__name__) == "__main__":
-    main(save_figure=True)
+    main(save_figure=False)
 
     plt.ion()
     plt.show()

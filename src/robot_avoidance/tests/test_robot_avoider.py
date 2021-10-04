@@ -235,7 +235,8 @@ class TestRobotAvoider(unittest.TestCase):
             ax.set_aspect('equal', adjustable='box')
             ax.grid()
 
-            ax.tick_params(axis='both', which='major', labelbottom=False, labelleft=False,
+            ax.tick_params(axis='both', which='major', labelbottom=False,
+                           labelleft=False,
                            bottom=False, top=False, left=False, right=False)
 
             main_avoider.n_eval = 3
