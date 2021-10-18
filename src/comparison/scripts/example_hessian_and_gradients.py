@@ -21,34 +21,36 @@ from vartools.states import ObjectPose
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
-from barrier_functions import BarrierFunction, CirclularBarrier, DoubleBlobBarrier
+from barrier_functions import (
+    BarrierFunction,
+    CirclularBarrier,
+    DoubleBlobBarrier,
+)
 
 # from cvxopt.modeling import variable
 from cvxopt import solvers, matrix
 
 
 def compare_gradients():
-    """ Similar to the testing-script from the 'various-tools' library. """
+    """Similar to the testing-script from the 'various-tools' library."""
     blob_obstacle = DoubleBlobBarrier(
-        blob_matrix=np.array([[10, 0],
-                              [0, -1]]),
-        center_position=np.array([0, 3]))
-    
-    positions = np.array(
-        [[2,-3],
-         [0, 0],
-         [1, 1]]
-        ).T
-    
+        blob_matrix=np.array([[10, 0], [0, -1]]),
+        center_position=np.array([0, 3]),
+    )
+
+    positions = np.array([[2, -3], [0, 0], [1, 1]]).T
+
     for it_pos in range(positions.shape[1]):
         position = positions[:, it_pos]
-        
+
         gradient_analytic = blob_obstacle.evaluate_gradient(position=position)
         gradient_numerical = get_numerical_gradient(
             position=position,
-            function=blob_obstacle.get_barrier_value, delta_magnitude=1e-6)
+            function=blob_obstacle.get_barrier_value,
+            delta_magnitude=1e-6,
+        )
 
-        assert(np.allclose(gradient_analytic, gradient_numerical, rtol=1e-5))
+        assert np.allclose(gradient_analytic, gradient_numerical, rtol=1e-5)
 
         print(f"Gradient Analytic: {gradient_analytic}")
         print(f"Gradient Numerical: {gradient_numerical}")
@@ -59,19 +61,24 @@ def compare_get_numerical_hessian():
 
     position = np.array([0, 0])
     hessian_numerical = get_numerical_hessian(
-        function=barrier_function.get_barrier_value, position=position)                             
+        function=barrier_function.get_barrier_value, position=position
+    )
     hessian_numerical_fast = get_numerical_hessian_fast(
-        function=barrier_function.get_barrier_value, position=position)                             
+        function=barrier_function.get_barrier_value, position=position
+    )
     hessian_analytical = barrier_function.get_hessian(position=position)
     hessian_analytical = barrier_function.get_hessian(position=position)
 
-    print("is close here", np.allclose(hessian_numerical, hessian_analytical, rtol=1e-4))
+    print(
+        "is close here",
+        np.allclose(hessian_numerical, hessian_analytical, rtol=1e-4),
+    )
 
     print(f"{hessian_numerical=}")
     print(f"{hessian_analytical=}")
     print(f"{hessian_numerical_fast=}")
     # compare speed
-    
+
 
 if (__name__) == "__main__":
     plt.ion()

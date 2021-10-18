@@ -11,8 +11,9 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     # url="https://github.com/pypa/sampleproject",
     # },
-    package_dir={'': 'src',
-                 },
+    package_dir={
+        "": "src",
+    },
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -21,8 +22,8 @@ setuptools.setup(
     ],
     install_requires=[
         # "zmq==0.0.0",
-        "zmq==0.0.0"
-        "sympy===0.0.0",
+        # "zmq==0.0.0"
+        # "sympy===0.0.0",
     ],
-    python_requires='>=3',
+    python_requires=">=3",
 )

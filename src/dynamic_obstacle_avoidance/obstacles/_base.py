@@ -18,10 +18,9 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial.transform import Rotation  # scipy rotation
 
-from vartools.angle_math import (
-    get_orthogonal_basis,
-    angle_difference_directional,
-)
+from vartools.angle_math import angle_difference_directional
+from vartools.linalg import get_orthogonal_basis
+
 from vartools.angle_math import periodic_weighted_sum
 
 # from vartools.angle_math import *
@@ -1097,8 +1096,8 @@ class Obstacle(ABC):
         return self._relative_gamma is not None
 
     def get_boundaryGamma(self, Gamma, Gamma_ref=0):  #
-        """Reverse Gamma value such that boundaries can be treated with the same algorithm
-        as obstacles
+        """Reverse Gamma value such that boundaries can be treated with
+        the same algorithm as obstacles
 
         Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
         """
@@ -1309,12 +1308,10 @@ class Obstacle(ABC):
 
         return self.transform_relative2global(scaled_boundary_points)
 
-    # @abstractmethod
     def obs_check_collision(
         self,
     ):
         raise NotImplementedError()
 
-    # @abstractmethod
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         raise NotImplementedError()
