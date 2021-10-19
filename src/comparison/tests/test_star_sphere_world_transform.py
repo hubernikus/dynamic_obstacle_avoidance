@@ -16,8 +16,8 @@ from dynamic_obstacle_avoidance.obstacles import DoubleBlob
 
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
-from sphere_world_optimizer import SphereWorldOptimizer, ClosedLoopQP
-from navigation import SphereToStarTransformer
+from avoidance_comparison.sphere_world_optimizer import SphereWorldOptimizer, ClosedLoopQP
+from avoidance_comparison.navigation import SphereToStarTransformer
 
 # from navigation import NavigationContainer
 # from double_blob_obstacle import DoubleBlob
