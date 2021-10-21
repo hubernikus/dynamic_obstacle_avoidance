@@ -15,7 +15,6 @@ from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
-from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import Simulation_vectorFields
 

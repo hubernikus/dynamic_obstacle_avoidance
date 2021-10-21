@@ -2,11 +2,11 @@
 (This should be replaced with pulled requests in the future)
 
 ## Bug Fixes
-> Obstacle avoidance - fix flexible boundaries with shapely (?)
 > Check global2relative_dir function... -> is there a bug with zero direction (?)
-> ..
+> setup(.cfg) file to include sub-libraries and sub-modules
 
 ## Features
+> Obstacle avoidance - fix flexible boundaries with shapely (?)
 > Repulsive-factor based on relative-obstacle velocity (!)
 > Automated github-testing
 > ..
