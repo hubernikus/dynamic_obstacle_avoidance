@@ -2,7 +2,8 @@
 global DEBUG_FLAG
 DEBUG_FLAG = False
 
-def init ():
+
+def init():
     global boundary_ref_point_list
     boundary_ref_point_list = []
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-''' Basic stat to base objects on
-'''
+""" Basic stat to base objects on
+"""
 # author: Lukas Huber // lukas.huber@epfl.ch
 # license:
 
@@ -9,24 +9,31 @@ import time
 
 # from dynamic_obstacle_avoidance.avoidance.utils import *
 
-import matplotlib.pyplot as plt    # Only for debugging
+import matplotlib.pyplot as plt  # Only for debugging
+
 
 class State(object):
-    def __init__(self, typename=None, name="default", reference_frame="world", is_empty=True, *args):
-                 
+    def __init__(
+        self,
+        typename=None,
+        name="default",
+        reference_frame="world",
+        is_empty=True,
+        *args
+    ):
 
         # Decode input
-        if len(args): # Nonzero
+        if len(args):  # Nonzero
             if isinstance(args[0], State):
                 state = args[0]
             elif isinstance(args[0], str):
                 typename = args[0]
-                if len(args)>1:
-                    name=args[1]
-                    if len(args)>2:
-                        reference_frame=args[2]
-                        if len(args)>3:
-                            is_empty=args[3]
+                if len(args) > 1:
+                    name = args[1]
+                    if len(args) > 2:
+                        reference_frame = args[2]
+                        if len(args) > 3:
+                            is_empty = args[3]
             else:
                 Exception("Input has wrong type -- {}.".format(type(args[0])))
 
@@ -77,7 +84,7 @@ class State(object):
 
     # @is_empty.setter
     # def is_empty(self, value):
-        # self._is_empty = bool(value)
+    # self._is_empty = bool(value)
 
     # Keep for compatibility with c++
     def set_empty(self):
@@ -102,7 +109,7 @@ class State(object):
 
     @position.setter
     def position(self, values):
-        self.set_filled();
+        self.set_filled()
         self._position = np.squeeze(values)
 
     @property
@@ -111,7 +118,7 @@ class State(object):
 
     @orientation.setter
     def orientation(self, values):
-        self.set_filled();
+        self.set_filled()
         self._orientation = np.squeeze(values)
 
     @property
@@ -120,7 +127,7 @@ class State(object):
 
     @linear_velocity.setter
     def linear_velocity(self, values):
-        self.set_filled();
+        self.set_filled()
         self._linear_velocity = np.squeeze(values)
 
     @property
@@ -129,7 +136,7 @@ class State(object):
 
     @angular_velocity.setter
     def angular_velocity(self, values):
-        self.set_filled();
+        self.set_filled()
         self._angular_velocity = np.squeeze(values)
 
     # @property
@@ -170,12 +177,19 @@ class State(object):
     # Multiplication and division not commutative
 
     def __repr__(self):
-        return "State(%r, %r, %r, %r)" % (self._typename, self._name, self._reference_frame, self._empty)
+        return "State(%r, %r, %r, %r)" % (
+            self._typename,
+            self._name,
+            self._reference_frame,
+            self._empty,
+        )
 
     def __str__(self):
         if self._empty:
             res = "Empty "
-        res += "State: " + self._name + " expressed in " + self._reference_frame + " frame"
+        res += (
+            "State: " + self._name + " expressed in " + self._reference_frame + " frame"
+        )
         return res
 
     def __typename__(self):
