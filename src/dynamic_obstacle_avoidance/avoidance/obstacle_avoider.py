@@ -21,10 +21,10 @@ from .modulation import obs_avoidance_interpolation_moving
 
 class ObstacleAvoiderWithInitialDynamcis:
     def __init__(
-        self,
-        initial_dynamics: DynamicalSystem,
-        environment: BaseContainer,
-        maximum_speed: float = None,
+            self,
+            initial_dynamics: DynamicalSystem,
+            environment: BaseContainer,
+            maximum_speed: float = None,
     ) -> None:
         self.initial_dynamics = initial_dynamics
         self.environment = environment
@@ -79,10 +79,10 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
         super().__init__(*args, **kwargs)
 
     def avoid(
-        self,
-        position: np.ndarray,
-        initial_velocity: np.ndarray,
-        const_speed: bool = True,
+            self,
+            position: np.ndarray,
+            initial_velocity: np.ndarray,
+            const_speed: bool = True,
     ) -> np.ndarray:
         vel = obs_avoidance_interpolation_moving(
             position=position,
@@ -102,3 +102,29 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
                 vel = vel / vel_mag * self.maximum_speed
 
         return vel
+
+
+class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
+    def avoid_for_crowd_agent(self, position: np.ndarray, initial_velocity: np.ndarray, env_to_pop,
+                              const_speed: bool = True) -> np.ndarray:
+
+        temp_env = self.environment
+        temp_env.pop(env_to_pop)
+
+        vel = obs_avoidance_interpolation_moving(position=position, initial_velocity=initial_velocity, obs=temp_env)
+
+        # Adapt speed if desired
+        if const_speed:
+            vel_mag = LA.norm(vel)
+            if vel_mag:
+                vel = vel / vel_mag * LA.norm(initial_velocity)
+
+        elif self.maximum_speed is not None:
+            vel_mag = LA.norm(vel)
+            if vel_mag > self.maximum_speed:
+                vel = vel / vel_mag * self.maximum_speed
+
+        return vel
+
+    def avoid(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
+        pass
