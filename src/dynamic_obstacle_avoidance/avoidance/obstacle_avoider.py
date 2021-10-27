@@ -105,6 +105,17 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
 
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
+    def evaluate_for_crowd_agent(self, position: np.ndarray, pop_index) -> np.ndarray:
+        """DynamicalSystem compatible 'evaluate' method that returns the velocity at a
+        given input position."""
+        return self.compute_dynamics_for_crowd_agent(position, pop_index)
+
+    def compute_dynamics_for_crowd_agent(self, position: np.ndarray, pop_index) -> np.ndarray:
+        """DynamicalSystem compatible 'compute_dynamics' method that returns the velocity at a
+        given input position."""
+        initial_velocity = self.initial_dynamics.evaluate_for_crowd_agent(position)
+        return self.avoid_for_crowd_agent(position=position, initial_velocity=initial_velocity, env_to_pop=pop_index)
+
     def avoid_for_crowd_agent(self, position: np.ndarray, initial_velocity: np.ndarray, env_to_pop,
                               const_speed: bool = True) -> np.ndarray:
 
