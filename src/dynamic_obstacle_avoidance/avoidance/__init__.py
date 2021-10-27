@@ -19,6 +19,7 @@ from .rk4 import obs_avoidance_rk4, obs_avoidance_rungeKutta
 from .obstacle_avoider import (
     ObstacleAvoiderWithInitialDynamcis,
     DynamicModulationAvoider,
+    DynamicCrowdAvoider,
 )
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "obs_avoidance_orthogonal_moving",
     "ObstacleAvoiderWithInitialDynamcis",
     "DynamicModulationAvoider",
+    "DynamicCrowdAvoider",
 ]
