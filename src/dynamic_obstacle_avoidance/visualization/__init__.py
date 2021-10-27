@@ -9,11 +9,10 @@ from .vector_field_visualization import plot_streamlines
 from .vector_field_visualization import plot_obstacles
 
 # __all__ = ['']
-__all__ = ['Simulation_vectorFields',
-           'plot_obstacles',
-           'plot_streamlines',
-           'pltLines',
-           'plt_speed_line_and_qolo',
-           ]
-
-
+__all__ = [
+    "Simulation_vectorFields",
+    "plot_obstacles",
+    "plot_streamlines",
+    "pltLines",
+    "plt_speed_line_and_qolo",
+]

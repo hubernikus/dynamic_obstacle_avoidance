@@ -5,7 +5,6 @@ from .zmq_interface import ZMQInterface
 
 
 class FrankaZMQInterface(object):
-
     def __init__(self, state_uri="0.0.0.0:1601", command_uri="0.0.0.0:1602"):
         """
         Constructor of the FrankaZMQInterface class, binds and publishes to the ZMQ sockets defined by
@@ -23,7 +22,7 @@ class FrankaZMQInterface(object):
         self.zmq_interface.add_publisher(self.command_uri)
         self.zmq_interface.add_subscriber(self.state_uri)
 
-        self.data_types = {'d': 8}
+        self.data_types = {"d": 8}
 
     def is_connected(self):
         return self.zmq_interface.is_connected()
@@ -37,7 +36,7 @@ class FrankaZMQInterface(object):
         :rtype: bool
         """
         message = self.zmq_interface.poll(self.state_uri)
-        return self._decode_message(message, 'd') if message else None
+        return self._decode_message(message, "d") if message else None
 
     def send_command(self, command):
         """
@@ -47,7 +46,7 @@ class FrankaZMQInterface(object):
         :return: Current command
         :rtype: list of float
         """
-        encoded_state = self._encode_message(command, 'd')
+        encoded_state = self._encode_message(command, "d")
         return self.zmq_interface.send(self.command_uri, encoded_state)
 
     def _decode_message(self, message, data_type):
@@ -60,8 +59,10 @@ class FrankaZMQInterface(object):
         :return: Decoded message
         :rtype: Any
         """
-        return [struct.unpack(data_type, message[i:i + self.data_types[data_type]])[0] for i in
-                range(0, len(message), self.data_types[data_type])]
+        return [
+            struct.unpack(data_type, message[i : i + self.data_types[data_type]])[0]
+            for i in range(0, len(message), self.data_types[data_type])
+        ]
 
     @staticmethod
     def _encode_message(message, data_type):
@@ -74,4 +75,6 @@ class FrankaZMQInterface(object):
         :return: State as list of bytes
         :rtype: bytes
         """
-        return b"".join([struct.pack(data_type, message[i]) for i in range(len(message))])
+        return b"".join(
+            [struct.pack(data_type, message[i]) for i in range(len(message))]
+        )

@@ -17,12 +17,19 @@ class FlatPlane(Obstacle):
     ----------
     position
     """
-    def __init__(self, center_position, normal, reference_distance=1,
-                 width=1, height=1,
-                 obstacle_color=None):
+
+    def __init__(
+        self,
+        center_position,
+        normal,
+        reference_distance=1,
+        width=1,
+        height=1,
+        obstacle_color=None,
+    ):
         super().__init__(center_position=center_position)
         # self.position = position
-        
+
         self.normal = normal / LA.norm(normal)
         self.orientation = None
 
@@ -58,22 +65,27 @@ class FlatPlane(Obstacle):
         return dist
 
     def draw_obstacle(self, n_grid=None):
-        """ Draw the obstacle for a 2D environment. """
+        """Draw the obstacle for a 2D environment."""
         if self.dimension != 2:
             raise NotImplementedError("Drawing of obstacle not implemented for dim!=2")
         self.boundary_points_local = np.zeros((self.dimension, 4))
 
         tangent = np.array([-self.normal[1], self.normal[0]])
-        self.boundary_points_local[:, 0] = self.center_position - tangent*self.width/2.0
-        
-        self.boundary_points_local[:, 1] = (self.boundary_points_local[:, 0]
-            - self.normal*self.height)
+        self.boundary_points_local[:, 0] = (
+            self.center_position - tangent * self.width / 2.0
+        )
 
-        self.boundary_points_local[:, 2] = (self.boundary_points_local[:, 1]
-            + tangent*self.width)
+        self.boundary_points_local[:, 1] = (
+            self.boundary_points_local[:, 0] - self.normal * self.height
+        )
 
-        self.boundary_points_local[:, 3] = (self.boundary_points_local[:, 2]
-            + self.normal*self.height)
+        self.boundary_points_local[:, 2] = (
+            self.boundary_points_local[:, 1] + tangent * self.width
+        )
+
+        self.boundary_points_local[:, 3] = (
+            self.boundary_points_local[:, 2] + self.normal * self.height
+        )
 
         # if not self.margin_absolut: # zero margin
         self.boundary_points_margin_local = self.boundary_points_local

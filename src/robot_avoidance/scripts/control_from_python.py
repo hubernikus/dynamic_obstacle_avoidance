@@ -15,7 +15,7 @@ if __name__ == "__main__":
         print(state)
 
         elapsed = time.time() - now
-        sleep_time = (1. / desired_frequency) - elapsed
+        sleep_time = (1.0 / desired_frequency) - elapsed
         if sleep_time > 0.0:
             time.sleep(sleep_time)
         k = k + 1
