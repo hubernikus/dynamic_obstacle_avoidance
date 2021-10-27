@@ -105,24 +105,21 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
 
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
-    def evaluate_for_crowd_agent(self, position: np.ndarray, pop_index) -> np.ndarray:
+    def evaluate_for_crowd_agent(self, position: np.ndarray, selected_agent) -> np.ndarray:
         """DynamicalSystem compatible 'evaluate' method that returns the velocity at a
         given input position."""
-        return self.compute_dynamics_for_crowd_agent(position, pop_index)
+        return self.compute_dynamics_for_crowd_agent(position, selected_agent)
 
-    def compute_dynamics_for_crowd_agent(self, position: np.ndarray, pop_index) -> np.ndarray:
+    def compute_dynamics_for_crowd_agent(self, position: np.ndarray, selected_agent) -> np.ndarray:
         """DynamicalSystem compatible 'compute_dynamics' method that returns the velocity at a
         given input position."""
-        temp_init = self.initial_dynamics
-        temp_agent = temp_init.pop(pop_index)
-        initial_velocity = temp_agent.evaluate_for_crowd_agent(position)
-        return self.avoid_for_crowd_agent(position=position, initial_velocity=initial_velocity, env_to_pop=pop_index)
+        initial_velocity = self.initial_dynamics[selected_agent].evaluate(position)
+        return self.avoid_for_crowd_agent(position=position, initial_velocity=initial_velocity, selected_agent=selected_agent)
 
-    def avoid_for_crowd_agent(self, position: np.ndarray, initial_velocity: np.ndarray, env_to_pop,
+    def avoid_for_crowd_agent(self, position: np.ndarray, initial_velocity: np.ndarray, selected_agent,
                               const_speed: bool = True) -> np.ndarray:
 
-        temp_env = self.environment
-        temp_env.pop(env_to_pop)
+        temp_env = self.environment[0:selected_agent] + self.environment[selected_agent+1:]
 
         vel = obs_avoidance_interpolation_moving(position=position, initial_velocity=initial_velocity, obs=temp_env)
 
