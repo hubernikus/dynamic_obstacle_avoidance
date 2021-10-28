@@ -53,6 +53,10 @@ class ObstacleContainer(BaseContainer):
 
         # The reset clusters has to be called after all obstacles are inserted in order to update the container
 
+    def move_obstacles_with_velocity(self, delta_time: float) -> None:
+        for obs in self._obstacle_list:
+            obs.do_velocity_step(delta_time)
+
     def reset_clusters(self):
         self.get_sibling_groups()
         # self.get_sibling_groups()

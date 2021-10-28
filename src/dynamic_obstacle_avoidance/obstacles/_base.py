@@ -50,9 +50,7 @@ class Obstacle(ABC):
 
     def __repr__(self):
         if self.is_boundary:
-            return "Wall <<{}>> is of Type: <{}>".format(
-                self.name, type(self).__name__
-            )
+            return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
         else:
             return "Obstacle <<{}>> is of Type  <{}>".format(
                 self.name, type(self).__name__
@@ -124,9 +122,7 @@ class Obstacle(ABC):
             raise Exception("Remove / rename sigma argument.")
         self.sigma = 1  # TODO: rename sigma argument
 
-        self.tail_effect = (
-            tail_effect  # Modulation if moving away behind obstacle
-        )
+        self.tail_effect = tail_effect  # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
 
         self._rotation_matrix = None
@@ -134,9 +130,7 @@ class Obstacle(ABC):
 
         self.resolution = 0  # Resolution of drawing
 
-        self._boundary_points = (
-            None  # Numerical drawing of obstacle boundarywq
-        )
+        self._boundary_points = None  # Numerical drawing of obstacle boundarywq
         self._boundary_points_margin = None  # Obstacle boundary plus margin!
 
         self.timeVariant = timeVariant
@@ -156,9 +150,7 @@ class Obstacle(ABC):
                     import pdb
 
                     pdb.set_trace()
-                    raise ValueError(
-                        "Define angular velocity for higher dimensions."
-                    )
+                    raise ValueError("Define angular velocity for higher dimensions.")
             else:
                 angular_velocity = w
         self.angular_velocity_const = angular_velocity
@@ -272,18 +264,14 @@ class Obstacle(ABC):
         if self._relative_reference_point is None:
             return self.center_position
         else:
-            return self.transform_relative2global(
-                self._relative_reference_point
-            )
+            return self.transform_relative2global(self._relative_reference_point)
 
     @global_relative_reference_point.setter
     def global_relative_reference_point(self, value):
         if value is None:
             self._relative_reference_point = None
         else:
-            self._relative_reference_point = self.transform_global2relative(
-                value
-            )
+            self._relative_reference_point = self.transform_global2relative(value)
 
     @property
     def center_dyn(self):  # TODO: depreciated -- delete
@@ -333,9 +321,7 @@ class Obstacle(ABC):
 
         elif self.dim == 3:
             if not isinstance(value, Rotation):
-                raise TypeError(
-                    "Use 'scipy - Rotation' type for 3D orientation."
-                )
+                raise TypeError("Use 'scipy - Rotation' type for 3D orientation.")
             self._orientation = value
 
         else:
@@ -390,9 +376,7 @@ class Obstacle(ABC):
 
     @property
     def xd(self):  # TODO: remove
-        warnings.warn(
-            "'xd' is an outdated name use 'lienar_velocity' instead."
-        )
+        warnings.warn("'xd' is an outdated name use 'lienar_velocity' instead.")
         breakpoint()
         return self._linear_velocity_const
 
@@ -511,9 +495,7 @@ class Obstacle(ABC):
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
-                position = (
-                    position - np.tile(self.center_position, (n_points, 1)).T
-                )
+                position = position - np.tile(self.center_position, (n_points, 1)).T
                 if self._rotation_matrix is None:
                     return position
                 return self._rotation_matrix.T.dot(position)
@@ -530,9 +512,7 @@ class Obstacle(ABC):
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
-                position = position.T - np.tile(
-                    self.center_position, (n_points, 1)
-                )
+                position = position.T - np.tile(self.center_position, (n_points, 1))
                 if self._orientation is None:
                     return position.T
                 return self._orientation.inv().apply(position).T
@@ -541,9 +521,7 @@ class Obstacle(ABC):
 
         else:
             warnings.warn(
-                "Rotation for dimensions {} need to be implemented".format(
-                    self.dim
-                )
+                "Rotation for dimensions {} need to be implemented".format(self.dim)
             )
             return position
 
@@ -565,9 +543,7 @@ class Obstacle(ABC):
                 n_points = position.shape[1]
                 if self._rotation_matrix is not None:
                     position = self._rotation_matrix.dot(position)
-                return (
-                    position + np.tile(self.center_position, (n_points, 1)).T
-                )
+                return position + np.tile(self.center_position, (n_points, 1)).T
 
             else:
                 raise ValueError("Unexpected position-shape")
@@ -582,18 +558,14 @@ class Obstacle(ABC):
                 n_points = position.shape[1]
                 if self._orientation is not None:
                     position = self._orientation.apply(position.T).T
-                return (
-                    position + np.tile(self.center_position, (n_points, 1)).T
-                )
+                return position + np.tile(self.center_position, (n_points, 1)).T
 
             else:
                 raise ValueError("Unexpected position-shape")
 
         else:
             warnings.warn(
-                "Rotation for dimensions {} need to be implemented".format(
-                    self.dim
-                )
+                "Rotation for dimensions {} need to be implemented".format(self.dim)
             )
             return position
 
@@ -643,9 +615,7 @@ class Obstacle(ABC):
     def get_normal_direction(self, position, in_global_frame=False):
         """Get normal direction to the surface.
         IMPORTANT: Based on convention normal.dot(reference)>0 ."""
-        raise NotImplementedError(
-            "Implement function in child-class of <Obstacle>."
-        )
+        raise NotImplementedError("Implement function in child-class of <Obstacle>.")
 
     # Store five previous values
     # @lru_cache(maxsize=5)
@@ -679,9 +649,7 @@ class Obstacle(ABC):
         if in_global_frame:
             position = self.transform_global2relative(position)
             if reference_point is not None:
-                reference_point = self.transform_global2relative(
-                    reference_point
-                )
+                reference_point = self.transform_global2relative(reference_point)
 
         if reference_point is None:
             reference_point = self.local_reference_point
@@ -708,18 +676,14 @@ class Obstacle(ABC):
         pdb.set_trace()
 
         if gamma_type == "proportional":
-            gamma[ind_nonzero] = (
-                dist_position[ind_nonzero] / radius[ind_nonzero]
-            )
+            gamma[ind_nonzero] = dist_position[ind_nonzero] / radius[ind_nonzero]
             if self.is_boundary:
                 gamma[ind_nonzero] = 1 / gamma[ind_nonzero]
                 gamma[~ind_nonzero] = sys.float_info.max
 
         elif gamma_type == "linear":
             if self.is_boundary:
-                raise NotImplementedError(
-                    "Not implemented for other gamma types."
-                )
+                raise NotImplementedError("Not implemented for other gamma types.")
             else:
                 ind_outside = dist_position > radius
 
@@ -800,9 +764,7 @@ class Obstacle(ABC):
             direction=point, in_global_frame=in_global_frame
         )
 
-        delta_dir = (
-            np.linalg.norm(local_radius - self.center_position) * rel_delta_dir
-        )
+        delta_dir = np.linalg.norm(local_radius - self.center_position) * rel_delta_dir
 
         surf_derivs = np.zeros((angle_dir.shape[0], self.dim))
         for dd in range(angle_dir.shape[0]):
@@ -868,28 +830,16 @@ class Obstacle(ABC):
                 direction=point_low, in_global_frame=in_global_frame
             )
             # point_low = np.linalg.norm(local_radius)*point_low
-            norm_derivs[dd, :] = (
-                (normal_high - normal_low) / (2 * delta_dir)
-            ).T
-
+            norm_derivs[dd, :] = ((normal_high - normal_low) / (2 * delta_dir)).T
         # if in_global_frame:
         # norm_derivs = self.transform_relative2global_dir(norm_derivs)
         return norm_derivs
-
-    def compute_R(self):
-        # TODO: remove - depreciated
-        raise NotImplementedError(
-            "compute_R is depreciated"
-            + "---- use 'compute__rotation_matrix' instead."
-        )
 
     def compute_rotation_matrix(self):
         # TODO - replace with quaternions
         # Find solution for higher dimensions
         if self.dim != 2:
-            warnings.warn(
-                "Orientation matrix only used for useful for 2-D rotations."
-            )
+            warnings.warn("Orientation matrix only used for useful for 2-D rotations.")
             return
 
         orientation = self._orientation
@@ -913,9 +863,17 @@ class Obstacle(ABC):
     def extend_hull_around_reference(self):
         """Updates the obstacles such that they are star-shaped with respect to the reference
         point."""
-        raise NotImplementedError(
-            "Implement for fully functional child class."
-        )
+        raise NotImplementedError("Implement for fully functional child class.")
+
+    def do_velocity_step(self, delta_time: float) -> None:
+        if self.linear_velocity is not None:
+            self.position = self.position + self.linear_velocity * delta_time
+
+        if self.angular_velocity is not None:
+            if self.dimension == 2:
+                self.position = self.position + self.linear_velocity * delta_time
+            else:
+                raise NotImplementedError("Angular velocity step not defined for d>2")
 
     def move_obstacle_to_referencePoint(self, position, in_global_frame=True):
         if not in_global_frame:
@@ -1014,15 +972,13 @@ class Obstacle(ABC):
     def are_lines_intersecting(direction_line, passive_line):
         # TODO only return intersection point or None
         # solve equation line1['point_start'] + a*line1['direction'] = line2['point_end'] + b*line2['direction']
-        connection_direction = np.array(
-            direction_line["point_end"]
-        ) - np.array(direction_line["point_start"])
+        connection_direction = np.array(direction_line["point_end"]) - np.array(
+            direction_line["point_start"]
+        )
         connection_passive = np.array(passive_line["point_end"]) - np.array(
             passive_line["point_start"]
         )
-        connection_matrix = np.vstack(
-            (connection_direction, -connection_passive)
-        ).T
+        connection_matrix = np.vstack((connection_direction, -connection_passive)).T
 
         if LA.det(connection_matrix):  # nonzero value
             direction_factors = LA.inv(connection_matrix).dot(
@@ -1036,9 +992,7 @@ class Obstacle(ABC):
                     direction_factors[1] * connection_passive
                 ) <= LA.norm(connection_passive):
 
-                    return True, LA.norm(
-                        direction_factors[0] * connection_direction
-                    )
+                    return True, LA.norm(direction_factors[0] * connection_direction)
         return False, -1
 
     def get_obstacle_radius(
@@ -1118,17 +1072,11 @@ class Obstacle(ABC):
             )
             return Gamma
 
-    def get_angle2dir(
-        self, position_dir, tangent_dir, needs_normalization=True
-    ):
+    def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
             if len(position_dir.shape) > 1:
-                position_dir /= np.tile(
-                    LA.norm(position_dir, axis=0), (self.dim, 1)
-                )
-                tangent_dir /= np.tile(
-                    LA.norm(tangent_dir, axis=0), (self.dim, 1)
-                )
+                position_dir /= np.tile(LA.norm(position_dir, axis=0), (self.dim, 1))
+                tangent_dir /= np.tile(LA.norm(tangent_dir, axis=0), (self.dim, 1))
                 angle_arccos = np.sum(position_dir * tangent_dir, axis=0)
             else:
                 position_dir = position_dir / np.linalg.norm(position_dir)
@@ -1189,9 +1137,7 @@ class Obstacle(ABC):
 
         distance = distance - distance_min
         weights = np.zeros(distance.shape)
-        weights[ind_positiveDistance] = (
-            1.0 / distance[ind_positiveDistance]
-        ) ** power
+        weights[ind_positiveDistance] = (1.0 / distance[ind_positiveDistance]) ** power
         weights[ind_positiveDistance] /= np.sum(weights[ind_positiveDistance])
         # weights[~ind_positiveDistance] = 0
         return weights
@@ -1227,16 +1173,10 @@ class Obstacle(ABC):
         ref_abs = self.transform_relative2global(self.hull_edge)
 
         for ii in range(2):
-            tang_abs = self.transform_relative2global(
-                self.tangent_points[:, ii]
-            )
-            plt.plot(
-                [tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], "k--"
-            )
+            tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
+            plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], "k--")
 
-    def get_reference_direction(
-        self, position, in_global_frame=False, normalize=True
-    ):
+    def get_reference_direction(self, position, in_global_frame=False, normalize=True):
         """Get direction from 'position' to the reference point of the obstacle.
         The global frame is considered by the choice of the reference point."""
         # Inherit

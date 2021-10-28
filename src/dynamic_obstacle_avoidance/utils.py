@@ -29,12 +29,14 @@ def get_relative_obstacle_velocity(
 
     Parameters
     ----------
-    E_orth: array which contains orthogonal matrix with repsect to the normal direction at <position>
-            array of (dimension, dimensions, n_obstacles
+    E_orth: array which contains orthogonal matrix with repsect to the normal
+    direction at <position>
+    array of (dimension, dimensions, n_obstacles
     obstacle_list: list or <obstacle-conainter> with obstacles
     ind_obstacles: Inidicates which obstaces will be considered (array-like of int)
     gamma_list: Precalculated gamma-values (list of float) -
-                It is adviced to use 'proportional' gamma values, rather than relative ones
+                It is adviced to use 'proportional' gamma values, rather
+                than relative ones
 
     Return
     ------
@@ -56,7 +58,6 @@ def get_relative_obstacle_velocity(
     dim = position.shape[0]
 
     xd_obs = np.zeros((dim))
-
     for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
         # xd_w = obs[it_obs].get_velocity_from_rotation(position)
         if dim == 2:
@@ -430,8 +431,8 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
 
 def obs_check_collision(obs_list, dim, *args):
-    """Check if points (as a list in *args) are colliding with any of the obstacles."""
-
+    """Check if points (as a list in *args) are colliding with any of the
+    obstacles."""
     # No obstacles
     if len(obs_list) == 0:
         return np.ones(args[0].shape)

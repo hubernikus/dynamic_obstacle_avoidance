@@ -78,19 +78,21 @@ def compute_modulation_matrix(
 ):
     # TODO: depreciated remove
     """
-    The function evaluates the gamma function and all necessary components needed to construct
-    the modulation function, to ensure safe avoidance of the obstacles.
-    Beware that this function is constructed for ellipsoid only, but the algorithm is applicable
-    to star shapes.
+    The function evaluates the gamma function and all necessary components needed to
+    construct the modulation function, to ensure safe avoidance of the obstacles.
+    Beware that this function is constructed for ellipsoid only, but the algorithm
+    is applicable to star shapes.
 
     Input
     x_t [dim]: The position of the robot in the obstacle reference frame
     obs [obstacle class]: Description of the obstacle with parameters
 
     Output
-    E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles surface
+    E [dim x dim]: Basis matrix with rows the reference and tangent to the obstacles
+        surface
     D [dim x dim]: Eigenvalue matrix which is responsible for the modulation
-    Gamma [dim]: Distance function to the obstacle surface (in direction of the reference vector)
+    Gamma [dim]: Distance function to the obstacle surface (in direction of the
+        reference vector)
     E_orth [dim x dim]: Orthogonal basis matrix with rows the normal and tangent
     """
     if True:
@@ -137,8 +139,9 @@ def obs_avoidance_interpolation_moving(
     xd=None,
 ):
     """
-    This function modulates the dynamical system at position x and dynamics xd such that it
-    avoids all obstacles obs. It can furthermore be forced to converge to the attractor.
+    This function modulates the dynamical system at position x and dynamics xd
+    such that it avoids all obstacles obs. It can furthermore be forced to
+    converge to the attractor.
 
     Parameters
     ----------
@@ -152,7 +155,6 @@ def obs_avoidance_interpolation_moving(
     Return
     ------
     xd [dim]: modulated dynamical system at position x
-
     """
     if x is not None:
         warnings.warn("Depreciated, don't use x as position argument.")
@@ -169,6 +171,8 @@ def obs_avoidance_interpolation_moving(
         return initial_velocity
 
     dim = obs[0].dimension
+
+    breakpoint()
 
     initial_velocity_norm = np.linalg.norm(initial_velocity)
     if initial_velocity_norm:
@@ -189,6 +193,8 @@ def obs_avoidance_interpolation_moving(
         for n in range(N_obs):
             # Move to obstacle centered frame
             pos_relative[:, n] = obs[n].transform_global2relative(position)
+
+    breakpoint()
 
     # Two (Gamma) weighting functions lead to better behavior when agent &
     # obstacle size differs largely.
@@ -252,66 +258,13 @@ def obs_avoidance_interpolation_moving(
             in_global_frame=evaluate_in_global_frame,
         )
 
-    # Linear and angular roation of velocity
-    xd_obs = np.zeros((dim))
-
-    for n in np.arange(N_obs)[ind_obs]:
-        if dim == 2:
-            xd_w = np.cross(
-                np.hstack(([0, 0], obs[n].angular_velocity)),
-                np.hstack((x - np.array(obs[n].center_position), 0)),
-            )
-            xd_w = xd_w[0:2]
-        elif dim == 3:
-            xd_w = np.cross(obs[n].orientation, x - obs[n].center_position)
-        else:
-            xd_w = np.zeros(dim)
-            # raise ValueError('NOT implemented for d={}'.format(d))
-            warnings.warn("Angular velocity is not defined for={}".format(d))
-
-        weight_angular = np.exp(
-            -1 / obs[n].sigma * (np.max([Gamma_proportional[n], 1]) - 1)
-        )
-
-        linear_velocity = obs[n].linear_velocity
-        velocity_only_in_positive_normal_direction = True
-
-        if velocity_only_in_positive_normal_direction:
-            lin_vel_local = E_orth[:, :, n].T.dot(obs[n].linear_velocity)
-            if lin_vel_local[0] < 0 and not obs[n].is_boundary:
-                # Obstacle is moving towards the agent
-                linear_velocity = np.zeros(lin_vel_local.shape[0])
-            else:
-                linear_velocity = E_orth[:, 0, n].dot(lin_vel_local[0])
-
-            weight_linear = np.exp(
-                -1 / obs[n].sigma * (np.max([Gamma_proportional[n], 1]) - 1)
-            )
-            # linear_velocity = weight_linear*linear_velocity
-
-        xd_obs_n = weight_linear * linear_velocity + weight_angular * xd_w
-
-        # The Exponential term is very helpful as it help to avoid
-        # the crazy rotation of the robot due to the rotation of the object
-        if obs[n].is_deforming:
-            weight_deform = np.exp(
-                -1 / obs[n].sigma * (np.max([Gamma_proportional[n], 1]) - 1)
-            )
-            vel_deformation = obs[n].get_deformation_velocity(pos_relative[:, n])
-
-            if velocity_only_in_positive_normal_direction:
-                vel_deformation_local = E_orth[:, :, n].T.dot(vel_deformation)
-                if (vel_deformation_local[0] > 0 and not obs[n].is_boundary) or (
-                    vel_deformation_local[0] < 0 and obs[n].is_boundary
-                ):
-                    vel_deformation = np.zeros(vel_deformation.shape[0])
-
-                else:
-                    vel_deformation = E_orth[:, 0, n].dot(vel_deformation_local[0])
-
-            xd_obs_n += weight_deform * vel_deformation
-
-        xd_obs = xd_obs + xd_obs_n * weight[n]
+    xd_obs = get_relative_obstacle_velocity(
+        position=position,
+        obstacle_list=obs,
+        gamma_list=gamma_proportional,
+        E_orth=E_orth,
+    )
+    print(xd_obs)
 
     # Computing the relative velocity with respect to the obstacle
     relative_velocity = initial_velocity - xd_obs
@@ -321,11 +274,7 @@ def obs_avoidance_interpolation_moving(
 
     n = 0
     for n in np.arange(N_obs)[ind_obs]:
-        if (
-            obs[n].repulsion_coeff > 1
-            and E_orth[:, 0, n].T.dot(relative_velocity) < 0
-            # or(obs[n].is_boundary and E_orth[:, 0, n].T.dot(relative_velocity)>0) or
-        ):
+        if obs[n].repulsion_coeff > 1 and E_orth[:, 0, n].T.dot(relative_velocity) < 0:
             # Only consider boundary when moving towards (normal direction)
             # OR if the object has positive repulsion-coefficient (only consider it at front)
             relative_velocity_hat[:, n] = relative_velocity
