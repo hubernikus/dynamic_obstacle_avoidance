@@ -1,3 +1,6 @@
+"""
+Container which Contains OBstacles
+"""
 # Author Lukas Huber
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
@@ -43,15 +46,11 @@ class ObstacleContainer(BaseContainer):
         self._rotation_direction = None
 
         if len(self) == 0:
-            # self._intersection_matrix = None
             self._boundary_reference_points = None
             self._distance_matrix = None
         else:
-            # self._intersection_matrix = Intersection_matrix(n_obs=, dim=self[0].dim)
             self._boundary_reference_points = np.zeros((2, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=self.number)
-
-        # The reset clusters has to be called after all obstacles are inserted in order to update the container
 
     def move_obstacles_with_velocity(self, delta_time: float) -> None:
         for obs in self._obstacle_list:
@@ -85,34 +84,6 @@ class ObstacleContainer(BaseContainer):
             if jj == key:
                 continue
             self._distance_matrix[jj, key] = None
-
-        # def __delitem__(self, key):
-        """Obstacle is not part of the workspace anymore."""
-
-        # del(self._obstacle_list[key])
-        # if self.index_wall>key:
-        # self.index_wall -= 1
-        # elif self.index_wall==key:
-        # self.index_wall = None
-
-        # warnings.warn("Intersection Matrix is not updated properly.")
-        # self._distance_matrix = Intersection_matrix(len(self._obstacle_list), self[0].dim)
-
-    # def append(self, value): # Compatibility with normal list.
-
-    # self._obstacle_list.append(value)
-
-    # if value.is_boundary:
-    # if not self.index_wall is None:
-    # warnings.warn("Two wall obstacles in container.")
-    # self.index_wall = len(self._obstacle_list)-1
-
-    # self._distance_matrix = Intersection_matrix(len(self))
-
-    # distance_matrix_old = self._distance_matrix
-    # for ii in range(self.number-1):
-    # for jj in range(ii):
-    # self._distance_matrix[ii, jj] = distance_matrix_old[ii, jj]
 
     def reset_intersections(self, index=None):
         if index is None:

@@ -18,7 +18,6 @@ from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 
 
 class DynamicalSystemAnimation:
@@ -76,7 +75,6 @@ class DynamicalSystemAnimation:
 
             # Update obstacles
             obstacle_environment.move_obstacles_with_velocity(delta_time=dt_step)
-
             # Clear right before drawing again
             ax.clear()
 
@@ -102,14 +100,7 @@ class DynamicalSystemAnimation:
                 markersize=8,
             )
             ax.grid()
-
             ax.set_aspect("equal", adjustable="box")
-            # breakpoiont()
-
-            # Check convergence
-            # if np.sum(np.abs(velocity)) < 1e-2:
-            # print(f"Converged at it={ii}")
-            # break
 
             plt.pause(dt_sleep)
             if not plt.fignum_exists(fig.number):
@@ -120,27 +111,34 @@ class DynamicalSystemAnimation:
 def simple_point_robot():
     """Simple robot avoidance."""
     obstacle_environment = ObstacleContainer()
-    # obstacle_environment.append(
-    #     Ellipse(axes_length=[0.6, 1.3],
-    #             center_position=np.array([-0.2, 2.4]),
-    #             margin_absolut=0,
-    #             orientation=-30*pi/180,
-    #             tail_effect=False,
-    #             repulsion_coeff=1.4,
-    #             ))
+    obstacle_environment.append(
+        Ellipse(
+            axes_length=[0.6, 1.3],
+            center_position=np.array([-0.2, 2.4]),
+            margin_absolut=0,
+            orientation=-30 * pi / 180,
+            tail_effect=False,
+            repulsion_coeff=1.4,
+        )
+    )
 
-    # obstacle_environment.append(
-    #     Cuboid(axes_length=[0.4, 1.3],
-    #            center_position=np.array([1.2, 0.25]),
-    #            # center_position=np.array([0.9, 0.25]),
-    #            margin_absolut=0.5,
-    #            orientation=10*pi/180,
-    #            tail_effect=False,
-    #            repulsion_coeff=1.4,
-    #            ))
+    obstacle_environment.append(
+        Cuboid(
+            axes_length=[0.4, 1.3],
+            center_position=np.array([1.2, 0.25]),
+            # center_position=np.array([0.9, 0.25]),
+            margin_absolut=0.5,
+            orientation=10 * pi / 180,
+            tail_effect=False,
+            repulsion_coeff=1.4,
+        )
+    )
 
-    # initial_dynamics = LinearSystem(attractor_position=np.array([2.0, 1.8]),
-    #                                 maximum_velocity=1, distance_decrease=0.3)
+    initial_dynamics = LinearSystem(
+        attractor_position=np.array([2.0, 1.8]),
+        maximum_velocity=1,
+        distance_decrease=0.3,
+    )
 
     # obstacle_environment.append(
     # Cuboid(axes_length=[1.6, 0.7],
@@ -161,13 +159,17 @@ def simple_point_robot():
     #        repulsion_coeff=1.4,
     #        ))
 
+
+def run_stationary_point_avoiding_dynamic_robot():
+    obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
         Ellipse(
             axes_length=[0.5, 0.5],
-            center_position=np.array([-3.0, 0.2]),
+            # center_position=np.array([-3.0, 0.2]),
+            center_position=np.array([-1.0, 0.2]),
             margin_absolut=0.5,
             orientation=0,
-            linear_velocity=np.array([0.8, 0.0]),
+            linear_velocity=np.array([0.5, 0.0]),
             tail_effect=False,
         )
     )
@@ -191,4 +193,5 @@ if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
-    simple_point_robot()
+    # simple_point_robot()
+    run_stationary_point_avoiding_dynamic_robot()

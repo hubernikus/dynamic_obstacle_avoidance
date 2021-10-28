@@ -97,11 +97,6 @@ class Obstacle(ABC):
 
         self.is_boundary = is_boundary
 
-        # Obstacle attitude /
-        if x0 is not None:  # TODO: remove
-            raise NotImplementedError("Wrong name")
-            # center_position = x0        # TODO remove and rename
-        # breakpoint()
         self.position = center_position
         self.center_position = self.position
 
@@ -357,10 +352,7 @@ class Obstacle(ABC):
 
     @center_position.setter
     def center_position(self, value):
-        if isinstance(value, list):
-            self._center_position = np.array(value)
-        else:
-            self._center_position = value
+        self._center_position = np.array(value)
 
     @property
     def timestamp(self):
@@ -871,7 +863,7 @@ class Obstacle(ABC):
 
         if self.angular_velocity is not None:
             if self.dimension == 2:
-                self.position = self.position + self.linear_velocity * delta_time
+                self.orientation = self.orientation + self.angular_velocity * delta_time
             else:
                 raise NotImplementedError("Angular velocity step not defined for d>2")
 
