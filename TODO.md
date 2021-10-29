@@ -13,7 +13,7 @@
 
 ## Optimization / Restructuring
 > extend & adapt testing
-> ..
+> Make normals point away from obstacles & boundaries (!)
 
 ## Add-Ons
 > ..

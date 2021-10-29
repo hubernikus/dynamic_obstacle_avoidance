@@ -16,6 +16,18 @@ from vartools.linalg import get_orthogonal_basis
 # from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 
 
+def avoid_moving_obstacle_with_maximum(
+    velocity: np.ndarray, max_velocity
+) -> np.ndarray:
+    # TODO: test this library & get normalized-norm
+    # Implement the three cases from the paper
+
+    position = position
+    velocity = velocity
+
+    return safe_velocity
+
+
 def get_relative_obstacle_velocity(
     position: np.ndarray,
     obstacle_list,
@@ -23,18 +35,22 @@ def get_relative_obstacle_velocity(
     weights: list,
     ind_obstacles: int = None,
     gamma_list: list = None,
-    cut_off_gamma: float = 1e-6,
-):
+    cut_off_gamma: float = 1e4,
+    velocity_only_in_positive_normal_direction: bool = True,
+    normal_weight_factor: float = 1.3,
+) -> np.ndarray:
     """Get the relative obstacle velocity
 
     Parameters
     ----------
-    E_orth: array which contains orthogonal matrix with repsect to the normal direction at <position>
-            array of (dimension, dimensions, n_obstacles
+    E_orth: array which contains orthogonal matrix with repsect to the normal
+    direction at <position>
+    array of (dimension, dimensions, n_obstacles
     obstacle_list: list or <obstacle-conainter> with obstacles
     ind_obstacles: Inidicates which obstaces will be considered (array-like of int)
     gamma_list: Precalculated gamma-values (list of float) -
-                It is adviced to use 'proportional' gamma values, rather than relative ones
+                It is adviced to use 'proportional' gamma values, rather
+                than relative ones
 
     Return
     ------
@@ -45,20 +61,18 @@ def get_relative_obstacle_velocity(
     if gamma_list is None:
         gamma_list = np.zeros(n_obstacles)
         for n in range(n_obstacles):
-            Gamma[n] = obs[n].get_gamma(position, in_global_frame=True)
+            gamma_list[n] = obs[n].get_gamma(position, in_global_frame=True)
 
     if ind_obstacles is None:
         ind_obstacles = gamma_list < cut_off_gamma
-        Gamma = Gamma[ind_obstacles]
+        gamma_list = gamma_list[ind_obstacles]
 
     obs = obstacle_list
     ind_obs = ind_obstacles
     dim = position.shape[0]
 
     xd_obs = np.zeros((dim))
-
     for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
-        # xd_w = obs[it_obs].get_velocity_from_rotation(position)
         if dim == 2:
             xd_w = np.cross(
                 np.hstack(([0, 0], obs[it_obs].angular_velocity)),
@@ -79,21 +93,28 @@ def get_relative_obstacle_velocity(
         )
 
         linear_velocity = obs[it_obs].linear_velocity
-        velocity_only_in_positive_normal_direction = True
 
         if velocity_only_in_positive_normal_direction:
-            lin_vel_local = E_orth[:, :, ii].T.dot(obs[it_obs].linear_velocity)
-            if lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
+            if E_orth[:, 0, ii].dot(position - obs[it_obs].center_position) > 0:
+                # Normal is (at the time of implementation) pointing away from the obstacle.
+                # but this is expected to change (!)
+                raise Exception(
+                    "Normal direciton is not pointing along reference."
+                    + "-> change the sign of the inequality"
+                )
+
+            lin_vel_local = (E_orth[:, :, ii]).T.dot(obs[it_obs].linear_velocity)
+            if (-1) * lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
                 # Obstacle is moving towards the agent
                 linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:
+                # For safety in close region, we multiply the velocity
+                lin_vel_local[0] = normal_weight_factor * lin_vel_local[0]
                 linear_velocity = E_orth[:, 0, ii].dot(lin_vel_local[0])
 
             weight_linear = np.exp(
                 -1 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
             )
-            # linear_velocity = weight_linear*linear_velocity
-
         xd_obs_n = weight_linear * linear_velocity + weight_angular * xd_w
 
         # The Exponential term is very helpful as it help to avoid
@@ -116,9 +137,7 @@ def get_relative_obstacle_velocity(
 
             xd_obs_n += weight_deform * vel_deformation
         xd_obs = xd_obs + xd_obs_n * weights[ii]
-
-    relative_velocity = xd_obs
-    return relative_velocity
+    return xd_obs
 
 
 def get_weight_from_gamma(*args, **kwargs):
@@ -430,8 +449,8 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
 
 def obs_check_collision(obs_list, dim, *args):
-    """Check if points (as a list in *args) are colliding with any of the obstacles."""
-
+    """Check if points (as a list in *args) are colliding with any of the
+    obstacles."""
     # No obstacles
     if len(obs_list) == 0:
         return np.ones(args[0].shape)
