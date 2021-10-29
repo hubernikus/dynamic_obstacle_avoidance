@@ -10,7 +10,7 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import Cuboid
+from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon
 from dynamic_obstacle_avoidance.containers import ObstacleContainer, GradientContainer
 from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
 
