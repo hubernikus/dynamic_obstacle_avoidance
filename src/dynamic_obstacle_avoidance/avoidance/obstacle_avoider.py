@@ -109,14 +109,14 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
     def evaluate_for_crowd_agent(
-        self, position: np.ndarray, selected_agent, agent_is_obs: bool
+        self, position: np.ndarray, selected_agent, env, agent_is_obs: bool # this var is useless ??? or not ???
     ) -> np.ndarray:
         """DynamicalSystem compatible 'evaluate' method that returns the velocity at a
         given input position."""
-        return self.compute_dynamics_for_crowd_agent(position, selected_agent, agent_is_obs)
+        return self.compute_dynamics_for_crowd_agent(position, selected_agent, env, agent_is_obs)
 
     def compute_dynamics_for_crowd_agent(
-        self, position: np.ndarray, selected_agent, agent_is_obs: bool
+        self, position: np.ndarray, selected_agent, env, agent_is_obs: bool
     ) -> np.ndarray:
         """DynamicalSystem compatible 'compute_dynamics' method that returns the velocity at a
         given input position."""
@@ -126,6 +126,7 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             position=position,
             initial_velocity=initial_velocity,
             selected_agent=selected_agent,
+            env=env,
             agent_is_obs=agent_is_obs,
         )
 
@@ -134,19 +135,13 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         position: np.ndarray,
         initial_velocity: np.ndarray,
         selected_agent,
+        env,
         agent_is_obs: bool,
         const_speed: bool = True,
     ) -> np.ndarray:
 
-        if agent_is_obs:
-            temp_env = (
-                self.environment[0:selected_agent] + self.environment[selected_agent + 1 :]
-            )
-        else:
-            temp_env = self.environment
-
         vel = obs_avoidance_interpolation_moving(
-            position=position, initial_velocity=initial_velocity, obs=temp_env
+            position=position, initial_velocity=initial_velocity, obs=env
         )
 
         # Adapt speed if desired

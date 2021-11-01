@@ -1,8 +1,10 @@
 # Author: Federico Conzelmann
 # Email: federico.conzelmann@epfl.ch
-# Created: 2021-10-27
+# Created: 2021-11-01
 
 from math import pi
+from math import atan2
+from math import sqrt
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,9 +18,13 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from vartools.dynamical_systems import LinearSystem
 
 
+def calculate_delta(pos_list):
+    return np.array([pos_list[1, 0] - pos_list[0, 0], pos_list[1, 1] - pos_list[0, 1]]) / 2.0
+
+
 class DynamicalSystemAnimation:
     def __init__(self):
-        self.animation_paused = True
+        self.animation_paused = False
 
     def on_click(self, event):
         if self.animation_paused:
@@ -28,12 +34,14 @@ class DynamicalSystemAnimation:
 
     def run(
             self, initial_dynamics, obstacle_environment,
+            obs_w_multi_agent,
             start_position=None,
             x_lim=None, y_lim=None,
             it_max=1000, dt_step=0.03, dt_sleep=0.1
     ):
 
-        num_obs_env = len(obstacle_environment)
+        num_obs = len(obstacle_environment)
+        num_agent = len(start_position)
         dim = 2
 
         if y_lim is None:
@@ -41,10 +49,10 @@ class DynamicalSystemAnimation:
         if x_lim is None:
             x_lim = [-1.5, 2]
         if start_position is None:
-            start_position = np.zeros((num_obs_env, dim))
+            start_position = np.zeros((num_obs, dim))
 
         dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment)
-        position_list = np.zeros((num_obs_env, dim, it_max))
+        position_list = np.zeros((num_agent, dim, it_max))
         position_list[:, :, 0] = start_position
 
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -62,20 +70,29 @@ class DynamicalSystemAnimation:
             ii += 1
             if ii > it_max:
                 break
-            if not ii % 10:
-                print(f"it={ii}")
 
             # Here come the main calculation part
-            for agent in range(num_obs_env):
-                velocity = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, True)
-                position_list[agent, :, ii] = velocity * dt_step + position_list[agent, :, ii - 1]
-                obstacle_environment[agent].center_position = position_list[agent, :, ii]
+            for obs in range(num_obs):
+                for agent in obs_w_multi_agent[obs]:
+                    if len(obs_w_multi_agent[obs]) > 1:
+                        temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1 :]
+                        velocity = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, temp_env, True)   # won't work with multiple agents in 1 obstacle
+                        position_list[agent, :, ii] = velocity * dt_step + position_list[agent, :, ii - 1]
+                        # obstacle_environment[obs].center_position +=
+                        # print(calculate_delta(position_list[obs_w_multi_agent[obs], :, ii]))
+                    else:
+                        pass
+
+                obstacle_environment[obs].center_position = position_list[obs_w_multi_agent[obs][0], :, ii] + calculate_delta(position_list[obs_w_multi_agent[obs], :, ii])
+
+            angle = atan2(position_list[0, 1, ii] - position_list[1, 1, ii], position_list[0, 0, ii] - position_list[1, 0, ii])
+            obstacle_environment[0].orientation = angle
 
             # Clear right before drawing again
             ax.clear()
 
             # Drawing and adjusting of the axis
-            for agent in range(num_obs_env):
+            for agent in range(num_agent):
                 plt.plot(position_list[agent, 0, :ii], position_list[agent, 1, :ii], ':',
                          color='#135e08')
                 plt.plot(position_list[agent, 0, ii], position_list[agent, 1, ii],
@@ -86,7 +103,7 @@ class DynamicalSystemAnimation:
 
             plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
 
-            for agent in range(num_obs_env):
+            for agent in range(num_agent):
                 ax.plot(initial_dynamics[agent].attractor_position[0],
                         initial_dynamics[agent].attractor_position[1], 'k*', markersize=8, )
             ax.grid()
@@ -106,21 +123,14 @@ class DynamicalSystemAnimation:
 
 
 def multiple_robots():
-    obstacle_pos = np.array([[-2.0, -2.0], [-2.0, 2.0]])
-    attractor_pos = np.array([[2.0, 2.0], [2.0, -2.0]])
+    obstacle_pos = np.array([-2.0, 0.0])
+    agent_pos = np.array([[-2.25, 0.0], [-1.75, 0.0]])
+    attractor_pos = np.array([[0.0, 0.25], [0.0, -0.25]])
     obstacle_environment = ObstacleContainer()
-    obstacle_environment.append(Ellipse(
-        axes_length=[0.6, 0.6],
-        center_position=obstacle_pos[0],
-        margin_absolut=0.5,
-        orientation=0,
-        tail_effect=False,
-        repulsion_coeff=1.4,
-    ))
     obstacle_environment.append(Cuboid(
-        axes_length=[0.4, 0.8],
-        center_position=obstacle_pos[1],
-        margin_absolut=0.5,
+        axes_length=[1.5, 0.6],
+        center_position=obstacle_pos,
+        margin_absolut=0,
         orientation=0,
         tail_effect=False,
         repulsion_coeff=1.4,
@@ -133,10 +143,13 @@ def multiple_robots():
         maximum_velocity=1, distance_decrease=0.3
     )]
 
+    obs_multi_agent = {0: [0, 1]}
+
     DynamicalSystemAnimation().run(
         initial_dynamics,
         obstacle_environment,
-        obstacle_pos,
+        obs_multi_agent,
+        agent_pos,
         x_lim=[-3, 3],
         y_lim=[-3, 3],
         dt_step=0.05,
