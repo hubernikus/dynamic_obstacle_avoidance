@@ -1,7 +1,5 @@
 #!/USSR/bin/python3
-"""
-
-"""
+""" Example Obstacle Avoidance """
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23

@@ -7,8 +7,12 @@ import unittest
 from math import pi
 
 import numpy as np
+import sympy
 
-from robot_avoidance.model_robot import RobotArm2D
+from robot_avoidance.model_robot import RobotArm2D, ModelRobot2D
+from robot_avoidance.analytic_evaluation_jacobian import (
+    _get_sympy_transformation_matrix,
+)
 
 
 class TestAnalyticalFunctionEvaluation(unittest.TestCase):
@@ -154,6 +158,9 @@ class TestAnalyticalFunctionEvaluation(unittest.TestCase):
             ax.grid()
 
             pos = my_robot.get_joint_in_base(level, relative_point_position)
+            vel = my_robot.get_cartesian_vel_from_joint_velocity_on_link(
+                joint_velocity, level, relative_point_position
+            )
 
             vel = my_robot.get_joint_vel_at_linklevel_and_position(
                 joint_velocity, level, relative_point_position

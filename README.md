@@ -54,10 +54,17 @@ pip install -r requirements_notebook.txt
 ## Getting Started
 The `example` folder contains a jupyter notebook & general example for static & dynamic simulation in multi-obstacle environment.
 
-## Unit Testing
-In order to run all the test-scripts, run in the command line in the main folder:
+
+## For Developpers
+We use pytest in this, to test the code run
+``` sh
+pytest
 ```
-python -m unittest discover tests
+
+Download and setup pre-commit hook for automated formatting
+
+``` sh
+pip install pre-commit
 ```
 
 ### 3D Plotting

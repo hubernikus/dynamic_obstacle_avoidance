@@ -23,8 +23,6 @@ except ImportError:
 
 class RobotArm:
     # Default jacobian matrix for end-effector
-    _my_jacobian = _get_jacobian
-
     def __init__(self, max_joint_velocity=pi / 2):
         self.max_joint_velocity = max_joint_velocity
 
@@ -35,6 +33,10 @@ class RobotArm:
     @property
     def n_links(self):
         return self.n_joints
+
+    def _my_jacobian(self, ll, qq):
+        # Global function of get-jacobian
+        return _get_jacobian(ll, qq)
 
     def set_joint_state(self, value, input_unit="rad"):
         if value.shape[0] != self.n_joints:
@@ -374,10 +376,10 @@ class ModelRobot2D(RobotArm2D):
     """
 
     def __init__(self):
-        super().__init__()
-
         self.n_joints = 4
         self._link_lengths = np.array([0.5, 1, 1, 1])
+        super().__init__(link_lengths=self._link_lengths)
+        # super().__init__()
 
         # In radiaon
         self._joint_state = np.zeros(self.n_joints)

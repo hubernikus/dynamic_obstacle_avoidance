@@ -286,6 +286,11 @@ def obs_avoidance_interpolation_moving(
     rel_velocity_norm = np.linalg.norm(relative_velocity)
     if rel_velocity_norm:
         rel_velocity_normalized = initial_velocity / rel_velocity_norm
+        
+    else:
+        # Zero velocity
+        return xd_obs
+        
 
     # Keep either way, since avoidance from attractor might be needed
     relative_velocity_hat = np.zeros((dim, N_obs))
@@ -378,10 +383,11 @@ def obs_avoidance_interpolation_moving(
 
     if rel_velocity_norm:
         weighted_direction = get_directional_weighted_sum(
-            null_direction=rel_velocity_norm,
+            null_direction=rel_velocity_normalized,
             directions=relative_velocity_hat_normalized,
             weights=weight,
-        )
+            )
+
     else:
         # TODO: Better solution / smooth switching when velocity is nonzero
         # e.g. it could be part of the reltavie-movement

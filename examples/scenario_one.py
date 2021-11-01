@@ -173,7 +173,7 @@ def multiple_robots():
     )
 
 
-if __name__ == "__main__":
+if (__name__) == "__main__":
     plt.close('all')
     plt.ion()
 

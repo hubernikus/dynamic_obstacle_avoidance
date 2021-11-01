@@ -7,13 +7,11 @@ import copy
 import numpy as np
 from numpy import linalg as LA
 
-from cvxopt import solvers, matrix
-
 from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
-from _base_qp import ControllerQP
-from navigation import SphereToStarTransformer
+from avoidance_comparison._base_qp import ControllerQP
+from avoidance_comparison.navigation import SphereToStarTransformer
 
 
 class SphereWorldOptimizer(BaseContainer):
@@ -28,6 +26,9 @@ class SphereWorldOptimizer(BaseContainer):
     def __init__(
         self, lambda_constant=None, attractor_position=None, *args, **kwargs
     ):
+        # TODO: put outside
+        from cvxopt import solvers, matrix
+
         super().__init__(*args, **kwargs)
 
         # Use navigation container for trasnformations

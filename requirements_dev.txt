@@ -8,3 +8,5 @@ ipython
 pre-commit
 pytest
 
+# For the robot class
+sympy
