@@ -24,7 +24,7 @@ def calculate_delta(pos_list):
 
 class DynamicalSystemAnimation:
     def __init__(self):
-        self.animation_paused = True
+        self.animation_paused = False
 
     def on_click(self, event):
         if self.animation_paused:
@@ -53,6 +53,9 @@ class DynamicalSystemAnimation:
 
         dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment)
         position_list = np.zeros((num_agent, dim, it_max))
+        relative_agent_pos = np.zeros((num_agent, dim))
+        relative_agent_pos[0, :] = obstacle_environment[0].center_position - start_position[0, :]
+        relative_agent_pos[1, :] = obstacle_environment[0].center_position - start_position[1, :]
         position_list[:, :, 0] = start_position
 
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -80,7 +83,7 @@ class DynamicalSystemAnimation:
                     for agent in obs_w_multi_agent[obs]:
                         temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1 :]
                         velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, temp_env, True)
-                        position_list[agent, :, ii] = velocity[agent, :] * dt_step + position_list[agent, :, ii - 1]
+                        # position_list[agent, :, ii] = velocity[agent, :] * dt_step + position_list[agent, :, ii - 1]
                         # obstacle_environment[obs].center_position +=
                         # print(calculate_delta(position_list[obs_w_multi_agent[obs], :, ii]))
 
@@ -93,13 +96,18 @@ class DynamicalSystemAnimation:
                             (velocity[agent, :] - obs_vel))
 
                     angular_vel_obs = angular_vel.sum()
+                    obstacle_environment[obs].linear_velocity = obs_vel
+                    obstacle_environment[obs].angular_velocity = angular_vel_obs
+                    obstacle_environment[obs].do_velocity_step(dt_step)
+                    for agent in obs_w_multi_agent[obs]:
+                        position_list[agent, :, ii] = obstacle_environment[obs].transform_relative2global(relative_agent_pos[agent, :])
                 else:
                     raise Exception("Not implemented")
 
-                obstacle_environment[obs].center_position = position_list[obs_w_multi_agent[obs][0], :, ii] + calculate_delta(position_list[obs_w_multi_agent[obs], :, ii])
+                # obstacle_environment[obs].center_position = position_list[obs_w_multi_agent[obs][0], :, ii] + calculate_delta(position_list[obs_w_multi_agent[obs], :, ii])
 
-            angle = atan2(position_list[0, 1, ii] - position_list[1, 1, ii], position_list[0, 0, ii] - position_list[1, 0, ii])
-            obstacle_environment[0].orientation = angle
+            # angle = atan2(position_list[0, 1, ii] - position_list[1, 1, ii], position_list[0, 0, ii] - position_list[1, 0, ii])
+            # obstacle_environment[0].orientation = angle
 
             # Clear right before drawing again
             ax.clear()
@@ -110,6 +118,7 @@ class DynamicalSystemAnimation:
                          color='#135e08')
                 plt.plot(position_list[agent, 0, ii], position_list[agent, 1, ii],
                          'o', color='#135e08', markersize=12, )
+                plt.arrow(position_list[agent, 0, ii], position_list[agent, 1, ii], velocity[agent, 0], velocity[agent, 1])
 
             ax.set_xlim(x_lim)
             ax.set_ylim(y_lim)
@@ -138,7 +147,7 @@ class DynamicalSystemAnimation:
 def multiple_robots():
     obstacle_pos = np.array([-2.0, 0.0])
     agent_pos = np.array([[-2.25, 0.0], [-1.75, 0.0]])
-    attractor_pos = np.array([[0.0, 0.25], [0.0, -0.25]])
+    attractor_pos = np.array([[0.0, 0.0], [0.0, -0.5]])
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(Cuboid(
         axes_length=[1.5, 0.6],
@@ -163,8 +172,8 @@ def multiple_robots():
         obstacle_environment,
         obs_multi_agent,
         agent_pos,
-        x_lim=[-3, 3],
-        y_lim=[-3, 3],
+        x_lim=[-3, 1],
+        y_lim=[-2, 2],
         dt_step=0.05,
     )
 
