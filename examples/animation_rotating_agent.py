@@ -24,7 +24,7 @@ def calculate_delta(pos_list):
 
 class DynamicalSystemAnimation:
     def __init__(self):
-        self.animation_paused = False
+        self.animation_paused = True
 
     def on_click(self, event):
         if self.animation_paused:
@@ -73,15 +73,26 @@ class DynamicalSystemAnimation:
 
             # Here come the main calculation part
             for obs in range(num_obs):
-                for agent in obs_w_multi_agent[obs]:
-                    if len(obs_w_multi_agent[obs]) > 1:
+                num_agents_in_obs = len(obs_w_multi_agent[obs])
+                if num_agents_in_obs > 1:
+                    weights = 1 / len(obs_w_multi_agent)
+                    velocity = np.ndarray((num_agents_in_obs, dim))
+                    for agent in obs_w_multi_agent[obs]:
                         temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1 :]
-                        velocity = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, temp_env, True)   # won't work with multiple agents in 1 obstacle
-                        position_list[agent, :, ii] = velocity * dt_step + position_list[agent, :, ii - 1]
+                        velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, temp_env, True)
+                        position_list[agent, :, ii] = velocity[agent, :] * dt_step + position_list[agent, :, ii - 1]
                         # obstacle_environment[obs].center_position +=
                         # print(calculate_delta(position_list[obs_w_multi_agent[obs], :, ii]))
-                    else:
-                        pass
+
+                    obs_vel = weights * velocity.sum(axis=0)
+                    # now what ?
+                    angular_vel = np.zeros(num_agents_in_obs)
+                    for agent in obs_w_multi_agent[obs]:
+                        angular_vel[agent] = weights * np.cross((obstacle_environment[obs].center_position - position_list[agent, :, ii - 1]), (velocity[agent, :] - obs_vel))
+
+                    angular_vel_obs = angular_vel.sum()
+                else:
+                    raise Exception("Not implemented")
 
                 obstacle_environment[obs].center_position = position_list[obs_w_multi_agent[obs][0], :, ii] + calculate_delta(position_list[obs_w_multi_agent[obs], :, ii])
 
