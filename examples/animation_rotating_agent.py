@@ -88,7 +88,9 @@ class DynamicalSystemAnimation:
                     # now what ?
                     angular_vel = np.zeros(num_agents_in_obs)
                     for agent in obs_w_multi_agent[obs]:
-                        angular_vel[agent] = weights * np.cross((obstacle_environment[obs].center_position - position_list[agent, :, ii - 1]), (velocity[agent, :] - obs_vel))
+                        angular_vel[agent] = weights * np.cross(
+                            (obstacle_environment[obs].center_position - position_list[agent, :, ii - 1]),
+                            (velocity[agent, :] - obs_vel))
 
                     angular_vel_obs = angular_vel.sum()
                 else:
