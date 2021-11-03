@@ -72,7 +72,7 @@ class DynamicalSystemAnimation:
             # print(
 
             # Update obstacles
-            obstacle_environment.move_obstacles_with_velocity(delta_time=dt_step)
+            obstacle_environment.do_velocity_step(delta_time=dt_step)
             # Clear right before drawing again
             ax.clear()
 
