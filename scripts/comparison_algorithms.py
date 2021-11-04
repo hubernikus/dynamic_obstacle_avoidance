@@ -13,17 +13,25 @@ from numpy import pi
 import matplotlib.pyplot as plt
 
 # Custom libraries
-from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.comparison_algorithms import obs_avoidance_potential_field, obs_avoidance_orthogonal_moving
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import obs_avoidance_interpolation_moving, obs_check_collision_2d
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import GradientContainer
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import linear_ds_max_vel
+from vartools.dynamical_systems import LinearSystem
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.metric_evaluation import MetricEvaluator
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
+    Simulation_vectorFields
+)
+
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon
+from dynamic_obstacle_avoidance.obstacles.cuboid import Cuboid
+from dynamic_obstacle_avoidance.containers import GradientContainer
+from dynamic_obstacle_avoidance.metric_evaluation import MetricEvaluator
+from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
+from dynamic_obstacle_avoidance.avoidance import (
+    obs_avoidance_potential_field,
+    obs_avoidance_orthogonal_moving,
+    obs_avoidance_interpolation_moving,
+    
+)
+
 
 plt.close('all')
 plt.ion()
@@ -62,15 +70,16 @@ class DynamicEllipse(Ellipse):
 
         self.expansion_vel = np.random.uniform(size=(self.dim))*self.expansion_variance
 
-        # self.is_dynamic = np.random.randint(low=0, high=2)
         self.is_dynamic = 1
-                
 
         if self.is_dynamic:
             vel_dir = np.random.uniform(low=0, high=2*np.pi)
-            linear_velocity = np.array([np.cos(vel_dir), np.sin(vel_dir)]) * np.random.uniform(low=0, high=self.max_velocity)
+            linear_velocity = (np.array([np.cos(vel_dir), np.sin(vel_dir)])
+                               * np.random.uniform(low=0, high=self.max_velocity
+            ))
 
-            angular_velocity = np.random.uniform(low=-self.max_angular_velocity, high=-self.max_angular_velocity)
+            angular_velocity = np.random.uniform(
+                low=-self.max_angular_velocity, high=-self.max_angular_velocity)
         
         else:
             linear_velocity = np.zeros(self.dim)
@@ -99,12 +108,14 @@ class DynamicEllipse(Ellipse):
         
         # Random walk for velocity
         # print('linear_velocity', self.linear_velocity) 
-        self.linear_velocity = self.linear_velocity + np.random.randn(self.dim)*self.variance_velocity
+        self.linear_velocity = (self.linear_velocity
+                                + np.random.randn(self.dim)*self.variance_velocity)
         vel_mag = np.linalg.norm(self.linear_velocity)
         if vel_mag > self.max_velocity:
             self.linear_velocity = self.linear_velocity/vel_mag*self.max_velocity
 
-        self.angular_velocity = self.angular_velocity + np.random.randn(1)*self.variance_angular_velocity
+        self.angular_velocity = (self.angular_velocity
+                                 + np.random.randn(1)*self.variance_angular_velocity)
         if abs(self.angular_velocity) > self.max_angular_velocity:
             self.angular_velocity = np.copysign(self.max_angular_velocity, self.angular_velocity)
 
@@ -119,7 +130,9 @@ class DynamicEllipse(Ellipse):
             delta_vel_range = [self.axis_range[0]-self.axes_length[ii],
                                self.axis_range[1]-self.axes_length[ii]]
             
-            self.expansion_vel[ii] = self.expansion_vel[ii] + time_step*np.random.uniform(low=delta_vel_range[0], high=delta_vel_range[1])
+            self.expansion_vel[ii] = (
+                self.expansion_vel[ii]
+                + time_step*np.random.uniform(low=delta_vel_range[0], high=delta_vel_range[1]))
 
             if self.expansion_vel[ii] > self.max_expansion_rate:
                 self.expansion_vel[ii] = self.max_expansion_rate
@@ -159,11 +172,12 @@ class DynamicEllipse(Ellipse):
 
 
 class ObstacleAvoidanceAgent():
-    def __init__(self, start_position, avoidance_function=None, default_velocity_function=None, dim=2, attractor=None, name=None):
+    def __init__(self, start_position, avoidance_function=None,
+                 default_velocity=None, dim=2, attractor=None, name=None):
         # print('The birth of a new autonomous agent is being witnessed.')
         self.dim = dim
 
-        self.default_velocity_function = default_velocity_function
+        self.default_velocity = default_velocity
         self.avoidance_function = avoidance_function
         
         self.position_list = np.reshape(start_position, (self.dim, 1))
@@ -184,18 +198,18 @@ class ObstacleAvoidanceAgent():
     def has_stopped(self):
         return self.has_converged or self.has_collided or self.is_in_local_minma
 
-    def update_step(self, obstacle_list=[], delta_time=0.1, initial_velocity=None, check_convergence=True, time=None, vel_min_margin=0.01):
-        # print('A small setp for an agent.')
+    def update_step(
+        self, obstacle_list=[], delta_time=0.1, initial_velocity=None,
+        check_convergence=True, time=None, vel_min_margin=0.01):
+        
         if self.has_stopped and check_convergence:
-            # print('and nothing else.')
-            # import pdb; pdb.set_trace()
             return
 
         if initial_velocity is None:
-            if self.default_velocity_function is None:
+            if self.default_velocity is None:
                 raise NotImplementedError('Undefined velicty')
 
-            initial_velocity = self.default_velocity_function(self.position)
+            initial_velocity = self.default_velocity(self.position)
 
         initial_vel_mag = np.linalg.norm(initial_velocity)
 
@@ -261,7 +275,10 @@ def position_is_in_free_space(position, obstacle_list):
     return True
 
 
-def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5, dim=2, visualize_scene=True, random_seed=None, fig_and_ax_handle=None, fig_num=None, plot_last_image=False, show_legend=True):
+def compare_algorithms_random(
+    max_it=1000, delta_time=0.01, max_num_obstacles=5,
+    dim=2, visualize_scene=True, random_seed=None, fig_and_ax_handle=None,
+    fig_num=None, plot_last_image=False, show_legend=True):
     """ Compare the algorithms with a random environment setup. """
     
     if random_seed is not None:
@@ -270,11 +287,7 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
     x_range = [-1, 11]
     y_range = [-1, 11]
 
-    # func = compare_algorithms_interpolation
-    # xd = obs_avoidance_interpolation_moving()
-
     obs_list = GradientContainer()
-    # num_agents = np.random.randint(low=0, high=max_num_agents)
 
     obs_xaxis = [x_range[0]+1, x_range[1]-1]
     obs_yaxis = [y_range[0]+1, y_range[1]-1]
@@ -290,13 +303,6 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
     
     # Two obstacles instead of one gives a better performance at the 'star-side'
     center_point = copy.deepcopy(obs_list[-1].center_position)
-
-    # obs_list.append(
-        # Polygon(
-            # edge_points=(edge_points - 0.8*np.tile(center_point, (4,1)).T),
-            # tail_effect=False,
-        # )
-    # )
 
     if True:
         attractor_position = np.array([7.5, 1.7])
@@ -327,20 +333,6 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
             )
         )
     
-    # del obs_list[1]
-    
-    # obs_list.append(
-    #     Polygon(
-    #         edge_points=[[x_range[0], x_range[0], 0.5*x_range[1], 0.5*x_range[1],    x_range[1], x_range[1]],
-    #                      [y_range[1], y_range[0],     y_range[0], 0.5*y_range[1], 0.5*y_range[1], y_range[1]]],
-    #         # center_position=[0.25*x_range[1], 0.75*y_range[1]],
-    #         center_position=[0.25*x_range[1], 0.75*y_range[1]],
-    #         is_boundary=True,
-    #         tail_effect=False,
-    #         )
-    # )
-    # del obs_list[0]
-    
     num_obstacles = 2
     for oo in range(num_obstacles):
         obs_list.append(
@@ -350,7 +342,9 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
             ))
 
     if False:
-        from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import gamma_field_visualization
+        from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import (
+            gamma_field_visualization
+        )
 
         gamma_field_visualization([-1, 11], [-1, 11], obstacle=obs_list[-1])
         return
@@ -366,7 +360,7 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
     if False:
         Simulation_vectorFields(
             x_range, y_range,  obs=obs_list,
-            xAttractor=attractor_position,
+            pos_attractor=attractor_position,
             saveFigure=False,
             # obs_avoidance_func=obs_avoidance_interpolation_moving,
             # obs_avoidance_func=obs_avoidance_orthogonal_moving,
@@ -379,6 +373,9 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
             normalize_vectors=False,
         )
         return
+
+    dynamical_system = LinearSystem(
+        attractor_position=attractor_position)
     
     it_count = 0
     it_max = 100
@@ -405,24 +402,24 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
         ObstacleAvoidanceAgent(start_position=start_position,
                                name='Dynamic',
                                avoidance_function=obs_avoidance_interpolation_moving,
-                               attractor=attractor_position,
+                               attractor=dynamical_system.attractor_position,
             ))
 
     agents.append(
         ObstacleAvoidanceAgent(start_position=start_position,
                                name='Orthogonal',
                                avoidance_function=obs_avoidance_orthogonal_moving,
-                               attractor=attractor_position,
+                               attractor=dynamical_system.attractor_position,
             ))
 
     agents.append(
         ObstacleAvoidanceAgent(start_position=start_position,
                                name='Repulsion',
                                avoidance_function=obs_avoidance_potential_field,
-                               attractor=attractor_position,
+                               attractor=dynamical_system.attractor_position,
             ))
 
-    initial_distance = np.linalg.norm(attractor_position-start_position)
+    initial_distance = np.linalg.norm(dynamical_system.attractor_position-start_position)
 
     if visualize_scene or plot_last_image:
         if fig_num is None:
@@ -447,7 +444,7 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
         
             Simulation_vectorFields(
                 x_range, y_range,  obs=obs_list,
-                xAttractor=attractor_position,
+                pos_attractor=dynamical_system.attractor_position,
                 showLabel=False,
                 saveFigure=False,
                 obs_avoidance_func=obs_avoidance_interpolation_moving,
@@ -469,10 +466,11 @@ def compare_algorithms_random(max_it=1000, delta_time=0.01, max_num_obstacles=5,
                         plt.plot(obs.position_list[0, :],
                                  obs.position_list[1, :],
                                  '--')
-
+        
         for agent in agents:
-            initial_velocity = linear_ds_max_vel(
-                position=agent.position, attractor=attractor_position, vel_max=1.0)
+            # initial_velocity = linear_ds_max_vel(
+                # position=agent.position, attractor=attractor_position, vel_max=1.0)
+            initial_velocity = dynamical_system.evaluate(agent.position)
             agent.update_step(obs_list, initial_velocity=initial_velocity, time=delta_time*ii)
             agent.check_collision(obs_list)
 
@@ -552,7 +550,8 @@ def multiple_random_runs(num_runs=2):
             list_initial_distance.append(initial_distance)
             
         for aa in range(len(agent_metrics)):
-            for outcome_key in ['has_converged', 'has_collided', 'is_in_local_minima', 'not_converged']:
+            for outcome_key in [
+                'has_converged', 'has_collided', 'is_in_local_minima', 'not_converged']:
                 if agent_metrics[aa][outcome_key]:
                     list_simulation_outcome[aa][outcome_key] += 1
                     
@@ -590,13 +589,8 @@ def evaluation_metrics(metrics):
             
             if isinstance(agent_dict[key], dict):
                 for subkey in agent_dict[key]:
-                    # try:
-                        # print('start')
-                        # print(eval_dict['linear_velocity_std'])
-                    # except:
-                        # pass
                     key_str = key + '_' + subkey
-                    # data = [agent_metrics[aa][key][subkey] for agent_metrics in list_agent_metrics]
+                    
                     data = [list_agent_metrics[it][aa][key][subkey] for it in range(len(list_agent_metrics))]
 
                     if key_str not in eval_dict:
@@ -606,23 +600,6 @@ def evaluation_metrics(metrics):
                     eval_dict[key_str][-1]['mean'] = np.mean(data) 
                     eval_dict[key_str][-1]['std'] = np.std(data)
 
-                    # if key_str == 'linear_velocity_std':
-                        # print(np.round(data, 2))
-                        # print('mean: {} --- std: {}'.format(np.round(np.mean(data), 4), np.round(np.std(data), 4)))
-
-                    # print(f'{key_str=}')
-                    # print('numb key', len(eval_dict[key_str]))
-                    # try:
-                        # print(eval_dict['linear_velocity_std'])
-                        # breakpoint()
-                    # except:
-                        # pass
-
-                    # if (key_str == 'linear_velocity_std' or key_str == 'angular_velocity_mean'):
-                        # print('list')
-                    
-                    # print('end')
-                # print('endendend')
             else:
                 key_str = key
                 # data = [agent_metrics[aa][key] for agent_metrics in list_agent_metrics]
@@ -639,8 +616,6 @@ def evaluation_metrics(metrics):
                 eval_dict[key_str][-1]['mean'] = np.mean(data) 
                 eval_dict[key_str][-1]['std'] = np.std(data)
 
-            # print('done with keystr', key_str)
-            
     separator_str = ' & '
     end_of_line = ' \\\\ \n   '
     separator_sum_var = ' $\pm$ '
@@ -771,7 +746,7 @@ def compare_algorithms_plot():
         )
 
 
-def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=False):
+def comparison_suplots(rand_seed_0=None, rand_seed_1=1, fig_num=1001, save_figure=False):
     """ Create Figure with several stopping times. """
     it_plot = 0
     # fig, ax = plt.subplots(figsize=(14, 5), num=fig_num)
@@ -779,24 +754,32 @@ def comparison_suplots(rand_seed_0=5, rand_seed_1=1, fig_num=1001, save_figure=F
 
     n_cols = 3
     n_rows = 1
-    
-    np.random.seed(rand_seed_0)
+
+    if rand_seed_0 is not None:
+        np.random.seed(rand_seed_0)
+        
     it_plot += 1
     ax = plt.subplot(n_rows, n_cols, it_plot)
-    compare_algorithms_random(max_it=10, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
+    compare_algorithms_random(
+        max_it=10, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num,
+        plot_last_image=True, show_legend=False)
     
     it_plot += 1
     np.random.seed(rand_seed_0)
     stop_time = 10
     ax = plt.subplot(n_rows, n_cols, it_plot)
-    compare_algorithms_random(max_it=50, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
+    compare_algorithms_random(
+        max_it=50, visualize_scene=False, fig_and_ax_handle=(fig, ax),
+        fig_num=fig_num, plot_last_image=True, show_legend=False)
     ax_middle = ax
     
     it_plot += 1
     np.random.seed(rand_seed_0)
     stop_time = 10
     ax = plt.subplot(n_rows, n_cols, it_plot)
-    line_labels = compare_algorithms_random(max_it=100, visualize_scene=False, fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
+    line_labels = compare_algorithms_random(
+        max_it=100, visualize_scene=False,
+        fig_and_ax_handle=(fig, ax), fig_num=fig_num, plot_last_image=True, show_legend=False)
 
     # plt.legend(handles=line_labels, bbox_to_anchor=(1.05, 1), loc='upper left')
     # plt.legend(handles=line_labels, bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -835,5 +818,3 @@ if (__name__)=="__main__":
 
         print('Table Metrics')
         print(tables_results[0])
-
-    

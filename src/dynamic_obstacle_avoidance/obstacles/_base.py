@@ -603,11 +603,38 @@ class Obstacle(ABC):
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
 
-    # TODO: use loop for 2D array, in order to speed up for 'on-robot' implementation!
-    def get_normal_direction(self, position, in_global_frame=False):
+    def mirror_local_position_on_boundary(self,
+                                          position: np.ndarray,
+                                          local_radius: np.ndarray = None,
+                                          pos_norm: np.ndarray = None
+                                          ) -> np.ndarray:
+        """ Returns the position (in the local frame) mirrored on the surface of the obstacle.
+        i.e. positions outside will end up outside (and vice versa). """
+        if pos_norm is None:
+            pos_norm = LA.norm(position)
+        
+        if not pos_norm:
+            # Return a point very far away, when the point is at the center
+            position = np.zeros(position.shape)
+            position[0] = sys.float_info.max
+            return position
+            
+        if local_radius is None:
+            local_radius = self.get_local_radius(position)
+        return position * (local_radius/(pos_norm*pos_norm))
+    
+    @abstractmethod
+    def get_normal_direction(self,
+                             position: np.ndarray,
+                             in_global_frame: bool = False
+                             ) -> np.ndarray:
         """Get normal direction to the surface.
         IMPORTANT: Based on convention normal.dot(reference)>0 ."""
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
+
+    # @abstractmethod
+    def get_local_radius(self, position, in_local_frame: bool):
+        raise NotImplementedError("Not implemented for base-class.")
 
     # Store five previous values
     # @lru_cache(maxsize=5)
@@ -633,10 +660,8 @@ class Obstacle(ABC):
     ):
         """Calculates the norm of the function.
         Position input has to be 2-dimensional array"""
-
-        import pdb
-
-        pdb.set_trace()
+        # TODO: depreciated
+        breakpoint()
 
         if in_global_frame:
             position = self.transform_global2relative(position)

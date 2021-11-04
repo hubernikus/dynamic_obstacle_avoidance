@@ -252,7 +252,7 @@ class TestRotational(unittest.TestCase):
         y_lim = copy.deepcopy(xyz_lim)
         z_lim = copy.deepcopy(xyz_lim)
         
-        n_tests = 100
+        n_tests = 10
         for ii in range(n_tests):
             position = np.random.rand(3)
             position[0] = position[0]*(x_lim[1] - x_lim[0]) + x_lim[0]
