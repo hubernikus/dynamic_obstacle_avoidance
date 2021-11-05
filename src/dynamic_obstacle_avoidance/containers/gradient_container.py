@@ -11,6 +11,8 @@ import numpy as np
 import copy
 import time
 
+from shapely.ops import nearest_points
+
 from dynamic_obstacle_avoidance.utils import get_reference_weight
 
 from dynamic_obstacle_avoidance.obstacles import CircularObstacle
@@ -21,8 +23,9 @@ from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 
 # BUGS / IMPROVEMENTS:
-#    - far-far away, the automatic-extension of the hull of the ellipse does not work
-#    - Gradient descent change function
+#    - Bug-fix (with low priority),
+#            the automatic-extension of the hull of the ellipse does not work
+#    - Gradient descent: change function
 
 
 class GradientContainer(ObstacleContainer):
@@ -77,7 +80,6 @@ class GradientContainer(ObstacleContainer):
             # Transfer 'special' distance matrix
             new_dist_matr = DistanceMatrix(n_obs=len(self))
 
-            # import pdb; pdb.set_trace()     ##### DEBUG #####
             distance_matrix = self._distance_matrix.get_matrix()
             distance_matrix = np.hstack(
                 (
@@ -92,11 +94,6 @@ class GradientContainer(ObstacleContainer):
 
             self._distance_matrix = new_dist_matr
 
-        # if len(self)>1:
-        # print('append dist', self.get_distance(0, 1))
-
-        # import pdb; pdb.set_trace()
-
     def __delitem__(self, key):  # Compatibility with normal list.
         """Remove obstacle from container list."""
 
@@ -110,24 +107,12 @@ class GradientContainer(ObstacleContainer):
             self._boundary_reference_points = None
             self._distance_matrix = None
         else:
-            # <<<<<<<
-            # self._boundary_reference_points = np.dstack((
-            # np.zeros((self.dim, len(self), 1)),
-            # np.hstack((self._boundary_reference_points,
-            # (key), axis=2))
-            # ))
-
-            # =======
             self._boundary_reference_points = np.delete(
                 self._boundary_reference_points, (key), axis=1
             )
             self._boundary_reference_points = np.delete(
                 self._boundary_reference_points, (key), axis=2
             )
-
-            # Transfer 'special' distance matrix
-            # new_dist_matr = DistanceMatrix(n_obs=len(self))
-            # >>>>>>> 7bcc7bf213d16f25843989ed351d3fd8756a4a32
 
             distance_matrix = self._distance_matrix.get_matrix()
             distance_matrix = np.delete(distance_matrix, (key), axis=0)
@@ -198,8 +183,6 @@ class GradientContainer(ObstacleContainer):
         now = time.time()
         self.update_boundary_reference_points()
         delta_t = time.time() - now
-        # print("calculation time for num_obs={} is: {}ms".format(
-        #    len(self), delta_t))
 
         obs_reference_size = np.zeros(len(self))
 
@@ -244,7 +227,6 @@ class GradientContainer(ObstacleContainer):
         # TODO: create a more smooth transition between 'free' obstacles and 'clustered ones'
         # TODO: include the 'extended' hull as a deformation parameter
 
-        # import pdb; pdb.set_trace()     ##### DEBUG #####
         # Combine reference points of obstacles in each cluster
         intersecting_obs = get_intersection_cluster(self.intersection_matrix, self)
         # self.assign_sibling_groups(intersecting_obs)
@@ -333,7 +315,6 @@ class GradientContainer(ObstacleContainer):
                     if dist <= 0:
                         # Distance==0, i.e. intersecting & ref_point1==ref_point2
                         self.intersection_matrix[ii, jj] = ref_point1
-                    # import pdb; pdb.set_trace()
                     continue
 
                 center_dists = np.zeros((self.dim, n_com))
@@ -345,7 +326,6 @@ class GradientContainer(ObstacleContainer):
                 else:
                     center_dists[:, 0] = (-1) * center_dists[:, 1]
 
-                # import pdb; pdb.set_trace()     ##### DEBUG #####
                 if np.linalg.norm(center_dists[:, 0]) > 1e10 and not self.is_boundary:
                     # TODO: Check & Test this exception!
                     self.set_distance(ii, jj, 0)  # TODO: check if 0 or -1 ?
@@ -386,7 +366,6 @@ class GradientContainer(ObstacleContainer):
                     # The obstacle is intersecting
                     print("Touching initially -- Gamma Descent")
 
-                    # import pdb; pdb.set_trace()     ##### DEBUG #####
                     self[ii].get_gamma(surf_points[:, 1], in_global_frame=True)
 
                     reference_point = self.gamma_gradient_descent(

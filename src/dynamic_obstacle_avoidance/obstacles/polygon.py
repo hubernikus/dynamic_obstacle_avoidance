@@ -109,7 +109,8 @@ class Polygon(Obstacle):
             super(Polygon, self).__init__(*args, **kwargs)
 
         if ind_open is None:
-            # TODO: implement in a useful manner to have doors etc. // or use ind_tiles
+            # TODO: implement in a useful manner to have doors etc.
+            # or use ind_tiles
             ind_open = []
 
         (
@@ -127,20 +128,20 @@ class Polygon(Obstacle):
         self.margin_absolut = margin_absolut
 
         # Create shapely object
-        # TODO update shapely position (!?)
         edge = self.edge_points
 
         edge = np.vstack((edge.T, edge[:, 0]))
-        self._shapely = shapely.geometry.Polygon(edge).buffer(self.margin_absolut)
+
+        self.create_shapely()
 
     @property
     def hull_edge(self):
         # TODO: remove // change
         return self.edge_points
 
-    # @hull_edge.setter
-    # def hull_edge(self, value):
-    # self.edge_points = value
+    @property
+    def edge_points_absolut(self):
+        return self.transform_relative2global(self.edge_points)
 
     @property
     def hull_points(self):
@@ -224,6 +225,12 @@ class Polygon(Obstacle):
             axis=0,
         )
         return np.max(dist_edges)
+
+    def create_shapely(self):
+        """Creates (or updates) internal shapely in global frame."""
+        self._shapely = shapely.geometry.Polygon(self.edge_points_absolut.T).buffer(
+            self.margin_absolut
+        )
 
     def calculate_normalVectorAndDistance(self, edge_points=None):
         """Calculate Normal Distance and Distance to Edge points."""
@@ -410,15 +417,9 @@ class Polygon(Obstacle):
                     self._boundary_points + dir_boundary_points * self.margin_absolut
                 )
 
-        # for jj in range(x_obs_sf.shape[1]): # TODO replace for loop with numpy-math
-        # x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array([self.center_position])
-
-        # TODO rename more intuitively
-        # self.x_obs = self._boundary_points.T # Surface points
-        # self.x_obs_sf = x_obs_sf.T # Margin points
-
     def get_reference_length(self):
-        """Get a length which corresponds to the largest distance from the center of the obstacle."""
+        """Get a length which corresponds to the largest distance from the
+        center of the obstacle."""
         return np.min(np.linalg.norm(self.edge_points, axis=0)) + self.margin_absolut
 
     def get_distances_and_normal_to_surfacePannels(
@@ -1135,14 +1136,11 @@ class Polygon(Obstacle):
             position = self.transform_global2relative(position)
 
         shapely_line = shapely.geometry.LineString([[0, 0], position])
-        # try
         intersection = self._shapely.intersection(shapely_line).coords
-        # except:
-        # breakpoint()
 
-        # If position is inside, the intersection point is equal to the position-point,
-        # in that case redo the calulation with an extended line to obtain the actual
-        # radius-point
+        # If position is inside, the intersection point is equal to the
+        # position-point, in that case redo the calulation with an extended line
+        # to obtain the actual radius-point
         if np.allclose(intersection[-1], position):
             # Point is assumed to be inside
             point_dist = LA.norm(position)
@@ -1172,6 +1170,14 @@ class Polygon(Obstacle):
         dist_center = LA.norm(position)
         local_radius = self.get_local_radius(position)
 
+        if self.is_boundary:
+            position = self.mirror_local_position_on_boundary(
+                position, local_radius=local_radius, pos_norm=dist_center
+            )
+
+            if LA.norm(self.margin_absolut) > 0:
+                raise NotImplementedError()
+
         # Choose proporitional
         if gamma_type == GammaType.EUCLEDIAN:
             if dist_center < local_radius:
@@ -1182,4 +1188,8 @@ class Polygon(Obstacle):
 
         else:
             raise NotImplementedError("Implement othr gamma-types if desire.")
+
+        if self.is_boundary:
+            return 1 / gamma
+
         return gamma

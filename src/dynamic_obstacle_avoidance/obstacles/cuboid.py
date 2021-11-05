@@ -17,6 +17,7 @@ import numpy as np
 from numpy import linalg as LA
 
 import shapely
+
 # from shapely.geometry import Polygon
 
 from vartools.angle_math import *
@@ -161,9 +162,9 @@ class Cuboid(Polygon):
         shapely_line = shapely.geometry.LineString([[0, 0], position])
         intersection = self._shapely.intersection(shapely_line).coords
 
-        # If position is inside, the intersection point is equal to the position-point,
-        # in that case redo the calulation with an extended line to obtain the actual
-        # radius-point
+        # If position is inside, the intersection point is equal to the
+        # position-point, in that case redo the calulation with an extended line
+        # to obtain the actual radius-point
         if np.allclose(intersection[-1], position):
             # Point is assumed to be inside
             point_dist = LA.norm(position)
@@ -191,13 +192,14 @@ class Cuboid(Polygon):
         # gamma_distance is not used -> should it be removed (?!)
         if in_global_frame:
             position = self.transform_global2relative(position)
-            
+
         local_radius = self.get_local_radius(position)
         dist_center = LA.norm(position)
 
         if self.is_boundary:
             position = self.mirror_local_position_on_boundary(
-                position, local_radius=local_radius, pos_norm=dist_center)
+                position, local_radius=local_radius, pos_norm=dist_center
+            )
 
         # Choose proporitional
         if gamma_type == GammaType.EUCLEDIAN:
@@ -206,10 +208,13 @@ class Cuboid(Polygon):
                 gamma = dist_center / local_radius
             else:
                 gamma = (dist_center - local_radius) + 1
-                
+
         else:
             raise NotImplementedError("Implement othr gamma-types if desire.")
-        
+
+        if self.is_boundary:
+            return 1 / gamma
+
         return gamma
 
     def get_distance_to_hullEdge(self, *args, **kwargs):

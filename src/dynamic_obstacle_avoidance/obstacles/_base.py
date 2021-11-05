@@ -105,7 +105,6 @@ class Obstacle(ABC):
         self.d = len(self.center_position)  # TODO: depreciated -> remove
 
         # Relative Reference point // Dyanmic center
-        # if reference_point is None:
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
         self.reference_point_is_inside = True
 
@@ -164,7 +163,7 @@ class Obstacle(ABC):
             self.angular_velocity = angular_velocity
 
         # TODO: remove
-        # Special case of moving obstacle (Create subclass)
+        # Special case of moving obstacle (Create attribute [state])
         if (
             sum(np.abs(self.linear_velocity))
             or np.sum(self.angular_velocity)
@@ -180,11 +179,6 @@ class Obstacle(ABC):
             self.always_moving = False
 
         self.update_timestamp()
-
-        # Trees of stars // move 'container'
-        self.hirarchy = hirarchy
-        self.ind_parent = ind_parent
-        self.ind_children = []
 
         # Set reference point value to None
         self.reset_relative_reference()
@@ -211,16 +205,13 @@ class Obstacle(ABC):
         # Distance which decides over 'proportional' factor for gamma
         self.gamma_distance = gamma_distance
 
-        # Convergence direction defined at a reference point of the obstacle
-        # self._convergence_direction = None
-
-        # self.properties = {} # TODO (maybe): use kwargs for properties..
-
         Obstacle.id_counter += 1  # New obstacle created
         Obstacle.active_counter += 1
 
         # Needed for drawing polygon
         self.obs_polygon = None
+
+        self._shapely = None
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -603,31 +594,31 @@ class Obstacle(ABC):
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
 
-    def mirror_local_position_on_boundary(self,
-                                          position: np.ndarray,
-                                          local_radius: np.ndarray = None,
-                                          pos_norm: np.ndarray = None
-                                          ) -> np.ndarray:
-        """ Returns the position (in the local frame) mirrored on the surface of the obstacle.
-        i.e. positions outside will end up outside (and vice versa). """
+    def mirror_local_position_on_boundary(
+        self,
+        position: np.ndarray,
+        local_radius: np.ndarray = None,
+        pos_norm: np.ndarray = None,
+    ) -> np.ndarray:
+        """Returns the position (in the local frame) mirrored on the surface of the obstacle.
+        i.e. positions outside will end up outside (and vice versa)."""
         if pos_norm is None:
             pos_norm = LA.norm(position)
-        
+
         if not pos_norm:
             # Return a point very far away, when the point is at the center
             position = np.zeros(position.shape)
             position[0] = sys.float_info.max
             return position
-            
+
         if local_radius is None:
             local_radius = self.get_local_radius(position)
-        return position * (local_radius/(pos_norm*pos_norm))
-    
+        return position * (local_radius / (pos_norm * pos_norm))
+
     @abstractmethod
-    def get_normal_direction(self,
-                             position: np.ndarray,
-                             in_global_frame: bool = False
-                             ) -> np.ndarray:
+    def get_normal_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
         """Get normal direction to the surface.
         IMPORTANT: Based on convention normal.dot(reference)>0 ."""
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
