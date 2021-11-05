@@ -108,6 +108,62 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
 
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
+    def __init__(
+            self,
+            initial_dynamics: DynamicalSystem,
+            environment: BaseContainer,
+            maximum_speed: float = None,
+    ):
+        super().__init__(initial_dynamics, environment, maximum_speed)
+        self.obs = None
+        self.obs_multi_agent = None
+
+    @staticmethod
+    def get_gamma_product_crowd(position, env, gamma_type=GammaType.EUCLEDIAN):
+        if not len(env):
+            # Very large number
+            return 1e20
+
+        gamma_list = np.zeros(len(env))
+        for ii, obs in enumerate(env):
+            # gamma_type needs to be implemented for all obstacles
+            gamma_list[ii] = obs.get_gamma(
+                position, in_global_frame=True, gamma_type=gamma_type
+            )
+
+        n_obs = len(gamma_list)
+        # Total gamma [1, infinity]
+        # Take root of order 'n_obs' to make up for the obstacle multiple
+        if any(gamma_list < 1):
+            warnings.warn("Collision detected.")
+            # breakpoint()
+            return 0
+
+        # gamma = np.prod(gamma_list-1)**(1.0/n_obs) + 1
+        gamma = np.min(gamma_list)
+
+        if np.isnan(gamma):
+            breakpoint()
+        return gamma
+
+    def get_gamma_at_control_point(self, control_points):
+        # TODO
+        for obs in self.obs:
+            gamma_values = np.zeros(len(self.obs_multi_agent[obs]), len(self.obs))
+
+            for cp in self.obs_multi_agent[obs]:
+                pass
+
+        return 0
+
+    def get_weight_from_gamma(self, gammas, cutoff_gamma, control_points):
+        # TODO
+        return 0
+
+    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma):
+        # TODO
+        return 0
+
     def evaluate_for_crowd_agent(
         self, position: np.ndarray, selected_agent, env, agent_is_obs: bool # this var is useless ??? or not ???
     ) -> np.ndarray:
