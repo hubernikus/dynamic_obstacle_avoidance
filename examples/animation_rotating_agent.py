@@ -158,13 +158,21 @@ class DynamicalSystemAnimation:
 
 
 def multiple_robots():
-    obstacle_pos = np.array([-2.0, 0.0])
+    obstacle_pos = np.array([[-2.0, 0.0], [1.0, 0.0]])
     agent_pos = np.array([[-2.25, 0.0], [-1.75, 0.0]])
     attractor_pos = np.array([[0.0, 0.0], [0.0, -0.5]])
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(Cuboid(
         axes_length=[1.5, 0.6],
-        center_position=obstacle_pos,
+        center_position=obstacle_pos[0],
+        margin_absolut=0,
+        orientation=0,
+        tail_effect=False,
+        repulsion_coeff=1.4,
+    ))
+    obstacle_environment.append(Ellipse(
+        axes_length=[0.8, 0.8],
+        center_position=obstacle_pos[1],
         margin_absolut=0,
         orientation=0,
         tail_effect=False,
@@ -180,7 +188,7 @@ def multiple_robots():
         )
     ]
 
-    obs_multi_agent = {0: [0, 1]}
+    obs_multi_agent = {0: [0, 1], 1: []}
 
     DynamicalSystemAnimation().run(
         initial_dynamics,
