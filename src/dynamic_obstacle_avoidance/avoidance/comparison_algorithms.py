@@ -11,7 +11,8 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt  # TODO: remove for production
 
-from dynamic_obstacle_avoidance.utils import *
+from .modulation import compute_diagonal_matrix, compute_decomposition_matrix
+from dynamic_obstacle_avoidance.utils import compute_weights
 
 
 def obs_avoidance_potential_field(

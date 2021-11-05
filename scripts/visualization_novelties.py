@@ -18,17 +18,9 @@ from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
 from vartools.dynamical_systems import LinearSystem
 
-# Custom libraries
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-# from dynamic_obstacle_avoidance.visualization.animation_qolo import DynamicAnimationQOLO
-# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-
-
-from dynamic_obstacle_avoidance.obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
-
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon, StarshapedFlower, Cuboid
 from dynamic_obstacle_avoidance.containers import GradientContainer
-
 
 
 def visualize_simple_ellipse(
@@ -39,7 +31,7 @@ def visualize_simple_ellipse(
     x_lim = [-0.6, 4.1]
     y_lim = [-2.1, 2.1]
 
-    xAttractor= [0.0, 0.0]
+    dynamical_system = LinearSystem(attractor_position=[0.0, 0.0])
     
     figsize = (6, 5)
 
@@ -57,16 +49,17 @@ def visualize_simple_ellipse(
 
     fig = plt.figure(figsize=figsize)
     ax = plt.subplots(2, 1, 1)
-    plt_speed_line_and_qolo(points_init=np.array([3.5, 0.2]), attractorPos=xAttractor, obs=obs, fig_and_ax_handle=(fig, ax))
+    plt_speed_line_and_qolo(points_init=np.array([3.5, 0.2]),
+    attractorPos=dynamical_system.attractor_position, obs=obs, fig_and_ax_handle=(fig, ax))
 
     fig_mod, ax_mod = Simulation_vectorFields(
-        x_lim, y_lim,  obs=obs, xAttractor=xAttractor,
+        x_lim, y_lim,  obs=obs, xAttractor=dynamical_system.attractor_position,
         saveFigure=save_figure, figName='circular_sticky_surface',
         noTicks=False, draw_vectorField=True,
         automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
         figureSize=figsize,
         reference_point_number=False, showLabel=False,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+        normalize_vectors=False, dynamicalSystem=dynamical_system.evaluate,
         fig_and_ax_handle=(fig, ax)
     )
     # return
@@ -80,7 +73,7 @@ def visualize_simple_ellipse(
         automatic_reference_point=True, point_grid=n_resolution, show_streamplot=False,
         figureSize=figsize,
         reference_point_number=False, showLabel=False,
-        normalize_vectors=False, dynamicalSystem=linearAttractor_const)
+        normalize_vectors=False, dynamicalSystem=dynamical_system.evaluate)
 
     plt_speed_line_and_qolo(points_init=np.array([4.6, 0.2]), attractorPos=xAttractor)
 
@@ -464,7 +457,7 @@ def visualize_edge_boundary(
     y_lim = [-4.5, 4.5]
 
     figsize = (5.5, 4.5)
-    pos_attractor = [-2.0, 2.0]
+    dynamical_system = LinearSystem(attractor_position=[-2.0, 2.0])
     
     obs = GradientContainer() # create empty obstacle list
 
@@ -499,13 +492,17 @@ def visualize_edge_boundary(
         fig = plt.figure(figsize=figsize)
         ax = plt.subplot(1, 1, 1)
 
-        line = plt_speed_line_and_qolo(points_init=point_init, attractorPos=pos_attractor, obs=obs, fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
+        line = plt_speed_line_and_qolo(points_init=point_init,
+        attractorPos=dynamical_system.attractor_position, obs=obs,
+        fig_and_ax_handle=(fig, ax), dt=0.02, line_color=[102./255, 204./255, 0./255])
 
         Simulation_vectorFields(
-            x_lim, y_lim,  obs=obs, xAttractor=pos_attractor,
+            x_lim, y_lim,  obs=obs, pos_attractor=dynamical_system.attractor_position,
             saveFigure=save_figure, figName="sharp_boundary_with_obstacle",
-            noTicks=True, draw_vectorField=True,  automatic_reference_point=False, point_grid=n_resolution, show_streamplot=True,
-            normalize_vectors=False, dynamicalSystem=linearAttractor_const,
+            noTicks=True, draw_vectorField=True,  automatic_reference_point=False,
+            point_grid=n_resolution, show_streamplot=True,
+            normalize_vectors=False,
+            dynamical_system=dynamical_system.evaluate,
             figureSize=figsize,
             reference_point_number=False, showLabel=False,
             fig_and_ax_handle=(fig, ax),
@@ -620,7 +617,7 @@ if (__name__) == "__main__":
 
     # visualize_intersecting_ellipse(save_figures=False, n_resolution=20)
     
-    visualize_repulsive_cube(n_resolution=100, save_figure=True)
+    # visualize_repulsive_cube(n_resolution=100, save_figure=True)
     
     # visualize_circular_boundary(n_resolution=100, save_figure=True)
 
@@ -629,7 +626,7 @@ if (__name__) == "__main__":
     # visualize_edge_obstacle(n_resolution=10, save_figure=False, static_simulation=True)
     # visualize_edge_obstacle(n_resolution=10, save_figure=False, dynamic_simulation=True)
     
-    # visualize_edge_boundary(n_resolution=50, save_figure=False, static_simulation=True)
+    visualize_edge_boundary(n_resolution=50, save_figure=False, static_simulation=True)
     # visualize_edge_boundary(n_resolution=10, save_figure=False, dynamic_simulation=True)
 
     # visualize_edge_boundary(n_resolution=100, save_figure=True)

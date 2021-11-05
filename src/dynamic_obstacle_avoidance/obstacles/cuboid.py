@@ -16,8 +16,8 @@ from math import pi
 import numpy as np
 from numpy import linalg as LA
 
-# from shapely.geometry import Polygon
 import shapely
+# from shapely.geometry import Polygon
 
 from vartools.angle_math import *
 
@@ -191,9 +191,13 @@ class Cuboid(Polygon):
         # gamma_distance is not used -> should it be removed (?!)
         if in_global_frame:
             position = self.transform_global2relative(position)
-
-        dist_center = LA.norm(position)
+            
         local_radius = self.get_local_radius(position)
+        dist_center = LA.norm(position)
+
+        if self.is_boundary:
+            position = self.mirror_local_position_on_boundary(
+                position, local_radius=local_radius, pos_norm=dist_center)
 
         # Choose proporitional
         if gamma_type == GammaType.EUCLEDIAN:
@@ -202,9 +206,10 @@ class Cuboid(Polygon):
                 gamma = dist_center / local_radius
             else:
                 gamma = (dist_center - local_radius) + 1
-
+                
         else:
             raise NotImplementedError("Implement othr gamma-types if desire.")
+        
         return gamma
 
     def get_distance_to_hullEdge(self, *args, **kwargs):

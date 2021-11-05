@@ -24,34 +24,21 @@ from vartools.dynamical_systems import LinearSystem
 from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
  
 
-def simple_vectorfield():
+def simple_vectorfield_inside():
     """ Simple robot avoidance. """
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
-        Ellipse(axes_length=[0.6, 1.3],
-                center_position=np.array([-0.2, 2.4]),
-                margin_absolut=0,
-                orientation=-30*pi/180,
-                tail_effect=False,
-                repulsion_coeff=1.0,
-                ))
-    
-    
-    obstacle_environment.append(
-        Cuboid(axes_length=[0.4, 1.3],
-               center_position=np.array([1.2, 0.25]),
-               # center_position=np.array([0.9, 0.25]),
-               margin_absolut=0.5,
-               orientation=10*pi/180,
-               tail_effect=False,
-               repulsion_coeff=1.4,
-               ))
+        Cuboid(center_position=np.array([0, 0]),
+               axes_length=np.array([7, 7]),
+               is_boundary=True,)
+        )
 
-    initial_dynamics = LinearSystem(attractor_position=np.array([2.0, 1.8]),
-                                    maximum_velocity=1, distance_decrease=0.3)
+    initial_dynamics = LinearSystem(
+        attractor_position=np.array([1.5, 1.5]),
+        maximum_velocity=1, distance_decrease=0.3)
 
-    x_lim = [-3.2, 3.2]
-    y_lim = [-0.2, 4.4]
+    x_lim = [-4.1, 4.1]
+    y_lim = [-4.1, 4.1]
     
     Simulation_vectorFields(
         x_lim, y_lim,
@@ -72,4 +59,4 @@ if (__name__) == "__main__":
     plt.close('all')
     plt.ion()
     
-    simple_vectorfield()
+    simple_vectorfield_inside()
