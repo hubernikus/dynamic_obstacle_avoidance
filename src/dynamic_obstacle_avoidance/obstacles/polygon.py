@@ -64,7 +64,7 @@ class Polygon(Obstacle):
         margin_absolut: float = 0,
         center_position: np.ndarray = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Arguments
@@ -228,9 +228,16 @@ class Polygon(Obstacle):
 
     def create_shapely(self):
         """Creates (or updates) internal shapely in global frame."""
-        self._shapely = shapely.geometry.Polygon(self.edge_points_absolut.T).buffer(
-            self.margin_absolut
-        )
+        if self.dimension > 2:
+            raise NotImplementedError(
+                f"Shapely shape not defined for d={self.dimension}"
+            )
+
+        poly_line = LinearRing(self.edge_points_absolut.T)
+        if self.is_boundary:
+            self._shapely = poly_line.buffer(margin_abs).interior
+        else:
+            self._shapely = poly_line.buffer(margin_abs).exterior
 
     def calculate_normalVectorAndDistance(self, edge_points=None):
         """Calculate Normal Distance and Distance to Edge points."""

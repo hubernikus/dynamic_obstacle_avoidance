@@ -784,10 +784,15 @@ class Ellipse(Obstacle):
         """Create object (shape) based on the shapely library."""
         if self.dim != 2:
             raise NotImplementedError("Shapely object only existing for 2D")
+
         circ = Point(self.center_position).buffer(1)
-        ell = affinity.scale(circ, self.axes_length[0], self.axes_length[1])
-        ellr = affinity.rotate(ell, self.orientation * 180.0 / pi)
-        self._shapely = ellr
+        axes = self.axes_with_margin
+        self._shapely = affinity.scale(circ, axes[0], axes[1])
+
+        if self.orientation is not None:
+            self._shapely = affinity.rotate(
+                self._shapely, self.orientation * 180.0 / pi
+            )
 
     def draw_obstacle(
         self,
@@ -1120,8 +1125,3 @@ class Sphere(Ellipse):
             orientation=orientation,
             time_current=time_current,
         )
-
-
-class CircularObstacle(Sphere):
-    # TODO: redunant - remove
-    pass

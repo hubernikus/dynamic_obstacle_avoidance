@@ -594,6 +594,13 @@ class Obstacle(ABC):
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
 
+    @property
+    def shapely(self):
+        return self._shapely
+
+    def create_shapely(self):
+        raise NotImplementedError()
+
     def mirror_local_position_on_boundary(
         self,
         position: np.ndarray,
@@ -900,6 +907,26 @@ class Obstacle(ABC):
             position = self.transform_relative2global(position)
 
         self.center_position = position
+
+    def update_position(self, t, dt):
+        # Inherit
+        # TODO - implement function dependend movement (yield), nonlinear integration
+        # Euler / Runge-Kutta integration
+        # TODO: make one updater only & update also shapely
+
+        lin_vel = self.get_linear_velocity(t)  # nonzero
+        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
+            self.center_position = self.center_position + dt * lin_vel
+            self.has_moved = True
+
+        ang_vel = self.get_angular_velocity(t)  # nonzero
+        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
+            self.orientation = self.orientation + dt * ang_vel
+            self.compute_rotation_matrix()
+            self.has_moved = True
+
+        if self.has_moved:
+            self.draw_obstacle()
 
     def update_position_and_orientation(
         self,
@@ -1225,25 +1252,6 @@ class Obstacle(ABC):
 
     def get_angular_velocity(self, *arg, **kwargs):
         return self.angular_velocity_const
-
-    def update_position(self, t, dt, x_lim=[], stop_at_edge=True):
-        # Inherit
-        # TODO - implement function dependend movement (yield), nonlinear integration
-        # Euler / Runge-Kutta integration
-
-        lin_vel = self.get_linear_velocity(t)  # nonzero
-        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
-            self.center_position = self.center_position + dt * lin_vel
-            self.has_moved = True
-
-        ang_vel = self.get_angular_velocity(t)  # nonzero
-        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
-            self.orientation = self.orientation + dt * ang_vel
-            self.compute_rotation_matrix()
-            self.has_moved = True
-
-        if self.has_moved:
-            self.draw_obstacle()
 
     def get_scaled_boundary_points(
         self, scale, safety_margin=True, redraw_obstacle=False

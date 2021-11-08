@@ -7,6 +7,7 @@ from .single_wall import SingleWallContainer
 from .learning import LearningContainer
 from .obstacle_container import ObstacleContainer
 from .gradient_container import GradientContainer
+from .shapely_container import ShapelyContainer
 from .rotation_container import RotationContainer
 from .multiboundary_container import MultiBoundaryContainer
 
@@ -16,6 +17,7 @@ __all__ = [
     "LearningContainer",
     "SingleWallContainer",
     "GradientContainer",
+    "ShapelyContainer",
     "RotationContainer",
     "MultiBoundaryContainer",
 ]
