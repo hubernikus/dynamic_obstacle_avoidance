@@ -113,10 +113,15 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             initial_dynamics: DynamicalSystem,
             environment: BaseContainer,
             maximum_speed: float = None,
+            obs_multi_agent=None,
     ):
         super().__init__(initial_dynamics, environment, maximum_speed)
         self.obs = None
-        self.obs_multi_agent = None
+        self.obs_multi_agent = obs_multi_agent
+
+    def env_slicer(self, obs_index):
+        temp_env = self.environment[0:obs_index] + self.environment[obs_index + 1:]
+        return temp_env
 
     @staticmethod
     def get_gamma_product_crowd(position, env, gamma_type=GammaType.EUCLEDIAN):
@@ -146,23 +151,53 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             breakpoint()
         return gamma
 
-    def get_gamma_at_control_point(self, control_points):
+    def get_gamma_at_control_point(self, control_points, obs_eval, env):
         # TODO
-        for obs in self.obs:
-            gamma_values = np.zeros(len(self.obs_multi_agent[obs]), len(self.obs))
+        gamma_values = np.zeros(len(self.obs_multi_agent[obs_eval]))
 
-            for cp in self.obs_multi_agent[obs]:
-                pass
+        for cp in self.obs_multi_agent[obs_eval]:
+            gamma_values[cp] = self.get_gamma_product_crowd(control_points[cp, :], env)
 
-        return 0
+        return gamma_values
 
-    def get_weight_from_gamma(self, gammas, cutoff_gamma, control_points):
+    @staticmethod
+    def get_weight_from_gamma(gammas, cutoff_gamma, n_points, gamma0=1.0, frac_gamma_nth=0.5):
+        weights = (gammas - gamma0) / (cutoff_gamma - gamma0)
+        weights = weights / frac_gamma_nth
+        weights = 1.0 / weights
+        weights = (weights - frac_gamma_nth) / (1 - frac_gamma_nth)
+        weights = weights / n_points
+        return weights
+
+    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=1.5):
         # TODO
-        return 0
+        ctl_weight_list = []
+        for obs in self.obs_multi_agent:
+            if not self.obs_multi_agent[obs]:
+                break
+            temp_env = self.env_slicer(obs)
+            gamma_values = self.get_gamma_at_control_point(control_points[self.obs_multi_agent[obs]], obs, temp_env)
 
-    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma):
-        # TODO
-        return 0
+            ctl_point_weight = np.zeros(gamma_values.shape)
+            ind_nonzero = gamma_values < cutoff_gamma
+            if not any(ind_nonzero):
+                ctl_point_weight[-1] = 1
+            for index in range(len(gamma_values)):
+                ctl_point_weight[index] = self.get_weight_from_gamma(
+                    gamma_values[index],
+                    cutoff_gamma=cutoff_gamma,
+                    n_points=len(self.obs_multi_agent[obs])
+                )
+
+            ctl_point_weight_sum = np.sum(ctl_point_weight)
+            if ctl_point_weight_sum > 1:
+                ctl_point_weight = ctl_point_weight / ctl_point_weight_sum
+            else:
+                ctl_point_weight[-1] += 1 - ctl_point_weight_sum
+
+            ctl_weight_list.append(ctl_point_weight)
+
+        return ctl_weight_list
 
     def evaluate_for_crowd_agent(
         self, position: np.ndarray, selected_agent, env, agent_is_obs: bool # this var is useless ??? or not ???

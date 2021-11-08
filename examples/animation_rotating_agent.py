@@ -24,7 +24,7 @@ def calculate_delta(pos_list):
 
 class DynamicalSystemAnimation:
     def __init__(self):
-        self.animation_paused = True
+        self.animation_paused = False
 
     def on_click(self, event):
         if self.animation_paused:
@@ -58,7 +58,7 @@ class DynamicalSystemAnimation:
         else:
             velocity = np.zeros((2, dim))
 
-        dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment)
+        dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment, obs_multi_agent=obs_w_multi_agent)
         position_list = np.zeros((num_agent, dim, it_max))
         relative_agent_pos = np.zeros((num_agent, dim))
 
@@ -70,7 +70,6 @@ class DynamicalSystemAnimation:
                     relative_agent_pos = - (obstacle_environment[obs].center_position - start_position)
 
         position_list[:, :, 0] = start_position
-        print(position_list[:, :, 0])
 
         fig, ax = plt.subplots(figsize=(10, 8))
         cid = fig.canvas.mpl_connect('button_press_event', self.on_click)
@@ -89,19 +88,26 @@ class DynamicalSystemAnimation:
                 break
 
             # Here come the main calculation part
+            weights = dynamic_avoider.get_influence_weight_at_ctl_points(position_list[:, :, ii-1])
+            print(f"weights: {weights}")
             for obs in range(num_obs):
                 num_agents_in_obs = len(obs_w_multi_agent[obs])
                 if num_agent > 1:
-                    weights = 1 / len(obs_w_multi_agent)
+                    # weights = 1 / len(obs_w_multi_agent)
                     for agent in obs_w_multi_agent[obs]:
-                        temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1:]
+                        # temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1:]
+                        temp_env = dynamic_avoider.env_slicer(obs)
                         velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1],
                                                                                       agent, temp_env, True)
+                        velocity[agent, :] = velocity[agent, :] * weights[obs][agent]
 
-                    obs_vel = weights * velocity.sum(axis=0)
+                    obs_vel = np.zeros(2)
+                    if obs_w_multi_agent[obs]:
+                        for agent in obs_w_multi_agent[obs]:
+                            obs_vel += weights[obs][agent] * velocity[agent, :]
                     angular_vel = np.zeros(num_agents_in_obs)
                     for agent in obs_w_multi_agent[obs]:
-                        angular_vel[agent] = weights * np.cross(
+                        angular_vel[agent] = weights[obs][agent] * np.cross(
                             (obstacle_environment[obs].center_position - position_list[agent, :, ii - 1]),
                             (velocity[agent, :] - obs_vel))
 
@@ -116,7 +122,7 @@ class DynamicalSystemAnimation:
                     for agent in obs_w_multi_agent[obs]:
                         temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1:]
                         velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1],
-                                                                            agent, temp_env, True)
+                                                                                      agent, temp_env, True)
                         obstacle_environment[obs].linear_velocity = velocity[agent, :]
                         obstacle_environment[obs].do_velocity_step(dt_step)
                         position_list[agent, :, ii] = velocity[agent, :] * dt_step + position_list[agent, :, ii - 1]
@@ -158,9 +164,9 @@ class DynamicalSystemAnimation:
 
 
 def multiple_robots():
-    obstacle_pos = np.array([[-2.0, 0.0], [1.0, 0.0]])
+    obstacle_pos = np.array([[-2.0, 0.0], [1.5, 0.0]])
     agent_pos = np.array([[-2.25, 0.0], [-1.75, 0.0]])
-    attractor_pos = np.array([[0.0, 0.0], [0.0, -0.5]])
+    attractor_pos = np.array([[0.0, 0.25], [0.0, -0.25]])
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(Cuboid(
         axes_length=[1.5, 0.6],
@@ -168,15 +174,15 @@ def multiple_robots():
         margin_absolut=0,
         orientation=0,
         tail_effect=False,
-        repulsion_coeff=1.4,
+        repulsion_coeff=1,
     ))
     obstacle_environment.append(Ellipse(
-        axes_length=[0.8, 0.8],
+        axes_length=[0.6, 0.6],
         center_position=obstacle_pos[1],
-        margin_absolut=0,
+        margin_absolut=0.4,
         orientation=0,
         tail_effect=False,
-        repulsion_coeff=1.4,
+        repulsion_coeff=1,
     ))
     initial_dynamics = [LinearSystem(
         attractor_position=attractor_pos[0],
@@ -195,8 +201,8 @@ def multiple_robots():
         obstacle_environment,
         obs_multi_agent,
         agent_pos,
-        x_lim=[-3, 1],
-        y_lim=[-2, 2],
+        x_lim=[-3, 3],
+        y_lim=[-3, 3],
         dt_step=0.05,
     )
 
