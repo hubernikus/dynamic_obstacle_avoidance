@@ -419,6 +419,7 @@ def compare_algorithms_random(
     dynamical_system = LinearSystem(attractor_position=attractor_position)
 
     # Try to find a point in free-space
+    start_point_found = False
     for it_count in range(100):
         x_starting = x_range
         y_starting = [7, 10]
@@ -432,13 +433,13 @@ def compare_algorithms_random(
         )
 
         if position_is_in_free_space(start_position, obs_list):
+            start_point_found = True
             break
-
-        if it_count > it_max_point_search:
-            warnings.warn("No free position found")
-            return
-        it_count += 1
-
+        
+    if not start_point_found:
+        warnings.warn("No free position found")
+        return
+        
     # Define different obstacle avoidance agents
     agents = []
     agents.append(
