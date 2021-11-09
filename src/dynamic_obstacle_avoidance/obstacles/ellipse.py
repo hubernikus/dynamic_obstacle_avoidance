@@ -784,10 +784,16 @@ class Ellipse(Obstacle):
         """Create object (shape) based on the shapely library."""
         if self.dim != 2:
             raise NotImplementedError("Shapely object only existing for 2D")
+
         circ = Point(self.center_position).buffer(1)
-        ell = affinity.scale(circ, self.axes_length[0], self.axes_length[1])
-        ellr = affinity.rotate(ell, self.orientation * 180.0 / pi)
-        self._shapely = ellr
+
+        axes = self.axes_with_margin
+        shapely_ = affinity.scale(circ, axes[0], axes[1])
+
+        if self.orientation is not None:
+            shapely_ = affinity.rotate(shapely_, self.orientation * 180.0 / pi)
+
+        self.shapely.set(global_frame=True, margin=True, value=shapely_)
 
     def draw_obstacle(
         self,
@@ -1050,9 +1056,7 @@ class Sphere(Ellipse):
         if sys.version_info > (3, 0):
             super().__init__(axes_length=axes_length, *args, **kwargs)
         else:
-            super(CircularObstacle, self).__init__(
-                axes_length=axes_length, *args, **kwargs
-            )
+            super(Ellipse, self).__init__(axes_length=axes_length, *args, **kwargs)
             # super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
 
         if self.is_deforming:
@@ -1123,5 +1127,5 @@ class Sphere(Ellipse):
 
 
 class CircularObstacle(Sphere):
-    # TODO: redunant - remove
+    # Depreciated remove
     pass

@@ -6,13 +6,17 @@ import time
 import warnings
 import sys
 from math import sin, cos, pi, ceil
-from abc import ABC, abstractmethod
-from functools import lru_cache
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
+
+from functools import lru_cache
 
 import numpy as np
 import numpy.linalg as LA
+
+from shapely import geometry
 
 import matplotlib.pyplot as plt
 
@@ -37,6 +41,55 @@ class GammaType(Enum):
     EUCLEDIAN = 1
     SCALED_EUCLEDIAN = 2
     BARRIER = 3
+
+
+class ObstacleHullsStorer:
+    """Shapely storer which automatically deletes when having new assignments change of base.
+
+    Attributes
+    ----------
+    _hull_list: Stores the hull_list of shape x
+    """
+
+    n_options = 3
+
+    def __init__(self) -> None:
+        self._hull_list = [None for ii in range(2 ** self.n_options)]
+
+    @property
+    def global_margin(self):
+        """Shapely for global intersection-check."""
+        return self.get(global_frame=True, margin=True, reference_extended=False)
+
+    @property
+    def local_margin(self):
+        hull_ = self.get(global_frame=True, margin=True, reference_extended=True)
+        if not hull_:
+            hull_ = self.get(global_frame=True, margin=True, reference_extended=False)
+        return hull_
+
+    def transform_list_to_index(
+        self, global_frame: bool, margin: bool, reference_extended: bool = False
+    ) -> None:
+        """Chosse between:
+        global_frame (bool): local /global
+        margin (bool): no-margin / margin
+        reference_extended(bool): reference-not extended / reference_extended."""
+        arg_vals = np.array([global_frame, margin, reference_extended])
+        arg_base = 2 ** np.arange(arg_vals.shape[0])
+        return np.sum(arg_vals * arg_base)
+
+    def set(self, value: object, *args, **kwargs) -> None:
+        index = self.transform_list_to_index(*args, **kwargs)
+
+        self._hull_list[index] = value
+
+        # TODO: automatically delete when updating certains (e.g. local, no-margin, no-extension
+
+    def get(self, *args, **kwargs) -> object:
+        index = self.transform_list_to_index(*args, **kwargs)
+
+        return self._hull_list[index]
 
 
 class Obstacle(ABC):
@@ -211,7 +264,7 @@ class Obstacle(ABC):
         # Needed for drawing polygon
         self.obs_polygon = None
 
-        self._shapely = None
+        self.shapely = ObstacleHullsStorer()
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -363,20 +416,6 @@ class Obstacle(ABC):
         breakpoint()
         return self._linear_velocity_const
 
-    # @property
-    # def velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @property
-    # def linear_velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @linear_velocity_const.setter
-    # def linear_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._linear_velocity_const = value
-
     @property
     def linear_velocity(self) -> np.ndarray:
         return self._linear_velocity
@@ -393,22 +432,6 @@ class Obstacle(ABC):
     @angular_velocity.setter
     def angular_velocity(self, value: np.ndarray):
         self._angular_velocity = value
-
-    # @property
-    # def angular_velocity_const(self):
-    # return self._angular_velocity_const
-
-    # @angular_velocity_const.setter
-    # def angular_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._angular_velocity_const = value
-    # self._angular_velocity = value
-
-    @property
-    def w(self):  # TODO: remove
-        warnings.warn("Outdated name")
-        return self._angular_velocity_const
 
     @property
     def boundary_points(self):
@@ -594,6 +617,9 @@ class Obstacle(ABC):
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
 
+    def create_shapely(self):
+        raise NotImplementedError()
+
     def mirror_local_position_on_boundary(
         self,
         position: np.ndarray,
@@ -726,10 +752,9 @@ class Obstacle(ABC):
         plot_center_position=True,
     ):
         """Plots obstacle on given axes."""
-        if self.boundary_points is None:
-            self.draw_obstacle()
+        if self.margin_absolut:
+            pass
 
-        x_obs = self.boundary_points_global_closed
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
         if fill_color is not None:
             self.obs_polygon = plt.Polygon(x_obs.T)
@@ -900,6 +925,26 @@ class Obstacle(ABC):
             position = self.transform_relative2global(position)
 
         self.center_position = position
+
+    def update_position(self, t, dt):
+        # Inherit
+        # TODO - implement function dependend movement (yield), nonlinear integration
+        # Euler / Runge-Kutta integration
+        # TODO: make one updater only & update also shapely
+
+        lin_vel = self.get_linear_velocity(t)  # nonzero
+        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
+            self.center_position = self.center_position + dt * lin_vel
+            self.has_moved = True
+
+        ang_vel = self.get_angular_velocity(t)  # nonzero
+        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
+            self.orientation = self.orientation + dt * ang_vel
+            self.compute_rotation_matrix()
+            self.has_moved = True
+
+        if self.has_moved:
+            self.draw_obstacle()
 
     def update_position_and_orientation(
         self,
@@ -1225,25 +1270,6 @@ class Obstacle(ABC):
 
     def get_angular_velocity(self, *arg, **kwargs):
         return self.angular_velocity_const
-
-    def update_position(self, t, dt, x_lim=[], stop_at_edge=True):
-        # Inherit
-        # TODO - implement function dependend movement (yield), nonlinear integration
-        # Euler / Runge-Kutta integration
-
-        lin_vel = self.get_linear_velocity(t)  # nonzero
-        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
-            self.center_position = self.center_position + dt * lin_vel
-            self.has_moved = True
-
-        ang_vel = self.get_angular_velocity(t)  # nonzero
-        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
-            self.orientation = self.orientation + dt * ang_vel
-            self.compute_rotation_matrix()
-            self.has_moved = True
-
-        if self.has_moved:
-            self.draw_obstacle()
 
     def get_scaled_boundary_points(
         self, scale, safety_margin=True, redraw_obstacle=False
