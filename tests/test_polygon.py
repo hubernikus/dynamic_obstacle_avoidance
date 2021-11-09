@@ -31,14 +31,20 @@ def test_simple_cube_creation(visualize=False):
     )
 
     if visualize:
-        fig, ax = plt.subplots()
+        fig, axs = plt.subplots(1, 2)
 
         x_lim = [-2, 6]
         y_lim = [-2, 4]
 
-        plot_obstacles(ax, obs_list, x_lim, y_lim)
+        plot_obstacles(axs[0], obs_list, x_lim, y_lim)
 
     obs_list[0].set_reference_point(np.array([2, 3]), in_global_frame=True)
+
+    if visualize:
+        x_lim = [-2, 6]
+        y_lim = [-2, 4]
+
+        plot_obstacles(axs[1], obs_list, x_lim, y_lim)
 
 
 if (__name__) == "__main__":

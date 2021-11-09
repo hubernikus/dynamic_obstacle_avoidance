@@ -752,10 +752,9 @@ class Obstacle(ABC):
         plot_center_position=True,
     ):
         """Plots obstacle on given axes."""
-        if self.boundary_points is None:
-            self.draw_obstacle()
+        if self.margin_absolut:
+            pass
 
-        x_obs = self.boundary_points_global_closed
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
         if fill_color is not None:
             self.obs_polygon = plt.Polygon(x_obs.T)

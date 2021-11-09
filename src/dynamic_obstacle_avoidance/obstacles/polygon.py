@@ -239,7 +239,7 @@ class Polygon(Obstacle):
         shapely_ = self.shapely.get(global_frame=False, margin=False)
         if shapely_ is None:
             shapely_ = LinearRing(self.edge_points.T)
-            self.shapely.set(global_frame=False, margin=True, value=shapely_)
+            self.shapely.set(global_frame=False, margin=False, value=shapely_)
 
         if self.margin_absolut:
             if self.is_boundary:
@@ -339,7 +339,7 @@ class Polygon(Obstacle):
         n_curve_points=5,
         numPoints=None,
         add_circular_margin=False,
-        point_density=2 * pi / 50,
+        point_density=(2 * pi / 50),
     ):
         # Compute only locally
         num_edges = self.edge_points.shape[1]
@@ -893,10 +893,11 @@ class Polygon(Obstacle):
         shapely_ = self.shapely.get(
             global_frame=False, margin=False, reference_extended=False
         )
-        points = np.array(shapely_.exterior.coords.xy)
-        points = np.vstack((points, self.reference_point))
 
-        new_polygon = MultiPoint([points])
+        points = np.array(shapely_.xy)
+        points = np.hstack((points, self.reference_point.reshape(-1, 1)))
+
+        new_polygon = MultiPoint(points.T)
         new_polygon.convex_hull.wkt
 
         if self.margin_absolut:
@@ -908,7 +909,7 @@ class Polygon(Obstacle):
 
         self.shapely.set(
             global_frame=False,
-            boundary=True,
+            margin=True,
             reference_extended=True,
             value=new_polygon,
         )

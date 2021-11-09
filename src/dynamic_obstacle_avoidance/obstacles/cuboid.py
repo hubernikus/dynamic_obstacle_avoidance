@@ -143,7 +143,7 @@ class Cuboid(Polygon):
 
         self.draw_obstacle()
 
-    def get_local_radius_point(
+    def get_local_radius(
         self, position, in_global_frame=False, with_reference_point_expansion=True
     ):
         """Get local / radius or the surface intersection point by using shapely."""
@@ -164,7 +164,20 @@ class Cuboid(Polygon):
 
         shapely_line = shapely.geometry.LineString([[0, 0], position])
 
-        intersection = shapely_line.intersection(self._local_shapely)
+        shapely_ = None
+
+        if with_reference_point_expansion:
+            self.shapely.get(global_frame=False, margin=True, reference_extended=True)
+
+        if shapely_ is None:
+            shapely_ = self.shapely.get(
+                global_frame=False, margin=True, reference_extended=False
+            )
+
+        if shapely_ is None:
+            raise Exceptiont("No fitting shape for radius point found.")
+
+        intersection = shapely_line.intersection(shapely_)
 
         # If position is inside, the intersection point is equal to the
         # position-point, in that case redo the calulation with an extended line
@@ -192,6 +205,7 @@ class Cuboid(Polygon):
         in_global_frame=False,
         gamma_type=GammaType.EUCLEDIAN,
         gamma_distance=None,
+        with_reference_point_expansion=False,
     ):
         # TODO: gamma, radius, hull edge
         # should be implemented in parent class & can be removed here...
@@ -199,7 +213,9 @@ class Cuboid(Polygon):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        local_radius = self.get_local_radius(position)
+        local_radius = self.get_local_radius(
+            position, with_reference_point_expansion=False
+        )
         dist_center = LA.norm(position)
 
         if self.is_boundary:
