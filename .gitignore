@@ -12,6 +12,7 @@ data/**
 
 # Virtual environment
 venv/*
+.venv/*
 
 
 
