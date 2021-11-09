@@ -20,15 +20,11 @@ from vartools.dynamical_systems import plot_dynamical_system_quiver
 
 
 def test_simple_cube_creation(visualize=False):
-    obs_list = ObstacleContainer()
-
-    obs_list.append(
-        Cuboid(
-            center_position=np.array([1, 2]),
-            orientation=40 * pi / 180,
-            axes_length=np.array([1, 2]),
+    my_obstacle = Cuboid(
+        center_position=np.array([1, 2]),
+        orientation=40 * pi / 180,
+        axes_length=np.array([1, 2]),
         )
-    )
 
     if visualize:
         fig, axs = plt.subplots(1, 2)
@@ -36,15 +32,17 @@ def test_simple_cube_creation(visualize=False):
         x_lim = [-2, 6]
         y_lim = [-2, 4]
 
-        plot_obstacles(axs[0], obs_list, x_lim, y_lim)
+        my_obstacle.plot2D(axs[0])
 
-    obs_list[0].set_reference_point(np.array([2, 3]), in_global_frame=True)
+        # plot_obstacles(axs[0], obs_list, x_lim, y_lim)
+
+    my_obstacle.set_reference_point(np.array([2, 3]), in_global_frame=True)
 
     if visualize:
         x_lim = [-2, 6]
         y_lim = [-2, 4]
 
-        plot_obstacles(axs[1], obs_list, x_lim, y_lim)
+        my_obstacle.plot2D(axs[1])
 
 
 if (__name__) == "__main__":

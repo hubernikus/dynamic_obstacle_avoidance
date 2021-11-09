@@ -149,6 +149,7 @@ class Cuboid(Polygon):
         """Get local / radius or the surface intersection point by using shapely."""
         if in_global_frame:
             position = self.transform_global2relative(position)
+            
         return LA.norm(
             self.get_local_radius_point(
                 position, with_reference_point_expansion=with_reference_point_expansion

@@ -56,7 +56,6 @@ class Polygon(Obstacle):
     ----------
     edge_points:
 
-
     """
 
     def __init__(
@@ -156,7 +155,11 @@ class Polygon(Obstacle):
     @margin_absolut.setter
     def margin_absolut(self, value):
         self._margin_absolut = value
-        self.update_margin()
+        
+        if not self.is_reference_point_inside():
+            self.extend_hull_around_reference()
+            
+        # self.update_margin()
 
     def update_margin(self):
         if self._margin_absolut > 0:
@@ -884,8 +887,7 @@ class Polygon(Obstacle):
         reference_point_temp = self.reference_point * (1 + dist_max / mag_ref_point)
 
         if (
-            self.get_gamma(reference_point_temp, with_reference_point_expansion=False)
-            < 1
+            self.get_gamma(reference_point_temp, in_global_frame=False, with_reference_point_expansion=False) < 1
         ):
             # No displacement needed, since point within margins
             return
@@ -893,7 +895,7 @@ class Polygon(Obstacle):
         shapely_ = self.shapely.get(
             global_frame=False, margin=False, reference_extended=False
         )
-
+        
         points = np.array(shapely_.xy)
         points = np.hstack((points, self.reference_point.reshape(-1, 1)))
 
@@ -913,8 +915,9 @@ class Polygon(Obstacle):
             reference_extended=True,
             value=new_polygon,
         )
+        
 
-    def extend_hull_around_reference_shapely(
+    def extend_hull_around_reference_old(
         self, edge_reference_dist=0.3, relative_hull_margin=0.1
     ):
         """

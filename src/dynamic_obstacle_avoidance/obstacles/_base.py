@@ -16,7 +16,7 @@ from functools import lru_cache
 import numpy as np
 import numpy.linalg as LA
 
-from shapely import geometry
+from shapely import affinity
 
 import matplotlib.pyplot as plt
 
@@ -159,8 +159,6 @@ class Obstacle(ABC):
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
-        self.reference_point_is_inside = True
-
         # Margin
         self.sf = sf  # TODO: depreciated -> remove
         # self.delta_margin = delta_margin
@@ -312,6 +310,12 @@ class Obstacle(ABC):
         else:
             self._relative_reference_point = self.transform_global2relative(value)
 
+    def is_reference_point_inside(self):
+        warnings.warn("TODO: add reference_point and boundary.")
+        return (self.get_gamma(
+            self.reference_point, in_global_frame=False,
+            with_reference_point_expansion=False) < 1)
+
     @property
     def center_dyn(self):  # TODO: depreciated -- delete
         return self.reference_point
@@ -367,20 +371,6 @@ class Obstacle(ABC):
             if value is not None and np.sum(np.abs(value)):  # nonzero value
                 warnings.warn("Rotation for dimensions > 3 not defined.")
             self._orientation = value
-
-    @property
-    def th_r(self):  # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        return self.orientation  # getter
-
-    @th_r.setter
-    def th_r(self, value):  # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        self.orientation = value  # setter
 
     @property
     def position(self):
@@ -653,20 +643,28 @@ class Obstacle(ABC):
     def get_local_radius(self, position, in_local_frame: bool):
         raise NotImplementedError("Not implemented for base-class.")
 
+    # @abstractmethod
+    def get_surface_point(self, position, in_local_frame: bool):
+        raise NotImplementedError("Not implemented for base-class.")
+
     # Store five previous values
     # @lru_cache(maxsize=5)
-    def get_gamma(self, position, *args, **kwargs):
-        """Get gamma value of obstacle."""
-        if len(position.shape) == 1:
-            position = np.reshape(position, (self.dim, 1))
+    @abstractmethod
+    def get_gamma(self, position):
+        pass
+    
+    # def get_gamma(self, position, *args, **kwargs):
+        # """Get gamma value of obstacle."""
+        # if len(position.shape) == 1:
+            # position = np.reshape(position, (self.dim, 1))
 
-            return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
+            # return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
 
-        elif len(position.shape) == 2:
-            return self._get_gamma(position, *args, **kwargs)
+        # elif len(position.shape) == 2:
+            # return self._get_gamma(position, *args, **kwargs)
 
-        else:
-            ValueError("Triple dimensional position are unexpected")
+        # else:
+            # ValueError("Triple dimensional position are unexpected")
 
     def _get_gamma(
         self,
@@ -744,38 +742,99 @@ class Obstacle(ABC):
         """Create obstacle boundary points and stores them as attribute."""
         pass
 
-    def plot_obstacle(
+    def shapely_affine_trafo_to_global(self, shapely):
+        if self.orientation:
+            shapely = affinity.rotate(shapely, self.orientation * 180 / pi)
+        shapely = affinity.translate(
+            shapely, self.center_position[0], self.center_position[1]
+            )
+        return shapely
+    
+    def plot2D(
         self,
         ax,
-        fill_color="#00ff00ff",
+        # fill_color="#00ff00ff",
+        fill_color="#b07c7c",
         outline_color=None,
         plot_center_position=True,
+        plot_reference_position=True,
     ):
         """Plots obstacle on given axes."""
-        if self.margin_absolut:
-            pass
+        if self.dimension != 2:
+            raise Exception("Only implemented for 2D case.")
+
+        outsidely_ = None
+        
+        if not self.is_reference_point_inside():
+            outsidely_ = self.shapely.get(
+                global_frame=True, margin=True, reference_extended=True)
+            breakpoint()
+            if outsidely_ is None:
+                outsidely_ = self.shapely.get(
+                    global_frame=False, margin=True, reference_extended=True)
+                
+                outsidely_ = self.shapely_affine_trafo_to_global(outsidely_)
+
+        elif self.margin_absolut:
+            outsidely_ = self.shapely.get(
+                global_frame=True, margin=True, reference_extended=False)
+
+            if outsidely_ is None:
+                outsidely_ = self.shapely.get(
+                    global_frame=False, margin=True, reference_extended=False)
+                
+                outsidely_ = self.shapely_affine_trafo_to_global(outsidely_)
+                
+        if not outsidely_ is None:
+            outer_margin = np.array(insidely_.xy)
+
+            ax.plot(outer_margin[0, :], outer_margin[1, :], color="k--", linewidth=2)
+        
+        # Get inside one
+        if self.reference_point_is_inside:
+            insidely_ = self.shapely.get(
+                global_frame=True, margin=False, reference_extended=False)
+            
+            if insidely_ is None:
+                insidely_ = self.shapely.get(
+                    global_frame=False, margin=False, reference_extended=False)
+
+                insidely_ = self.shapely_affine_trafo_to_global(insidely_)
+
+        inner_margin = np.array(insidely_.xy)
 
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
         if fill_color is not None:
-            self.obs_polygon = plt.Polygon(x_obs.T)
+            self.obs_polygon = plt.Polygon(inner_margin.T)
             self.obs_polygon.set_color(fill_color)
 
             ax.add_patch(self.obs_polygon)
+            
             # Somehow only appears when additionally a 'plot is generated' (BUG?)
             ax.plot([], [])
 
         if outline_color is not None:
-            ax.plot(x_obs[0, :], x_obs[1, :], "-", color=outline_color)
+            ax.plot(inner_margin[0, :], inner_margin[1, :], "-", color=outline_color)
 
         if plot_center_position:
             ax.plot(
                 self.center_position[0],
                 self.center_position[1],
                 "k.",
-                linewidth=18,
                 markeredgewidth=4,
                 markersize=13,
             )
+
+        if plot_reference_position:
+            if (self.reference_point is not None
+                and not np.isclose(LA.norm(self.reference_point), 0)):
+                ref_point = self.global_reference_point
+                ax.plot(
+                    ref_point[0], ref_point[1],
+                    "k+",
+                    markeredgewidth=4,
+                    markersize=13,
+                    )
 
     def get_surface_derivative_angle_num(
         self,
