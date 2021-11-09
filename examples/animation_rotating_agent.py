@@ -18,13 +18,9 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from vartools.dynamical_systems import LinearSystem
 
 
-def calculate_delta(pos_list):
-    return np.array([pos_list[1, 0] - pos_list[0, 0], pos_list[1, 1] - pos_list[0, 1]]) / 2.0
-
-
 class DynamicalSystemAnimation:
     def __init__(self):
-        self.animation_paused = False
+        self.animation_paused = True
 
     def on_click(self, event):
         if self.animation_paused:
@@ -98,7 +94,7 @@ class DynamicalSystemAnimation:
                         # temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1:]
                         temp_env = dynamic_avoider.env_slicer(obs)
                         velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1],
-                                                                                      agent, temp_env, True)
+                                                                                      agent, temp_env)
                         velocity[agent, :] = velocity[agent, :] * weights[obs][agent]
 
                     obs_vel = np.zeros(2)
@@ -122,7 +118,7 @@ class DynamicalSystemAnimation:
                     for agent in obs_w_multi_agent[obs]:
                         temp_env = obstacle_environment[0:obs] + obstacle_environment[obs + 1:]
                         velocity[agent, :] = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1],
-                                                                                      agent, temp_env, True)
+                                                                                      agent, temp_env)
                         obstacle_environment[obs].linear_velocity = velocity[agent, :]
                         obstacle_environment[obs].do_velocity_step(dt_step)
                         position_list[agent, :, ii] = velocity[agent, :] * dt_step + position_list[agent, :, ii - 1]

@@ -169,7 +169,7 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         weights = weights / n_points
         return weights
 
-    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=1.5):
+    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=5):
         # TODO
         ctl_weight_list = []
         for obs in self.obs_multi_agent:
@@ -182,12 +182,12 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             ind_nonzero = gamma_values < cutoff_gamma
             if not any(ind_nonzero):
                 ctl_point_weight[-1] = 1
-            for index in range(len(gamma_values)):
-                ctl_point_weight[index] = self.get_weight_from_gamma(
-                    gamma_values[index],
-                    cutoff_gamma=cutoff_gamma,
-                    n_points=len(self.obs_multi_agent[obs])
-                )
+            # for index in range(len(gamma_values)):
+            ctl_point_weight[ind_nonzero] = self.get_weight_from_gamma(
+                gamma_values[ind_nonzero],
+                cutoff_gamma=cutoff_gamma,
+                n_points=len(self.obs_multi_agent[obs])
+            )
 
             ctl_point_weight_sum = np.sum(ctl_point_weight)
             if ctl_point_weight_sum > 1:
@@ -200,14 +200,14 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         return ctl_weight_list
 
     def evaluate_for_crowd_agent(
-        self, position: np.ndarray, selected_agent, env, agent_is_obs: bool # this var is useless ??? or not ???
+        self, position: np.ndarray, selected_agent, env
     ) -> np.ndarray:
         """DynamicalSystem compatible 'evaluate' method that returns the velocity at a
         given input position."""
-        return self.compute_dynamics_for_crowd_agent(position, selected_agent, env, agent_is_obs)
+        return self.compute_dynamics_for_crowd_agent(position, selected_agent, env)
 
     def compute_dynamics_for_crowd_agent(
-        self, position: np.ndarray, selected_agent, env, agent_is_obs: bool
+        self, position: np.ndarray, selected_agent, env
     ) -> np.ndarray:
         """DynamicalSystem compatible 'compute_dynamics' method that returns the velocity at a
         given input position."""
@@ -216,18 +216,14 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         return self.avoid_for_crowd_agent(
             position=position,
             initial_velocity=initial_velocity,
-            selected_agent=selected_agent,
             env=env,
-            agent_is_obs=agent_is_obs,
         )
 
     def avoid_for_crowd_agent(
         self,
         position: np.ndarray,
         initial_velocity: np.ndarray,
-        selected_agent,
         env,
-        agent_is_obs: bool,
         const_speed: bool = True,
     ) -> np.ndarray:
 
