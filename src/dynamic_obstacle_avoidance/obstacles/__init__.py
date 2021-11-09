@@ -3,7 +3,7 @@ The :mod:`obstacles` module implements various types of obstacles.
 """
 # Various Obstacle Descriptions
 from ._base import Obstacle, GammaType
-from .ellipse import Ellipse, CircularObstacle, Sphere
+from .ellipse import Ellipse, Sphere, CircularObstacle
 from .polygon import Polygon
 from .cuboid import Cuboid
 from .cross import Cross

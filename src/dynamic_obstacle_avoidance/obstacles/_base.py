@@ -6,13 +6,17 @@ import time
 import warnings
 import sys
 from math import sin, cos, pi, ceil
-from abc import ABC, abstractmethod
-from functools import lru_cache
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
+
+from functools import lru_cache
 
 import numpy as np
 import numpy.linalg as LA
+
+from shapely import geometry
 
 import matplotlib.pyplot as plt
 
@@ -37,6 +41,55 @@ class GammaType(Enum):
     EUCLEDIAN = 1
     SCALED_EUCLEDIAN = 2
     BARRIER = 3
+
+
+class ObstacleHullsStorer:
+    """Shapely storer which automatically deletes when having new assignments change of base.
+
+    Attributes
+    ----------
+    _hull_list: Stores the hull_list of shape x
+    """
+
+    n_options = 3
+
+    def __init__(self) -> None:
+        self._hull_list = [None for ii in range(2 ** self.n_options)]
+
+    @property
+    def global_margin(self):
+        """Shapely for global intersection-check."""
+        return self.get(global_frame=True, margin=True, reference_extended=False)
+
+    @property
+    def local_margin(self):
+        hull_ = self.get(global_frame=True, margin=True, reference_extended=True)
+        if not hull_:
+            hull_ = self.get(global_frame=True, margin=True, reference_extended=False)
+        return hull_
+
+    def transform_list_to_index(
+        self, global_frame: bool, margin: bool, reference_extended: bool = False
+    ) -> None:
+        """Chosse between:
+        global_frame (bool): local /global
+        margin (bool): no-margin / margin
+        reference_extended(bool): reference-not extended / reference_extended."""
+        arg_vals = np.array([global_frame, margin, reference_extended])
+        arg_base = 2 ** np.arange(arg_vals.shape[0])
+        return np.sum(arg_vals * arg_base)
+
+    def set(self, value: object, *args, **kwargs) -> None:
+        index = self.transform_list_to_index(*args, **kwargs)
+
+        self._hull_list[index] = value
+
+        # TODO: automatically delete when updating certains (e.g. local, no-margin, no-extension
+
+    def get(self, *args, **kwargs) -> object:
+        index = self.transform_list_to_index(*args, **kwargs)
+
+        return self._hull_list[index]
 
 
 class Obstacle(ABC):
@@ -211,7 +264,7 @@ class Obstacle(ABC):
         # Needed for drawing polygon
         self.obs_polygon = None
 
-        self._shapely = None
+        self.shapely = ObstacleHullsStorer()
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -363,20 +416,6 @@ class Obstacle(ABC):
         breakpoint()
         return self._linear_velocity_const
 
-    # @property
-    # def velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @property
-    # def linear_velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @linear_velocity_const.setter
-    # def linear_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._linear_velocity_const = value
-
     @property
     def linear_velocity(self) -> np.ndarray:
         return self._linear_velocity
@@ -393,22 +432,6 @@ class Obstacle(ABC):
     @angular_velocity.setter
     def angular_velocity(self, value: np.ndarray):
         self._angular_velocity = value
-
-    # @property
-    # def angular_velocity_const(self):
-    # return self._angular_velocity_const
-
-    # @angular_velocity_const.setter
-    # def angular_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._angular_velocity_const = value
-    # self._angular_velocity = value
-
-    @property
-    def w(self):  # TODO: remove
-        warnings.warn("Outdated name")
-        return self._angular_velocity_const
 
     @property
     def boundary_points(self):
@@ -593,10 +616,6 @@ class Obstacle(ABC):
             warnings.warn("Not implemented for higer dimensions")
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
-
-    @property
-    def shapely(self):
-        return self._shapely
 
     def create_shapely(self):
         raise NotImplementedError()

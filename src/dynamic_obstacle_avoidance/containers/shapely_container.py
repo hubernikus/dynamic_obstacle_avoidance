@@ -35,13 +35,12 @@ class ShapelyContainer(ObstacleContainer):
     # Shapely only possible in 2D
     dim = 2
 
-    def __init__(self, obs_list=None, distance_margin=1e-6):
+    def __init__(self, obs_list=None, distance_margin=1e6):
         super().__init__(obs_list)
 
         self.distance_margin = distance_margin
         self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
         self._distance_matrix = DistanceMatrix(n_obs=len(self))
-        self.shapely_with_boundary = [None for ii in range(len(self))]
 
     def append(self, value):  # Compatibility with normal list.
         """Add new obstacle to the end of the container."""
@@ -50,7 +49,6 @@ class ShapelyContainer(ObstacleContainer):
         # Always reset dist matrix
         self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
         self._distance_matrix = DistanceMatrix(n_obs=len(self))
-        self.shapely_with_boundary = [None for ii in range(len(self))]
 
     def __delitem__(self, key):  # Compatibility with normal list.
         """Remove obstacle from container list."""
@@ -58,7 +56,6 @@ class ShapelyContainer(ObstacleContainer):
 
         self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
         self._distance_matrix = DistanceMatrix(n_obs=len(self))
-        del self.shapely_with_boundary[key]
 
     @property
     def index_wall(self):
@@ -70,39 +67,84 @@ class ShapelyContainer(ObstacleContainer):
                 break
         return ind_wall
 
-    def are_intersecting(self, ii, jj):
+    def single_boundary_and_nonequal_check(self, ii, jj):
         if ii == jj:
-            return None
+            raise NotImplementedError("Not defined for two boundaries.")
+        if self[ii].is_boundary:
+            if self[jj].is_boundary:
+                raise NotImplementedError("Not defined for two boundaries.")
+            ii, jj = jj, ii
+        return ii, jj
 
-        if self[ii].get_gamma(self[jj].center_position, in_global_frame=True) < 1:
+    def are_intersecting(self, ii, jj):
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
+
+        if (
+            self[ii].get_gamma(self[jj].center_position, in_global_frame=True) < 1
+            and not self[jj].is_boundary
+        ):
             return True
 
         if self[jj].get_gamma(self[ii].center_position, in_global_frame=True) < 1:
             return True
 
-        return self.shapely_with_boundary[ii].intersects(self.shapely_with_boundary[jj])
+        if self[jj].is_boundary:
+            # For a boundary, check if (1) the obstacle is uniquely outside of the boundary
+            # or (2) there is no intersection of the boundary-line & the obstacle
+            return not self[ii].shapely.global_margin.intersects(
+                self[jj].shapely.global_margin
+            ) or self[ii].shapely.global_margin.intersects(
+                self[jj].shapely.global_margin.boundary
+            )
+        else:
+            return self[ii].shapely.global_margin.intersects(
+                self[jj].shapely.global_margin
+            )
 
     def evaluate_intersection_position(self, ii, jj):
+        """Evaluate the insterection point."""
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
+
         # TODO: better intersection evaluation
         # better position [negative distance? up to -1?]
-        intersections = self.shapely_with_boundary[ii].intersection(
-            self.shapely_with_boundary[jj]
-        )
+        if self[jj].is_boundary:
+            intersections = (
+                self[ii].shapely.global_margin.symmetric_difference(
+                    self[jj].shapely.global_margin
+                )
+            ).difference(self[jj].shapely.global_margin)
 
-        intersection_center = (
-            np.max(intersections, axis=0) - np.min(intersections, axis=0)
-        ) * 0.5
-        self._boundary_reference_points[ii, jj, :] = self._boundary_reference_points[
-            jj, ii, :
-        ] = intersection_center
+        else:
+            intersections = self[ii].shapely.global_margin.intersection(
+                self[jj].shapely.global_margin
+            )
+        intersection_center = np.array(intersections.centroid.coords.xy).squeeze()
+
+        self._boundary_reference_points[:, ii, jj] = intersection_center
+
+        if not self[jj].is_boundary:
+            self._boundary_reference_points[:, jj, ii] = intersection_center
 
         self._distance_matrix[ii, jj] = 0
 
     def evaluate_boundary_reference_points(self, ii, jj):
-        p1, p2 = nearest_points(dilated1, dilated2)
+        """Evaluate and set the distance and boundary
+        reference for NON-intersecting obstacles."""
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
 
-        self._boundary_reference_points[ii, jj, :] = p1
-        self._boundary_reference_points[jj, ii, :] = p2
+        if self[jj].is_boundary:
+            p1, p2 = nearest_points(
+                self[ii].shapely.global_margin, self[jj].shapely.global_margin.boundary
+            )
+            self._boundary_reference_points[:, ii, jj] = p1
+
+        else:
+            p1, p2 = nearest_points(
+                self[ii].shapely.global_margin, self[jj].shapely.global_margin
+            )
+
+            self._boundary_reference_points[:, ii, jj] = p1
+            self._boundary_reference_points[:, jj, ii] = p2
 
         self._distance_matrix[ii, jj] = LA.norm(p2 - p1)
 
@@ -126,9 +168,12 @@ class ShapelyContainer(ObstacleContainer):
 
     def get_distance_weight(self, distance_list, distance_margin):
         # TODO: better weighting which includes also inside points
-        dist = np.array(distance_list)
+        if not len(distance_list):
+            return distance_list
 
-        ind_zero = dist == 0
+        distance_list = np.array(distance_list)
+
+        ind_zero = np.isclose(distance_list, 0)
         if np.sum(ind_zero):
             return ind_zero / np.sum(ind_zero)
 
@@ -140,9 +185,8 @@ class ShapelyContainer(ObstacleContainer):
     def update_reference_points(self):
         # TODO: check for all if have moved
         for ii in range(self.n_obstacles):
-            if self[ii].has_moved or self.shapely_with_boundary[ii] is None:
+            if self[ii].has_moved or self[ii].shapely is None:
                 self[ii].create_shapely()
-                breakpoint()
 
         for ii in range(self.n_obstacles):
             for jj in range(ii + 1, self.n_obstacles):
@@ -154,32 +198,41 @@ class ShapelyContainer(ObstacleContainer):
                 else:
                     self.evaluate_boundary_reference_points(ii, jj)
 
+            self[ii].has_moved = False
+
         for ii in range(self.n_obstacles):
-            distance_list = []
-            boundary_ref_points = []
+            distance_list = [
+                self.get_distance(ii, jj) if ii != jj else 2 * self.distance_margin
+                for ii in range(self.n_obstacles)
+            ]
+            # Make array for easier comparison
+            distance_list = np.array(distance_list)
 
-            for jj in range(self.n_obstacles):
-                if ii == jj:
-                    continue
+            ind_nonzero = distance_list < self.distance_margin
 
-                new_dist = self.get_distance(ii, jj)
-                if new_dist < self.dist_margin:
+            if not any(ind_nonzero):
+                self[ii].set_reference_point(
+                    np.zeros(self.dimension), in_global_frame=False
+                )
+                continue
 
-                    distance_list.append(new_dist)
-                    boundary_ref_points.append(
-                        self._boundary_reference_points[:, ii, jj]
-                    )
+            distance_list = distance_list[ind_nonzero]
+            boundary_ref_points = self._boundary_reference_points[
+                :, ii, ind_nonzero
+            ].reshape(self.dimension, -1)
 
             weights = self.get_distance_weight(
                 distance_list, distance_margin=self.distance_margin
             )
-            if np.sum(weights) < 1:
-                weights.append(1 - np.sum(weights))
-                boundary_ref_points.append(self[ii].center_position)
-
             weighted_ref_point = np.sum(
-                np.array(boundary_ref_points).T
-                * np.tile(weights, (boundary_ref_points[0].shape[0], 1)),
+                np.array(boundary_ref_points)
+                * np.tile(weights, (boundary_ref_points.shape[0], 1)),
                 axis=1,
             )
+
+            # Add normal center_position if the outside are not pulling a lot
+            sum_weight = np.sum(weights)
+            if sum_weight < 1:
+                weighted_ref_point += self[ii].center_position * (1 - sum_weight)
+
             self[ii].set_reference_point(weighted_ref_point, in_global_frame=True)

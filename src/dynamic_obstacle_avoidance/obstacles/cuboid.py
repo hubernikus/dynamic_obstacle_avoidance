@@ -66,25 +66,14 @@ class Cuboid(Polygon):
 
         edge_points = self.get_edge_points_from_axes()
 
-        if sys.version_info > (3, 0):
-            super().__init__(
-                *args,
-                is_deforming=is_deforming,
-                edge_points=edge_points,
-                absolute_edge_position=False,
-                margin_absolut=margin_absolut,
-                **kwargs
-            )
-
-        else:
-            super(Cuboid, self).__init__(
-                *args,
-                is_deforming=is_deforming,
-                edge_points=edge_points,
-                absolute_edge_position=False,
-                margin_absolut=margin_absolut,
-                **kwargs
-            )
+        super().__init__(
+            *args,
+            is_deforming=is_deforming,
+            edge_points=edge_points,
+            absolute_edge_position=False,
+            margin_absolut=margin_absolut,
+            **kwargs
+        )
 
         self.wall_thickness = wall_thickness
 
@@ -154,18 +143,34 @@ class Cuboid(Polygon):
 
         self.draw_obstacle()
 
-    def get_local_radius(self, position, in_global_frame=False):
+    def get_local_radius_point(
+        self, position, in_global_frame=False, with_reference_point_expansion=True
+    ):
         """Get local / radius or the surface intersection point by using shapely."""
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+        return LA.norm(
+            self.get_local_radius_point(
+                position, with_reference_point_expansion=with_reference_point_expansion
+            )
+        )
+
+    def get_local_radius_point(
+        self, position, in_global_frame=False, with_reference_point_expansion=True
+    ):
+
         if in_global_frame:
             position = self.transform_global2relative(position)
 
         shapely_line = shapely.geometry.LineString([[0, 0], position])
-        intersection = self._shapely.intersection(shapely_line).coords
+
+        intersection = shapely_line.intersection(self._local_shapely)
 
         # If position is inside, the intersection point is equal to the
         # position-point, in that case redo the calulation with an extended line
         # to obtain the actual radius-point
-        if np.allclose(intersection[-1], position):
+        if intersection.is_empty:
+            # if np.allclose(intersection[-1], position):
             # Point is assumed to be inside
             point_dist = LA.norm(position)
             if not point_dist:
@@ -176,9 +181,10 @@ class Cuboid(Polygon):
             position = position / point_dist * self.get_maximal_distance() * 5.0
 
             shapely_line = shapely.geometry.LineString([[0, 0], position])
-            intersection = self._shapely.intersection(shapely_line).coords
+            intersection = self._shapely.intersection(shapely_line)
 
-        return LA.norm(intersection[-1])
+        # return LA.norm(intersection[-1])
+        return np.array(intersection)
 
     def get_gamma(
         self,

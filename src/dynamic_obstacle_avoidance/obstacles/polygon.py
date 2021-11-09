@@ -17,6 +17,9 @@ import numpy as np
 from numpy import linalg as LA
 
 import shapely
+from shapely import affinity
+from shapely.geometry import MultiPoint
+from shapely.geometry.polygon import LinearRing
 
 from vartools.directional_space import (
     get_angle_space,
@@ -52,6 +55,8 @@ class Polygon(Obstacle):
     Attributes
     ----------
     edge_points:
+
+
     """
 
     def __init__(
@@ -103,10 +108,7 @@ class Polygon(Obstacle):
                 "Not yet implemented for dimensions higher than 3"
             )
 
-        if sys.version_info > (3, 0):  # TODO: remove in future
-            super().__init__(*args, **kwargs)
-        else:
-            super(Polygon, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if ind_open is None:
             # TODO: implement in a useful manner to have doors etc.
@@ -233,11 +235,31 @@ class Polygon(Obstacle):
                 f"Shapely shape not defined for d={self.dimension}"
             )
 
-        poly_line = LinearRing(self.edge_points_absolut.T)
-        if self.is_boundary:
-            self._shapely = poly_line.buffer(margin_abs).interior
+        # TODO: if it's deforming it needs to be adapted
+        shapely_ = self.shapely.get(global_frame=False, margin=False)
+        if shapely_ is None:
+            shapely_ = LinearRing(self.edge_points.T)
+            self.shapely.set(global_frame=False, margin=True, value=shapely_)
+
+        if self.margin_absolut:
+            if self.is_boundary:
+                # self._shapely = poly_line.buffer(self.margin_absolut).exterior
+                shapely_ = shapely_.buffer(self.margin_absolut).interiors
+            else:
+                shapely_ = shapely_.buffer(self.margin_absolut).exterior
+
         else:
-            self._shapely = poly_line.buffer(margin_abs).exterior
+            self.shapely.set(global_frame=False, margin=True, value=shapely_)
+
+        if self.orientation:
+            # Do orientation first just to ensure that it is around `self.center_position`
+            shapely_ = affinity.rotate(shapely_, self.orientation * 180 / pi)
+
+        shapely_ = affinity.translate(
+            shapely_, self.center_position[0], self.center_position[1]
+        )
+
+        self.shapely.set(global_frame=True, margin=True, value=shapely_)
 
     def calculate_normalVectorAndDistance(self, edge_points=None):
         """Calculate Normal Distance and Distance to Edge points."""
@@ -464,7 +486,9 @@ class Polygon(Obstacle):
 
         return distances, normal_vectors
 
-    def get_local_radius_point(self, direction, in_global_frame=False):
+    def get_local_radius_point(
+        self, direction, in_global_frame=False, with_reference_point_expansion=False
+    ):
         """Get local radius points from relative direction."""
         if in_global_frame:
             # position = direction + self.center_position
@@ -701,84 +725,6 @@ class Polygon(Obstacle):
 
         return normal_vector
 
-    def get_gamma_old(
-        self,
-        position,
-        in_global_frame=False,
-        norm_order=2,
-        include_special_surface=True,
-        gamma_type=GammaType.RELATIVE,
-    ):
-        """
-        Get distance-measure from surface of the obstacle.
-        INPUT: position: list or array of position
-        OUTPUT
-        RAISE ERROR:Function is partially defined for only the 2D case
-        """
-        # TOOD: redo different gamma types
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        if gamma_type is GammaType.EUCLEDIAN:
-            # Proportionally reduce gamma distance with respect to paramter
-            dist2hulledge = self.get_distance_to_hullEdge(position)
-
-            if dist2hulledge > 0:
-                mag_position = np.linalg.norm(position)
-
-                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
-                if self.is_boundary:
-                    mag_position = dist2hulledge * dist2hulledge / mag_position
-
-                Gamma = (mag_position - dist2hulledge) + 1
-
-            else:
-                Gamma = 0
-
-        elif gamma_type == GammaType.RELATIVE:
-            # TODO: extend rule to include points with Gamma < 1 for both cases
-            # dist2hull = np.ones(self.edge_points.shape[1])*(-1)
-            dist2hulledge = self.get_distance_to_hullEdge(position)
-
-            if dist2hulledge:
-                mag_position = np.linalg.norm(position)
-
-                # Divide by laragest-axes factor to avoid weird behavior with elongated ellipses
-                Gamma = mag_position / dist2hulledge
-
-            else:
-                Gamma = 0
-
-            if self.is_boundary:
-                pow_boundary_gamma = 2
-                Gamma = self.get_boundaryGamma(Gamma) ** pow_boundary_gamma
-
-        elif gamma_type == GammaType.OTHER:
-            distances2plane = self.get_distance_to_hullEdge(position)
-
-            delta_Gamma = np.min(distances2plane) - self.margin_absolut
-            ind_outside = distances2plane > 0
-            delta_Gamma = (
-                np.linalg.norm(distances2plane[ind_outside], ord=norm_order)
-                - self.margin_absolut
-            )
-
-            normalization_factor = np.max(self.normalDistance2center)
-            # Gamma = 1 + delta_Gamma / np.max(self.axes_length)
-            Gamma = 1 + delta_Gamma / normalization_factor
-
-        else:
-            raise TypeError("Unknown gmma_type {}".format(gamma_type))
-
-        if not self.is_boundary:
-            # TODO: implement better... in base class maybe(?!) / general
-            warnings.warn("Unit-Gamma type for Polygon implemented.")
-            dist_center = LA.norm(position)
-            local_radius = dist_center / Gamma
-            Gamma = dist_center - local_radius + 1
-
-        return Gamma
-
     def get_normal_direction(
         self,
         position,
@@ -917,6 +863,57 @@ class Polygon(Obstacle):
         return normal_vector
 
     def extend_hull_around_reference(
+        self,
+        edge_reference_dist=0.3,
+        relative_hull_margin=0.1,
+        in_global_frame=False,
+    ):
+        """Extend hull around reference using shapely."""
+        if self.is_boundary:
+            raise NotImplementedError("Not defined for boundary")
+
+        # Delete the reference points before placing the gamma
+        dist_max = self.get_maximal_distance() * relative_hull_margin
+        mag_ref_point = LA.norm(self.reference_point)
+
+        self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
+
+        if not mag_ref_point:
+            return
+
+        reference_point_temp = self.reference_point * (1 + dist_max / mag_ref_point)
+
+        if (
+            self.get_gamma(reference_point_temp, with_reference_point_expansion=False)
+            < 1
+        ):
+            # No displacement needed, since point within margins
+            return
+
+        shapely_ = self.shapely.get(
+            global_frame=False, margin=False, reference_extended=False
+        )
+        points = np.array(shapely_.exterior.coords.xy)
+        points = np.vstack((points, self.reference_point))
+
+        new_polygon = MultiPoint([points])
+        new_polygon.convex_hull.wkt
+
+        if self.margin_absolut:
+            if self.is_boundary:
+                # self._shapely = poly_line.buffer(self.margin_absolut).exterior
+                new_polygon = new_polygon.buffer(self.margin_absolut).interiors
+            else:
+                new_polygon = new_polygon.buffer(self.margin_absolut).exterior
+
+        self.shapely.set(
+            global_frame=False,
+            boundary=True,
+            reference_extended=True,
+            value=new_polygon,
+        )
+
+    def extend_hull_around_reference_shapely(
         self, edge_reference_dist=0.3, relative_hull_margin=0.1
     ):
         """
@@ -1107,13 +1104,16 @@ class Polygon(Obstacle):
                             self.edge_reference_points = copy.deepcopy(self.edge_points)
                             self.edge_reference_points[:, pp] = reference_point_temp
                         else:
-                            self.edge_reference_points = np.hstack(
-                                (
-                                    self.edge_reference_points[:, :pp],
-                                    np.reshape(self.reference_point, (self.dim, 1)),
-                                    self.edge_reference_points[:, pp:],
+                            try:
+                                self.edge_reference_points = np.hstack(
+                                    (
+                                        self.edge_reference_points[:, :pp],
+                                        np.reshape(self.reference_point, (self.dim, 1)),
+                                        self.edge_reference_points[:, pp:],
+                                    )
                                 )
-                            )
+                            except:
+                                breakpoint()
                         break
 
                 (
@@ -1169,13 +1169,16 @@ class Polygon(Obstacle):
         in_global_frame=False,
         gamma_type=GammaType.EUCLEDIAN,
         gamma_distance=None,
+        with_reference_point_expansion=False,
     ):
         # gamma_distance is not used -> should it be removed (?!)
         if in_global_frame:
             position = self.transform_global2relative(position)
 
         dist_center = LA.norm(position)
-        local_radius = self.get_local_radius(position)
+        local_radius = self.get_local_radius(
+            position, with_reference_point_expansion=with_reference_point_expansion
+        )
 
         if self.is_boundary:
             position = self.mirror_local_position_on_boundary(
