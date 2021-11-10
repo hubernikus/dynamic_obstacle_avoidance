@@ -291,6 +291,6 @@ if (__name__) == "__main__":
     # test_ellipse_wall_intersection(visualize=True)
 
     # test_polygons_close(visualize=True)
-    # test_automated_reference_point(visualize=True)
+    test_automated_reference_point(visualize=True)
 
     pass

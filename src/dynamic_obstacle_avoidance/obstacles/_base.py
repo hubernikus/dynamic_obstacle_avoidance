@@ -61,15 +61,12 @@ class Obstacle(ABC):
         orientation=None,
         tail_effect=True,
         has_sticky_surface=True,
-        # sf=1,
         repulsion_coeff=1,
         reactivity=1,
         name=None,
         is_dynamic=False,
         is_deforming=False,
-        # reference_point=None,
         margin_absolut=0,
-        x0=None,
         dimension=None,
         linear_velocity=None,
         angular_velocity=None,
@@ -82,11 +79,10 @@ class Obstacle(ABC):
         timeVariant=False,
         Gamma_ref=0,
         is_boundary=False,
-        hirarchy=0,
-        ind_parent=-1,
         gamma_distance=None,
         sigma=None,
-        # *args, **kwargs # maybe random arguments
+        relative_hull_extension_margin=0.1,
+
     ):
 
         if name is None:
@@ -101,16 +97,15 @@ class Obstacle(ABC):
 
         # Dimension of space
         self.dim = len(self.center_position)
-        # self.d = len(self.center_position)  # TODO: depreciated -> remove
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
         # Margin
-        # self.sf = sf  # TODO: depreciated -> remove
-        # self.delta_margin = delta_margin
         if sigma is not None:
             raise Exception("Remove / rename sigma argument.")
         self.sigma = 1  # TODO: rename sigma argument
+
+        self.relative_hull_extension_margin = relative_hull_extension_margin
 
         self.tail_effect = tail_effect  # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
@@ -156,7 +151,6 @@ class Obstacle(ABC):
         else:
             self.angular_velocity = angular_velocity
 
-        # TODO: remove
         # Special case of moving obstacle (Create attribute [state])
         if (
             sum(np.abs(self.linear_velocity))
@@ -192,7 +186,6 @@ class Obstacle(ABC):
             self.inflation_speed_radial = 0
 
         # Repulsion coefficient to actively move away from obstacles (if possible)
-        # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
         self.reactivity = reactivity
 
@@ -230,8 +223,6 @@ class Obstacle(ABC):
         # Coefficient > 1 are accepted;
         # Good range is in [1, 2]
         # if value < 1.0:
-        # warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
-        # value = 1.0
         self._repulsion_coeff = value
 
     @property
@@ -256,11 +247,25 @@ class Obstacle(ABC):
         else:
             self._relative_reference_point = self.transform_global2relative(value)
 
+    def get_reference_point_with_margin(self):
+        """ Get reference point projected with the additional margin (in the local frame)."""
+        ref_norm = LA.norm(self.reference_point)
+        
+        if not ref_norm:
+            return self.reference_point
+
+        dist_max = self.get_maximal_distance() * self.relative_hull_extension_margin
+        
+        reference_point_temp = self.reference_point * (1 + dist_max / ref_norm)
+        
+        return reference_point_temp
+        
+        
     def is_reference_point_inside(self):
-        warnings.warn("TODO: add reference_point and boundary.")
+        ref_extended = self.get_reference_point_with_margin()
         return (
             self.get_gamma(
-                self.reference_point,
+                ref_extended,
                 in_global_frame=False,
                 with_reference_point_expansion=False,
             )
@@ -351,7 +356,6 @@ class Obstacle(ABC):
 
     @timestamp.setter
     def timestamp(self, value):
-        # if timestamp is None:
         self._timestamp = value
 
     def update_timestamp(self):
@@ -370,7 +374,6 @@ class Obstacle(ABC):
     @linear_velocity.setter
     def linear_velocity(self, value: np.ndarray):
         self._linear_velocity = value
-        # self._linear_velocity_const = value
 
     @property
     def angular_velocity(self) -> np.ndarray:
@@ -1044,29 +1047,6 @@ class Obstacle(ABC):
     def has_relative_gamma(self):
         return self._relative_gamma is not None
 
-    def get_boundaryGamma(self, Gamma, Gamma_ref=0):  #
-        """Reverse Gamma value such that boundaries can be treated with
-        the same algorithm as obstacles
-
-        Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
-        """
-        # TODO: make a decorator out of this (!?)
-        if isinstance(Gamma, (float, int)):
-            if Gamma <= Gamma_ref:
-                return sys.float_info.max
-            else:
-                return (1 - Gamma_ref) / (Gamma - Gamma_ref)
-
-        else:
-            if isinstance(Gamma, (list)):
-                Gamma = np.array(Gamma)
-            ind_small_gamma = Gamma <= Gamma_ref
-            Gamma[ind_small_gamma] = sys.float_info.max
-            Gamma[~ind_small_gamma] = (1 - Gamma_ref) / (
-                Gamma[~ind_small_gamma] - Gamma_ref
-            )
-            return Gamma
-
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
             if len(position_dir.shape) > 1:
@@ -1138,13 +1118,18 @@ class Obstacle(ABC):
         # weights[~ind_positiveDistance] = 0
         return weights
 
-    def get_outwards_reference_direction(self, position, in_global_frame=False):
+    def get_outwards_reference_direction(self, position: np.ndarray, in_global_frame: bool = False) -> np.ndarray:
+        """Returns reference direction pointing away from obstacle.
+        At the reference point, a (dummy) vector of length one is returned."""
+        return (-1)*self.get_reference_direction(position, in_global_frame)
+    
+    def get_reference_direction(self, position: np.ndarray, in_global_frame: bool = False) -> np.ndarray:
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
         if in_global_frame:
-            ref_dir = position - self.center_position
+            ref_dir =  self.center_position - position
         else:
-            ref_dir = position
+            ref_dir = (-1)*position
 
         # Normal direction
         norm_of_ref = LA.norm(ref_dir)
@@ -1153,42 +1138,6 @@ class Obstacle(ABC):
             return ref_dir / norm_of_ref
         else:
             return np.ones(self.dim) / self.dim
-
-    def get_reference_direction(self, position, in_global_frame=False, normalize=True):
-        """Get direction from 'position' to the reference point of the obstacle.
-        The global frame is considered by the choice of the reference point."""
-        # Inherit
-
-        if hasattr(self, "reference_point") or hasattr(
-            self, "center_dyn"
-        ):  # automatic adaptation of center
-            ref_point = (
-                self.global_reference_point
-                if in_global_frame
-                else self.local_reference_point
-            )
-            if len(position.shape) == 1:
-                reference_direction = -(position - ref_point)
-            else:
-                reference_direction = -(
-                    position - np.tile(ref_point, (position.shape[1], 1)).T
-                )
-        else:
-            reference_direction = -position
-
-        if normalize:
-            if len(position.shape) == 1:
-                ref_norm = LA.norm(reference_direction)
-                if ref_norm > 0:
-                    reference_direction = reference_direction / ref_norm
-            else:
-                ref_norm = LA.norm(reference_direction, axis=0)
-                ind_nonzero = ref_norm > 0
-                reference_direction[:, ind_nonzero] = (
-                    reference_direction[:, ind_nonzero] / ref_norm[ind_nonzero]
-                )
-
-        return reference_direction
 
     def get_linear_velocity(self, *arg, **kwargs):
         return self.linear_velocity_const

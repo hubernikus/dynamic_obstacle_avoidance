@@ -539,29 +539,17 @@ class Polygon(Obstacle):
 
     def extend_hull_around_reference(
         self,
-        edge_reference_dist=0.3,
-        relative_hull_margin=0.1,
         in_global_frame=False,
     ):
         """Extend hull around reference using shapely."""
         if self.is_boundary:
             raise NotImplementedError("Not defined for boundary")
 
-        # Delete the reference points before placing the gamma
-        dist_max = self.get_maximal_distance() * relative_hull_margin
-        mag_ref_point = LA.norm(self.reference_point)
-
-        self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
-
-        if not mag_ref_point:
-            return
-
-        reference_point_temp = self.reference_point * (1 + dist_max / mag_ref_point)
-
+        reference_point_temp = self.get_reference_point_with_margin()
+        
         if (
             self.get_gamma(
                 reference_point_temp,
-                in_global_frame=False,
                 with_reference_point_expansion=False,
             )
             < 1
@@ -569,12 +557,14 @@ class Polygon(Obstacle):
             # No displacement needed, since point within margins
             return
 
+        self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
+
         shapely_ = self.shapely.get(
             global_frame=False, margin=False, reference_extended=False
         )
 
         points = np.array(shapely_.xy)
-        points = np.hstack((points, self.reference_point.reshape(-1, 1)))
+        points = np.hstack((points, reference_point_temp.reshape(-1, 1)))
 
         new_polygon = MultiPoint(points.T).convex_hull
 
