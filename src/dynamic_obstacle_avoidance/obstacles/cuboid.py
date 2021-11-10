@@ -168,7 +168,7 @@ class Cuboid(Polygon):
         shapely_ = None
 
         if with_reference_point_expansion:
-            self.shapely.get(global_frame=False, margin=True, reference_extended=True)
+            shapely_ = self.shapely.get(global_frame=False, margin=True, reference_extended=True)
 
         if shapely_ is None:
             shapely_ = self.shapely.get(

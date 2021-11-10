@@ -125,15 +125,13 @@ class Polygon(Obstacle):
         # Extended in case that the reference point is outside the obstacle
         self.edge_reference_points = self.edge_margin_points
 
-        # self.hull_points = self.edge_points
-        self.margin_absolut = margin_absolut
-
         # Create shapely object
         edge = self.edge_points
-
-        edge = np.vstack((edge.T, edge[:, 0]))
-
         self.create_shapely()
+
+        # Margin setting after first shapely initialization
+        self.margin_absolut = margin_absolut
+
 
     @property
     def hull_edge(self):
@@ -899,8 +897,9 @@ class Polygon(Obstacle):
         points = np.array(shapely_.xy)
         points = np.hstack((points, self.reference_point.reshape(-1, 1)))
 
-        new_polygon = MultiPoint(points.T)
-        new_polygon.convex_hull.wkt
+        new_polygon = MultiPoint(points.T).convex_hull
+        # new_polygon.convex_hull.wkt
+        # breakpoint()
 
         if self.margin_absolut:
             if self.is_boundary:

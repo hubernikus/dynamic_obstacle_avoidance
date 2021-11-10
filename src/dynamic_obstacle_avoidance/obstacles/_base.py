@@ -1,4 +1,3 @@
-#!/USSR/bin/python3
 """
 Basic class to represent obstacles
 """
@@ -10,13 +9,10 @@ from math import sin, cos, pi, ceil
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-
 from functools import lru_cache
 
 import numpy as np
 import numpy.linalg as LA
-
-from shapely import affinity
 
 import matplotlib.pyplot as plt
 
@@ -24,12 +20,11 @@ from scipy.spatial.transform import Rotation  # scipy rotation
 
 from vartools.angle_math import angle_difference_directional
 from vartools.linalg import get_orthogonal_basis
-
 from vartools.angle_math import periodic_weighted_sum
-
-# from vartools.angle_math import *
 from vartools.states import ObjectPose
 from vartools.directional_space import get_angle_space_inverse
+
+from .hull_storer import ObstacleHullsStorer
 
 
 class GammaType(Enum):
@@ -41,55 +36,6 @@ class GammaType(Enum):
     EUCLEDIAN = 1
     SCALED_EUCLEDIAN = 2
     BARRIER = 3
-
-
-class ObstacleHullsStorer:
-    """Shapely storer which automatically deletes when having new assignments change of base.
-
-    Attributes
-    ----------
-    _hull_list: Stores the hull_list of shape x
-    """
-
-    n_options = 3
-
-    def __init__(self) -> None:
-        self._hull_list = [None for ii in range(2 ** self.n_options)]
-
-    @property
-    def global_margin(self):
-        """Shapely for global intersection-check."""
-        return self.get(global_frame=True, margin=True, reference_extended=False)
-
-    @property
-    def local_margin(self):
-        hull_ = self.get(global_frame=True, margin=True, reference_extended=True)
-        if not hull_:
-            hull_ = self.get(global_frame=True, margin=True, reference_extended=False)
-        return hull_
-
-    def transform_list_to_index(
-        self, global_frame: bool, margin: bool, reference_extended: bool = False
-    ) -> None:
-        """Chosse between:
-        global_frame (bool): local /global
-        margin (bool): no-margin / margin
-        reference_extended(bool): reference-not extended / reference_extended."""
-        arg_vals = np.array([global_frame, margin, reference_extended])
-        arg_base = 2 ** np.arange(arg_vals.shape[0])
-        return np.sum(arg_vals * arg_base)
-
-    def set(self, value: object, *args, **kwargs) -> None:
-        index = self.transform_list_to_index(*args, **kwargs)
-
-        self._hull_list[index] = value
-
-        # TODO: automatically delete when updating certains (e.g. local, no-margin, no-extension
-
-    def get(self, *args, **kwargs) -> object:
-        index = self.transform_list_to_index(*args, **kwargs)
-
-        return self._hull_list[index]
 
 
 class Obstacle(ABC):
@@ -115,7 +61,7 @@ class Obstacle(ABC):
         orientation=None,
         tail_effect=True,
         has_sticky_surface=True,
-        sf=1,
+        # sf=1,
         repulsion_coeff=1,
         reactivity=1,
         name=None,
@@ -155,14 +101,13 @@ class Obstacle(ABC):
 
         # Dimension of space
         self.dim = len(self.center_position)
-        self.d = len(self.center_position)  # TODO: depreciated -> remove
+        # self.d = len(self.center_position)  # TODO: depreciated -> remove
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
         # Margin
-        self.sf = sf  # TODO: depreciated -> remove
+        # self.sf = sf  # TODO: depreciated -> remove
         # self.delta_margin = delta_margin
-        self.margin_absolut = margin_absolut
         if sigma is not None:
             raise Exception("Remove / rename sigma argument.")
         self.sigma = 1  # TODO: rename sigma argument
@@ -182,8 +127,6 @@ class Obstacle(ABC):
         if self.timeVariant:
             self.func_xd = 0
             self.func_w = 0
-        # else:
-        # self.always_moving = always_moving
 
         if angular_velocity is None:
             if w is None:
@@ -263,7 +206,9 @@ class Obstacle(ABC):
         self.obs_polygon = None
 
         self.shapely = ObstacleHullsStorer()
+        self._margin_absolut = margin_absolut
 
+        
     def __del__(self):
         Obstacle.active_counter -= 1
 
@@ -741,14 +686,6 @@ class Obstacle(ABC):
     def draw_obstacle(self, n_resolution=20):
         """Create obstacle boundary points and stores them as attribute."""
         pass
-
-    def shapely_affine_trafo_to_global(self, shapely):
-        if self.orientation:
-            shapely = affinity.rotate(shapely, self.orientation * 180 / pi)
-        shapely = affinity.translate(
-            shapely, self.center_position[0], self.center_position[1]
-            )
-        return shapely
     
     def plot2D(
         self,
@@ -766,41 +703,28 @@ class Obstacle(ABC):
         outsidely_ = None
         
         if not self.is_reference_point_inside():
-            outsidely_ = self.shapely.get(
-                global_frame=True, margin=True, reference_extended=True)
-            breakpoint()
-            if outsidely_ is None:
-                outsidely_ = self.shapely.get(
-                    global_frame=False, margin=True, reference_extended=True)
-                
-                outsidely_ = self.shapely_affine_trafo_to_global(outsidely_)
+            outsidely_ = self.shapely.get_global(
+                margin=True, reference_extended=True,
+                position=self.center_position, orientation=self.orientation)
 
         elif self.margin_absolut:
-            outsidely_ = self.shapely.get(
-                global_frame=True, margin=True, reference_extended=False)
-
-            if outsidely_ is None:
-                outsidely_ = self.shapely.get(
-                    global_frame=False, margin=True, reference_extended=False)
+            outsidely_ = self.shapely.get_global(
+                margin=True, reference_extended=False,
+                position=self.center_position, orientation=self.orientation)
                 
-                outsidely_ = self.shapely_affine_trafo_to_global(outsidely_)
-                
-        if not outsidely_ is None:
-            outer_margin = np.array(insidely_.xy)
-
-            ax.plot(outer_margin[0, :], outer_margin[1, :], color="k--", linewidth=2)
-        
         # Get inside one
-        if self.reference_point_is_inside:
-            insidely_ = self.shapely.get(
-                global_frame=True, margin=False, reference_extended=False)
+        insidely_ = self.shapely.get_global(
+            margin=False, reference_extended=False,
+            position=self.center_position, orientation=self.orientation)
+
+        if outsidely_ is None:
+            outer_margin = np.array(insidely_.xy)
+            ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
+        else:
+            outer_margin = np.array(np.array(outsidely_)).T
+            ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
             
-            if insidely_ is None:
-                insidely_ = self.shapely.get(
-                    global_frame=False, margin=False, reference_extended=False)
-
-                insidely_ = self.shapely_affine_trafo_to_global(insidely_)
-
+        
         inner_margin = np.array(insidely_.xy)
 
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
