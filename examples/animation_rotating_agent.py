@@ -101,6 +101,9 @@ class DynamicalSystemAnimation:
                     if obs_w_multi_agent[obs]:
                         for agent in obs_w_multi_agent[obs]:
                             obs_vel += weights[obs][agent] * velocity[agent, :]
+                    else:
+                        obs_vel = np.array([0.0, 0.35])
+
                     angular_vel = np.zeros(num_agents_in_obs)
                     for agent in obs_w_multi_agent[obs]:
                         angular_vel[agent] = weights[obs][agent] * np.cross(
@@ -160,12 +163,16 @@ class DynamicalSystemAnimation:
 
 
 def multiple_robots():
-    obstacle_pos = np.array([[-2.0, 0.0], [1.5, 0.0]])
-    agent_pos = np.array([[-2.25, 0.0], [-1.75, 0.0]])
-    attractor_pos = np.array([[0.0, 0.25], [0.0, -0.25]])
+    center_point = 3.0
+    num_agent = 2
+    max_ax_len = 1.5
+    rel_dis = max_ax_len / (2 * (num_agent + 1))
+    obstacle_pos = np.array([[-center_point, 0.0], [-1.0, -2.0]])
+    agent_pos = np.array([[-(center_point+rel_dis), 0.0], [-(center_point-rel_dis), 0.0]])
+    attractor_pos = np.array([[1.0, rel_dis], [1.0, -rel_dis]])
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(Cuboid(
-        axes_length=[1.5, 0.6],
+        axes_length=[max_ax_len, 0.6],
         center_position=obstacle_pos[0],
         margin_absolut=0,
         orientation=0,
@@ -179,6 +186,7 @@ def multiple_robots():
         orientation=0,
         tail_effect=False,
         repulsion_coeff=1,
+        linear_velocity=np.array([0.0, 0.3]),
     ))
     initial_dynamics = [LinearSystem(
         attractor_position=attractor_pos[0],
@@ -197,7 +205,7 @@ def multiple_robots():
         obstacle_environment,
         obs_multi_agent,
         agent_pos,
-        x_lim=[-3, 3],
+        x_lim=[-4, 3],
         y_lim=[-3, 3],
         dt_step=0.05,
     )

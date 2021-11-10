@@ -153,9 +153,9 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
 
     def get_gamma_at_control_point(self, control_points, obs_eval, env):
         # TODO
-        gamma_values = np.zeros(len(self.obs_multi_agent[obs_eval]))
+        gamma_values = np.zeros(len(control_points))
 
-        for cp in self.obs_multi_agent[obs_eval]:
+        for cp in range(len(self.obs_multi_agent[obs_eval])):
             gamma_values[cp] = self.get_gamma_product_crowd(control_points[cp, :], env)
 
         return gamma_values
