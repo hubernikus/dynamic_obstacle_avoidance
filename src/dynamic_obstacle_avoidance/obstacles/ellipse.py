@@ -283,6 +283,7 @@ class Ellipse(Obstacle):
         self,
         position,
         in_global_frame=False,
+        with_reference_point_expansion=True,
         gamma_type=None,
         gamma_distance=None,
         inverted=None,
@@ -390,7 +391,8 @@ class Ellipse(Obstacle):
 
         return angle2refencePatch
 
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
+    def get_normal_direction(self, position, in_global_frame=False):
+        """Return normal direction."""
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -420,16 +422,6 @@ class Ellipse(Obstacle):
                 raise NotImplementedError()
 
             else:
-                # normal_distances = np.zeros(self.normal_vectors.shape[1])
-                # for ii in range(self.normal_vectors.shape[1]):
-                # normal_distances[ii] = self.normal_vector[:, ii].T.dot(position)
-
-                # normal_distances = normal_distances-self.normalDistance2center
-
-                # for ii in range(normal_distances.shape[0]):
-                # if not normal_distances[ii]:
-                # return self.normal_vector[:, 1-ii]
-
                 angle2referencePlane = self.get_angle2referencePatch(position)
                 weights = self.get_angle_weight(angle2referencePlane)
 
@@ -441,19 +433,8 @@ class Ellipse(Obstacle):
                     normalize_reference=True,
                 )
 
-        if normalize:
-            # TODO: can it be removed?
-            vec_norm = np.linalg.norm(normal_vector)
-            if vec_norm:  # nonzero
-                normal_vector = normal_vector / vec_norm
-
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector)
-
-        # Invert normal direction to be consistent!
-        # if self.dim==2:
-        normal_vector = (-1) * normal_vector
-
         return normal_vector
 
     def get_gamma_ellipse(

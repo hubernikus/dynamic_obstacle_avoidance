@@ -95,16 +95,8 @@ def get_relative_obstacle_velocity(
         linear_velocity = obs[it_obs].linear_velocity
 
         if velocity_only_in_positive_normal_direction:
-            if E_orth[:, 0, ii].dot(position - obs[it_obs].center_position) > 0:
-                # Normal is (at the time of implementation) pointing away from the obstacle.
-                # but this is expected to change (!)
-                raise Exception(
-                    "Normal direciton is not pointing along reference."
-                    + "-> change the sign of the inequality"
-                )
-
             lin_vel_local = (E_orth[:, :, ii]).T.dot(obs[it_obs].linear_velocity)
-            if (-1) * lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
+            if lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
                 # Obstacle is moving towards the agent
                 linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:

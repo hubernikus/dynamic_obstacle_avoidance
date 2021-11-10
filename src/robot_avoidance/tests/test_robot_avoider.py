@@ -160,7 +160,7 @@ class TestRobotAvoider(unittest.TestCase):
 
         my_robot.set_jacobian(function=_get_jacobian)
 
-        margin_absolut = 0.1
+        margin_absolut = 0.0
         obstacle_environment = ObstacleContainer()
         obstacle_environment.append(
             Cuboid(

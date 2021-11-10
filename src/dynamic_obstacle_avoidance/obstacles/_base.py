@@ -208,7 +208,8 @@ class Obstacle(ABC):
         self.shapely = ObstacleHullsStorer()
         self._margin_absolut = margin_absolut
 
-        
+        self._reference_point_is_inside = True
+
     def __del__(self):
         Obstacle.active_counter -= 1
 
@@ -257,13 +258,24 @@ class Obstacle(ABC):
 
     def is_reference_point_inside(self):
         warnings.warn("TODO: add reference_point and boundary.")
-        return (self.get_gamma(
-            self.reference_point, in_global_frame=False,
-            with_reference_point_expansion=False) < 1)
+        return (
+            self.get_gamma(
+                self.reference_point,
+                in_global_frame=False,
+                with_reference_point_expansion=False,
+            )
+            < 1
+        )
 
     @property
-    def center_dyn(self):  # TODO: depreciated -- delete
-        return self.reference_point
+    def reference_point_is_inside(self):
+        # Depreciated -> evalute in realtime
+        return self._reference_point_is_inside
+
+    @reference_point_is_inside.setter
+    def reference_point_is_inside(self, value):
+        # Depreciated -> evalute in realtime
+        self._reference_point_is_inside = value
 
     @property
     def global_reference_point(self):
@@ -552,6 +564,18 @@ class Obstacle(ABC):
             return matrix
         return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
 
+    @property
+    def margin_absolut(self):
+        return self._margin_absolut
+
+    @margin_absolut.setter
+    def margin_absolut(self, value):
+        self._margin_absolut = value
+
+        if not self.is_reference_point_inside():
+            self.extend_hull_around_reference()
+
+    # @abstractmethod
     def create_shapely(self):
         raise NotImplementedError()
 
@@ -595,98 +619,18 @@ class Obstacle(ABC):
     # Store five previous values
     # @lru_cache(maxsize=5)
     @abstractmethod
-    def get_gamma(self, position):
+    def get_gamma(self, position, with_reference_point_expansion=True):
         pass
-    
-    # def get_gamma(self, position, *args, **kwargs):
-        # """Get gamma value of obstacle."""
-        # if len(position.shape) == 1:
-            # position = np.reshape(position, (self.dim, 1))
 
-            # return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
+    def get_baoundary_normal_direction(self, *args, **kwargs):
+        return (-1) * self.get_normal_direction(*args, **kwargs)
 
-        # elif len(position.shape) == 2:
-            # return self._get_gamma(position, *args, **kwargs)
-
-        # else:
-            # ValueError("Triple dimensional position are unexpected")
-
-    def _get_gamma(
-        self,
-        position,
-        reference_point=None,
-        in_global_frame=False,
-        gamma_type="proportional",
-    ):
-        """Calculates the norm of the function.
-        Position input has to be 2-dimensional array"""
-        # TODO: depreciated
-        breakpoint()
-
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-            if reference_point is not None:
-                reference_point = self.transform_global2relative(reference_point)
-
-        if reference_point is None:
-            reference_point = self.local_reference_point
-        else:
-            if self.get_gamma(reference_point) > 0:
-                raise ValueError("Reference point is outside hull")
-
-        dist_position = np.linalg.norm(position, axis=0)
-        ind_nonzero = dist_position > 0
-
-        if not np.sum(ind_nonzero):  # only zero values
-            if self.is_boundary:
-                return np.ones(dist_position.shape) * sys.float_info.max
-            else:
-                return np.zeros(dist_position.shape)
-
-        gamma = np.zeros(dist_position.shape)
-        # radius = self._get_local_radius(position[:, ind_nonzero], reference_point)
-        # With respect to center. Is this ok?
-        radius = self._get_local_radius(position[:, ind_nonzero])
-
-        import pdb
-
-        pdb.set_trace()
-
-        if gamma_type == "proportional":
-            gamma[ind_nonzero] = dist_position[ind_nonzero] / radius[ind_nonzero]
-            if self.is_boundary:
-                gamma[ind_nonzero] = 1 / gamma[ind_nonzero]
-                gamma[~ind_nonzero] = sys.float_info.max
-
-        elif gamma_type == "linear":
-            if self.is_boundary:
-                raise NotImplementedError("Not implemented for other gamma types.")
-            else:
-                ind_outside = dist_position > radius
-
-                # import pdb; pdb.set_trace()
-                if np.sum(ind_outside):
-                    ind_ = ind_outside
-                    dd = dist_position[ind_]
-                    rr = radius[ind_]
-                    gamma[ind_] = 1 + (dd - rr)
-
-                if np.sum(~ind_outside):
-                    ind_ = np.logical_and(ind_nonzero, ~ind_outside)
-                    dd = dist_position[ind_]
-                    rr = radius[ind_]
-                    gamma[ind_] = 1 / (rr * rr / dd - rr + 1)
-
-        else:
-            raise NotImplementedError("Not implemented for other gamma types.")
-
-        return gamma
-
-    @abstractmethod
+    # @abstractmethod
     def draw_obstacle(self, n_resolution=20):
         """Create obstacle boundary points and stores them as attribute."""
+        # Outdated function - replaced with plot2D
         pass
-    
+
     def plot2D(
         self,
         ax,
@@ -701,30 +645,44 @@ class Obstacle(ABC):
             raise Exception("Only implemented for 2D case.")
 
         outsidely_ = None
-        
+
         if not self.is_reference_point_inside():
             outsidely_ = self.shapely.get_global(
-                margin=True, reference_extended=True,
-                position=self.center_position, orientation=self.orientation)
+                margin=True,
+                reference_extended=True,
+                position=self.center_position,
+                orientation=self.orientation,
+            )
 
         elif self.margin_absolut:
             outsidely_ = self.shapely.get_global(
-                margin=True, reference_extended=False,
-                position=self.center_position, orientation=self.orientation)
-                
+                margin=True,
+                reference_extended=False,
+                position=self.center_position,
+                orientation=self.orientation,
+            )
+
         # Get inside one
         insidely_ = self.shapely.get_global(
-            margin=False, reference_extended=False,
-            position=self.center_position, orientation=self.orientation)
+            margin=False,
+            reference_extended=False,
+            position=self.center_position,
+            orientation=self.orientation,
+        )
 
         if outsidely_ is None:
             outer_margin = np.array(insidely_.xy)
             ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
         else:
-            outer_margin = np.array(np.array(outsidely_)).T
+            warnings.warn("hasattr should be hidden")
+            if hasattr(outsidely_, "exterior"):
+                outer_margin = np.array(outsidely_.exterior).T
+
+            else:
+                outer_margin = np.array(outsidely_).T
+
             ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
-            
-        
+
         inner_margin = np.array(insidely_.xy)
 
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
@@ -733,7 +691,7 @@ class Obstacle(ABC):
             self.obs_polygon.set_color(fill_color)
 
             ax.add_patch(self.obs_polygon)
-            
+
             # Somehow only appears when additionally a 'plot is generated' (BUG?)
             ax.plot([], [])
 
@@ -750,15 +708,17 @@ class Obstacle(ABC):
             )
 
         if plot_reference_position:
-            if (self.reference_point is not None
-                and not np.isclose(LA.norm(self.reference_point), 0)):
+            if self.reference_point is not None and not np.isclose(
+                LA.norm(self.reference_point), 0
+            ):
                 ref_point = self.global_reference_point
                 ax.plot(
-                    ref_point[0], ref_point[1],
+                    ref_point[0],
+                    ref_point[1],
                     "k+",
                     markeredgewidth=4,
                     markersize=13,
-                    )
+                )
 
     def get_surface_derivative_angle_num(
         self,
@@ -866,15 +826,16 @@ class Obstacle(ABC):
             ]
         )
 
-    def set_reference_point(self, position, in_global_frame=False):  # Inherit
+    def set_reference_point(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> None:  # Inherit
         """Defines reference point.
         It is used to create reference direction for the modulation of the system."""
-
         if in_global_frame:
             position = self.transform_global2relative(position)
-
         self.reference_point = position
-        self.extend_hull_around_reference()
+        if not self.is_boundary:
+            self.extend_hull_around_reference()
 
     def extend_hull_around_reference(self):
         """Updates the obstacles such that they are star-shaped with respect to the reference
@@ -997,9 +958,7 @@ class Obstacle(ABC):
                 ],
                 weights=[k_orientation, (1 - k_orientation)],
             )
-
         self.timestamp = time_current
-
         self.draw_obstacle()  # Really needed?
 
         self.has_moved = True
@@ -1129,6 +1088,7 @@ class Obstacle(ABC):
         check_range=False,
         weight_pow=1,
     ):
+        # TODO: move to utils (?) / angle utils
         n_angles = np.array(angles).shape[0]
         if check_range:
             ind_low = angles <= min_angle
@@ -1178,39 +1138,21 @@ class Obstacle(ABC):
         # weights[~ind_positiveDistance] = 0
         return weights
 
-    def draw_reference_hull(self, normal_vector, position):
-        pos_abs = self.transform_relative2global(position)
-        norm_abs = self.transform_relative2global_dir(normal_vector)
+    def get_outwards_reference_direction(self, position, in_global_frame=False):
+        """Returns reference direction pointing away from obstacle.
+        At the reference point, a (dummy) vector of length one is returned."""
+        if in_global_frame:
+            ref_dir = position - self.center_position
+        else:
+            ref_dir = position
 
-        plt.quiver(
-            pos_abs[0],
-            pos_abs[1],
-            norm_abs[0],
-            norm_abs[1],
-            color="k",
-            label="Normal",
-        )
+        # Normal direction
+        norm_of_ref = LA.norm(ref_dir)
 
-        ref_dir = self.transform_relative2global_dir(
-            self.get_reference_direction(
-                position, in_global_frame=False, normalize=True
-            )
-        )
-
-        plt.quiver(
-            pos_abs[0],
-            pos_abs[1],
-            ref_dir[0],
-            ref_dir[1],
-            color="g",
-            label="Reference",
-        )
-
-        ref_abs = self.transform_relative2global(self.hull_edge)
-
-        for ii in range(2):
-            tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
-            plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], "k--")
+        if norm_of_ref:
+            return ref_dir / norm_of_ref
+        else:
+            return np.ones(self.dim) / self.dim
 
     def get_reference_direction(self, position, in_global_frame=False, normalize=True):
         """Get direction from 'position' to the reference point of the obstacle.

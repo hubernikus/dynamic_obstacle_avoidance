@@ -12,7 +12,7 @@ import numpy as np
 from numpy import linalg as LA
 
 from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse, Polygon
-from dynamic_obstacle_avoidance.containers import GradientContainer, ShapelyContainer
+from dynamic_obstacle_avoidance.containers import ShapelyContainer
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     plot_obstacles,
@@ -150,6 +150,9 @@ def test_ellipse_wall_intersection(visualize=False):
         plot_obstacles(ax, obs_list, x_lim, y_lim)
 
         for obs in obs_list:
+            if obs.is_boundary:
+                continue
+
             ref_point = obs.global_reference_point
             plt.plot(ref_point[0], ref_point[1], "k+")
 
@@ -203,7 +206,7 @@ def test_automated_reference_point(visualize=False):
     x_range = [-1, 11]
     y_range = [-1, 11]
 
-    obs_list = GradientContainer()
+    obs_list = ShapelyContainer()
 
     obs_xaxis = [x_range[0] + 1, x_range[1] - 1]
     obs_yaxis = [y_range[0] + 1, y_range[1] - 1]
@@ -281,11 +284,11 @@ def test_automated_reference_point(visualize=False):
 
 
 if (__name__) == "__main__":
-    test_two_ellipses_nontouching(visualize=True)
-    test_two_ellipses_touching(visualize=True)
+    # test_two_ellipses_nontouching(visualize=True)
+    # test_two_ellipses_touching(visualize=True)
 
-    test_ellipse_wall_inside(visualize=True)
-    test_ellipse_wall_intersection(visualize=True)
+    # test_ellipse_wall_inside(visualize=True)
+    # test_ellipse_wall_intersection(visualize=True)
 
     # test_polygons_close(visualize=True)
     # test_automated_reference_point(visualize=True)

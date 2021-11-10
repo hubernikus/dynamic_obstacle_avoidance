@@ -213,7 +213,7 @@ class StarshapedFlower(Obstacle):
 
         return Gamma
 
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
+    def get_normal_direction(self, position, in_global_frame=False):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -236,27 +236,7 @@ class StarshapedFlower(Obstacle):
                 ]
             )
         )
-        normal_vector = (-1) * normal_vector
-
-        if normalize:
-            mag_vector = np.linalg.norm(normal_vector)
-            if mag_vector:  # Nonzero
-                normal_vector = normal_vector / mag_vector
-
-        if False:
-            # TODO: remove after DEBUG
-            import matplotlib.pyplot as plt  # Remove after debugging
-
-            # self.draw_reference_hull(normal_vector, position)
-            pos_abs = self.transform_relative2global(position)
-            norm_abs = self.transform_relative2global_dir(normal_vector)
-            plt.quiver(pos_abs[0], pos_abs[1], norm_abs[0], norm_abs[1], color="g")
-            ref_abs = self.get_reference_direction(position)
-            ref_abs = self.transform_relative2global_dir(ref_abs)
-            plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color="k")
-
-            plt.ion()
-            plt.show()
+        normal_vector = normal_vector / LA.norm(normal_vector)
 
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector)

@@ -5,6 +5,8 @@ import warnings
 from math import pi
 
 from shapely import affinity
+from shapely.geometry import Point
+
 import numpy as np
 
 
@@ -13,6 +15,7 @@ class ObstacleHullsStorer:
 
     Attributes
     ----------
+    n_options (int)
     _hull_list: Stores the hull_list of shape x
     """
 
@@ -56,20 +59,39 @@ class ObstacleHullsStorer:
 
         return self._hull_list[index]
 
-    def get_global(self, position: np.ndarray, orientation: float, *args, **kwargs) -> object:
-        """ Transform 2D shapely object from local to global. """
+    def get_global(
+        self, position: np.ndarray, orientation: float, *args, **kwargs
+    ) -> object:
+        """Transform 2D shapely object from local to global."""
         shapely_ = self.get(*args, **kwargs, global_frame=True)
-        
+
         if shapely_ is None:
             shapely_ = self.get(*args, **kwargs, global_frame=False)
-            
+
             if shapely_ is None:
                 raise Exception("Value not found.")
 
         if orientation:
-            shapely_ = affinity.rotate(shapely_, orientation * 180 / pi)
-        shapely_ = affinity.translate(
-            shapely_, position[0], position[1]
+            shapely_ = affinity.rotate(
+                shapely_, orientation * 180 / pi, origin=Point(0, 0)
             )
-        
+        shapely_ = affinity.translate(shapely_, position[0], position[1])
+
         return shapely_
+
+    def get_local_edge_points(self) -> np.array:
+        """Return an numpy-array of the edges data. First checking if the extended_reference
+        exists and continuing to margin-only."""
+        shapely_ = self.get(global_frame=False, margin=True, reference_extended=True)
+
+        if shapely_ is None:
+            shapely_ = self.get(
+                global_frame=False, margin=True, reference_extended=False
+            )
+
+        if shapely_.geom_type == "Polygon":
+            xy_data = np.array(shapely_.exterior).T
+        else:
+            xy_data = np.array(shapely_).T
+
+        return xy_data

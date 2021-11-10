@@ -90,9 +90,7 @@ def compute_diagonal_matrix(
 
 def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
     """Compute decomposition matrix and orthogonal matrix to basis"""
-    normal_vector = obs.get_normal_direction(
-        x_t, normalize=True, in_global_frame=in_global_frame
-    )
+    normal_vector = obs.get_normal_direction(x_t, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(
         x_t, in_global_frame=in_global_frame
     )
@@ -286,11 +284,10 @@ def obs_avoidance_interpolation_moving(
     rel_velocity_norm = np.linalg.norm(relative_velocity)
     if rel_velocity_norm:
         rel_velocity_normalized = initial_velocity / rel_velocity_norm
-        
+
     else:
         # Zero velocity
         return xd_obs
-        
 
     # Keep either way, since avoidance from attractor might be needed
     relative_velocity_hat = np.zeros((dim, N_obs))
@@ -386,7 +383,7 @@ def obs_avoidance_interpolation_moving(
             null_direction=rel_velocity_normalized,
             directions=relative_velocity_hat_normalized,
             weights=weight,
-            )
+        )
 
     else:
         # TODO: Better solution / smooth switching when velocity is nonzero

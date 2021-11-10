@@ -14,17 +14,13 @@ from dynamic_obstacle_avoidance.obstacles import DoubleBlob
 
 class TestDoubleBlob(unittest.TestCase):
     def test_double_blob_creation(self):
-        double_blob = DoubleBlob(
-            a_value=1, b_value=1.1, center_position=[0, 3]
-        )
+        double_blob = DoubleBlob(a_value=1, b_value=1.1, center_position=[0, 3])
 
         # Test draw obstacle function
-        double_blob.draw_obstacle()
+        # double_blob.draw_obstacle()
 
     def test_gamma_of_double_blob(self):
-        double_blob = DoubleBlob(
-            a_value=1, b_value=1.1, center_position=[0, 3]
-        )
+        double_blob = DoubleBlob(a_value=1, b_value=1.1, center_position=[0, 3])
 
         position = np.array([-1.41, 3.99])
         gamma = double_blob.get_gamma(position, in_global_frame=True)
@@ -44,9 +40,7 @@ class TestDoubleBlob(unittest.TestCase):
         y_lim = [-0.3, 6.3]
         dim = 2
 
-        obs = DoubleBlob(
-            a_value=1, b_value=1.1, center_position=np.array([0.0, 3.0])
-        )
+        obs = DoubleBlob(a_value=1, b_value=1.1, center_position=np.array([0.0, 3.0]))
 
         n_grid = 10
 
@@ -57,9 +51,7 @@ class TestDoubleBlob(unittest.TestCase):
         normals = np.zeros(positions.shape)
         ref_dirs = np.zeros(positions.shape)
 
-        obs.get_normal_direction(
-            position=np.array([-1.61, 3.36]), in_global_frame=True
-        )
+        obs.get_normal_direction(position=np.array([-1.61, 3.36]), in_global_frame=True)
 
         for ix in range(10):
             for iy in range(10):
