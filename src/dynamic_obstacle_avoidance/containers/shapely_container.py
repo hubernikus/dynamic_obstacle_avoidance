@@ -60,13 +60,13 @@ class ShapelyContainer(ObstacleContainer):
 
     @property
     def index_wall(self):
-        self.get_wall_index()
-        
+        return self.get_wall_index()
+
     def get_wall_index(self):
-        """ Look for the index of the wall and return it. """
+        """Look for the index of the wall and return it."""
         for it, obs in zip(range(self.n_obstacles), self._obstacle_list):
             if obs.is_boundary:
-                return  it
+                return it
 
     def single_boundary_and_nonequal_check(self, ii, jj):
         if ii == jj:
@@ -122,9 +122,8 @@ class ShapelyContainer(ObstacleContainer):
         intersection_center = np.array(intersections.centroid.coords.xy).squeeze()
 
         self._boundary_reference_points[:, ii, jj] = intersection_center
-
-        if not self[jj].is_boundary:
-            self._boundary_reference_points[:, jj, ii] = intersection_center
+        # Store it for boundaries, too
+        self._boundary_reference_points[:, jj, ii] = intersection_center
 
         self._distance_matrix[ii, jj] = 0
 
@@ -184,32 +183,32 @@ class ShapelyContainer(ObstacleContainer):
         return weight
 
     def update_intersecting_obstacles(self):
-        """ Updates the reference points of the intersecintg obstacles.
-        and return a (bool) list which indicates which obstacles are intersecting. """
+        """Updates the reference points of the intersecintg obstacles.
+        and return a (bool) list which indicates which obstacles are intersecting."""
         intersecting_obstacles = np.arange(len(self))
-        
+
         intersection_matrix = IntersectionMatrix(n_obs=len(self))
-        
+
         for ii in range(len(self)):
-            for jj in range(ii+1, len(self)):
+            for jj in range(ii + 1, len(self)):
                 if self._distance_matrix[ii, jj]:
                     # Nonzero -> nonintersecting
                     continue
-                intersection_matrix[ii, jj] = self._boundary_reference_points[ii, jj]
-                
+                intersection_matrix[ii, jj] = self._boundary_reference_points[:, ii, jj]
+
                 intersecting_obstacles[ii] = True
                 intersecting_obstacles[jj] = True
-                
+
         # TODO: the functiions bellow should be member-methods
         intersecting_obs = get_intersection_cluster(intersection_matrix, self)
-        get_single_reference_point(self, intersecting_obs, intersection_matrix)
+        # intersecting_obs = np.array(intersecting_obs).flatten()
 
         return intersecting_obstacles
 
     def update_reference_points(self):
         # todo: check for all if have moved
         for ii in range(self.n_obstacles):
-            if self[ii].has_moved or self[ii].shapely is none:
+            if self[ii].has_moved or self[ii].shapely is None:
                 self[ii].create_shapely()
 
         for ii in range(self.n_obstacles):
@@ -248,7 +247,7 @@ class ShapelyContainer(ObstacleContainer):
             weights = self.get_distance_weight(
                 distance_list, distance_margin=self.distance_margin
             )
-                
+
             weighted_ref_point = np.sum(
                 np.array(boundary_ref_points)
                 * np.tile(weights, (boundary_ref_points.shape[0], 1)),
