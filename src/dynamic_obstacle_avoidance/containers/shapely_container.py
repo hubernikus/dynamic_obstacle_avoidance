@@ -1,15 +1,17 @@
 """
 Container encapsulates all obstacles.
-Gradient container finds the dynamic reference point through gradient descent.
+Shapely Container finds the dynamic reference point through gradient descent.
 """
 # Author: "LukasHuber"
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
 import warnings, sys
-import numpy as np
 import copy
 import time
+
+import numpy as np
+from numpy import linalg as LA
 
 from shapely.ops import nearest_points
 
@@ -19,13 +21,12 @@ from dynamic_obstacle_avoidance.obstacles import CircularObstacle
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
-
-# BUGS / IMPROVEMENTS:
-#    - Bug-fix (with low priority),
-#            the automatic-extension of the hull of the ellipse does not work
-#    - Gradient descent: change function
+from dynamic_obstacle_avoidance.avoidance.obs_common_section import (
+    DistanceMatrix,
+    IntersectionMatrix,
+    get_single_reference_point,
+    get_intersection_cluster,
+)
 
 
 class ShapelyContainer(ObstacleContainer):
@@ -59,13 +60,13 @@ class ShapelyContainer(ObstacleContainer):
 
     @property
     def index_wall(self):
-        ind_wall = None
-
+        self.get_wall_index()
+        
+    def get_wall_index(self):
+        """ Look for the index of the wall and return it. """
         for it, obs in zip(range(self.n_obstacles), self._obstacle_list):
             if obs.is_boundary:
-                ind_wall = it
-                break
-        return ind_wall
+                return  it
 
     def single_boundary_and_nonequal_check(self, ii, jj):
         if ii == jj:
@@ -182,10 +183,33 @@ class ShapelyContainer(ObstacleContainer):
             weight = weight / np.sum(weight)
         return weight
 
+    def update_intersecting_obstacles(self):
+        """ Updates the reference points of the intersecintg obstacles.
+        and return a (bool) list which indicates which obstacles are intersecting. """
+        intersecting_obstacles = np.arange(len(self))
+        
+        intersection_matrix = IntersectionMatrix(n_obs=len(self))
+        
+        for ii in range(len(self)):
+            for jj in range(ii+1, len(self)):
+                if self._distance_matrix[ii, jj]:
+                    # Nonzero -> nonintersecting
+                    continue
+                intersection_matrix[ii, jj] = self._boundary_reference_points[ii, jj]
+                
+                intersecting_obstacles[ii] = True
+                intersecting_obstacles[jj] = True
+                
+        # TODO: the functiions bellow should be member-methods
+        intersecting_obs = get_intersection_cluster(intersection_matrix, self)
+        get_single_reference_point(self, intersecting_obs, intersection_matrix)
+
+        return intersecting_obstacles
+
     def update_reference_points(self):
-        # TODO: check for all if have moved
+        # todo: check for all if have moved
         for ii in range(self.n_obstacles):
-            if self[ii].has_moved or self[ii].shapely is None:
+            if self[ii].has_moved or self[ii].shapely is none:
                 self[ii].create_shapely()
 
         for ii in range(self.n_obstacles):
@@ -200,14 +224,14 @@ class ShapelyContainer(ObstacleContainer):
 
             self[ii].has_moved = False
 
-        for ii in range(self.n_obstacles):
+        intersecting_obstacles = self.update_intersecting_obstacles()
+        for ii in np.arange(self.n_obstacles)[np.logical_not(intersecting_obstacles)]:
             distance_list = [
                 self.get_distance(ii, jj) if ii != jj else 2 * self.distance_margin
                 for ii in range(self.n_obstacles)
             ]
-            # Make array for easier comparison
+            # make array for easier comparison
             distance_list = np.array(distance_list)
-
             ind_nonzero = distance_list < self.distance_margin
 
             if not any(ind_nonzero):
@@ -224,6 +248,7 @@ class ShapelyContainer(ObstacleContainer):
             weights = self.get_distance_weight(
                 distance_list, distance_margin=self.distance_margin
             )
+                
             weighted_ref_point = np.sum(
                 np.array(boundary_ref_points)
                 * np.tile(weights, (boundary_ref_points.shape[0], 1)),

@@ -91,7 +91,7 @@ class DistanceMatrix:
         )
 
 
-class Intersection_matrix(DistanceMatrix):
+class IntersectionMatrix(DistanceMatrix):
     """
     Matrix uses less space this way this is useful with many obstacles! e.g. dense crowds
     Symmetric matrix with zero as diagonal values
@@ -160,6 +160,9 @@ class Intersection_matrix(DistanceMatrix):
                 bool_matrix[ii, jj] = bool_matrix[jj, ii] = self.is_intersecting(ii, jj)
 
         return bool_matrix
+
+class Intersection_matrix(IntersectionMatrix):
+    pass
 
 
 def obs_common_section(obs):
@@ -377,7 +380,7 @@ def get_intersections_obstacles(
     """
 
     # at the moment only solution in 2-dimensions is implemented
-    # TODO: cleanup comments etc.
+
     # Depreciated? Remove?
     warnings.warn("Depreciated --- Remove!!!")
 

@@ -168,7 +168,7 @@ def test_ellipse_wall_intersection(visualize=False):
     ), "Reference point is outside"
 
 
-def test_polygons_close(visualize=True):
+def test_polygons_close(visualize=False):
     obs_list = ShapelyContainer()
 
     obs_list.append(
@@ -261,7 +261,7 @@ def test_automated_reference_point(visualize=False):
         plot_obstacles(ax, obs_list, x_range, y_range, showLabel=False)
 
         for ii in [2, 3]:
-            print(f"obs{ii} axes lengths ", obs_list[ii].axes_length)
+            print(f"obs{ii} axes lengths {obs_list[ii].axes_length}")
 
     if True:
         # Stop here temporarily
@@ -270,7 +270,7 @@ def test_automated_reference_point(visualize=False):
     # First ellipse is connected to the wall
     assert (
         obs_list[0].get_gamma(obs_list[1].reference_point, in_global_frame=True) < 1
-    ), print("Reference point ought be inside the wall.")
+        ), f"Reference point ought be inside the wall."
 
     ii = 1
     assert LA.norm(obs_list[ii].local_reference_point) < np.max(
@@ -280,7 +280,60 @@ def test_automated_reference_point(visualize=False):
     i = 2
     assert LA.norm(obs_list[ii].local_reference_point) < np.max(
         obs_list[ii].axes_length
-    ), print(f"Reference point is expected close to the ellipse {ii}.")
+    ), f"Reference point is expected close to the ellipse {ii}."
+
+
+def three_ellipses_intersections(visualize=True):
+    obs_list = ShapelyContainer()
+    obs_list.append(
+        Ellipse(center_position=np.array([0, 0]), axes_length=np.array([1, 2]))
+    )
+    obs_list.append(
+        Ellipse(center_position=np.array([3, 0]), axes_length=np.array([1.3, 0.8]))
+    )
+    obs_list.append(
+        Ellipse(center_position=np.array([2, -0.3]), axes_length=np.array([1.3, 0.8]))
+    )
+    
+    obs_list.update_reference_points()
+
+    if visualize:
+        fig, ax = plt.subplots()
+
+        x_lim = [-2, 6]
+        y_lim = [-3, 3]
+
+        plot_obstacles(ax, obs_list, x_lim, y_lim)
+
+        for obs in obs_list:
+            ref_point = obs.global_reference_point
+            plt.plot(ref_point[0], ref_point[1], "k+")
+
+
+def ellipses_and_wall_intersection(visualize=True):
+    obs_list = ShapelyContainer()
+    obs_list.append(
+        Ellipse(center_position=np.array([0, 0]), axes_length=np.array([3, 2]),
+                is_boundary=True)
+    )
+    obs_list.append(
+        Ellipse(center_position=np.array([3, 0]), axes_length=np.array([1.3, 0.8]))
+    )
+    
+    obs_list.update_reference_points()
+
+    if visualize:
+        fig, ax = plt.subplots()
+
+        x_lim = [-2, 6]
+        y_lim = [-3, 3]
+
+        plot_obstacles(ax, obs_list, x_lim, y_lim)
+
+        for obs in obs_list:
+            ref_point = obs.global_reference_point
+            plt.plot(ref_point[0], ref_point[1], "k+")
+
 
 
 if (__name__) == "__main__":
@@ -291,6 +344,11 @@ if (__name__) == "__main__":
     # test_ellipse_wall_intersection(visualize=True)
 
     # test_polygons_close(visualize=True)
-    test_automated_reference_point(visualize=True)
+    # test_automated_reference_point(visualize=True)
+
+    # three_ellipses_intersections(visualize=True)
+    ellipses_and_wall_intersection(visualize=True)
+    two_ellipses_and_wall_intersection(visualize=True)
+
 
     pass
