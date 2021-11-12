@@ -179,15 +179,15 @@ def multiple_robots():
         tail_effect=False,
         repulsion_coeff=1,
     ))
-    obstacle_environment.append(Ellipse(
-        axes_length=[0.6, 0.6],
-        center_position=obstacle_pos[1],
-        margin_absolut=0.4,
-        orientation=0,
-        tail_effect=False,
-        repulsion_coeff=1,
-        linear_velocity=np.array([0.0, 0.3]),
-    ))
+    # obstacle_environment.append(Ellipse(
+    #     axes_length=[0.6, 0.6],
+    #     center_position=obstacle_pos[1],
+    #     margin_absolut=0.4,
+    #     orientation=0,
+    #     tail_effect=False,
+    #     repulsion_coeff=1,
+    #     linear_velocity=np.array([0.0, 0.3]),
+    # ))
     initial_dynamics = [LinearSystem(
         attractor_position=attractor_pos[0],
         maximum_velocity=1, distance_decrease=0.3
@@ -198,7 +198,8 @@ def multiple_robots():
         )
     ]
 
-    obs_multi_agent = {0: [0, 1], 1: []}
+    # obs_multi_agent = {0: [0, 1], 1: []}
+    obs_multi_agent = {0: [0, 1]}
 
     DynamicalSystemAnimation().run(
         initial_dynamics,
