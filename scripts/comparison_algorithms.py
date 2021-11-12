@@ -16,7 +16,7 @@ from vartools.dynamical_systems import LinearSystem
 
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon, Cuboid
-from dynamic_obstacle_avoidance.containers import GradientContainer
+from dynamic_obstacle_avoidance.containers import ShapelyContainer
 from dynamic_obstacle_avoidance.metric_evaluation import MetricEvaluator
 from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
 from dynamic_obstacle_avoidance.avoidance import (
@@ -27,7 +27,6 @@ from dynamic_obstacle_avoidance.avoidance import (
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,
 )
-
 
 plt.close("all")
 plt.ion()
@@ -131,7 +130,6 @@ class DynamicEllipse(Ellipse):
         # Random change of axes
         self.axes_length = self.axes_length
 
-        # if False:
         for ii in range(self.dim):
             delta_vel_range = [
                 self.axis_range[0] - self.axes_length[ii],
@@ -318,7 +316,7 @@ def compare_algorithms_random(
     x_range = [-1, 11]
     y_range = [-1, 11]
 
-    obs_list = GradientContainer()
+    obs_list = ShapelyContainer()
 
     obs_xaxis = [x_range[0] + 1, x_range[1] - 1]
     obs_yaxis = [y_range[0] + 1, y_range[1] - 1]
@@ -435,11 +433,11 @@ def compare_algorithms_random(
         if position_is_in_free_space(start_position, obs_list):
             start_point_found = True
             break
-        
+
     if not start_point_found:
         warnings.warn("No free position found")
         return
-        
+
     # Define different obstacle avoidance agents
     agents = []
     agents.append(
@@ -486,11 +484,14 @@ def compare_algorithms_random(
     ii = 0
     while ii < max_it:
         # Iterate
+        print(f"it={ii}")
         ii += 1
         # for ii in range(max_it):
         for obs in obs_list:
             if obs.is_dynamic:
                 obs.update_step()
+
+        obs_list.update_reference_points()
 
         if visualize_scene:
             ax.cla()
@@ -504,12 +505,12 @@ def compare_algorithms_random(
                 saveFigure=False,
                 obs_avoidance_func=obs_avoidance_interpolation_moving,
                 # noTicks=False,
-                automatic_reference_point=True,
-                # show_streamplot=False,
-                draw_vectorField=False,
+                automatic_reference_point=False,
+                draw_vectorField=True,
                 show_streamplot=False,
                 fig_and_ax_handle=(fig, ax),
                 normalize_vectors=False,
+                point_grid=10,
             )
 
             if True:
@@ -527,7 +528,6 @@ def compare_algorithms_random(
                         plt.plot(
                             obs.position_list[0, :], obs.position_list[1, :], "k--"
                         )
-
         for agent in agents:
             # initial_velocity = linear_ds_max_vel(
             # position=agent.position, attractor=attractor_position, vel_max=1.0)
@@ -544,6 +544,8 @@ def compare_algorithms_random(
                     "--",
                     label=agent.name,
                 )
+
+        breakpoint()
 
         if visualize_scene and show_legend:
             plt.legend(loc="center right")
@@ -579,17 +581,14 @@ def compare_algorithms_random(
     for agent in agents:
         agent_metrics.append(agent.evaluate_metric(delta_time=delta_time))
 
-    breakpoint()
-
     if plot_last_image and not show_legend:
         # Return legend label
         return [agent.line_handle for agent in agents]
-
     else:
         return agent_metrics, initial_distance
 
 
-def multiple_random_runs(num_runs=2):
+def multiple_random_runs(num_runs=3, visualize=False):
     """What is happening."""
     # First one just to get a 'default-metric'
     num_agent_type = 3
@@ -618,7 +617,7 @@ def multiple_random_runs(num_runs=2):
     while len(list_initial_distance) == 0 or ii < num_runs:
         ii += 1
         agent_metrics, initial_distance = compare_algorithms_random(
-            visualize_scene=False
+            visualize_scene=visualize,
         )
 
         # if all([agent['has_converged'] for agent in agent_metrics]):
@@ -798,7 +797,7 @@ def evaluation_metrics(metrics):
 def compare_algorithms_plot():
     """ """
     # create empty obstacle list
-    obs = GradientContainer()
+    obs = ShapelyContainer()
 
     obs.append(
         Ellipse(
@@ -925,12 +924,17 @@ def comparison_subplots(
 
 
 if (__name__) == "__main__":
-    # Visual evaluation with four plots
-    if True:
+
+    if False:
+        # Visual evaluation with three plots
         # comparison_subplots(rand_seed_0=9, save_figure=False)
         comparison_subplots(rand_seed_0=56, save_figure=False)
         # comparison_subplots(rand_seed_0=56, save_figure=False)
 
+    if True:
+        # Visualize 1 run
+        np.random.seed(2)
+        metrics_tuple = multiple_random_runs(num_runs=1, visualize=True)
     # Numerical evaluation
     if False:
         # Specific seed is chosen for 'replicability of numbers' of report

@@ -546,7 +546,7 @@ class Polygon(Obstacle):
             raise NotImplementedError("Not defined for boundary")
 
         reference_point_temp = self.get_reference_point_with_margin()
-        
+
         if (
             self.get_gamma(
                 reference_point_temp,

@@ -389,7 +389,47 @@ def two_ellipses_and_wall_intersection(visualize=True):
         < 1
     ), f"Reference point ought to be inside the wall."
 
+
+def two_ellipses_and_wall_partial_intersection(visualize=True):
+    obs_list = ShapelyContainer()
+    obs_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([3, 5]),
+            is_boundary=True,
+        )
+    )
+    obs_list.append(
+        Ellipse(center_position=np.array([3, 0]), axes_length=np.array([1.3, 0.8]))
+    )
+
+    obs_list.append(
+        Ellipse(center_position=np.array([-1, 0]), axes_length=np.array([0.8, 1.8]))
+    )
+
     obs_list.update_reference_points()
+
+    if visualize:
+        fig, ax = plt.subplots()
+
+        x_lim = [-2, 6]
+        y_lim = [-3, 3]
+
+        plot_obstacles(ax, obs_list, x_lim, y_lim)
+
+        for obs in obs_list:
+            ref_point = obs.global_reference_point
+            plt.plot(ref_point[0], ref_point[1], "k+")
+
+    assert (
+        obs_list[0].get_gamma(obs_list[1].global_reference_point, in_global_frame=True)
+        < 1
+    ), f"Reference point ought to be inside the wall."
+
+    assert (
+        obs_list[0].get_gamma(obs_list[2].global_reference_point, in_global_frame=True)
+        > 1
+    ), f"Reference point ought to be inside the wall."
 
 
 if (__name__) == "__main__":
@@ -404,7 +444,9 @@ if (__name__) == "__main__":
 
     # three_ellipses_intersections(visualize=True)
 
-    ellipses_and_wall_intersection(visualize=True)
+    # ellipses_and_wall_intersection(visualize=True)
     # two_ellipses_and_wall_intersection(visualize=True)
+
+    two_ellipses_and_wall_partial_intersection(visualize=True)
 
     pass

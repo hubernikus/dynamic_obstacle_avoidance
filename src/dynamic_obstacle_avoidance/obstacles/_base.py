@@ -48,12 +48,39 @@ class Obstacle(ABC):
     # TODO: clean up & cohesion vs inhertiance! (decouble /lighten class)
 
     def __repr__(self):
+        repr_str = (
+            f"{type(self).__name__}(\n"
+            + f"center_position=np.{repr(self.center_position)},\n"
+        )
+
+        if self.orientation:
+            repr_str += f"orientation={float(self.orientation)},\n"
+
+        if LA.norm(self.linear_velocity):
+            repr_str += f"linear_velocity=np.{repr(self.linear_velocity)},\n"
+
+        if LA.norm(self.angular_velocity):
+            repr_str += f"angular_velocity={repr(float(self.angular_velocity))},\n"
+
         if self.is_boundary:
-            return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
-        else:
-            return "Obstacle <<{}>> is of Type  <{}>".format(
-                self.name, type(self).__name__
-            )
+            repr_str += f"is_boundary={self.is_boundary},\n"
+
+        if hasattr(self, "axes_length"):
+            repr_str += f"axes_length=np.{repr(self.axes_length)},\n"
+
+        elif hasattr(self, "edge_points"):
+            repr_str += f"edge_points=np.{repr(self.edge_points)},\n"
+
+        repr_str += ")\n"
+
+        return repr_str
+
+        # if self.is_boundary:
+        # return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
+        # else:
+        # return "Obstacle <<{}>> is of Type  <{}>".format(
+        # self.name, type(self).__name__
+        # )
 
     def __init__(
         self,
@@ -82,7 +109,6 @@ class Obstacle(ABC):
         gamma_distance=None,
         sigma=None,
         relative_hull_extension_margin=0.1,
-
     ):
 
         if name is None:
@@ -248,19 +274,18 @@ class Obstacle(ABC):
             self._relative_reference_point = self.transform_global2relative(value)
 
     def get_reference_point_with_margin(self):
-        """ Get reference point projected with the additional margin (in the local frame)."""
+        """Get reference point projected with the additional margin (in the local frame)."""
         ref_norm = LA.norm(self.reference_point)
-        
+
         if not ref_norm:
             return self.reference_point
 
         dist_max = self.get_maximal_distance() * self.relative_hull_extension_margin
-        
+
         reference_point_temp = self.reference_point * (1 + dist_max / ref_norm)
-        
+
         return reference_point_temp
-        
-        
+
     def is_reference_point_inside(self):
         ref_extended = self.get_reference_point_with_margin()
         return (
@@ -1118,18 +1143,22 @@ class Obstacle(ABC):
         # weights[~ind_positiveDistance] = 0
         return weights
 
-    def get_outwards_reference_direction(self, position: np.ndarray, in_global_frame: bool = False) -> np.ndarray:
+    def get_outwards_reference_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
-        return (-1)*self.get_reference_direction(position, in_global_frame)
-    
-    def get_reference_direction(self, position: np.ndarray, in_global_frame: bool = False) -> np.ndarray:
+        return (-1) * self.get_reference_direction(position, in_global_frame)
+
+    def get_reference_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
         if in_global_frame:
-            ref_dir =  self.center_position - position
+            ref_dir = self.center_position - position
         else:
-            ref_dir = (-1)*position
+            ref_dir = (-1) * position
 
         # Normal direction
         norm_of_ref = LA.norm(ref_dir)
