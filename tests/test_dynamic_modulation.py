@@ -62,7 +62,7 @@ def test_vectorfield_inside_multiagent(visualize=False):
     tt = time.time()
     obs_list.update_reference_points()
     dt = time.time() - tt
-    print(f"Time for automated reference: {dt*1000}ms")
+    print(f"Time for automated reference point: {dt*1000}ms")
 
     attractor_position = np.array([8.5, 1.3])
 
@@ -96,6 +96,7 @@ def test_vectorfield_inside_multiagent(visualize=False):
     fig, ax = plt.subplots(num=1, figsize=(8, 6))
     ax.plot(position_list[0, :], position_list[1, :], "r--", linewidth=4)
 
+    print("Doing Dynamic.")
     Simulation_vectorFields(
         x_range,
         y_range,
@@ -113,7 +114,7 @@ def test_vectorfield_inside_multiagent(visualize=False):
         point_grid=50,
     )
 
-    print("Doing Repulsion.")
+    print("Doing Orthogonal.")
     Simulation_vectorFields(
         x_range,
         y_range,
