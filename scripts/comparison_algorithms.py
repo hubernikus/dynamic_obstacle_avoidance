@@ -1,5 +1,4 @@
 #!/USSR/bin/python3
-
 ''' Script to show lab environment on computer '''
 
 import warnings

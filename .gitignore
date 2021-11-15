@@ -8,8 +8,9 @@ figures/**
 data/**
 **/*.bag
 
-
-
 # scripts/*.png
 # scripts/*.pdf
 # scripts/*.gif
+
+# Virtual environment
+.venv/*
