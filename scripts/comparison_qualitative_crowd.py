@@ -1,6 +1,5 @@
 #!/USSR/bin/python3
 ''' Script to show lab environment on computer '''
-
 import warnings
 import copy
 
@@ -45,8 +44,9 @@ class DynamicSimulation():
             self.animation_paused = True
 
     def run(self, start_position,
-            it_max=100, dt_simu=0.1, dt_sleep=0.1,
+            it_max=200, dt_simu=0.08, dt_sleep=0.05,
             x_lim=[-3.5, 3.5], y_lim=[-1.0, 11],
+            create_video=True,
             ):
         """ """
         evaluation_funcs = [obs_avoidance_interpolation_moving,
@@ -60,12 +60,15 @@ class DynamicSimulation():
         dim = 2
 
         trajectories = np.zeros((dim, it_max+1, n_methods))
-        fig, axs = plt.subplots(1, n_methods, figsize=(12, 5), num=n_methods)
+        fig, axs = plt.subplots(1, n_methods, figsize=(16, 8), num=n_methods)
         cid = fig.canvas.mpl_connect("button_press_event", self.on_click)
         
         for aa in range(n_methods):
             trajectories[:, 0, aa] = start_position
 
+        obj_list = []
+
+        im_list = []
         ii = 0
         while (ii < it_max):
             if self.animation_paused:
@@ -89,21 +92,21 @@ class DynamicSimulation():
                     # Skip loop
                     trajectories[:, ii+1, aa] = trajectories[:, ii, aa]
                     # print("Skip loop")
-                    continue
-                    
-                initial_vel = linear_ds_max_vel(
-                    position=trajectories[:, ii, aa],
-                    attractor=self.attractor_position,
-                    vel_max=1.0,
-                    )
-
-                mod_vel = func(trajectories[:, ii, aa],
-                               initial_vel,
-                               self.environment)
                 
-                trajectories[:, ii+1, aa] = (
-                    trajectories[:, ii, aa] + dt_simu*mod_vel)
+                else:
+                    # No colliision happend
+                    initial_vel = linear_ds_max_vel(
+                        position=trajectories[:, ii, aa],
+                        attractor=self.attractor_position,
+                        vel_max=1.0,
+                        )
 
+                    mod_vel = func(trajectories[:, ii, aa],
+                                   initial_vel,
+                                   self.environment)
+                
+                    trajectories[:, ii+1, aa] = (
+                        trajectories[:, ii, aa] + dt_simu*mod_vel)
 
                 axs[aa].clear()
                 axs[aa].plot(trajectories[0, :ii+1, aa],
@@ -133,6 +136,7 @@ class DynamicSimulation():
                 axs[aa].set_ylim(y_lim)
                 axs[aa].set_title(evals_titles[aa])
 
+            # obj_list.append(axs[aa].get_children)
             # Check convergence
             if np.allclose(trajectories[:, ii, :], trajectories[:, ii+1, :]):
                 print("All trajectories converged.")
@@ -177,6 +181,13 @@ def main_dynamic(robot_margin=0.3, human_radius=0.35):
     ))
 
     environment.append(CircularObstacle(
+        center_position=np.array([2, 12]),
+        linear_velocity=np.array([-.2, -0.8]),
+        margin_absolut=robot_margin,
+        radius=human_radius
+    ))
+
+    environment.append(CircularObstacle(
         center_position=np.array([-1, 14]),
         linear_velocity=np.array([.01, -0.6]),
         margin_absolut=robot_margin,
@@ -193,6 +204,20 @@ def main_dynamic(robot_margin=0.3, human_radius=0.35):
 def main_static(robot_margin=0.3, human_radius=0.35):
     environment = GradientContainer()
     environment.append(CircularObstacle(
+        center_position=np.array([-1.2, 5]),
+        linear_velocity=np.array([0, 0]),
+        margin_absolut=robot_margin,
+        radius=human_radius
+    ))
+
+    environment.append(CircularObstacle(
+        center_position=np.array([0.4, 5]),
+        linear_velocity=np.array([0, 0]),
+        margin_absolut=robot_margin,
+        radius=human_radius
+    ))
+
+    environment.append(CircularObstacle(
         center_position=np.array([-0.4, 8]),
         linear_velocity=np.array([0, 0]),
         margin_absolut=robot_margin,
@@ -200,29 +225,14 @@ def main_static(robot_margin=0.3, human_radius=0.35):
     ))
 
     environment.append(CircularObstacle(
-        center_position=np.array([0.4, 8]),
-        linear_velocity=np.array([0, 0]),
-        margin_absolut=robot_margin,
-        radius=human_radius
-    ))
-
-
-    environment.append(CircularObstacle(
-        center_position=np.array([0, 6]),
+        center_position=np.array([0.6, 8]),
         linear_velocity=np.array([0, 0]),
         margin_absolut=robot_margin,
         radius=human_radius
     ))
 
     environment.append(CircularObstacle(
-        center_position=np.array([1, 6]),
-        linear_velocity=np.array([0, 0]),
-        margin_absolut=robot_margin,
-        radius=human_radius
-    ))
-
-    environment.append(CircularObstacle(
-        center_position=np.array([1.3, 5]),
+        center_position=np.array([0.9, 7]),
         linear_velocity=np.array([0, 0]),
         margin_absolut=robot_margin,
         radius=human_radius
@@ -245,6 +255,7 @@ def main_static(robot_margin=0.3, human_radius=0.35):
     my_simulation = DynamicSimulation(
         environment,
         attractor_position=np.array([0, 10]))
+    
     my_simulation.run(start_position=np.array([0, 0]))
     
 
