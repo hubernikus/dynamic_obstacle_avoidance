@@ -246,3 +246,9 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
 
     def avoid(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
         pass
+
+    def get_attractor_position(self, control_point):
+        return self.initial_dynamics[control_point].attractor_position
+
+    def set_attractor_position(self, position: np.ndarray, control_point):
+        self.initial_dynamics[control_point].attractor_position = position
