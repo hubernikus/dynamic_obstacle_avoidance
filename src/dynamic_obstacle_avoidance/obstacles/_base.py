@@ -224,7 +224,7 @@ class Obstacle(ABC):
         # Needed for drawing polygon
         self.obs_polygon = None
 
-        self.shapely = ObstacleHullsStorer()
+        self.shapely = ObstacleHullsStorer(self)
         self._margin_absolut = margin_absolut
 
         self._reference_point_is_inside = True

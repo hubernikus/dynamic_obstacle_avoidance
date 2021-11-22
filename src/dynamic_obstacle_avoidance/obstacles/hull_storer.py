@@ -21,8 +21,12 @@ class ObstacleHullsStorer:
 
     n_options = 3
 
-    def __init__(self) -> None:
+    def __init__(self, state, margin=None) -> None:
         self._hull_list = [None for ii in range(2 ** self.n_options)]
+
+        # TODO: instead of obstacle, pass state
+        self._state = state
+        self._margin = margin
 
     @property
     def global_margin(self):
@@ -43,9 +47,10 @@ class ObstacleHullsStorer:
         global_frame (bool): local /global
         margin (bool): no-margin / margin
         reference_extended(bool): reference-not extended / reference_extended."""
-        arg_vals = np.array([global_frame, margin, reference_extended])
-        arg_base = 2 ** np.arange(arg_vals.shape[0])
-        return np.sum(arg_vals * arg_base)
+        return np.sum(
+            np.array([global_frame, margin, reference_extended]),
+            2 ** np.arange(self.n_options),
+        )
 
     def set(self, value: object, *args, **kwargs) -> None:
         index = self.transform_list_to_index(*args, **kwargs)
@@ -58,6 +63,19 @@ class ObstacleHullsStorer:
         index = self.transform_list_to_index(*args, **kwargs)
 
         return self._hull_list[index]
+
+    def get_draw_points_core(self):
+        coords = self.get(globa_frame=True, margin=False, reference_extended=False)
+        if coords is None:
+            coords = self.get(globa_frame=False, margin=False, reference_extended=False)
+
+        pass
+
+    def get_draw_points_margin(self, reference_point_inside):
+        pass
+
+    def get_intersection_points(self):
+        pass
 
     def get_global(
         self, position: np.ndarray, orientation: float, *args, **kwargs
