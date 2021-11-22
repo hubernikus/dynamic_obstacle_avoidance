@@ -4,10 +4,15 @@
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
 import time
+import os
+import datetime
 from math import pi
 
 import numpy as np
+
 import matplotlib.pyplot as plt
+import matplotlib
+from matplotlib import animation
 
 from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
@@ -17,10 +22,56 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from vartools.dynamical_systems import LinearSystem
 
+# Matplotlib extension for copy
+def list_transferable_attributes(obj, except_attributes=None):
+    if except_attributes is None:
+        except_attributes = ("transform", "figure")
+
+    obj_methods_list = dir(obj)
+
+    obj_get_attr = []
+    obj_set_attr = []
+    obj_transf_attr = []
+
+    for name in obj_methods_list:
+        if len(name) > 4:
+            prefix = name[0:4]
+            if prefix == "get_":
+                obj_get_attr.append(name[4:])
+            elif prefix == "set_":
+                obj_set_attr.append(name[4:])
+
+    for attribute in obj_set_attr:
+        if attribute in obj_get_attr and attribute not in except_attributes:
+            obj_transf_attr.append(attribute)
+
+    return obj_transf_attr
+
+
+def copy_artist(original_artist, new_artist=None, attr_list=None):
+    if attr_list is None:
+        attr_list = list_transferable_attributes(original_artist)
+
+    # Create artist of new_type
+    if isinstance(original_artist, matplotlib.patches.Polygon):
+        line2 = plt.Line2D([], [])
+    elif isinstance(original_artist, matplotlib.patches.Polygon):
+        new_artist = plt.Polygon([], [])
+    else:
+        raise Exception(f"Not ipmlemented for patch-type {type(original_artist)}")
+
+    for i_attribute in attr_list:
+        getattr(new_artist, "set_" + i_attribute)(
+            getattr(original_artist, "get_" + i_attribute)()
+        )
+
 
 class DynamicalSystemAnimation:
     def __init__(self):
         self.animation_paused = False
+
+        self.fig = None
+        self.ax = None
 
     def on_click(self, event):
         if self.animation_paused:
@@ -38,72 +89,134 @@ class DynamicalSystemAnimation:
         it_max=1000,
         dt_step=0.03,
         dt_sleep=0.1,
+        save_animation=False,
+        figure_name=None,
     ):
-
-        dynamic_avoider = DynamicModulationAvoider(
+        self.dynamic_avoider = DynamicModulationAvoider(
             initial_dynamics=initial_dynamics, environment=obstacle_environment
         )
+        self.dt_step = dt_step
+        self.x_lim = x_lim
+        self.y_lim = y_lim
 
         dim = 2
-        position_list = np.zeros((dim, it_max))
-        position_list[:, 0] = start_position
+        self.position_list = np.zeros((dim, it_max + 1))
+        self.position_list[:, 0] = start_position
 
-        fig, ax = plt.subplots(figsize=(10, 8))
-        cid = fig.canvas.mpl_connect("button_press_event", self.on_click)
+        self.fig, self.ax = plt.subplots(figsize=(10, 8))
+        cid = self.fig.canvas.mpl_connect("button_press_event", self.on_click)
 
-        ii = 0
-        while ii < it_max:
-            if self.animation_paused:
+        if save_animation:
+            plt_obj_list = []
+
+        if save_animation:
+            if figure_name is None:
+                now = datetime.datetime.now()
+                figure_name = f"animation_{now:%Y-%m-%d_%H-%M-%S}"
+
+                # Set filetype
+                file_type = ".mp4"
+                figure_name = figure_name + file_type
+
+            ani = animation.FuncAnimation(
+                self.fig,
+                self.update_step,
+                frames=it_max,
+                interval=dt_sleep * 1000,  # Conversion [s] -> [ms]
+            )
+
+            ani.save(
+                os.path.join("figures", figure_name), metadata={"artist": "Lukas Huber"}
+            )
+
+            plt.close("all")
+
+        else:
+            ii = 0
+            while ii < it_max:
+                ii += 1
+                if ii > it_max:
+                    break
+                self.update_step(ii, animation_run=False)
+
+                if self.animation_paused:
+                    plt.pause(dt_sleep)
+                    if not plt.fignum_exists(fig.number):
+                        print("Stopped animation on closing of the figure..")
+                        break
+                    continue
+
                 plt.pause(dt_sleep)
-                if not plt.fignum_exists(fig.number):
+                if not plt.fignum_exists(self.fig.number):
                     print("Stopped animation on closing of the figure..")
                     break
-                continue
 
-            ii += 1
-            if ii > it_max:
-                break
-            if not ii % 10:
+    def update_step(self, ii, animation_run=True, print_modulo=10) -> list:
+        """Returns list element."""
+        if print_modulo:
+            if not ii % print_modulo:
                 print(f"it={ii}")
 
-            # Here come the main calculation part
-            velocity = dynamic_avoider.evaluate(position_list[:, ii - 1])
-            position_list[:, ii] = velocity * dt_step + position_list[:, ii - 1]
-            # print(
+        # Here come the main calculation part
+        velocity = self.dynamic_avoider.evaluate(self.position_list[:, ii - 1])
+        self.position_list[:, ii] = (
+            velocity * self.dt_step + self.position_list[:, ii - 1]
+        )
 
-            # Update obstacles
-            obstacle_environment.move_obstacles_with_velocity(delta_time=dt_step)
-            # Clear right before drawing again
-            ax.clear()
+        # Update obstacles
+        self.dynamic_avoider.environment.move_obstacles_with_velocity(
+            delta_time=self.dt_step
+        )
 
-            # Drawing and adjusting of the axis
-            plt.plot(position_list[0, :ii], position_list[1, :ii], ":", color="#135e08")
-            plt.plot(
-                position_list[0, ii],
-                position_list[1, ii],
-                "o",
-                color="#135e08",
-                markersize=12,
-            )
+        # Clear right before drawing again
+        self.ax.clear()
 
-            ax.set_xlim(x_lim)
-            ax.set_ylim(y_lim)
+        # Drawing and adjusting of the axis
+        self.ax.plot(
+            self.position_list[0, :ii], self.position_list[1, :ii], ":", color="#135e08"
+        )
 
-            plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
+        self.ax.plot(
+            self.position_list[0, ii],
+            self.position_list[1, ii],
+            "o",
+            color="#135e08",
+            markersize=12,
+        )
 
-            ax.plot(
-                initial_dynamics.attractor_position[0],
-                initial_dynamics.attractor_position[1],
-                "k*",
-                markersize=8,
-            )
-            ax.grid()
-            ax.set_aspect("equal", adjustable="box")
+        self.ax.set_xlim(self.x_lim)
+        self.ax.set_ylim(self.y_lim)
 
-            plt.pause(dt_sleep)
-            if not plt.fignum_exists(fig.number):
-                print("Stopped animation on closing of the figure..")
-                break
+        plot_obstacles(
+            self.ax,
+            self.dynamic_avoider.environment,
+            self.x_lim,
+            self.y_lim,
+            showLabel=False,
+        )
+
+        self.ax.plot(
+            self.dynamic_avoider.initial_dynamics.attractor_position[0],
+            self.dynamic_avoider.initial_dynamics.attractor_position[1],
+            "k*",
+            markersize=8,
+        )
+        self.ax.grid()
+        self.ax.set_aspect("equal", adjustable="box")
+
+        if animation_run:
+            all_children = self.ax.get_children()
+
+            for aa, artist in enumerate(all_children):
+                # Only keep lines and patches
+                if not (
+                    isinstance(artist, matplotlib.patches.Patch)
+                    or isinstance(artist, matplotlib.lines.Line2D)
+                ):
+                    del all_children[aa]
+            return all_children
+        else:
+            return []
 
 
 def simple_point_robot():
@@ -184,6 +297,8 @@ def run_stationary_point_avoiding_dynamic_robot():
         x_lim=[-3, 3],
         y_lim=[-2.1, 2.1],
         dt_step=0.05,
+        it_max=100,
+        save_animation=True,
     )
 
 
