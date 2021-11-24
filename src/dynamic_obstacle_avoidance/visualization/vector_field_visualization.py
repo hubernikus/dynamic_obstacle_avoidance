@@ -26,7 +26,6 @@ from scipy import ndimage
 import matplotlib.image as mpimg
 
 # Show plot in a reactive manner
-plt.ion()
 
 __author__ = "Lukas Huber"
 __date__ =  "2018-02-15"
@@ -304,8 +303,6 @@ def Simulation_vectorFields(x_range=[0,10], y_range=[0,10], point_grid=10, obs=[
         plot_streamlines(points_init, ax, obs, xAttractor)
 
     if not draw_vectorField or xAttractor is None:
-        plt.ion()
-        plt.show()
         return fig, ax
         # return
 
