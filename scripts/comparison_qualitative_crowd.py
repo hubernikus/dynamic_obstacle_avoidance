@@ -1,9 +1,6 @@
 #!/USSR/bin/python3
 ''' Script to show lab environment on computer '''
-import warnings
-import copy
 import datetime
-
 
 import numpy as np
 from numpy import pi
