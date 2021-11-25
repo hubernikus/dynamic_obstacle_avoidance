@@ -28,12 +28,13 @@ class DynamicalSystemAnimation:
 
     def run(
             self, initial_dynamics, obstacle_environment,
+            obs_w_multi_agent,
             start_position=None,
             x_lim=None, y_lim=None,
             it_max=1000, dt_step=0.03, dt_sleep=0.1
     ):
 
-        num_obs_env = len(obstacle_environment)
+        num_obs = len(obstacle_environment)
         dim = 2
 
         if y_lim is None:
@@ -41,10 +42,10 @@ class DynamicalSystemAnimation:
         if x_lim is None:
             x_lim = [-1.5, 2]
         if start_position is None:
-            start_position = np.zeros((num_obs_env, dim))
+            start_position = np.zeros((num_obs, dim))
 
-        dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment)
-        position_list = np.zeros((num_obs_env, dim, it_max))
+        dynamic_avoider = DynamicCrowdAvoider(initial_dynamics=initial_dynamics, environment=obstacle_environment, obs_multi_agent=obs_w_multi_agent)
+        position_list = np.zeros((num_obs, dim, it_max))
         position_list[:, :, 0] = start_position
 
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -66,16 +67,18 @@ class DynamicalSystemAnimation:
                 print(f"it={ii}")
 
             # Here come the main calculation part
-            for agent in range(num_obs_env):
-                velocity = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent)
-                position_list[agent, :, ii] = velocity * dt_step + position_list[agent, :, ii - 1]
-                obstacle_environment[agent].center_position = position_list[agent, :, ii]
+            for obs in range(num_obs):
+                for agent in obs_w_multi_agent[obs]:
+                    temp_env = dynamic_avoider.env_slicer(obs)
+                    velocity = dynamic_avoider.evaluate_for_crowd_agent(position_list[agent, :, ii - 1], agent, temp_env)
+                    position_list[agent, :, ii] = velocity * dt_step + position_list[agent, :, ii - 1]
+                    obstacle_environment[agent].center_position = position_list[agent, :, ii]
 
             # Clear right before drawing again
             ax.clear()
 
             # Drawing and adjusting of the axis
-            for agent in range(num_obs_env):
+            for agent in range(num_obs):
                 plt.plot(position_list[agent, 0, :ii], position_list[agent, 1, :ii], ':',
                          color='#135e08')
                 plt.plot(position_list[agent, 0, ii], position_list[agent, 1, ii],
@@ -86,7 +89,7 @@ class DynamicalSystemAnimation:
 
             plot_obstacles(ax, obstacle_environment, x_lim, y_lim, showLabel=False)
 
-            for agent in range(num_obs_env):
+            for agent in range(num_obs):
                 ax.plot(initial_dynamics[agent].attractor_position[0],
                         initial_dynamics[agent].attractor_position[1], 'k*', markersize=8, )
             ax.grid()
@@ -133,9 +136,12 @@ def multiple_robots():
         maximum_velocity=1, distance_decrease=0.3
     )]
 
+    obs_multi_agent = {0: [0], 1: [1]}
+
     DynamicalSystemAnimation().run(
         initial_dynamics,
         obstacle_environment,
+        obs_multi_agent,
         obstacle_pos,
         x_lim=[-3, 3],
         y_lim=[-3, 3],
