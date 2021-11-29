@@ -227,6 +227,7 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         const_speed: bool = True,
     ) -> np.ndarray:
 
+        print(f"init vel: {initial_velocity}")
         vel = obs_avoidance_interpolation_moving(
             position=position, initial_velocity=initial_velocity, obs=env
         )
