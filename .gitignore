@@ -14,8 +14,6 @@ data/**
 venv/*
 .venv/*
 
-
-
 # scripts/*.png
 # scripts/*.pdf
 # scripts/*.gif
