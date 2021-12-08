@@ -6,7 +6,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon
+from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon, Ellipse
 
 
 def test_draw_polygon(visualize=False):
@@ -24,6 +24,18 @@ def test_draw_polygon(visualize=False):
         my_obstacle.plot_obstacles(ax=ax)
 
 
+def test_draw_ellipse(visualize=False):
+    """Triangle object."""
+    axes_length = np.array([1, 2])
+    my_obstacle = Ellipse(
+        center_position=np.array([0, 0]), axes_length=axes_length, margin_absolut=0
+    )
+
+    if visualize:
+        fig, ax = plt.subplots()
+        my_obstacle.plot2D(ax=ax)
+
+
 def test_draw_polygon_with_margin():
     pass
 
@@ -37,6 +49,7 @@ def test_draw_polygon_ref_point():
 
 
 if (__name__) == "__main__":
-    test_draw_polygon(visualize=True)
+    # test_draw_polygon(visualize=True)
+    test_draw_ellipse(visualize=True)
 
     # pass

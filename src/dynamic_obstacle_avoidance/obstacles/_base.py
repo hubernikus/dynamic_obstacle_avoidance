@@ -8,7 +8,7 @@ from math import sin, cos, pi, ceil
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from functools import lru_cache
 
 import numpy as np
@@ -32,10 +32,10 @@ class GammaType(Enum):
     The gamma value is given in [1 - infinity] outside the obstacle
     except (!) the barrier type is from"""
 
-    RELATIVE = 0
-    EUCLEDIAN = 1
-    SCALED_EUCLEDIAN = 2
-    BARRIER = 3
+    RELATIVE = auto()
+    EUCLEDIAN = auto()
+    SCALED_EUCLEDIAN = auto()
+    BARRIER = auto()
 
 
 class Obstacle(ABC):
@@ -75,13 +75,6 @@ class Obstacle(ABC):
 
         return repr_str
 
-        # if self.is_boundary:
-        # return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
-        # else:
-        # return "Obstacle <<{}>> is of Type  <{}>".format(
-        # self.name, type(self).__name__
-        # )
-
     def __init__(
         self,
         center_position=None,
@@ -112,7 +105,7 @@ class Obstacle(ABC):
     ):
 
         if name is None:
-            self.name = "obstacle{}".format(Obstacle.id_counter)
+            self.name = f"obstacle_{Obstacle.id_counter}"
         else:
             self.name = name
 
@@ -656,8 +649,7 @@ class Obstacle(ABC):
     # @abstractmethod
     def draw_obstacle(self, n_resolution=20):
         """Create obstacle boundary points and stores them as attribute."""
-        # Outdated function - replaced with plot2D
-        pass
+        raise Exception("Outdated function - replaced with plot2D")
 
     def plot2D(
         self,
@@ -691,25 +683,8 @@ class Obstacle(ABC):
             )
 
         # Get inside one
-        insidely_ = self.shapely.get_global(
-            margin=False,
-            reference_extended=False,
-            position=self.center_position,
-            orientation=self.orientation,
-        )
-
-        if outsidely_ is None:
-            outer_margin = np.array(insidely_.xy)
-            ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
-        else:
-            warnings.warn("hasattr should be hidden")
-            if hasattr(outsidely_, "exterior"):
-                outer_margin = np.array(outsidely_.exterior).T
-
-            else:
-                outer_margin = np.array(outsidely_).T
-
-            ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
+        insidely_ = self.shapely.get_draw_points_core()
+        ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
 
         inner_margin = np.array(insidely_.xy)
 

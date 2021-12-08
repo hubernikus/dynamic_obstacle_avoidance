@@ -266,14 +266,6 @@ class RobotArmAvoider:
                 evaluation_points[:, -1, jj] - start_link_pos, diff_velocity
             )
 
-            # TODO: is this control velocity really correct (!?)
-            # Compare with paper...
-
-            # print('jj', jj)
-            # print('control_velocity', control_velocity)
-            # breakpoint()
-            # joint_control_weighted[jj] += (1-np.sum(joint_weight_list[jj+1:]))*control_velocity
-            # joint_control_weighted[jj] += (np.sum(joint_weight_list[:jj+1]))*control_velocity
             joint_control_weighted[jj] += (
                 np.sum(joint_weight_list[:jj])
             ) * control_velocity

@@ -5,9 +5,11 @@
 # Email: lukas.huber@epfl.ch
 
 import copy
-import time
 import os
 import warnings
+from timeit import default_timer as timer
+
+# Or use time.perf_counter()
 
 import numpy as np
 from numpy import pi
@@ -437,9 +439,9 @@ def Simulation_vectorFields(
 
     # Adjust dynamic center
     if automatic_reference_point:
-        tt = time.time()
+        tt = timer()
         obs.update_reference_points()
-        dt = time.time() - tt
+        dt = timer() - tt
 
         if print_info:
             print("Time for dynamic_center: {}ms".format(np.round(dt * 1000, 2)))
@@ -482,7 +484,7 @@ def Simulation_vectorFields(
         return fig, ax
         # return
 
-    start_time = time.time()
+    start_time = timer()
 
     # Create meshrgrid of points
     if type(point_grid) == int:
@@ -551,7 +553,7 @@ def Simulation_vectorFields(
     else:
         indOfNoCollision = np.ones((N_x, N_y))
 
-    t_start = time.time()
+    t_start = timer()
     for ix in range(N_x):
         for iy in range(N_y):
             if not indOfNoCollision[ix, iy]:
@@ -561,7 +563,7 @@ def Simulation_vectorFields(
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:, ix, iy], obs)
             # xd_mod[:, ix, iy] = xd_init[:, ix, iy]  # DEBUGGING only!!
 
-    t_end = time.time()
+    t_end = timer()
     n_collfree = np.sum(indOfNoCollision)
     if not n_collfree:  # zero points
         warnings.warn("No ollision free points in space.")
@@ -574,24 +576,7 @@ def Simulation_vectorFields(
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0, :, :]), np.squeeze(xd_mod[1, :, :])
 
-    if sysDyn_init:
-        fig_init, ax_init = plt.subplots(figsize=(5, 2.5))
-        res_init = ax_init.streamplot(
-            XX,
-            YY,
-            xd_init[0, :, :],
-            xd_init[1, :, :],
-            # color=[(0.3,0.3,0.3)]
-            color="blue",
-        )
-
-        ax_init.plot(pos_attractor[0], pos_attractor[1], "k*", zorder=5)
-        plt.gca().set_aspect("equal", adjustable="box")
-
-        plt.xlim(x_range)
-        plt.ylim(y_range)
-
-    end_time = time.time()
+    end_time = timer()
 
     n_calculations = np.sum(indOfNoCollision)
     if print_info:
@@ -663,7 +648,7 @@ def Simulation_vectorFields(
                 )
     plt.show()
 
-    start_time = time.time()
+    start_time = timer()
 
     if saveFigure:
         # Save as png

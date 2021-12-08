@@ -37,14 +37,13 @@ class Ellipse(Obstacle):
         self,
         axes_length=None,
         curvature=None,
-        a=None,
         p=None,
         # margin_absolut=0,
         is_deforming=False,
         expansion_speed_axes=None,
         hull_with_respect_to_reference=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         if expansion_speed_axes is None:
@@ -52,31 +51,25 @@ class Ellipse(Obstacle):
         else:
             is_deforming = True
 
-        if sys.version_info > (3, 0):
-            super().__init__(*args, is_deforming=is_deforming, **kwargs)
-        else:  # works for python < 3.0?!
-            super(Ellipse, self).__init__(*args, is_deforming=is_deforming, **kwargs)
+        super().__init__(*args, is_deforming=is_deforming, **kwargs)
 
         self.expansion_speed_axes = expansion_speed_axes
 
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
-        elif not a is None:
-            raise Exception("A is depreciated. Use 'axes_lenght' instead.")
-            self.axes_length = np.array(a)  # TODO: depreciated, remove
         else:
             warnings.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
 
         if not curvature is None:
             self.curvature = curvature
+
         elif not p is None:
+            warnings.warn(f"Argument <<{p}>> is depreciated.")
             self.curvature = p  # TODO: depreciated, remove
+
         else:
             self.curvature = np.ones((self.dim))
-
-        # Done in parent class
-        # self.margin_absolut = margin_absolut
 
         self.hull_with_respect_to_reference = hull_with_respect_to_reference
 
@@ -95,22 +88,6 @@ class Ellipse(Obstacle):
 
         self.ind_edge_ref = 0
         self.ind_edge_tang = 1
-
-    @property
-    def a(self):  # TODO: remove
-        raise Exception("'a' is depriciated, use 'axes_length' instead")
-
-    @a.setter  # TODO:remove
-    def a(self, value):
-        raise Exception("'a' is depriciated, use 'axes_length' instead")
-
-    @property
-    def axes(self):  # TODO: remove
-        raise Exception("'axes' is depriciated, use 'axes_length' instead")
-
-    @axes.setter  # TODO:remove
-    def axes(self, value):
-        raise Exception("'axes' is depriciated, use 'axes_length' instead")
 
     @property
     def axes_length(self):
