@@ -12,7 +12,7 @@ data/**
 
 # Virtual environment
 venv/*
-
+.venc/*
 
 
 # scripts/*.png
