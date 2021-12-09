@@ -52,7 +52,7 @@ class ObstacleContainer(BaseContainer):
             self._boundary_reference_points = np.zeros((2, len(self), len(self)))
             self._distance_matrix = DistanceMatrix(n_obs=self.number)
 
-    def move_obstacles_with_velocity(self, delta_time: float) -> None:
+    def do_velocity_step(self, delta_time: float) -> None:
         for obs in self._obstacle_list:
             obs.do_velocity_step(delta_time)
 

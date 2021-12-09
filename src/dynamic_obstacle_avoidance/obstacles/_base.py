@@ -92,18 +92,12 @@ class Obstacle(ABC):
         angular_velocity=None,
         xd=None,
         w=None,
-        func_w=None,
-        func_xd=None,
-        x_start=0,
-        x_end=0,
-        timeVariant=False,
         Gamma_ref=0,
         is_boundary=False,
         gamma_distance=None,
         sigma=None,
         relative_hull_extension_margin=0.1,
     ):
-
         if name is None:
             self.name = f"obstacle_{Obstacle.id_counter}"
         else:
@@ -137,11 +131,6 @@ class Obstacle(ABC):
         self._boundary_points = None  # Numerical drawing of obstacle boundarywq
         self._boundary_points_margin = None  # Obstacle boundary plus margin!
 
-        self.timeVariant = timeVariant
-        if self.timeVariant:
-            self.func_xd = 0
-            self.func_w = 0
-
         if angular_velocity is None:
             if w is None:
                 if self.dim == 2:
@@ -169,21 +158,6 @@ class Obstacle(ABC):
             self.angular_velocity = np.zeros(self.dim)
         else:
             self.angular_velocity = angular_velocity
-
-        # Special case of moving obstacle (Create attribute [state])
-        if (
-            sum(np.abs(self.linear_velocity))
-            or np.sum(self.angular_velocity)
-            or self.timeVariant
-        ):
-            # Dynamic simulation - assign varibales:
-            self.x_start = x_start
-            self.x_end = x_end
-            self.always_moving = False
-        else:
-            self.x_start = 0
-            self.x_end = 0
-            self.always_moving = False
 
         self.update_timestamp()
 
@@ -274,7 +248,6 @@ class Obstacle(ABC):
             return self.reference_point
 
         dist_max = self.get_maximal_distance() * self.relative_hull_extension_margin
-
         reference_point_temp = self.reference_point * (1 + dist_max / ref_norm)
 
         return reference_point_temp
@@ -646,7 +619,6 @@ class Obstacle(ABC):
     def get_baoundary_normal_direction(self, *args, **kwargs):
         return (-1) * self.get_normal_direction(*args, **kwargs)
 
-    # @abstractmethod
     def draw_obstacle(self, n_resolution=20):
         """Create obstacle boundary points and stores them as attribute."""
         raise Exception("Outdated function - replaced with plot2D")
@@ -664,23 +636,8 @@ class Obstacle(ABC):
         if self.dimension != 2:
             raise Exception("Only implemented for 2D case.")
 
-        outsidely_ = None
+        outsidely_ = self.shapely.get_
 
-        if not self.is_reference_point_inside():
-            outsidely_ = self.shapely.get_global(
-                margin=True,
-                reference_extended=True,
-                position=self.center_position,
-                orientation=self.orientation,
-            )
-
-        elif self.margin_absolut:
-            outsidely_ = self.shapely.get_global(
-                margin=True,
-                reference_extended=False,
-                position=self.center_position,
-                orientation=self.orientation,
-            )
 
         # Get inside one
         insidely_ = self.shapely.get_draw_points_core()
