@@ -150,6 +150,7 @@ class ObstacleHullsStorer:
         """points: np.ndarray of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_with_everything()
+        breakpoint()
         points = shapely_.get_points()
 
     def get_global_without_margin_as_array(self) -> np.ndarray:

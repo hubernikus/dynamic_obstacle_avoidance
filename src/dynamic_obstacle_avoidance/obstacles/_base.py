@@ -636,8 +636,7 @@ class Obstacle(ABC):
         if self.dimension != 2:
             raise Exception("Only implemented for 2D case.")
 
-        outsidely_ = self.shapely.get_
-
+        outsidely_ = self.shapely.get_global_with_everything_as_array()
 
         # Get inside one
         insidely_ = self.shapely.get_draw_points_core()
