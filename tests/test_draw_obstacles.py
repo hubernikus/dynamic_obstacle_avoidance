@@ -21,7 +21,7 @@ def test_draw_polygon(visualize=False):
 
     if visualize:
         fig, ax = plt.subplots()
-        my_obstacle.plot_obstacles(ax=ax)
+        my_obstacle.plot2D(ax=ax)
 
 
 def test_draw_ellipse(visualize=False):

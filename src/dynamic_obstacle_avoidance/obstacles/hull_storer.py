@@ -44,27 +44,35 @@ class ObstacleHullsStorer:
     dimension = 2
 
     def __init__(self, state, margin=None) -> None:
-        self._hulls_local = [None for ii in range(2 ** self.n_options)]
-        self._hulls_global = [None for ii in range(2 ** self.n_options)]
+        self._hull_list_local = [None for ii in range(self.n_options)]
+        self._hull_list_global = [None for ii in range(self.n_options)]
 
         # TODO: instead of obstacle, pass state
         self._state = state
 
-        self._temp_state = np.array(
-            [self._state.center_position, self._state.orientation]
-        )
+        if self._state.orientation is None:
+            orientation = 0
+        else:
+            orientation = self._state.orientation
+
+        self._temp_state = np.hstack([self._state.center_position, orientation])
 
     def check_if_pose_has_updated(self) -> bool:
         """Returns bool which states if the state (position/orienation) has
         changed since the last evaluation. In that case the global list is deleted."""
-        temp_state_ = np.array([self._state.center_position, self._state.orientation])
+        if self._state.orientation is None:
+            orientation = 0
+        else:
+            orientation = self._state.orientation
 
-        if np.allclose(temp_state_, self._temp_state):
+        temp_state = np.hstack([self._state.center_position, orientation])
+
+        if np.allclose(temp_state, self._temp_state):
             return False
 
         # Reset state
-        self.temp_state_ = temp_state_
-        self._hulls_global = [None for ii in range(2 ** self.n_options)]
+        self.temp_state = temp_state
+        self._hulls_global = [None for ii in range(self.n_options)]
 
         return True
 
@@ -72,15 +80,15 @@ class ObstacleHullsStorer:
         self, margin: bool, reference_extended: bool = False
     ) -> None:
         """Chosse between:
-        global_frame (bool): local /global
         margin (bool): no-margin / margin
         reference_extended(bool): reference-not extended / reference_extended."""
+        breakpoint()
         return np.sum(
-            np.array([global_frame, margin, reference_extended]),
-            2 ** np.arange(self.n_options),
+            np.array([margin, reference_extended])
+            * (2 ** (np.arange(self.n_options) - 1))
         )
 
-    def _set(
+    def set(
         self,
         value: object,
         in_global_frame,
@@ -102,7 +110,9 @@ class ObstacleHullsStorer:
         else:
             self._hull_list_local[index] = value
 
-    def _get(self, global_frame, has_moved=None, index=None, *args, **kwargs) -> object:
+    def get(
+        self, in_global_frame, has_moved=None, index=None, *args, **kwargs
+    ) -> object:
         if index is None:
             index = self.transform_list_to_index(*args, **kwargs)
 
@@ -120,7 +130,7 @@ class ObstacleHullsStorer:
                 return value
 
             # Transform and store
-            value = self.transform_to_global(value)
+            value = self.transform_relative2global(value)
             self._hull_list_global[index] = value
 
             return value
@@ -138,24 +148,28 @@ class ObstacleHullsStorer:
             return None
 
         shapely_object = affinity.translate(
-            shapely_object, xoff=state.center_position[0], yoff=state.center_position[1]
+            shapely_object,
+            xoff=self._state.center_position[0],
+            yoff=self._state.center_position[1],
         )
 
-        if state.orientation is not None:
+        if self._state.orientation is not None:
             shapely_object = affinity.rotate(
-                shapely_object, state.orientation, use_radians=True
+                shapely_object, self._state.orientation, use_radians=True
             )
 
     def get_global_with_everything_as_array(self) -> np.ndarray:
         """points: np.ndarray of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_with_everything()
+        breakpoint()
         points = shapely_.get_points()
 
     def get_global_without_margin_as_array(self) -> np.ndarray:
         """points: np.ndarry of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_without_margin()
+        breakpoint()
         points = shapely_.get_points()
 
     def get_global_with_everything(self) -> object:
@@ -163,15 +177,18 @@ class ObstacleHullsStorer:
         # TODO in the future: replace
         has_moved = self.check_if_pose_has_updated()
 
-        shapely_ = self._get(
-            global_frame=True, margin=True, reference_extended=True, has_moved=has_moved
+        shapely_ = self.get(
+            in_global_frame=True,
+            margin=True,
+            reference_extended=True,
+            has_moved=has_moved,
         )
 
         if shapely_ is not None:
             return shapely_
 
-        shapely_ = self._get(
-            global_frame=True,
+        shapely_ = self.get(
+            in_global_frame=True,
             margin=True,
             reference_extended=False,
             has_moved=has_moved,
@@ -180,26 +197,30 @@ class ObstacleHullsStorer:
         if shapely_ is not None:
             return shapely_
 
-        shapely_ = self._get(
-            global_frame=True,
+        shapely_ = self.get(
+            in_global_frame=True,
             margin=False,
             reference_extended=False,
             has_moved=has_moved,
         )
 
+        breakpoint()
         return shapely_
 
     def get_local_with_margin_only(self):
         has_moved = self.check_if_pose_has_updated()
 
-        hull_ = self._get(
-            global_frame=True, margin=True, reference_extended=True, has_moved=has_moved
+        hull_ = self.get(
+            in_global_frame=True,
+            margin=True,
+            reference_extended=True,
+            has_moved=has_moved,
         )
         if hull_ is not None:
             return hull_
 
-        hull_ = self._get(
-            global_frame=True,
+        hull_ = self.get(
+            in_global_frame=True,
             margin=True,
             reference_extended=False,
             has_moved=has_moved,
@@ -218,9 +239,9 @@ class ObstacleHullsStorer:
         if has_moved is None:
             has_moved = self.check_if_pose_has_updated()
 
-        self._set(
+        self.set(
             value=value,
-            global_frame=False,
+            in_global_frame=False,
             margin=True,
             reference_extended=True,
             has_moved=has_moved,
@@ -230,18 +251,18 @@ class ObstacleHullsStorer:
         if has_moved is None:
             has_moved = self.check_if_pose_has_updated()
 
-        hull_ = self._set(
+        hull_ = self.set(
             value=value,
-            global_frame=False,
+            in_global_frame=False,
             margin=True,
             reference_extended=False,
             has_moved=has_moved,
         )
 
         if reset_upper:
-            hull_ = self._set(
+            hull_ = self.set(
                 value=value,
-                global_frame=False,
+                in_global_frame=False,
                 margin=True,
                 reference_extended=True,
                 has_moved=has_moved,
@@ -254,50 +275,39 @@ class ObstacleHullsStorer:
         if has_moved is None:
             has_moved = self.check_if_pose_has_updated()
 
-        hull_ = self._set(
+        hull_ = self.set(
             value=value,
-            global_frame=False,
+            in_global_frame=False,
             margin=False,
             reference_extended=False,
             has_moved=has_moved,
         )
 
         if reset_upper:
-            hull_ = self._set(
+            hull_ = self.set(
                 value=value,
-                global_frame=False,
+                in_global_frame=False,
                 margin=True,
                 reference_extended=False,
                 has_moved=has_moved,
             )
 
-            hull_ = self._set(
+            hull_ = self.set(
                 value=value,
-                global_frame=False,
+                in_global_frame=False,
                 margin=True,
                 reference_extended=True,
                 has_moved=has_moved,
             )
 
-    def get_draw_points_core(self) -> np.ndarray:
-        coords = self._get(globa_frame=True, margin=False, reference_extended=False)
-        if coords is not None:
-            return coords
-
-        coords = self._get(globa_frame=False, margin=False, reference_extended=False)
-        if coords is not None:
-            return coords
-
-        raise Exception("Not implemented.")
-
     def get_global(
         self, position: np.ndarray, orientation: float, *args, **kwargs
     ) -> object:
         """Transform 2D shapely object from local to global."""
-        shapely_ = self._get(*args, **kwargs, global_frame=True)
+        shapely_ = self.get(*args, **kwargs, in_global_frame=True)
 
         if shapely_ is None:
-            shapely_ = self._get(*args, **kwargs, global_frame=False)
+            shapely_ = self.get(*args, **kwargs, in_global_frame=False)
 
             if shapely_ is None:
                 raise Exception("Value not found.")
@@ -313,11 +323,11 @@ class ObstacleHullsStorer:
     def get_local_edge_points(self) -> np.array:
         """Return an numpy-array of the edges data. First checking if the extended_reference
         exists and continuing to margin-only."""
-        shapely_ = self._get(global_frame=False, margin=True, reference_extended=True)
+        shapely_ = self.get(in_global_frame=False, margin=True, reference_extended=True)
 
         if shapely_ is None:
-            shapely_ = self._get(
-                global_frame=False, margin=True, reference_extended=False
+            shapely_ = self.get(
+                in_global_frame=False, margin=True, reference_extended=False
             )
 
         if shapely_.geom_type == "Polygon":

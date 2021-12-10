@@ -217,6 +217,7 @@ class Obstacle(ABC):
         # Needed for drawing polygon
         self.obs_polygon = None
 
+        # Pass as pose-reference to the storer
         self.shapely = ObstacleHullsStorer(self)
         self._margin_absolut = margin_absolut
 
@@ -664,27 +665,12 @@ class Obstacle(ABC):
         if self.dimension != 2:
             raise Exception("Only implemented for 2D case.")
 
-        outsidely_ = None
-
-        if not self.is_reference_point_inside():
-            outsidely_ = self.shapely.get_global(
-                margin=True,
-                reference_extended=True,
-                position=self.center_position,
-                orientation=self.orientation,
-            )
-
-        elif self.margin_absolut:
-            outsidely_ = self.shapely.get_global(
-                margin=True,
-                reference_extended=False,
-                position=self.center_position,
-                orientation=self.orientation,
-            )
-
         # Get inside one
-        insidely_ = self.shapely.get_draw_points_core()
-        ax.plot(outer_margin[0, :], outer_margin[1, :], "k--", linewidth=2)
+        shapely_outer = self.shapely.get_global_with_everything_as_array()
+        shapely_core = self.shapely.get_global_without_margin_as_array()
+
+        ax.plot(shapely_outer[0, :], shapely_outer[1, :], "k--", linewidth=2)
+        ax.plot(shapely_core[0, :], shapely_cor[e1, :], "k--", linewidth=2)
 
         inner_margin = np.array(insidely_.xy)
 
