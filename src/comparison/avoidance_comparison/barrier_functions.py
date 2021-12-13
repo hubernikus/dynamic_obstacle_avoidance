@@ -32,9 +32,7 @@ class BarrierFunction(ABC):
 
     def get_hessian(self, position):
         """Default numerical function. Replace them with the analytical function if possible."""
-        return get_numerical_hessian(
-            function=self.get_barrier_value, position=position
-        )
+        return get_numerical_hessian(function=self.get_barrier_value, position=position)
 
     def draw_barrier_safe_value(self, ax, polygon_color="#00ff00ff"):
         if self._obs is None:
@@ -68,9 +66,7 @@ class CirclularBarrier(BarrierFunction):
         return 2 * np.eye(self.dimension)
 
     def create_obs(self):
-        self._obs = Sphere(
-            center_position=self.center_position, radius=self.radius
-        )
+        self._obs = Sphere(center_position=self.center_position, radius=self.radius)
 
 
 class DoubleBlobBarrier(BarrierFunction):
@@ -96,9 +92,7 @@ class DoubleBlobBarrier(BarrierFunction):
         relative_position = position - self.center_position
         gradient = 4 * LA.norm(
             relative_position
-        ) ** 2 * relative_position - 2 * self.blob_matrix.dot(
-            relative_position
-        )
+        ) ** 2 * relative_position - 2 * self.blob_matrix.dot(relative_position)
         return gradient
 
     def create_obs(self):
@@ -119,9 +113,7 @@ class BarrierFromObstacleList(BarrierFunction):
 
         barrier_values = np.zeros(n_obs)
         for ii in range(n_obs):
-            pos_local = self._obstacle_list[ii].transform_global2relative(
-                position
-            )
+            pos_local = self._obstacle_list[ii].transform_global2relative(position)
             norm_pos = LA.norm(pos_local)
             gamma = self._obstacle_list[ii].get_gamma(pos_local)
 

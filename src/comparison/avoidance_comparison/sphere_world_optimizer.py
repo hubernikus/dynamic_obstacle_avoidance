@@ -23,9 +23,7 @@ class SphereWorldOptimizer(BaseContainer):
     Inputs a star-world shape and transforms it to a sphere world
     """
 
-    def __init__(
-        self, lambda_constant=None, attractor_position=None, *args, **kwargs
-    ):
+    def __init__(self, lambda_constant=None, attractor_position=None, *args, **kwargs):
         # TODO: put outside
         from cvxopt import solvers, matrix
 
@@ -63,22 +61,14 @@ class SphereWorldOptimizer(BaseContainer):
         self.sphere_world_list = copy.deepcopy(self.initial_sphere_world_list)
 
     def transform_to_sphereworld(self, position):
-        return self.sphere_to_star_transformer.transform_to_sphereworld(
-            position
-        )
+        return self.sphere_to_star_transformer.transform_to_sphereworld(position)
 
     def transform_from_sphereworld(self, position):
-        return self.sphere_to_star_transformer.transform_from_sphereworld(
-            position
-        )
+        return self.sphere_to_star_transformer.transform_from_sphereworld(position)
 
-    def transform_to_sphereworld_velocity(
-        self, position, velocity, delta_time=1e-3
-    ):
-        return (
-            self.sphere_to_star_transformer.transform_to_sphereworld_velocity(
-                position, velocity, delta_time
-            )
+    def transform_to_sphereworld_velocity(self, position, velocity, delta_time=1e-3):
+        return self.sphere_to_star_transformer.transform_to_sphereworld_velocity(
+            position, velocity, delta_time
         )
 
     # def get_position_in_sphere_world(self, position):
@@ -104,17 +94,13 @@ class SphereWorldOptimizer(BaseContainer):
             obs = self.sphere_world_list[ii]
 
             obs.position = (
-                obs.position
-                + optimal_control[ii * dim : (ii + 1) * dim] * delta_time
+                obs.position + optimal_control[ii * dim : (ii + 1) * dim] * delta_time
             )
-            obs.radius = (
-                obs.radius + optimal_control[ii * n_obs + ii] * delta_time
-            )
+            obs.radius = obs.radius + optimal_control[ii * n_obs + ii] * delta_time
 
         # And for the boundary
         self.sphere_world_list[-1].radius = (
-            self.sphere_world_list[-1].radius
-            + optimal_control[-1] * delta_time
+            self.sphere_world_list[-1].radius + optimal_control[-1] * delta_time
         )
 
     def get_optimal_displacement(self, position, velocity, kappa=1, K_p=1):
@@ -195,15 +181,11 @@ class SphereWorldOptimizer(BaseContainer):
                     continue
 
                 breakpoint()  # Just checking htat it works in zaa future..
-                A_C2_q[it, ii * dim : (ii + 1) * dim] = -2 * (
-                    q_i[ii] - q_i[jj]
-                )
+                A_C2_q[it, ii * dim : (ii + 1) * dim] = -2 * (q_i[ii] - q_i[jj])
                 A_C2_q[it, jj * dim : (jj + 1) * dim] = 2 * (q_i[ii] - q_i[jj])
                 A_C2_r[it, ii] = 2 * (r_i[ii] + r_i[jj])
                 A_C2_r[it, jj] = 2 * (r_i[ii] + r_i[jj])
-                b_C2[it] = self.gamma(
-                    self.h_ij(q_i[ii], q_j[jj], r_i[ii], r_j[jj])
-                )
+                b_C2[it] = self.gamma(self.h_ij(q_i[ii], q_j[jj], r_i[ii], r_j[jj]))
                 it += 1  # Least errorprone iterator
 
         A_C2 = np.hstack((A_C2_q, A_C2_r))
@@ -260,9 +242,7 @@ class SphereWorldOptimizer(BaseContainer):
         ).astype(float)
 
         # sol = solvers.qp(P=matrix(PP), q=matrix(qq).T, G=matrix(AA), h=matrix(bb).T)
-        sol = solvers.qp(
-            P=matrix(PP), q=matrix(qq), G=matrix(AA), h=matrix(bb)
-        )
+        sol = solvers.qp(P=matrix(PP), q=matrix(qq), G=matrix(AA), h=matrix(bb))
         return np.array(sol["x"]).flatten()
 
     def h_0(self, q, q_0, r_0):
@@ -331,6 +311,4 @@ class ClosedLoopQP(ControllerQP):
 
     def evaluate_with_control(self, position, control):
         """Controller acts on internal dynamics."""
-        return (
-            self.f_x.evaluate(position) + self.g_x.evaluate(position) * control
-        )
+        return self.f_x.evaluate(position) + self.g_x.evaluate(position) * control
