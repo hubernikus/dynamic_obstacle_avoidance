@@ -44,8 +44,8 @@ class ObstacleHullsStorer:
     dimension = 2
 
     def __init__(self, state, margin=None) -> None:
-        self._hull_list_local = [None for ii in range(self.n_options)]
-        self._hull_list_global = [None for ii in range(self.n_options)]
+        self._hull_list_local = [None for ii in range(self.n_options ** 2)]
+        self._hull_list_global = [None for ii in range(self.n_options ** 2)]
 
         # TODO: instead of obstacle, pass state
         self._state = state
@@ -72,7 +72,7 @@ class ObstacleHullsStorer:
 
         # Reset state
         self.temp_state = temp_state
-        self._hulls_global = [None for ii in range(self.n_options)]
+        self._hulls_global = [None for ii in range(self.n_options ** 2)]
 
         return True
 
@@ -82,10 +82,8 @@ class ObstacleHullsStorer:
         """Chosse between:
         margin (bool): no-margin / margin
         reference_extended(bool): reference-not extended / reference_extended."""
-        breakpoint()
         return np.sum(
-            np.array([margin, reference_extended])
-            * (2 ** (np.arange(self.n_options) - 1))
+            np.array([margin, reference_extended]) * (2 ** np.arange(self.n_options))
         )
 
     def set(
@@ -123,10 +121,12 @@ class ObstacleHullsStorer:
             if not has_moved:
                 value = self._hull_list_global[index]
                 if value is not None:
+                    # If in global is already defined, return it. Otherwise check local-list
                     return value
 
             value = self._hull_list_local[index]
             if value is None:
+                # Cannot be transformed is none
                 return value
 
             # Transform and store
@@ -158,19 +158,19 @@ class ObstacleHullsStorer:
                 shapely_object, self._state.orientation, use_radians=True
             )
 
+        return shapely_object
+
     def get_global_with_everything_as_array(self) -> np.ndarray:
         """points: np.ndarray of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_with_everything()
-        breakpoint()
-        points = shapely_.get_points()
+        return np.array(shapely_.exterior.coords.xy)
 
     def get_global_without_margin_as_array(self) -> np.ndarray:
         """points: np.ndarry of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_without_margin()
-        breakpoint()
-        points = shapely_.get_points()
+        return np.array(shapely_.exterior.coords.xy)
 
     def get_global_with_everything(self) -> object:
         """Shapely for global intersection-check."""
@@ -204,8 +204,15 @@ class ObstacleHullsStorer:
             has_moved=has_moved,
         )
 
-        breakpoint()
         return shapely_
+
+    def get_global_without_margin(self):
+        hull_ = self.get(
+            in_global_frame=True,
+            margin=False,
+            reference_extended=False,
+        )
+        return hull_
 
     def get_local_with_margin_only(self):
         has_moved = self.check_if_pose_has_updated()

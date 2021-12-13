@@ -638,17 +638,15 @@ class Obstacle(ABC):
             raise Exception("Only implemented for 2D case.")
 
         # Get inside one
-        shapely_outer = self.shapely.get_global_with_everything_as_array()
-        shapely_core = self.shapely.get_global_without_margin_as_array()
+        points_outer = self.shapely.get_global_with_everything_as_array()
+        points_core = self.shapely.get_global_without_margin_as_array()
 
-        ax.plot(shapely_outer[0, :], shapely_outer[1, :], "k--", linewidth=2)
-        ax.plot(shapely_core[0, :], shapely_cor[e1, :], "k--", linewidth=2)
-
-        inner_margin = np.array(insidely_.xy)
+        ax.plot(points_outer[0, :], points_outer[1, :], "k--", linewidth=2)
+        ax.plot(points_core[0, :], points_core[1, :], "k--", linewidth=2)
 
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
         if fill_color is not None:
-            self.obs_polygon = plt.Polygon(inner_margin.T)
+            self.obs_polygon = plt.Polygon(points_core.T)
             self.obs_polygon.set_color(fill_color)
 
             ax.add_patch(self.obs_polygon)
