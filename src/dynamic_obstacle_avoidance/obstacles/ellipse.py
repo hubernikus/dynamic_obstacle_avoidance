@@ -89,6 +89,8 @@ class Ellipse(Obstacle):
         self.ind_edge_ref = 0
         self.ind_edge_tang = 1
 
+        self.create_shapely()
+
     @property
     def axes_length(self):
         return self._axes_length
@@ -748,15 +750,16 @@ class Ellipse(Obstacle):
         if self.dim != 2:
             raise NotImplementedError("Shapely object only existing for 2D")
 
-        circ = Point(self.center_position).buffer(1)
+        # Point is set at zero, and only moved when needed
+        circ = Point(np.zeros(self.dimension)).buffer(1)
+
+        axes = self.axes_length
+        shapely_outside = affinity.scale(circ, axes[0], axes[1])
+        self.shapely.set(in_global_frame=False, margin=False, value=shapely_outside)
 
         axes = self.axes_with_margin
-        shapely_ = affinity.scale(circ, axes[0], axes[1])
-
-        if self.orientation is not None:
-            shapely_ = affinity.rotate(shapely_, self.orientation * 180.0 / pi)
-
-        self.shapely.set(global_frame=True, margin=True, value=shapely_)
+        shapely_outside = affinity.scale(circ, axes[0], axes[1])
+        self.shapely.set(in_global_frame=False, margin=True, value=shapely_outside)
 
     def draw_obstacle(
         self,
