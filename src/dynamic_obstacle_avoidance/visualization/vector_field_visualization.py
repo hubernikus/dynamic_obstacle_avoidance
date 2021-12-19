@@ -232,20 +232,30 @@ def plot_streamlines(
 def plot_obstacles(
     ax,
     obs,
-    x_range,
-    y_range,
+    x_lim,
+    y_lim,
     pos_attractor=None,
     obstacle_color=None,
     show_obstacle_number=False,
     reference_point_number=False,
     drawVelArrow=True,
     noTicks=False,
-    showLabel=True,
+    showLabel=False,
     draw_wall_reference=False,
     border_linestyle="--",
     alpha_obstacle=0.8,
+    x_range=None,
+    y_range=None,
 ):
     """Plot all obstacles & attractors"""
+    if x_range is not None:
+        # Depcreciated -> remove in the future
+        x_lim = x_range
+        
+    if y_range is not None:
+        # Depcreciated -> remove in the future
+        y_lim = y_range
+        
     if pos_attractor is not None:
         ax.plot(
             pos_attractor[0],
@@ -283,8 +293,8 @@ def plot_obstacles(
             if outer_boundary is None:
                 outer_boundary = np.array(
                     [
-                        [x_range[0], x_range[1], x_range[1], x_range[0]],
-                        [y_range[0], y_range[0], y_range[1], y_range[1]],
+                        [x_lim[0], x_lim[1], x_lim[1], x_lim[0]],
+                        [y_lim[0], y_lim[0], y_lim[1], y_lim[1]],
                     ]
                 )
 
@@ -364,8 +374,8 @@ def plot_obstacles(
 
     ax.set_aspect("equal", adjustable="box")
 
-    ax.set_xlim(x_range)
-    ax.set_ylim(y_range)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
 
     if noTicks:
         ax.tick_params(

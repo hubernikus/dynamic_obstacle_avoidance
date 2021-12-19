@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon, Ellipse
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
+from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 
 def test_draw_polygon(visualize=False):

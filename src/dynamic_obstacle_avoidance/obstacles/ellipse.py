@@ -412,6 +412,11 @@ class Ellipse(Obstacle):
 
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector)
+
+        mag_norm = LA.norm(normal_vector)
+        if mag_norm:
+            normal_vector = normal_vector / mag_norm
+            
         return normal_vector
 
     def get_gamma_ellipse(
