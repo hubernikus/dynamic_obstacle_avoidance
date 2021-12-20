@@ -251,11 +251,11 @@ def plot_obstacles(
     if x_range is not None:
         # Depcreciated -> remove in the future
         x_lim = x_range
-        
+
     if y_range is not None:
         # Depcreciated -> remove in the future
         y_lim = y_range
-        
+
     if pos_attractor is not None:
         ax.plot(
             pos_attractor[0],
@@ -331,9 +331,6 @@ def plot_obstacles(
                 weight="bold",
             )
 
-        if not obs[n].is_boundary or draw_wall_reference:
-            ax.plot(obs[n].center_position[0], obs[n].center_position[1], "k.")
-
         # automatic adaptation of center
         if not obs[n].is_boundary or draw_wall_reference:
             reference_point = obs[n].get_reference_point(in_global_frame=True)
@@ -341,10 +338,14 @@ def plot_obstacles(
                 reference_point[0],
                 reference_point[1],
                 "k+",
-                linewidth=18,
-                markeredgewidth=4,
-                markersize=13,
+                linewidth=12,
+                markeredgewidth=2,
+                markersize=8,
             )
+
+        elif not obs[n].is_boundary or draw_wall_reference:
+            ax.plot(obs[n].center_position[0], obs[n].center_position[1], "k.")
+
         if reference_point_number:
             ax.annotate(
                 "{}".format(n),
