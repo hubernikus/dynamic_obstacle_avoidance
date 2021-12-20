@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon, Ellipse
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
+from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 
 def test_draw_polygon(visualize=False):
@@ -21,28 +23,21 @@ def test_draw_polygon(visualize=False):
 
     if visualize:
         fig, ax = plt.subplots()
-        my_obstacle.plot2D(ax=ax)
+        my_obstacle.plot_obstacles(ax=ax)
 
 
 def test_draw_ellipse(visualize=False):
     """Triangle object."""
     axes_length = np.array([1, 2])
     my_obstacle = Ellipse(
-        center_position=np.array([2, -1.4]),
-        orientation=123 * np.pi / 180,
-        axes_length=axes_length,
-        margin_absolut=0,
+        center_position=np.array([0, 0]), axes_length=axes_length, margin_absolut=0
     )
 
     if visualize:
         fig, ax = plt.subplots()
         my_obstacle.plot2D(ax=ax)
 
-        ax.axis("equal")
-        ax.set_xlim([-5, 5])
-        ax.set_ylim([-5, 5])
 
-        plt.show()
 
 
 def test_draw_polygon_with_margin():
