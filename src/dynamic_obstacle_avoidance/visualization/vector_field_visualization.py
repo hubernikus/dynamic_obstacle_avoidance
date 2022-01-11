@@ -231,9 +231,9 @@ def plot_streamlines(
 
 def plot_obstacles(
     ax,
-    obs,
-    x_lim,
-    y_lim,
+    obstacle_container,
+    x_lim=None,
+    y_lim=None,
     pos_attractor=None,
     obstacle_color=None,
     show_obstacle_number=False,
@@ -241,11 +241,14 @@ def plot_obstacles(
     drawVelArrow=True,
     noTicks=False,
     showLabel=False,
+    draw_reference=False,
     draw_wall_reference=False,
     border_linestyle="--",
     alpha_obstacle=0.8,
+    velocity_arrow_factor=0.2,
     x_range=None,
     y_range=None,
+    obs=None,
 ):
     """Plot all obstacles & attractors"""
     if x_range is not None:
@@ -255,6 +258,10 @@ def plot_obstacles(
     if y_range is not None:
         # Depcreciated -> remove in the future
         y_lim = y_range
+
+    if obs is not None:
+        # Depreciated -> remove in the future
+        obstacle_container = obs
 
     if pos_attractor is not None:
         ax.plot(
@@ -272,12 +279,11 @@ def plot_obstacles(
     if obstacle_color is None:
         obstacle_color = np.array([176, 124, 124]) / 255.0
 
-    for n in range(len(obs)):
-        if obs[n].boundary_points is None:
-            obs[n].draw_obstacle()
+    for n, obs in enumerate(obstacle_container):
+        obs.draw_obstacle()
 
-        x_obs = obs[n].boundary_points_global_closed
-        x_obs_sf = obs[n].boundary_points_margin_global_closed
+        x_obs = obs.boundary_points_global_closed
+        x_obs_sf = obs.boundary_points_margin_global_closed
         ax.plot(
             x_obs_sf[0, :],
             x_obs_sf[1, :],
@@ -285,10 +291,12 @@ def plot_obstacles(
             linestyle=border_linestyle,
         )
 
-        if obs[n].is_boundary:
+        if obs.is_boundary:
+            if x_lim is None or y_lim is None:
+                raise Exception("Outer boundary can only be defined with `x_lim` and `y_lim`.")
             outer_boundary = None
-            if hasattr(obs[n], "global_outer_edge_points"):
-                outer_boundary = obs[n].global_outer_edge_points
+            if hasattr(obs, "global_outer_edge_points"):
+                outer_boundary = obs.global_outer_edge_points
 
             if outer_boundary is None:
                 outer_boundary = np.array(
@@ -325,15 +333,15 @@ def plot_obstacles(
         if show_obstacle_number:
             ax.annotate(
                 "{}".format(n + 1),
-                xy=np.array(obs[n].center_position) + 0.16,
+                xy=np.array(obs.center_position) + 0.16,
                 textcoords="data",
                 size=16,
                 weight="bold",
             )
 
         # automatic adaptation of center
-        if not obs[n].is_boundary or draw_wall_reference:
-            reference_point = obs[n].get_reference_point(in_global_frame=True)
+        if draw_reference and not obs.is_boundary or draw_wall_reference:
+            reference_point = obs.get_reference_point(in_global_frame=True)
             ax.plot(
                 reference_point[0],
                 reference_point[1],
@@ -343,8 +351,8 @@ def plot_obstacles(
                 markersize=8,
             )
 
-        elif not obs[n].is_boundary or draw_wall_reference:
-            ax.plot(obs[n].center_position[0], obs[n].center_position[1], "k.")
+        elif not obs.is_boundary or draw_wall_reference:
+            ax.plot(obs.center_position[0], obs.center_position[1], "k.", )
 
         if reference_point_number:
             ax.annotate(
@@ -355,15 +363,14 @@ def plot_obstacles(
                 weight="bold",
             )  #
 
-        if drawVelArrow and np.linalg.norm(obs[n].linear_velocity) > 0:
+        if drawVelArrow and np.linalg.norm(obs.linear_velocity) > 0:
             # col=[0.5,0,0.9]
             col = [255 / 255.0, 51 / 255.0, 51 / 255.0]
-            fac = 5  # scaling factor of velocity
             ax.arrow(
-                obs[n].center_position[0],
-                obs[n].center_position[1],
-                obs[n].linear_velocity[0] / fac,
-                obs[n].linear_velocity[1] / fac,
+                obs.center_position[0],
+                obs.center_position[1],
+                obs.linear_velocity[0] * velocity_arrow_factor,
+                obs.linear_velocity[1] * velocity_arrow_factor,
                 # head_width=0.3, head_length=0.3, linewidth=10,
                 head_width=0.1,
                 head_length=0.1,
@@ -371,6 +378,7 @@ def plot_obstacles(
                 fc=col,
                 ec=col,
                 alpha=1,
+                zorder=3,
             )
 
     ax.set_aspect("equal", adjustable="box")
@@ -394,8 +402,8 @@ def plot_obstacles(
         ax.set_xlabel(r"$\xi_1$", fontsize=16)
         ax.set_ylabel(r"$\xi_2$", fontsize=16)
 
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.tick_params(axis="both", which="minor", labelsize=12)
+    # ax.tick_params(axis="both", which="major", labelsize=14)
+    # ax.tick_params(axis="both", which="minor", labelsize=12)
 
     return
 
@@ -444,10 +452,6 @@ def Simulation_vectorFields(
 
     dim = 2
 
-    # Numerical hull of ellipsoid
-    for n in range(len(obs)):
-        obs[n].draw_obstacle(numPoints=50)  # 50 points resolution
-
     # Adjust dynamic center
     if automatic_reference_point:
         tt = timer()
@@ -456,10 +460,6 @@ def Simulation_vectorFields(
 
         if print_info:
             print("Time for dynamic_center: {}ms".format(np.round(dt * 1000, 2)))
-
-    # Numerical hull of ellipsoid
-    for n in range(len(obs)):
-        obs[n].draw_obstacle(numPoints=50)  # 50 points resolution
 
     if fig_and_ax_handle is None:
         fig, ax = plt.subplots(figsize=figureSize)

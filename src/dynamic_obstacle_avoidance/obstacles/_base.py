@@ -113,10 +113,11 @@ class Obstacle(ABC):
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
+        
         # Margin
         if sigma is not None:
             raise Exception("Remove / rename sigma argument.")
-        self.sigma = 1  # TODO: rename sigma argument
+        # self.sigma = 1  # TODO: rename sigma argument
 
         self.relative_hull_extension_margin = relative_hull_extension_margin
 

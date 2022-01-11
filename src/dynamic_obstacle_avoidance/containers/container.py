@@ -77,7 +77,7 @@ class BaseContainer(ABC):
     @property
     def dim(self):
         # Dimension of all obstacles is expected to be equal
-        return self._obstacle_list[0].dim
+        return self.dimension
 
     @property
     def list(self):
