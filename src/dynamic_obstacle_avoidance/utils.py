@@ -89,7 +89,7 @@ def get_relative_obstacle_velocity(
             warnings.warn("Angular velocity is not defined for={}".format(d))
 
         weight_angular = np.exp(
-            -1.0 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
+            -1.0  * (np.max([gamma_list[ii], 1]) - 1)
         )
 
         linear_velocity = obs[it_obs].linear_velocity
@@ -105,7 +105,7 @@ def get_relative_obstacle_velocity(
                 linear_velocity = E_orth[:, 0, ii].dot(lin_vel_local[0])
 
             weight_linear = np.exp(
-                -1 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
+                -1 / 1 * (np.max([gamma_list[ii], 1]) - 1)
             )
         xd_obs_n = weight_linear * linear_velocity + weight_angular * xd_w
 
@@ -113,7 +113,7 @@ def get_relative_obstacle_velocity(
         # the crazy rotation of the robot due to the rotation of the object
         if obs[it_obs].is_deforming:
             weight_deform = np.exp(
-                -1 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
+                -1 / 1 * (np.max([gamma_list[ii], 1]) - 1)
             )
             vel_deformation = obs[it_obs].get_deformation_velocity(pos_relative[:, ii])
 
