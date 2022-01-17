@@ -181,7 +181,8 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             ctl_point_weight = np.zeros(gamma_values.shape)
             ind_nonzero = gamma_values < cutoff_gamma
             if not any(ind_nonzero):
-                ctl_point_weight[-1] = 1
+                # ctl_point_weight[-1] = 1
+                ctl_point_weight = np.full(gamma_values.shape, 1/len(self.obs_multi_agent[obs]))
             # for index in range(len(gamma_values)):
             ctl_point_weight[ind_nonzero] = self.get_weight_from_gamma(
                 gamma_values[ind_nonzero],
@@ -227,7 +228,6 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         const_speed: bool = True,
     ) -> np.ndarray:
 
-        print(f"init vel: {initial_velocity}")
         vel = obs_avoidance_interpolation_moving(
             position=position, initial_velocity=initial_velocity, obs=env
         )
