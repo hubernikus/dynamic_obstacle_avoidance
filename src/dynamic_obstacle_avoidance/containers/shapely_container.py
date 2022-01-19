@@ -40,23 +40,28 @@ class ShapelyContainer(ObstacleContainer):
         super().__init__(obs_list)
 
         self.distance_margin = distance_margin
-        self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
-        self._distance_matrix = DistanceMatrix(n_obs=len(self))
+        self._boundary_reference_points = None
+        self._distance_matrix = None
 
     def append(self, value):  # Compatibility with normal list.
         """Add new obstacle to the end of the container."""
         super().append(value)
         # TODO: alternative for computational speed!
         # Always reset dist matrix
-        self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
-        self._distance_matrix = DistanceMatrix(n_obs=len(self))
+        # self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
+        # self._distance_matrix = DistanceMatrix(n_obs=len(self))
+        self._boundary_reference_points = None
+        self._distance_matrix = None
 
     def __delitem__(self, key):  # Compatibility with normal list.
         """Remove obstacle from container list."""
+        # TODO: alternative for computational speed!
         super().__delitem__(key)
 
-        self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
-        self._distance_matrix = DistanceMatrix(n_obs=len(self))
+        # self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
+        # self._distance_matrix = DistanceMatrix(n_obs=len(self))
+        self._boundary_reference_points = None
+        self._distance_matrix = None
 
     @property
     def index_wall(self):
@@ -205,11 +210,16 @@ class ShapelyContainer(ObstacleContainer):
 
         return intersecting_obstacles
 
-    def update_reference_points(self):
+    def update_reference_points(self, create_shapely=False):
         # todo: check for all if have moved
-        for ii in range(self.n_obstacles):
-            if self[ii].has_moved or self[ii].shapely is None:
-                self[ii].create_shapely()
+        if create_shapely:
+            for ii in range(self.n_obstacles):
+                if self[ii].has_moved or self[ii].shapely is None:
+                    self[ii].create_shapely()
+        if self._boundary_reference_points is None:
+            self._boundary_reference_points = np.zeros((self.dim, len(self), len(self)))
+        if self._distance_matrix is None:
+            self._distance_matrix = DistanceMatrix(n_obs=len(self))
 
         for ii in range(self.n_obstacles):
             for jj in range(ii + 1, self.n_obstacles):
@@ -260,3 +270,49 @@ class ShapelyContainer(ObstacleContainer):
                 weighted_ref_point += self[ii].center_position * (1 - sum_weight)
 
             self[ii].set_reference_point(weighted_ref_point, in_global_frame=True)
+
+
+class SphereContainer(ShapelyContainer):
+    """Environment with circles only and no boundary."""
+
+    def are_intersecting(self, ii, jj):
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
+
+        dist = LA.norm(self[ii].center_position - self[jj].center_position)
+
+        return dist < (self[ii].radius_with_margin + self[jj].radius_with_margin)
+
+    def evaluate_intersection_position(self, ii, jj):
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
+
+        intersection_center = 0.5 * (
+            self[ii].center_position - self[jj].center_position
+        )
+
+        self._boundary_reference_points[:, ii, jj] = intersection_center
+
+        # Store it for boundaries, too
+        self._boundary_reference_points[:, jj, ii] = intersection_center
+
+        self._distance_matrix[ii, jj] = 0
+
+    def evaluate_boundary_reference_points(self, ii, jj):
+        ii, jj = self.single_boundary_and_nonequal_check(ii, jj)
+
+        center_vect = self[ii].center_position - self[jj].center_position
+        center_vect = center_vect / LA.norm(center_vect)
+
+        try:
+            self._boundary_reference_points[:, ii, jj] = (
+                self[ii].center_position - center_vect * self[ii].radius_with_margin
+            )
+            self._boundary_reference_points[:, jj, ii] = (
+                self[jj].center_position - center_vect * self[jj].radius_with_margin
+            )
+        except:
+            breakpoint()
+
+        self._distance_matrix[ii, jj] = LA.norm(
+            self._boundary_reference_points[:, ii, jj]
+            - self._boundary_reference_points[:, jj, ii]
+        )
