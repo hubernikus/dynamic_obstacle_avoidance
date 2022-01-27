@@ -10,6 +10,7 @@ import numpy as np
 import numpy.linalg as LA
 
 from vartools.directional_space import get_directional_weighted_sum
+from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.utils import *
 
 
@@ -292,8 +293,6 @@ def obs_avoidance_interpolation_moving(
     # Keep either way, since avoidance from attractor might be needed
     relative_velocity_hat = np.zeros((dim, N_obs))
     relative_velocity_hat_magnitude = np.zeros((N_obs))
-
-    # breakpoint()
 
     n = 0
     for n in np.arange(N_obs)[ind_obs]:

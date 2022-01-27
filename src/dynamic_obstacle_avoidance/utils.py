@@ -123,7 +123,7 @@ def get_relative_obstacle_velocity(
 
             xd_obs_n += weight_deform * vel_deformation
         xd_obs = xd_obs + xd_obs_n * weights[ii]
-    return (xd_obs,)
+    return xd_obs
 
 
 def get_weight_from_gamma(*args, **kwargs):
