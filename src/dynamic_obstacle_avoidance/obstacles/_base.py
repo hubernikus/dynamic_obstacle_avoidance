@@ -1088,9 +1088,9 @@ class Obstacle(ABC):
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
         if in_global_frame:
-            ref_dir = self.center_position - position
+            ref_dir =  self.transform_relative2global(self.reference_point) - position
         else:
-            ref_dir = (-1) * position
+            ref_dir = self.reference_point - position
 
         # Normal direction
         norm_of_ref = LA.norm(ref_dir)
