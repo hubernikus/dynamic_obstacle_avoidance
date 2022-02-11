@@ -169,9 +169,11 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         weights = weights / n_points
         return weights
 
-    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=5):
+    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=5, return_gamma: bool = False):
         # TODO
         ctl_weight_list = []
+        gamma_values_list = np.empty(shape=0)
+        ctl_weight_save = np.empty(shape=0)
         for obs in self.obs_multi_agent:
             if not self.obs_multi_agent[obs]:
                 break
@@ -197,6 +199,13 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
                 ctl_point_weight[-1] += 1 - ctl_point_weight_sum
 
             ctl_weight_list.append(ctl_point_weight)
+
+            if return_gamma:
+                gamma_values_list = np.append(gamma_values_list, gamma_values)
+                ctl_weight_save = np.append(ctl_weight_save, ctl_point_weight)
+
+        if return_gamma:
+            return ctl_weight_list, gamma_values_list, ctl_weight_save
 
         return ctl_weight_list
 
@@ -253,3 +262,14 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
 
     def set_attractor_position(self, position: np.ndarray, control_point):
         self.initial_dynamics[control_point].attractor_position = position
+
+    def get_gamma_at_pts(self, control_points, obstacle):
+        gamma_values_list = np.empty(shape=0)
+
+        for obs in self.obs_multi_agent:
+            if not self.obs_multi_agent[obs]:
+                break
+            gamma_values = self.get_gamma_at_control_point(control_points[self.obs_multi_agent[obs]], obs, obstacle)
+            gamma_values_list = np.append(gamma_values_list, gamma_values)
+
+        return gamma_values_list
