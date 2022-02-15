@@ -29,11 +29,15 @@ class DynamicalSystemAnimation:
             self.animation_paused = True
 
     def run(
-            self, initial_dynamics, obstacle_environment,
+            self, initial_dynamics,
+            obstacle_environment,
             obs_w_multi_agent,
             start_position=None,
-            x_lim=None, y_lim=None,
-            it_max=1000, dt_step=0.03, dt_sleep=0.1
+            x_lim=None,
+            y_lim=None,
+            it_max=1000,
+            dt_step=0.03,
+            dt_sleep=0.1
     ):
 
         num_obs = len(obstacle_environment)
@@ -85,7 +89,7 @@ class DynamicalSystemAnimation:
 
             # Here come the main calculation part
             weights = dynamic_avoider.get_influence_weight_at_ctl_points(position_list[:, :, ii-1])
-            print(f"weights: {weights}")
+            # print(f"weights: {weights}")
             for obs in range(num_obs):
                 num_agents_in_obs = len(obs_w_multi_agent[obs])
                 if num_agent > 1:
@@ -112,7 +116,7 @@ class DynamicalSystemAnimation:
 
                     angular_vel_obs = angular_vel.sum()
                     obstacle_environment[obs].linear_velocity = obs_vel
-                    obstacle_environment[obs].angular_velocity = -angular_vel_obs
+                    obstacle_environment[obs].angular_velocity = -2 * angular_vel_obs
                     obstacle_environment[obs].do_velocity_step(dt_step)
                     for agent in obs_w_multi_agent[obs]:
                         position_list[agent, :, ii] = obstacle_environment[obs].transform_relative2global(
@@ -163,7 +167,7 @@ class DynamicalSystemAnimation:
 
 
 def multiple_robots():
-    center_point = 3.0
+    center_point = 2.0
     num_agent = 2
     max_ax_len = 1.5
     rel_dis = max_ax_len / (2 * (num_agent + 1))
@@ -206,8 +210,8 @@ def multiple_robots():
         obstacle_environment,
         obs_multi_agent,
         agent_pos,
-        x_lim=[-4, 3],
-        y_lim=[-3, 3],
+        x_lim=[-3, 3],
+        y_lim=[-2, 2],
         dt_step=0.05,
     )
 
