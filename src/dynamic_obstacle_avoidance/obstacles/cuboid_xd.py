@@ -12,7 +12,8 @@ from vartools import linalg
 
 from dynamic_obstacle_avoidance import obstacles
 
-class Cuboid():
+
+class CuboidWithAxes(obstacles.Obstacle):
     def __init__(
         self,
         axes_length: np.ndarray,
@@ -43,19 +44,16 @@ class Cuboid():
             return np.ones(position.shape) / position.shape[0]
 
         normal = np.zeros(position.shape)
-        relevant_axes = self.axes_length[ind_relevant]
-        relevant_pos = position
-
         normal[ind_relevant] = (
             position[ind_relevant] -
-            np.copysign(relevant_axes[ind_relevant],
-                        position[ind_relevant])
+            np.copysign(self.axes_length[ind_relevant], position[ind_relevant])
             )
 
+        # No normalization chack needed, since at least one axes was relevatn
         normal = normal / LA.norm(normal)
         
         if not in_obstacle_frame:
-            normal = self.pose.transform_position_from_direction_to_local(normal)
+            normal = self.pose.transform_direction_from_reference_to_local(normal)
 
         return normal
 

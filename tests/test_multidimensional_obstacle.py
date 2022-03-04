@@ -13,8 +13,9 @@ from numpy import linalg as LA
 
 import shapely
 
-# from dynamic_obstacle_avoidance import obstacles
-from dynamic_obstacle_avoidance.obstacles.ellipse_xd import obstacles
+from dynamic_obstacle_avoidance.obstacles.ellipse_xd import EllipseWithAxes
+from dynamic_obstacle_avoidance.obstacles.cuboid_xd import CuboidWithAxes
+# from dynamic_obstacle_avoidance.obstacles.ellipse_xd 
 
 
 def test_multidimensional_ellipse(visualize=False):
@@ -34,7 +35,6 @@ def test_multidimensional_ellipse(visualize=False):
     point0 = np.array([3, 1])
     normal0 = obstacle.get_normal_direction(point0, in_obstacle_frame=False)
     surf_point0 = obstacle.get_point_on_surface(point0, in_obstacle_frame=False)
-
     
     if visualize:
         import matplotlib.pyplot as plt  # TODO: remove for production
@@ -51,7 +51,7 @@ def test_multidimensional_ellipse(visualize=False):
 
         ax.set_aspect("equal")
 
-        ax.arrow(point0[0], point0[1],
+        ax.arrow(surf_point0[0], surf_point0[1],
                  normal0[0], normal0[1])
 
         ax.plot(surf_point0[0], surf_point0[1], 'ro')
@@ -59,5 +59,51 @@ def test_multidimensional_ellipse(visualize=False):
     pass
 
 
+def test_multidimensional_cuboid(visualize=False):
+    axes_length = np.array([2.0, 1.0])
+    center_position = np.array([0, 0])
+
+    cuboid = shapely.geometry.box(center_position[0]-axes_length[0],
+                                  center_position[1]-axes_length[1],
+                                  center_position[0]+axes_length[0],
+                                  center_position[1]+axes_length[1]
+                                  )
+    # cuboid = shapely.affinity.rotate(cuboid, 50)
+
+    # obstacle = obstacles.ellipse_xd.EllipseWithAxes(
+    obstacle = obstacles.cuboid_xd.CuboidWithAxes(
+        center_position=center_position,
+        axes_length=axes_length
+        )
+
+    point0 = np.array([3, 2])
+    normal0 = obstacle.get_normal_direction(point0, in_obstacle_frame=False)
+    surf_point0 = obstacle.get_point_on_surface(point0, in_obstacle_frame=False)
+    
+    if visualize:
+        import matplotlib.pyplot as plt  # TODO: remove for production
+        plt.ion()
+        
+        fig, ax = plt.subplots()
+        
+        xx, yy = cuboid.exterior.xy
+        ax.plot(xx, yy, color='black', alpha=0.3)
+
+        polygon_path = plt.Polygon(np.vstack((xx, yy)).T, alpha=0.1, zorder=-4)
+        polygon_path.set_color('black')
+        ax.add_patch(polygon_path)
+
+        ax.set_aspect("equal")
+
+        ax.plot(point0[0], point0[1], 'ko')
+
+        ax.arrow(surf_point0[0], surf_point0[1],
+                 normal0[0], normal0[1], color='red')
+
+        ax.plot(surf_point0[0], surf_point0[1], 'ro')
+    
+    pass
+
 if (__name__) == "__main__":
-    test_multidimensional_ellipse(True)
+    # test_multidimensional_ellipse(True)
+    test_multidimensional_cuboid(True)

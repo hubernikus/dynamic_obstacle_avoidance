@@ -17,12 +17,14 @@ class EllipseWithAxes(obstacles.Obstacle):
     def __init__(
         self,
         axes_length: np.ndarray,
+        curvature: float = 1,
         *args,
         **kwargs):
         
         super().__init__(*args, **kwargs)
 
         self.axes_length = axes_length
+        self.curvature = curvature
 
     @property
     def axes_length(self):
@@ -51,14 +53,16 @@ class EllipseWithAxes(obstacles.Obstacle):
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
-        pos_norm = LA.norm(position)
-        if not pos_norm:
-            return np.ones(position.shape) / position.shape[0]
-        
-        normal = pos_norm / (self.axes_length ** 2)
+        normal = (self.curvature/self.axes_length
+                  *(position/self.axes_length)**(2*self.curvature-1)
+                  )
 
         # Normalize
-        normal = normal / LA.norm(normal)
+        normal_norm = LA.norm(normal)
+        if normal_norm:
+            normal = normal / normal_norm
+        else:
+            normal[0] = 1
         
         if not in_obstacle_frame:
             normal = self.pose.transform_direction_from_reference_to_local(normal)
