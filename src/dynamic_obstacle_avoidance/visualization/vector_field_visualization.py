@@ -293,7 +293,9 @@ def plot_obstacles(
 
         if obs.is_boundary:
             if x_lim is None or y_lim is None:
-                raise Exception("Outer boundary can only be defined with `x_lim` and `y_lim`.")
+                raise Exception(
+                    "Outer boundary can only be defined with `x_lim` and `y_lim`."
+                )
             outer_boundary = None
             if hasattr(obs, "global_outer_edge_points"):
                 outer_boundary = obs.global_outer_edge_points
@@ -347,12 +349,16 @@ def plot_obstacles(
                 reference_point[1],
                 "k+",
                 linewidth=12,
-                markeredgewidth=2,
+                markeredgewidth=2.4,
                 markersize=8,
             )
 
         elif not obs.is_boundary or draw_wall_reference:
-            ax.plot(obs.center_position[0], obs.center_position[1], "k.", )
+            ax.plot(
+                obs.center_position[0],
+                obs.center_position[1],
+                "k.",
+            )
 
         if reference_point_number:
             ax.annotate(
