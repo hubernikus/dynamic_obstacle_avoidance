@@ -113,7 +113,7 @@ class Obstacle(ABC):
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
-        
+
         # Margin
         if sigma is not None:
             raise Exception("Remove / rename sigma argument.")
@@ -806,7 +806,7 @@ class Obstacle(ABC):
         if self.linear_velocity is not None:
             self.position = self.position + self.linear_velocity * delta_time
 
-        if self.angular_velocity is not None:
+        if self.angular_velocity and self.orientation:
             if self.dimension == 2:
                 self.orientation = self.orientation + self.angular_velocity * delta_time
             else:
@@ -1088,7 +1088,7 @@ class Obstacle(ABC):
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
         if in_global_frame:
-            ref_dir =  self.transform_relative2global(self.reference_point) - position
+            ref_dir = self.transform_relative2global(self.reference_point) - position
         else:
             ref_dir = self.reference_point - position
 
