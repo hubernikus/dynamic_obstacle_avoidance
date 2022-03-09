@@ -328,6 +328,13 @@ class Obstacle(ABC):
             self._orientation = value
 
     @property
+    def orientation_in_degree(self) -> float:
+        if self.orientation is None:
+            return 0
+        else:
+            return self.orientation * 180 / np.pi
+
+    @property
     def position(self):
         return self.center_position
 

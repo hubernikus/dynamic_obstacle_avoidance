@@ -148,6 +148,14 @@ class Polygon(Obstacle):
         else:
             self.create_shapely()
 
+    def get_characteristic_length(self):
+        dist_edges = np.linalg.norm(
+            self.edge_points
+            - np.tile(self.center_position, (self.edge_points.shape[1], 1)).T,
+            axis=0,
+        )
+        return np.mean(dist_edges)
+
     def get_maximal_distance(self):
         dist_edges = np.linalg.norm(
             self.edge_points
@@ -172,10 +180,10 @@ class Polygon(Obstacle):
             )
 
         # TODO: if it's deforming it needs to be adapted
-        shapely_ = self.shapely.get(global_frame=False, margin=False)
+        shapely_ = self.shapely.get(in_global_frame=False, margin=False)
         if shapely_ is None:
             shapely_ = LinearRing(self.edge_points.T)
-            self.shapely.set(global_frame=False, margin=False, value=shapely_)
+            self.shapely.set(in_global_frame=False, margin=False, value=shapely_)
 
         if self.margin_absolut:
             if self.is_boundary:
@@ -185,7 +193,7 @@ class Polygon(Obstacle):
                 shapely_ = shapely_.buffer(self.margin_absolut).exterior
 
         else:
-            self.shapely.set(global_frame=False, margin=True, value=shapely_)
+            self.shapely.set(in_global_frame=False, margin=True, value=shapely_)
 
         if self.orientation:
             # Do orientation first just to ensure that it is around `self.center_position`
@@ -197,7 +205,7 @@ class Polygon(Obstacle):
             shapely_, self.center_position[0], self.center_position[1]
         )
 
-        self.shapely.set(global_frame=True, margin=True, value=shapely_)
+        self.shapely.set(in_global_frame=True, margin=True, value=shapely_)
 
     def draw_obstacle(
         self,
@@ -560,7 +568,7 @@ class Polygon(Obstacle):
         self.edge_reference_points = copy.deepcopy(self.edge_margin_points)
 
         shapely_ = self.shapely.get(
-            global_frame=False, margin=False, reference_extended=False
+            in_global_frame=False, margin=False, reference_extended=False
         )
 
         points = np.array(shapely_.xy)
@@ -576,7 +584,7 @@ class Polygon(Obstacle):
                 new_polygon = new_polygon.buffer(self.margin_absolut).exterior
 
         self.shapely.set(
-            global_frame=False,
+            in_global_frame=False,
             margin=True,
             reference_extended=True,
             value=new_polygon,
@@ -614,12 +622,12 @@ class Polygon(Obstacle):
 
         if with_reference_point_expansion:
             my_shapely = self.shapely.get(
-                global_frame=False, margin=True, reference_extended=True
+                in_global_frame=False, margin=True, reference_extended=True
             )
 
         if my_shapely is None:
             my_shapely = self.shapely.get(
-                global_frame=False, margin=True, reference_extended=False
+                in_global_frame=False, margin=True, reference_extended=False
             )
 
         if my_shapely is None:

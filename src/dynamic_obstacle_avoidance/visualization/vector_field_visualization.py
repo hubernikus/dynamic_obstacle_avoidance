@@ -249,6 +249,7 @@ def plot_obstacles(
     x_range=None,
     y_range=None,
     obs=None,
+    draw_obstacles=False,
 ):
     """Plot all obstacles & attractors"""
     if x_range is not None:
@@ -280,10 +281,22 @@ def plot_obstacles(
         obstacle_color = np.array([176, 124, 124]) / 255.0
 
     for n, obs in enumerate(obstacle_container):
-        obs.draw_obstacle()
 
-        x_obs = obs.boundary_points_global_closed
-        x_obs_sf = obs.boundary_points_margin_global_closed
+        # Tiny bit outdated - newer obstacles wont have this
+        if draw_obstacles:
+            obs.draw_obstacle()
+
+        if hasattr(obs, "get_boundary_xy"):
+            x_obs = np.array(obs.get_boundary_xy())
+        else:
+            x_obs = obs.boundary_points_global_closed.T
+
+        if hasattr(obs, "get_boundary_with_margin_xy"):
+            x_obs_sf = np.array(obs.get_boundary_with_margin_xy())
+
+        else:
+            x_obs_sf = obs.boundary_points_margin_global_closed
+
         ax.plot(
             x_obs_sf[0, :],
             x_obs_sf[1, :],
