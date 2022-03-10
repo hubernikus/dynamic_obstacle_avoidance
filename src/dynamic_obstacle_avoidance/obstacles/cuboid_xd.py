@@ -39,13 +39,14 @@ class CuboidXd(obstacles.Obstacle):
     def semiaxes(self) -> np.ndarray:
         return self._axes_length / 2.0
 
-    def get_characteristic_length(self):
+    def get_characteristic_length(self) -> np.ndarray:
         """Get a characeteric (or maximal) length of the obstacle.
         For an ellipse obstacle,the longest axes."""
         return np.prod(self.semiaxes + self.margin_absolut) ** (1 / self.dimension)
 
-    def set_reference_point(self, position, in_obstacle_frame=True):
-
+    def set_reference_point(self, position: np.ndarray, in_obstacle_frame=True) -> None:
+        """Set the reference point"""
+        # TODO: this can be portet to the `_base` class
         if self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame) >= 1:
             raise NotImplementedError(
                 "Automatic reference point extension is not implemented."
@@ -58,12 +59,12 @@ class CuboidXd(obstacles.Obstacle):
 
     def get_reference_point(
         self, in_obstacle_frame: bool = False, in_global_frame: bool = None
-    ):
+    ) -> np.ndarray:
         if in_global_frame is not None:
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
 
-        if in_obstacle_frame:
+        if not in_obstacle_frame:
             return self.pose.transform_position_from_local_to_reference(
                 self._reference_point
             )
@@ -153,13 +154,14 @@ class CuboidXd(obstacles.Obstacle):
 
         relative_position = np.abs(position) - self.semiaxes
 
-        if all(relative_position < 0):
-            relative_position = relative_position / self.semiaxes
-            return np.max(relative_position)
-
-        else:
+        if any(relative_position > 0):
             relative_position = np.maximum(relative_position, 0)
-            return LA.norm(relative_position)
+            distance = LA.norm(relative_position)
+            if distance > self.margin_absolut:
+                return distance
+
+        relative_position = relative_position / (self.semiaxes + self.margin_absolut)
+        return np.max(relative_position)
 
     def get_gamma(
         self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None
