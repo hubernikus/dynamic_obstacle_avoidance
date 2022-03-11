@@ -283,7 +283,7 @@ def plot_obstacles(
         # Tiny bit outdated - newer obstacles wont have this
 
         if hasattr(obs, "get_boundary_xy"):
-            x_obs = np.array(obs.get_boundary_xy())
+            x_obs = np.array(obs.get_boundary_xy()).T
 
         else:
             # Outdated -> remove in the future
@@ -291,7 +291,7 @@ def plot_obstacles(
             x_obs = obs.boundary_points_global_closed.T
 
         if hasattr(obs, "get_boundary_with_margin_xy"):
-            x_obs_sf = np.array(obs.get_boundary_with_margin_xy())
+            x_obs_sf = np.array(obs.get_boundary_with_margin_xy()).T
 
         else:
             x_obs_sf = obs.boundary_points_margin_global_closed.T
@@ -327,7 +327,7 @@ def plot_obstacles(
             boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=1.0, zorder=-3))
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:

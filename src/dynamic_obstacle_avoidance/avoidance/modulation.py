@@ -234,7 +234,7 @@ def obs_avoidance_interpolation_moving(
         gamma_proportional[n] = obs[n].get_gamma(
             pos_relative[:, n],
             in_global_frame=evaluate_in_global_frame,
-            gamma_distance=gamma_distance,
+            # gamma_distance=gamma_distance,
         )
 
     # Worst case of being at the center

@@ -8,6 +8,8 @@
 import numpy as np
 from numpy import linalg as LA
 
+import shapely
+
 from vartools import linalg
 
 from dynamic_obstacle_avoidance import obstacles
@@ -30,6 +32,7 @@ class EllipseWithAxes(obstacles.Obstacle):
 
     @axes_length.setter
     def axes_length(self, value: np.ndarray):
+        value = np.array(value)
         if any(value <= 0):
             raise ValueError("Zero axes input not tolerated.")
         self._axes_length = value
@@ -70,9 +73,9 @@ class EllipseWithAxes(obstacles.Obstacle):
             raise NotImplementedError()
 
         if self.is_boundary:
-            cuboid = self.get_shapely(semiaxes=self.semiaxes - self.margin_absolut)
+            ellipse = self.get_shapely(semiaxes=self.semiaxes - self.margin_absolut)
         else:
-            cuboid = self.get_shapely(semiaxes=self.semiaxes + self.margin_absolut)
+            ellipse = self.get_shapely(semiaxes=self.semiaxes + self.margin_absolut)
 
         return ellipse.exterior.xy
 
@@ -95,18 +98,25 @@ class EllipseWithAxes(obstacles.Obstacle):
         )
 
         distance_surface = LA.norm(surface_point)
-        distance_position = LA.norm(distance_position)
+        distance_position = LA.norm(position)
 
         if distance_position > distance_surface:
-            distance = surface_point - distance_position
+            distance = LA.norm(surface_point - distance_position)
         else:
-            distance = 1 - distance_position / surface_point
+            distance = (-1) * distance_position / distance_surface
 
         return distance + 1
 
     def get_normal_direction(
-        self, position: np.ndarray, in_obstacle_frame: bool = True
+        self,
+        position: np.ndarray,
+        in_obstacle_frame: bool = True,
+        in_global_frame: bool = None,
     ):
+        if in_global_frame is not None:
+            # Legacy value
+            in_obstacle_frame = not (in_global_frame)
+
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
@@ -163,7 +173,6 @@ class HyperSphere(obstacles.Obstacle):
         distance = self.get_point_on_surface(
             position=position, in_obstacle_frame=in_obstacle_frame
         )
-
         return distance + 1
 
     def get_normal_direction(

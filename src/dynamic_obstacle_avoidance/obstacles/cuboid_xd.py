@@ -31,6 +31,8 @@ class CuboidXd(obstacles.Obstacle):
 
     @axes_length.setter
     def axes_length(self, value: np.ndarray):
+        value = np.array(value)
+
         if any(value <= 0):
             raise ValueError("Zero axes input not tolerated.")
         self._axes_length = value
