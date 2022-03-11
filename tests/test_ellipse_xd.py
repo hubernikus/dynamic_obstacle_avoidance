@@ -41,6 +41,7 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
 
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]),
+        orientation=30*np.pi/180,
         axes_length=np.array([2, 4]),
     )
 
@@ -48,11 +49,11 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
 
     for ii in range(positions.shape[1]):
         gammas[ii] = obstacle.get_gamma(
-            position=positions[:, ii], in_obstacle_frame=True
+            position=positions[:, ii], in_obstacle_frame=False
             )
 
         normals[:, ii] = obstacle.get_normal_direction(
-            position=positions[:, ii], in_obstacle_frame=True
+            position=positions[:, ii], in_obstacle_frame=False
             )
 
         # reference_dirs[:, ii] = obstacle.get_reference_direction(

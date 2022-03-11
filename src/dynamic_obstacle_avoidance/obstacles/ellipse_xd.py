@@ -43,8 +43,22 @@ class EllipseWithAxes(obstacles.Obstacle):
         self._axes_length = value
 
     @property
+    def axes_with_margin(self)-> np.ndarray:
+        if self.is_boundary:
+            return self._axes_length - 2*self.margin_absolut
+        else:
+            return self._axes_length + 2*self.margin_absolut
+
+    @property
     def semiaxes(self) -> np.ndarray:
         return self._axes_length / 2.0
+
+    @property
+    def semiaxes_with_magin(self) -> np.ndarray:
+        if self.is_boundary:
+            return self._axes_length / 2.0 - self.margin_absolut
+        else:
+            return self._axes_length / 2.0 + self.margin_absolut
 
     def get_characteristic_length(self):
         """Get a characeteric (or maximal) length of the obstacle.
@@ -125,8 +139,8 @@ class EllipseWithAxes(obstacles.Obstacle):
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
-        normal = (2*self.curvature/self.axes_length
-                  *(position/self.axes_length)**(2*self.curvature-1)
+        normal = (2*self.curvature/self.axes_with_margin
+                  *(position/self.axes_with_margin)**(2*self.curvature-1)
                   )
 
         # Normalize
@@ -136,7 +150,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         else:
             normal[0] = 1
         if not in_obstacle_frame:
-            normal = self.pose.transform_direction_from_reference_to_local(normal)
+            normal = self.pose.transform_direction_from_local_to_reference(normal)
 
         return normal
 
@@ -148,12 +162,12 @@ class EllipseWithAxes(obstacles.Obstacle):
             position = self.pose.transform_position_from_reference_to_local(position)
 
         # Position in the circle-world
-        circle_position = position / self.semiaxes
+        circle_position = position / self.semiaxes_with_magin
 
         pos_norm = LA.norm(circle_position)
         if not pos_norm:
             surface_point = np.zeros(position.shape)
-            surface_point[0] = self.semiaxes[0]
+            surface_point[0] = self.semiaxes_with_magin[0]
 
         else:
             surface_point = position / pos_norm

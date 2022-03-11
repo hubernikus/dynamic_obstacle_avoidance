@@ -40,8 +40,22 @@ class CuboidXd(obstacles.Obstacle):
         self._axes_length = value
 
     @property
+    def axes_with_margin(self)-> np.ndarray:
+        if self.is_boundary:
+            return self._axes_length - 2*self.margin_absolut
+        else:
+            return self._axes_length + 2*self.margin_absolut
+
+    @property
     def semiaxes(self) -> np.ndarray:
         return self._axes_length / 2.0
+
+    @property
+    def semiaxes_with_magin(self) -> np.ndarray:
+        if self.is_boundary:
+            return self._axes_length / 2.0 - self.margin_absolut
+        else:
+            return self._axes_length / 2.0 + self.margin_absolut
 
     def get_characteristic_length(self) -> np.ndarray:
         """Get a characeteric (or maximal) length of the obstacle.
@@ -134,7 +148,6 @@ class CuboidXd(obstacles.Obstacle):
             position = position / gamma ** 2
             ind_relevant = np.abs(position) > self.semiaxes
 
-            breakpoint()
             # return np.ones(position.shape) / position.shape[0]
 
         # relevant_axes =
@@ -158,15 +171,20 @@ class CuboidXd(obstacles.Obstacle):
             position = self.pose.transform_position_from_reference_to_local(position)
 
         relative_position = np.abs(position) - self.semiaxes
-
+        if self.margin_absolut:
+            breakpoint()
+            print("Margin absolut needs to be included!")
+            
         if any(relative_position > 0):
+            # Corner case is treated separately
             relative_position = np.maximum(relative_position, 0)
             distance = LA.norm(relative_position)
+            
             if distance > self.margin_absolut:
-                return distance
-
+                return distance - self.margin_absolut
+            
         relative_position = relative_position / (self.semiaxes + self.margin_absolut)
-        return np.max(relative_position)
+        return np.max(relative_position) - self.margin_absolut
 
     def get_gamma(
         self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None
@@ -174,7 +192,7 @@ class CuboidXd(obstacles.Obstacle):
 
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
-
+            
         distance = self.get_distance_to_surface(
             position=position, in_obstacle_frame=in_obstacle_frame
         )
