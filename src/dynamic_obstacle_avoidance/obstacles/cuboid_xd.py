@@ -15,7 +15,7 @@ from vartools import linalg
 from dynamic_obstacle_avoidance import obstacles
 
 
-class CuboidWithAxes(obstacles.Obstacle):
+class CuboidXd(obstacles.Obstacle):
     """Cuboid with axes length.
     methods such as `extend_hull_around_reference'."""
     def __init__(

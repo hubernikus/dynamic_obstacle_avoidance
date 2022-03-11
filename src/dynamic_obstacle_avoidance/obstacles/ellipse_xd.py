@@ -106,9 +106,9 @@ class EllipseWithAxes(obstacles.Obstacle):
         distance_position = LA.norm(position)
 
         if distance_position > distance_surface:
-            distance = LA.norm(surface_point - distance_position)
+            distance = LA.norm(position - surface_point)
         else:
-            distance = (-1) * distance_position / distance_surface
+            distance = distance_position / distance_surface - 1
 
         return distance + 1
 
@@ -125,7 +125,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
-        normal = (self.curvature/self.axes_length
+        normal = (2*self.curvature/self.axes_length
                   *(position/self.axes_length)**(2*self.curvature-1)
                   )
 
@@ -181,6 +181,7 @@ class HyperSphere(obstacles.Obstacle):
         distance = self.get_point_on_surface(
             position=position, in_obstacle_frame=in_obstacle_frame
         )
+        
         return distance + 1
 
     def get_normal_direction(
