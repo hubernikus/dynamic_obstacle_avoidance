@@ -42,7 +42,7 @@ make sure you also install the submodules (mainly `vartools`)
 
 Install the submodules:
 ``` bash
-cd lib/various_tools && pip install -r requirements.txt && python setup.py develop && ../..
+cd lib/various_tools && pip install -r requirements.txt && python setup.py develop && cd ../..
 ```
 
 ## Installation Options
