@@ -10,3 +10,6 @@ pytest
 
 # For the robot class
 sympy
+
+# Parser / Lark
+# slark

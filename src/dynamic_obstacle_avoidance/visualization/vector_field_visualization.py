@@ -280,13 +280,25 @@ def plot_obstacles(
         obstacle_color = np.array([176, 124, 124]) / 255.0
 
     for n, obs in enumerate(obstacle_container):
-        obs.draw_obstacle()
+        # Tiny bit outdated - newer obstacles wont have this
 
-        x_obs = obs.boundary_points_global_closed
-        x_obs_sf = obs.boundary_points_margin_global_closed
+        if hasattr(obs, "get_boundary_xy"):
+            x_obs = np.array(obs.get_boundary_xy()).T
+
+        else:
+            # Outdated -> remove in the future
+            obs.draw_obstacle()
+            x_obs = obs.boundary_points_global_closed.T
+
+        if hasattr(obs, "get_boundary_with_margin_xy"):
+            x_obs_sf = np.array(obs.get_boundary_with_margin_xy()).T
+
+        else:
+            x_obs_sf = obs.boundary_points_margin_global_closed.T
+
         ax.plot(
-            x_obs_sf[0, :],
-            x_obs_sf[1, :],
+            x_obs_sf[:, 0],
+            x_obs_sf[:, 1],
             color="k",
             linestyle=border_linestyle,
         )
@@ -315,18 +327,18 @@ def plot_obstacles(
             boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=1.0, zorder=-3))
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=2))
 
             # if obstacle_color is None:
             # obs_polygon[n].set_color(np.array([176,124,124])/255)
             # else:
             obs_polygon[n].set_color(obstacle_color)
 
-        obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
+        obs_polygon_sf.append(plt.Polygon(x_obs_sf, zorder=1, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])
 
         ax.add_patch(obs_polygon_sf[n])
@@ -341,7 +353,7 @@ def plot_obstacles(
                 weight="bold",
             )
 
-        # automatic adaptation of center
+        # Automatic adaptation of center
         if draw_reference and not obs.is_boundary or draw_wall_reference:
             reference_point = obs.get_reference_point(in_global_frame=True)
             ax.plot(

@@ -13,6 +13,10 @@ from .boundary_cuboid_with_gap import BoundaryCuboidWithGaps
 from .flat_plane import FlatPlane
 from .double_blob_obstacle import DoubleBlob
 
+# Multidimensional Obstacles
+from .cuboid_xd import CuboidXd
+from .ellipse_xd import EllipseWithAxes
+
 
 __all__ = [
     "Obstacle",
@@ -26,4 +30,6 @@ __all__ = [
     "FlatPlane",
     "DoubleBlob",
     "GammaType",
+    "CuboidXd",
+    "EllipseWithAxes",
 ]
