@@ -41,17 +41,16 @@ def simple_vectorfield():
         )
     )
 
-    obstacle_environment.append(
-        CuboidXd(
-            axes_length=[0.4, 1.3],
-            center_position=np.array([1.2, 0.25]),
-            # center_position=np.array([0.9, 0.25]),
-            margin_absolut=0.5,
-            orientation=10 * pi / 180,
-            tail_effect=False,
-            repulsion_coeff=1.4,
-        )
-    )
+    # obstacle_environment.append(
+    #     CuboidXd(
+    #         axes_length=[0.4, 1.3],
+    #         center_position=np.array([1.2, 0.25]),
+    #         margin_absolut=0.5,
+    #         orientation=10 * pi / 180,
+    #         tail_effect=False,
+    #         repulsion_coeff=1.4,
+    #     )
+    # )
 
     initial_dynamics = LinearSystem(
         attractor_position=np.array([2.0, 1.8]),

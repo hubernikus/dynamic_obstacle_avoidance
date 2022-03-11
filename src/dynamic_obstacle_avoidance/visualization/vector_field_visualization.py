@@ -381,7 +381,9 @@ def plot_obstacles(
                 weight="bold",
             )  #
 
-        if drawVelArrow and np.linalg.norm(obs.linear_velocity) > 0:
+        if (drawVelArrow
+            and obs.linear_velocity is not None
+            and np.linalg.norm(obs.linear_velocity) > 0):
             # col=[0.5,0,0.9]
             col = [255 / 255.0, 51 / 255.0, 51 / 255.0]
             ax.arrow(

@@ -40,7 +40,8 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
     reference_dirs = np.zeros(positions.shape)
 
     obstacle = EllipseWithAxes(
-        center_position=np.array([0, 0]), axes_length=np.array([2, 4])
+        center_position=np.array([0, 0]),
+        axes_length=np.array([2, 4]),
     )
 
     gammas = np.zeros(positions.shape[1])

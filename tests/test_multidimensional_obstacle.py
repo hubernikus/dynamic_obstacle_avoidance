@@ -13,9 +13,9 @@ from numpy import linalg as LA
 
 import shapely
 
-from dynamic_obstacle_avoidance.obstacles.ellipse_xd import EllipseWithAxes
-from dynamic_obstacle_avoidance.obstacles.cuboid_xd import CuboidWithAxes
-# from dynamic_obstacle_avoidance.obstacles.ellipse_xd 
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes
+from dynamic_obstacle_avoidance.obstacles import CuboidXd
+# from dynamic_obstacle_avoidance import obstacles
 
 
 def test_multidimensional_ellipse(visualize=False):
@@ -27,7 +27,7 @@ def test_multidimensional_ellipse(visualize=False):
         center_position[0], center_position[1]).buffer(1), axes_length[0], axes_length[1])
     # ellipse = shapely.affinity.rotate(ellipse, 50)
 
-    obstacle = obstacles.ellipse_xd.EllipseWithAxes(
+    obstacle = EllipseWithAxes(
         center_position=center_position,
         axes_length=axes_length
         )
@@ -71,7 +71,7 @@ def test_multidimensional_cuboid(visualize=False):
     # cuboid = shapely.affinity.rotate(cuboid, 50)
 
     # obstacle = obstacles.ellipse_xd.EllipseWithAxes(
-    obstacle = obstacles.cuboid_xd.CuboidWithAxes(
+    obstacle = CuboidXd(
         center_position=center_position,
         axes_length=axes_length
         )
