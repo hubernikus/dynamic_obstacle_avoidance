@@ -152,6 +152,8 @@ class EllipseWithAxes(obstacles.Obstacle):
         else:
             surface_point = position / pos_norm
 
+        # surface_point = surface_point * self.semiaxes
+
         if not in_obstacle_frame:
             surface_point = self.pose.transform_position_from_local_to_reference(
                 surface_point
