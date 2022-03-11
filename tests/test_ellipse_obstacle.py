@@ -95,18 +95,6 @@ def test_visualization_circular_reference_point_outside(visualize=False):
         )
 
 
-def test_creation_3d():
-    ObstacleEnvironment = GradientContainer()
-    ObstacleEnvironment.append(
-        Ellipse(
-            center_position=np.array([0.5, -1, 0.3]),
-            axes_length=np.array([0.3, 0.3, 0.3]),
-            orientation=Rotation.from_rotvec([0, 0, 0]),
-            tail_effect=False,
-        )
-    )
-
-
 def test_normal_directions(x_lim=[-5, 5], y_lim=[-5, 5]):
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
@@ -126,7 +114,9 @@ def test_normal_directions(x_lim=[-5, 5], y_lim=[-5, 5]):
 
     fig, ax = plt.subplots()
 
-    plot_obstacles(ax=ax, obs=obstacle_environment, x_lim=x_lim, y_lim=y_lim)
+    plot_obstacles(
+        ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+    )
 
     nx = ny = 30
     x_vals, y_vals = np.meshgrid(
