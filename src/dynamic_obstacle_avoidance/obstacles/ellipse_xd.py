@@ -19,12 +19,8 @@ class EllipseWithAxes(obstacles.Obstacle):
     """The presented class does not have
     methods such as `extend_hull_around_reference'.
     """
-    def __init__(
-        self,
-        axes_length: np.ndarray,
-        curvature: float = 1,
-        *args,
-        **kwargs):
+
+    def __init__(self, axes_length: np.ndarray, curvature: float = 1, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
@@ -43,11 +39,11 @@ class EllipseWithAxes(obstacles.Obstacle):
         self._axes_length = value
 
     @property
-    def axes_with_margin(self)-> np.ndarray:
+    def axes_with_margin(self) -> np.ndarray:
         if self.is_boundary:
-            return self._axes_length - 2*self.margin_absolut
+            return self._axes_length - 2 * self.margin_absolut
         else:
-            return self._axes_length + 2*self.margin_absolut
+            return self._axes_length + 2 * self.margin_absolut
 
     @property
     def semiaxes(self) -> np.ndarray:
@@ -60,12 +56,49 @@ class EllipseWithAxes(obstacles.Obstacle):
         else:
             return self._axes_length / 2.0 + self.margin_absolut
 
-    def get_characteristic_length(self):
+    def set_reference_point(
+        self,
+        position: np.ndarray,
+        in_obstacle_frame: bool = True,
+        in_global_frame: bool = None,
+    ) -> None:
+        """Set the reference point"""
+        # TODO: this can be portet to the `_base` class
+
+        if in_global_frame is not None:
+            # Legacy value
+            in_obstacle_frame = not (in_global_frame)
+
+        if self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame) >= 1:
+            raise NotImplementedError(
+                "Automatic reference point extension is not implemented."
+            )
+
+        if not in_obstacle_frame:
+            position = self.pose.transform_position_from_reference_to_local(position)
+
+        self._reference_point = position
+
+    def get_reference_point(
+        self, in_obstacle_frame: bool = False, in_global_frame: bool = None
+    ) -> np.ndarray:
+        if in_global_frame is not None:
+            # Legacy value
+            in_obstacle_frame = not (in_global_frame)
+
+        if not in_obstacle_frame:
+            return self.pose.transform_position_from_local_to_reference(
+                self._reference_point
+            )
+        else:
+            return self._reference_point
+
+    def get_characteristic_length(self) -> None:
         """Get a characeteric (or maximal) length of the obstacle.
         For an ellipse obstacle,the longest axes."""
         return np.prod(self.semiaxes + self.margin_absolut) ** (1 / self.dimension)
 
-    def get_shapely(self, semiaxes=None):
+    def get_shapely(self, semiaxes: np.ndarray = None):
         if semiaxes is None:
             semiaxes = self.semiaxes
 
@@ -103,6 +136,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         position: np.ndarray,
         in_obstacle_frame: bool = True,
         in_global_frame: bool = None,
+        margin_absolut: float = None,
     ):
         """Gets a gamma which is not directly related to the axes length."""
 
@@ -113,7 +147,9 @@ class EllipseWithAxes(obstacles.Obstacle):
             position = self.pose.transform_position_from_reference_to_local(position)
 
         surface_point = self.get_point_on_surface(
-            position=position, in_obstacle_frame=True
+            position=position,
+            in_obstacle_frame=True,
+            margin_absolut=margin_absolut,
         )
 
         distance_surface = LA.norm(surface_point)
@@ -139,9 +175,12 @@ class EllipseWithAxes(obstacles.Obstacle):
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
-        normal = (2*self.curvature/self.axes_with_margin
-                  *(position/self.axes_with_margin)**(2*self.curvature-1)
-                  )
+        normal = (
+            2
+            * self.curvature
+            / self.axes_with_margin
+            * (position / self.axes_with_margin) ** (2 * self.curvature - 1)
+        )
 
         # Normalize
         normal_norm = LA.norm(normal)
@@ -155,19 +194,28 @@ class EllipseWithAxes(obstacles.Obstacle):
         return normal
 
     def get_point_on_surface(
-        self, position: np.ndarray, in_obstacle_frame: bool = True
+        self,
+        position: np.ndarray,
+        in_obstacle_frame: bool = True,
+        margin_absolut: float = None,
     ):
         """Returns the point on the surface from the center with respect to position."""
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
         # Position in the circle-world
-        circle_position = position / self.semiaxes_with_magin
+        if margin_absolut is None:
+            circle_position = position / self.semiaxes_with_magin
+        else:
+            circle_position = position / (self.semiaxes + margin_absolu)
 
         pos_norm = LA.norm(circle_position)
         if not pos_norm:
             surface_point = np.zeros(position.shape)
-            surface_point[0] = self.semiaxes_with_magin[0]
+            if margin_absolut is None:
+                surface_point[0] = self.semiaxes_with_magin[0]
+            else:
+                surface_point[0] = self.semiaxes[0] + margin_absolut
 
         else:
             surface_point = position / pos_norm
@@ -200,9 +248,8 @@ class HyperSphere(obstacles.Obstacle):
 
         if self.is_boundary:
             gamma = 1 / gamma
-            
+
         return gamma
-        
 
     def get_normal_direction(
         self, position: np.ndarray, in_obstacle_frame: bool = True
