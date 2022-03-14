@@ -11,7 +11,7 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
@@ -28,7 +28,7 @@ def simple_vectorfield_around_circle_zoom():
     """Simple vectorfield around robot"""
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
-        Ellipse(
+        EllipseWithAxes(
             axes_length=[1.0, 1.0],
             center_position=np.array([0.2, -0.2]),
             margin_absolut=0,
@@ -47,7 +47,7 @@ def simple_vectorfield_around_circle_zoom():
     x_lim = [-3.5, 0.5]
     y_lim = [-1.0, 2.0]
 
-    n_resolution = 20
+    n_resolution = 100
     dim = 2
 
     fig, ax = Simulation_vectorFields(

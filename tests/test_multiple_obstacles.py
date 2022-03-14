@@ -48,11 +48,14 @@ def test_two_intersecting_circles(visualize=False):
         )
 
     for obs in obs_list:
-        assert obs.get_gamma(obs.reference_point) < 1, \
-              "Warning reference point outside obstacle"
+        assert (
+            obs.get_gamma(obs.reference_point) < 1
+        ), "Warning reference point outside obstacle"
 
-        assert obs.get_gamma(obs.global_reference_point, in_global_frame=True) < 1, \
-               "Warning reference point outside obstacle" 
+        assert (
+            obs.get_gamma(obs.global_reference_point, in_global_frame=True) < 1
+        ), "Warning reference point outside obstacle"
+
 
 def test_three_intersecting_circles(visualize=False):
     """Appending one obstacle."""
@@ -97,6 +100,7 @@ def test_three_intersecting_circles(visualize=False):
         # assert obs.get_gamma(obs.global_reference_point, in_global_frame=True)<1
         pass
 
+
 def test_two_intersecting_ellipses(visualize=False):
     """Appending one obstacle."""
     obs_list = GradientContainer()  # create empty obstacle list
@@ -132,16 +136,18 @@ def test_two_intersecting_ellipses(visualize=False):
             automatic_reference_point=False,
         )
     for obs in obs_list:
-        assert obs.get_gamma(obs.reference_point) < 1, \
-               "Warning reference point outside obstacle"
+        assert (
+            obs.get_gamma(obs.reference_point) < 1
+        ), "Warning reference point outside obstacle"
 
-        assert obs.get_gamma(obs.global_reference_point, in_global_frame=True) < 1, \
-               "Warning reference point outside obstacle"
-        
+        assert (
+            obs.get_gamma(obs.global_reference_point, in_global_frame=True) < 1
+        ), "Warning reference point outside obstacle"
+
 
 if (__name__) == "__main__":
     plot_results = False
-    
+
     test_two_intersecting_circles(plot_results)
     test_three_intersecting_circles(plot_results)
     test_two_intersecting_ellipses(plot_results)

@@ -38,8 +38,6 @@ def test_draw_ellipse(visualize=False):
         my_obstacle.plot2D(ax=ax)
 
 
-
-
 def test_draw_polygon_with_margin():
     pass
 

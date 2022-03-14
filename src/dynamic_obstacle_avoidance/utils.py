@@ -74,11 +74,14 @@ def get_relative_obstacle_velocity(
     xd_obs = np.zeros((dim))
     for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
         if dim == 2:
-            xd_w = np.cross(
-                np.hstack(([0, 0], obs[it_obs].angular_velocity)),
-                np.hstack((position - np.array(obs[it_obs].center_position), 0)),
-            )
-            xd_w = xd_w[0:2]
+            if obs[it_obs].angular_velocity is None:
+                xd_w = np.zeros(dim)
+            else:
+                xd_w = np.cross(
+                    np.hstack(([0, 0], obs[it_obs].angular_velocity)),
+                    np.hstack((position - np.array(obs[it_obs].center_position), 0)),
+                )
+                xd_w = xd_w[0:2]
         elif dim == 3:
             xd_w = np.cross(
                 obs[it_obs].angular_velocity,

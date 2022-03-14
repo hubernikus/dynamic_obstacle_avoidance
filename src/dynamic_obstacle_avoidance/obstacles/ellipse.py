@@ -162,6 +162,11 @@ class Ellipse(Obstacle):
         """Minimal distance or maximal radius."""
         return np.sqrt(np.sum(self.axes_length * 2))
 
+    def get_characteristic_length(self):
+        """Get a characeteric (or maximal) length of the obstacle.
+        For an ellipse obstacle,the longest axes."""
+        return np.prod(self.axes_length + self.margin_absolut) ** (1 / self.dimension)
+
     def get_reference_length(self):
         """Get a characeteric (or maximal) length of the obstacle.
         For an ellipse obstacle,the longest axes."""
@@ -418,7 +423,7 @@ class Ellipse(Obstacle):
         mag_norm = LA.norm(normal_vector)
         if mag_norm:
             normal_vector = normal_vector / mag_norm
-            
+
         return normal_vector
 
     def get_gamma_ellipse(
@@ -1049,6 +1054,9 @@ class Sphere(Ellipse):
     @inflation_speed_radial.setter
     def inflation_speed_radial(self, value):
         self._inflation_speed_radial = value
+
+    def get_characteristic_length(self):
+        return self.radius + self.margin_absolut
 
     def _get_local_radius(self, *args, **kwargs):
         return self.radius_with_margin
