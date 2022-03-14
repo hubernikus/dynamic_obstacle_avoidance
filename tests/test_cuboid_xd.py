@@ -52,7 +52,7 @@ def test_gamma_function(n_resolution=10, visualize=False):
     if visualize:
         fig, ax = plt.subplots(figsize=(6, 5))
 
-        levels = np.linspace(0, 2, 20)
+        levels = np.linspace(0, 4, 21)
         contour = ax.contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
@@ -62,13 +62,13 @@ def test_gamma_function(n_resolution=10, visualize=False):
 
         cbar = fig.colorbar(contour)
 
-        # ax.quiver(
-            # positions[0, :],
-            # positions[1, :],
-            # normals[0, :],
-            # normals[1, :],
-            # color='black',
-        # )
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            normals[0, :],
+            normals[1, :],
+            color='black',
+        )
 
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
         ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")
@@ -79,5 +79,5 @@ def test_normal_directions():
 
 
 if (__name__) == "__main__":
-    test_gamma_function(visualize=True, n_resolution=100)
+    test_gamma_function(visualize=True, n_resolution=30)
     test_normal_directions()

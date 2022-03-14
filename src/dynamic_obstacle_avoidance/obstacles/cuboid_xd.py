@@ -205,7 +205,12 @@ class CuboidXd(obstacles.Obstacle):
             position=position, in_obstacle_frame=in_obstacle_frame
         )
 
-        return distance + 1
+        gamma = distance + 1
+        
+        if self.is_boundary:
+            gamma = 1 / gamma
+            
+        return gamma
 
     def get_point_on_surface(self, position, in_obstacle_frame: bool = True):
         if not in_obstacle_frame:

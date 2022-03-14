@@ -30,16 +30,15 @@ from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 def simple_vectorfield():
     obstacle_environment = ObstacleContainer()
 
-    # obstacle_environment.append(
-        # EllipseWithAxes(
-            # axes_length=[0.6, 1.3],
-            # center_position=np.array([-0.2, 2.4]),
-            # margin_absolut=0,
-            # orientation=-30 * pi / 180,
-            # tail_effect=False,
-            # repulsion_coeff=1.0,
-        # )
-    # )
+    obstacle_environment.append(
+        EllipseWithAxes(
+            axes_length=[0.6, 1.3],
+            center_position=np.array([-0.2, 2.4]),
+            margin_absolut=0,
+            orientation=-30 * pi / 180,
+            tail_effect=False,
+        )
+    )
 
     obstacle_environment.append(
         CuboidXd(
@@ -48,7 +47,6 @@ def simple_vectorfield():
             margin_absolut=0.5,
             orientation=10 * pi / 180,
             tail_effect=False,
-            repulsion_coeff=1.4,
         )
     )
 
@@ -64,7 +62,7 @@ def simple_vectorfield():
     Simulation_vectorFields(
         x_lim,
         y_lim,
-        point_grid=50,
+        point_grid=100,
         obs=obstacle_environment,
         pos_attractor=initial_dynamics.attractor_position,
         dynamical_system=initial_dynamics.evaluate,

@@ -195,8 +195,14 @@ class HyperSphere(obstacles.Obstacle):
         distance = self.get_point_on_surface(
             position=position, in_obstacle_frame=in_obstacle_frame
         )
+
+        gamma = distance + 1
+
+        if self.is_boundary:
+            gamma = 1 / gamma
+            
+        return gamma
         
-        return distance + 1
 
     def get_normal_direction(
         self, position: np.ndarray, in_obstacle_frame: bool = True
