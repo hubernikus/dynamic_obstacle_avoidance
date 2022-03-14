@@ -13,8 +13,6 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from math import pi
-
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,

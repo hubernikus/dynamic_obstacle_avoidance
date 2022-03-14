@@ -5,7 +5,9 @@ Test normal formation
 import unittest
 
 import numpy as np
-from math import pi
+from numpy import linalg as LA
+
+import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import CuboidXd
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
@@ -50,21 +52,23 @@ def test_gamma_function(n_resolution=10, visualize=False):
     if visualize:
         fig, ax = plt.subplots(figsize=(6, 5))
 
-        levels = np.linspace(0, 2, 2)
-        ax.contourf(
+        levels = np.linspace(0, 2, 20)
+        contour = ax.contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
             gammas.reshape(nx, ny),
             levels=levels,
         )
 
-        ax.quiver(
-            positions[0, :],
-            positions[1, :],
-            normals[0, :],
-            normals[1, :],
-            color='black',
-        )
+        cbar = fig.colorbar(contour)
+
+        # ax.quiver(
+            # positions[0, :],
+            # positions[1, :],
+            # normals[0, :],
+            # normals[1, :],
+            # color='black',
+        # )
 
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
         ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")

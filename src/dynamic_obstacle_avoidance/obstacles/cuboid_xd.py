@@ -171,20 +171,28 @@ class CuboidXd(obstacles.Obstacle):
             position = self.pose.transform_position_from_reference_to_local(position)
 
         relative_position = np.abs(position) - self.semiaxes
-        if self.margin_absolut:
-            breakpoint()
-            print("Margin absolut needs to be included!")
-            
+        
         if any(relative_position > 0):
             # Corner case is treated separately
             relative_position = np.maximum(relative_position, 0)
             distance = LA.norm(relative_position)
-            
+
             if distance > self.margin_absolut:
                 return distance - self.margin_absolut
             
-        relative_position = relative_position / (self.semiaxes + self.margin_absolut)
-        return np.max(relative_position) - self.margin_absolut
+            distance =  self.margin_absolut - distance
+            
+        else:
+            distance = self.margin_absolut + (-1)*np.max(relative_position)
+
+        # Case: within margin but outside boundary -> edges have to be rounded
+        pos_norm = LA.norm(position)
+
+        # Negative distance [0, -1] beacuse inside
+        return (-1)*distance / (pos_norm + distance)
+            
+        # relative_position = relative_position / (self.semiaxes + self.margin_absolut)
+        # return np.max(relative_position) - self.margin_absolut
 
     def get_gamma(
         self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None
