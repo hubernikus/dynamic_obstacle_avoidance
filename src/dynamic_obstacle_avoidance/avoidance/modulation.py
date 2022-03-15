@@ -285,12 +285,11 @@ def obs_avoidance_interpolation_moving(
 
     rel_velocity_norm = np.linalg.norm(relative_velocity)
     if rel_velocity_norm:
-        rel_velocity_normalized = initial_velocity / rel_velocity_norm
+        rel_velocity_normalized = relative_velocity / rel_velocity_norm
         
     else:
         # Zero velocity
         return xd_obs
-        
 
     # Keep either way, since avoidance from attractor might be needed
     relative_velocity_hat = np.zeros((dim, N_obs))
@@ -401,5 +400,4 @@ def obs_avoidance_interpolation_moving(
     vel_final = relative_velocity_magnitude * weighted_direction.squeeze()
 
     vel_final = vel_final + xd_obs
-    # breakpoint()
     return vel_final
