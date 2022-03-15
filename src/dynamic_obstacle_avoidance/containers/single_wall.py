@@ -9,8 +9,6 @@ import copy
 from math import pi
 import warnings, sys
 
-import matplotlib.pyplot as plt
-
 from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.utils import *

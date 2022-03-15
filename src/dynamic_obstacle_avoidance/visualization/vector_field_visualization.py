@@ -5,9 +5,11 @@
 # Email: lukas.huber@epfl.ch
 
 import copy
-import time
 import os
 import warnings
+from timeit import default_timer as timer
+
+# Or use time.perf_counter()
 
 import numpy as np
 from numpy import pi
@@ -229,21 +231,38 @@ def plot_streamlines(
 
 def plot_obstacles(
     ax,
-    obs,
-    x_range,
-    y_range,
+    obstacle_container,
+    x_lim=None,
+    y_lim=None,
     pos_attractor=None,
     obstacle_color=None,
     show_obstacle_number=False,
     reference_point_number=False,
     drawVelArrow=True,
     noTicks=False,
-    showLabel=True,
+    showLabel=False,
+    draw_reference=False,
     draw_wall_reference=False,
     border_linestyle="--",
     alpha_obstacle=0.8,
+    velocity_arrow_factor=0.2,
+    x_range=None,
+    y_range=None,
+    obs=None,
 ):
     """Plot all obstacles & attractors"""
+    if x_range is not None:
+        # Depcreciated -> remove in the future
+        x_lim = x_range
+
+    if y_range is not None:
+        # Depcreciated -> remove in the future
+        y_lim = y_range
+
+    if obs is not None:
+        # Depreciated -> remove in the future
+        obstacle_container = obs
+
     if pos_attractor is not None:
         ax.plot(
             pos_attractor[0],
@@ -260,29 +279,44 @@ def plot_obstacles(
     if obstacle_color is None:
         obstacle_color = np.array([176, 124, 124]) / 255.0
 
-    for n in range(len(obs)):
-        if obs[n].boundary_points is None:
-            obs[n].draw_obstacle()
+    for n, obs in enumerate(obstacle_container):
+        # Tiny bit outdated - newer obstacles wont have this
 
-        x_obs = obs[n].boundary_points_global_closed
-        x_obs_sf = obs[n].boundary_points_margin_global_closed
+        if hasattr(obs, "get_boundary_xy"):
+            x_obs = np.array(obs.get_boundary_xy()).T
+
+        else:
+            # Outdated -> remove in the future
+            obs.draw_obstacle()
+            x_obs = obs.boundary_points_global_closed.T
+
+        if hasattr(obs, "get_boundary_with_margin_xy"):
+            x_obs_sf = np.array(obs.get_boundary_with_margin_xy()).T
+
+        else:
+            x_obs_sf = obs.boundary_points_margin_global_closed.T
+
         ax.plot(
-            x_obs_sf[0, :],
-            x_obs_sf[1, :],
+            x_obs_sf[:, 0],
+            x_obs_sf[:, 1],
             color="k",
             linestyle=border_linestyle,
         )
 
-        if obs[n].is_boundary:
+        if obs.is_boundary:
+            if x_lim is None or y_lim is None:
+                raise Exception(
+                    "Outer boundary can only be defined with `x_lim` and `y_lim`."
+                )
             outer_boundary = None
-            if hasattr(obs[n], "global_outer_edge_points"):
-                outer_boundary = obs[n].global_outer_edge_points
+            if hasattr(obs, "global_outer_edge_points"):
+                outer_boundary = obs.global_outer_edge_points
 
             if outer_boundary is None:
                 outer_boundary = np.array(
                     [
-                        [x_range[0], x_range[1], x_range[1], x_range[0]],
-                        [y_range[0], y_range[0], y_range[1], y_range[1]],
+                        [x_lim[0], x_lim[1], x_lim[1], x_lim[0]],
+                        [y_lim[0], y_lim[0], y_lim[1], y_lim[1]],
                     ]
                 )
 
@@ -293,18 +327,18 @@ def plot_obstacles(
             boundary_polygon.set_color(obstacle_color)
             ax.add_patch(boundary_polygon)
 
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=1.0, zorder=-3))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=1.0, zorder=-3))
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs.T, alpha=alpha_obstacle, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=2))
 
             # if obstacle_color is None:
             # obs_polygon[n].set_color(np.array([176,124,124])/255)
             # else:
             obs_polygon[n].set_color(obstacle_color)
 
-        obs_polygon_sf.append(plt.Polygon(x_obs_sf.T, zorder=1, alpha=0.2))
+        obs_polygon_sf.append(plt.Polygon(x_obs_sf, zorder=1, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])
 
         ax.add_patch(obs_polygon_sf[n])
@@ -313,26 +347,31 @@ def plot_obstacles(
         if show_obstacle_number:
             ax.annotate(
                 "{}".format(n + 1),
-                xy=np.array(obs[n].center_position) + 0.16,
+                xy=np.array(obs.center_position) + 0.16,
                 textcoords="data",
                 size=16,
                 weight="bold",
             )
 
-        if not obs[n].is_boundary or draw_wall_reference:
-            ax.plot(obs[n].center_position[0], obs[n].center_position[1], "k.")
-
-        # automatic adaptation of center
-        if not obs[n].is_boundary or draw_wall_reference:
-            reference_point = obs[n].get_reference_point(in_global_frame=True)
+        # Automatic adaptation of center
+        if draw_reference and not obs.is_boundary or draw_wall_reference:
+            reference_point = obs.get_reference_point(in_global_frame=True)
             ax.plot(
                 reference_point[0],
                 reference_point[1],
                 "k+",
-                linewidth=18,
-                markeredgewidth=4,
-                markersize=13,
+                linewidth=12,
+                markeredgewidth=2.4,
+                markersize=8,
             )
+
+        elif not obs.is_boundary or draw_wall_reference:
+            ax.plot(
+                obs.center_position[0],
+                obs.center_position[1],
+                "k.",
+            )
+
         if reference_point_number:
             ax.annotate(
                 "{}".format(n),
@@ -342,15 +381,16 @@ def plot_obstacles(
                 weight="bold",
             )  #
 
-        if drawVelArrow and np.linalg.norm(obs[n].linear_velocity) > 0:
+        if (drawVelArrow
+            and obs.linear_velocity is not None
+            and np.linalg.norm(obs.linear_velocity) > 0):
             # col=[0.5,0,0.9]
             col = [255 / 255.0, 51 / 255.0, 51 / 255.0]
-            fac = 5  # scaling factor of velocity
             ax.arrow(
-                obs[n].center_position[0],
-                obs[n].center_position[1],
-                obs[n].linear_velocity[0] / fac,
-                obs[n].linear_velocity[1] / fac,
+                obs.center_position[0],
+                obs.center_position[1],
+                obs.linear_velocity[0] * velocity_arrow_factor,
+                obs.linear_velocity[1] * velocity_arrow_factor,
                 # head_width=0.3, head_length=0.3, linewidth=10,
                 head_width=0.1,
                 head_length=0.1,
@@ -358,12 +398,13 @@ def plot_obstacles(
                 fc=col,
                 ec=col,
                 alpha=1,
+                zorder=3,
             )
 
     ax.set_aspect("equal", adjustable="box")
 
-    ax.set_xlim(x_range)
-    ax.set_ylim(y_range)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
 
     if noTicks:
         ax.tick_params(
@@ -381,8 +422,8 @@ def plot_obstacles(
         ax.set_xlabel(r"$\xi_1$", fontsize=16)
         ax.set_ylabel(r"$\xi_2$", fontsize=16)
 
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.tick_params(axis="both", which="minor", labelsize=12)
+    # ax.tick_params(axis="both", which="major", labelsize=14)
+    # ax.tick_params(axis="both", which="minor", labelsize=12)
 
     return
 
@@ -408,13 +449,11 @@ def Simulation_vectorFields(
     plotObstacle=True,
     plotStream=True,
     fig_and_ax_handle=None,
-    alphaVal=1,
     dynamical_system=None,
     draw_vectorField=True,
     points_init=[],
     show_obstacle_number=False,
     automatic_reference_point=True,
-    nonlinear=True,
     show_streamplot=True,
     reference_point_number=False,
     normalize_vectors=True,
@@ -433,22 +472,14 @@ def Simulation_vectorFields(
 
     dim = 2
 
-    # Numerical hull of ellipsoid
-    for n in range(len(obs)):
-        obs[n].draw_obstacle(numPoints=50)  # 50 points resolution
-
     # Adjust dynamic center
     if automatic_reference_point:
-        tt = time.time()
+        tt = timer()
         obs.update_reference_points()
-        dt = time.time() - tt
+        dt = timer() - tt
 
         if print_info:
             print("Time for dynamic_center: {}ms".format(np.round(dt * 1000, 2)))
-
-    # Numerical hull of ellipsoid
-    for n in range(len(obs)):
-        obs[n].draw_obstacle(numPoints=50)  # 50 points resolution
 
     if fig_and_ax_handle is None:
         fig, ax = plt.subplots(figsize=figureSize)
@@ -484,7 +515,7 @@ def Simulation_vectorFields(
         return fig, ax
         # return
 
-    start_time = time.time()
+    start_time = timer()
 
     # Create meshrgrid of points
     if type(point_grid) == int:
@@ -553,7 +584,7 @@ def Simulation_vectorFields(
     else:
         indOfNoCollision = np.ones((N_x, N_y))
 
-    t_start = time.time()
+    t_start = timer()
     for ix in range(N_x):
         for iy in range(N_y):
             if not indOfNoCollision[ix, iy]:
@@ -563,7 +594,7 @@ def Simulation_vectorFields(
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:, ix, iy], obs)
             # xd_mod[:, ix, iy] = xd_init[:, ix, iy]  # DEBUGGING only!!
 
-    t_end = time.time()
+    t_end = timer()
     n_collfree = np.sum(indOfNoCollision)
     if not n_collfree:  # zero points
         warnings.warn("No ollision free points in space.")
@@ -576,24 +607,7 @@ def Simulation_vectorFields(
 
     dx1_noColl, dx2_noColl = np.squeeze(xd_mod[0, :, :]), np.squeeze(xd_mod[1, :, :])
 
-    if sysDyn_init:
-        fig_init, ax_init = plt.subplots(figsize=(5, 2.5))
-        res_init = ax_init.streamplot(
-            XX,
-            YY,
-            xd_init[0, :, :],
-            xd_init[1, :, :],
-            # color=[(0.3,0.3,0.3)]
-            color="blue",
-        )
-
-        ax_init.plot(pos_attractor[0], pos_attractor[1], "k*", zorder=5)
-        plt.gca().set_aspect("equal", adjustable="box")
-
-        plt.xlim(x_range)
-        plt.ylim(y_range)
-
-    end_time = time.time()
+    end_time = timer()
 
     n_calculations = np.sum(indOfNoCollision)
     if print_info:
@@ -665,7 +679,7 @@ def Simulation_vectorFields(
                 )
     plt.show()
 
-    start_time = time.time()
+    start_time = timer()
 
     if saveFigure:
         # Save as png

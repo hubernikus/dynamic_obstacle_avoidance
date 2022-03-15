@@ -10,6 +10,7 @@ import numpy as np
 import numpy.linalg as LA
 
 from vartools.directional_space import get_directional_weighted_sum
+from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.utils import *
 
 
@@ -90,9 +91,7 @@ def compute_diagonal_matrix(
 
 def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.02):
     """Compute decomposition matrix and orthogonal matrix to basis"""
-    normal_vector = obs.get_normal_direction(
-        x_t, normalize=True, in_global_frame=in_global_frame
-    )
+    normal_vector = obs.get_normal_direction(x_t, in_global_frame=in_global_frame)
     reference_direction = obs.get_reference_direction(
         x_t, in_global_frame=in_global_frame
     )
@@ -235,7 +234,7 @@ def obs_avoidance_interpolation_moving(
         gamma_proportional[n] = obs[n].get_gamma(
             pos_relative[:, n],
             in_global_frame=evaluate_in_global_frame,
-            gamma_distance=gamma_distance,
+            # gamma_distance=gamma_distance,
         )
 
     # Worst case of being at the center
@@ -286,7 +285,7 @@ def obs_avoidance_interpolation_moving(
     rel_velocity_norm = np.linalg.norm(relative_velocity)
     if rel_velocity_norm:
         rel_velocity_normalized = relative_velocity / rel_velocity_norm
-        
+
     else:
         # Zero velocity
         return xd_obs
@@ -294,8 +293,6 @@ def obs_avoidance_interpolation_moving(
     # Keep either way, since avoidance from attractor might be needed
     relative_velocity_hat = np.zeros((dim, N_obs))
     relative_velocity_hat_magnitude = np.zeros((N_obs))
-
-    # breakpoint()
 
     n = 0
     for n in np.arange(N_obs)[ind_obs]:
@@ -385,7 +382,7 @@ def obs_avoidance_interpolation_moving(
             null_direction=rel_velocity_normalized,
             directions=relative_velocity_hat_normalized,
             weights=weight,
-            )
+        )
 
     else:
         # TODO: Better solution / smooth switching when velocity is nonzero

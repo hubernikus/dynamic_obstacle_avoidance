@@ -17,6 +17,7 @@ import numpy as np
 from numpy import linalg as LA
 
 import shapely
+
 # from shapely.geometry import Polygon
 
 from vartools.angle_math import *
@@ -65,25 +66,14 @@ class Cuboid(Polygon):
 
         edge_points = self.get_edge_points_from_axes()
 
-        if sys.version_info > (3, 0):
-            super().__init__(
-                *args,
-                is_deforming=is_deforming,
-                edge_points=edge_points,
-                absolute_edge_position=False,
-                margin_absolut=margin_absolut,
-                **kwargs
-            )
-
-        else:
-            super(Cuboid, self).__init__(
-                *args,
-                is_deforming=is_deforming,
-                edge_points=edge_points,
-                absolute_edge_position=False,
-                margin_absolut=margin_absolut,
-                **kwargs
-            )
+        super().__init__(
+            *args,
+            is_deforming=is_deforming,
+            edge_points=edge_points,
+            absolute_edge_position=False,
+            margin_absolut=margin_absolut,
+            **kwargs
+        )
 
         self.wall_thickness = wall_thickness
 
@@ -152,66 +142,3 @@ class Cuboid(Polygon):
         self.edge_points = self.get_edge_points_from_axes()
 
         self.draw_obstacle()
-
-    def get_local_radius(self, position, in_global_frame=False):
-        """Get local / radius or the surface intersection point by using shapely."""
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        shapely_line = shapely.geometry.LineString([[0, 0], position])
-        intersection = self._shapely.intersection(shapely_line).coords
-
-        # If position is inside, the intersection point is equal to the position-point,
-        # in that case redo the calulation with an extended line to obtain the actual
-        # radius-point
-        if np.allclose(intersection[-1], position):
-            # Point is assumed to be inside
-            point_dist = LA.norm(position)
-            if not point_dist:
-                # Return nonzero value to avoid 0-division conflicts
-                return self.get_minimal_distance()
-
-            # Make sure position is outside the boundary (random mutiple factor)
-            position = position / point_dist * self.get_maximal_distance() * 5.0
-
-            shapely_line = shapely.geometry.LineString([[0, 0], position])
-            intersection = self._shapely.intersection(shapely_line).coords
-
-        return LA.norm(intersection[-1])
-
-    def get_gamma(
-        self,
-        position,
-        in_global_frame=False,
-        gamma_type=GammaType.EUCLEDIAN,
-        gamma_distance=None,
-    ):
-        # TODO: gamma, radius, hull edge
-        # should be implemented in parent class & can be removed here...
-        # gamma_distance is not used -> should it be removed (?!)
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-            
-        local_radius = self.get_local_radius(position)
-        dist_center = LA.norm(position)
-
-        if self.is_boundary:
-            position = self.mirror_local_position_on_boundary(
-                position, local_radius=local_radius, pos_norm=dist_center)
-
-        # Choose proporitional
-        if gamma_type == GammaType.EUCLEDIAN:
-            if dist_center < local_radius:
-                # Return proportional inside to have -> [0, 1]
-                gamma = dist_center / local_radius
-            else:
-                gamma = (dist_center - local_radius) + 1
-                
-        else:
-            raise NotImplementedError("Implement othr gamma-types if desire.")
-        
-        return gamma
-
-    def get_distance_to_hullEdge(self, *args, **kwargs):
-        # New naming convention -> remove in the future..
-        return self.get_local_radius(*args, **kwargs)

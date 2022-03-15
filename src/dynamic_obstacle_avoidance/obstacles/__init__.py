@@ -3,7 +3,7 @@ The :mod:`obstacles` module implements various types of obstacles.
 """
 # Various Obstacle Descriptions
 from ._base import Obstacle, GammaType
-from .ellipse import Ellipse, CircularObstacle, Sphere
+from .ellipse import Ellipse, Sphere, CircularObstacle
 from .polygon import Polygon
 from .cuboid import Cuboid
 from .cross import Cross
@@ -12,6 +12,10 @@ from .human_ellipse import TrackedPedestrian, HumanEllipse
 from .boundary_cuboid_with_gap import BoundaryCuboidWithGaps
 from .flat_plane import FlatPlane
 from .double_blob_obstacle import DoubleBlob
+
+# Multidimensional Obstacles
+from .cuboid_xd import CuboidXd
+from .ellipse_xd import EllipseWithAxes
 
 
 __all__ = [
@@ -26,4 +30,6 @@ __all__ = [
     "FlatPlane",
     "DoubleBlob",
     "GammaType",
+    "CuboidXd",
+    "EllipseWithAxes",
 ]

@@ -37,14 +37,13 @@ class Ellipse(Obstacle):
         self,
         axes_length=None,
         curvature=None,
-        a=None,
         p=None,
         # margin_absolut=0,
         is_deforming=False,
         expansion_speed_axes=None,
         hull_with_respect_to_reference=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         if expansion_speed_axes is None:
@@ -52,31 +51,25 @@ class Ellipse(Obstacle):
         else:
             is_deforming = True
 
-        if sys.version_info > (3, 0):
-            super().__init__(*args, is_deforming=is_deforming, **kwargs)
-        else:  # works for python < 3.0?!
-            super(Ellipse, self).__init__(*args, is_deforming=is_deforming, **kwargs)
+        super().__init__(*args, is_deforming=is_deforming, **kwargs)
 
         self.expansion_speed_axes = expansion_speed_axes
 
         if not axes_length is None:
             self.axes_length = np.array(axes_length)
-        elif not a is None:
-            raise Exception("A is depreciated. Use 'axes_lenght' instead.")
-            self.axes_length = np.array(a)  # TODO: depreciated, remove
         else:
             warnings.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
 
         if not curvature is None:
             self.curvature = curvature
+
         elif not p is None:
+            warnings.warn(f"Argument <<{p}>> is depreciated.")
             self.curvature = p  # TODO: depreciated, remove
+
         else:
             self.curvature = np.ones((self.dim))
-
-        # Done in parent class
-        # self.margin_absolut = margin_absolut
 
         self.hull_with_respect_to_reference = hull_with_respect_to_reference
 
@@ -96,21 +89,7 @@ class Ellipse(Obstacle):
         self.ind_edge_ref = 0
         self.ind_edge_tang = 1
 
-    @property
-    def a(self):  # TODO: remove
-        raise Exception("'a' is depriciated, use 'axes_length' instead")
-
-    @a.setter  # TODO:remove
-    def a(self, value):
-        raise Exception("'a' is depriciated, use 'axes_length' instead")
-
-    @property
-    def axes(self):  # TODO: remove
-        raise Exception("'axes' is depriciated, use 'axes_length' instead")
-
-    @axes.setter  # TODO:remove
-    def axes(self, value):
-        raise Exception("'axes' is depriciated, use 'axes_length' instead")
+        self.create_shapely()
 
     @property
     def axes_length(self):
@@ -182,6 +161,11 @@ class Ellipse(Obstacle):
     def get_maximal_distance(self):
         """Minimal distance or maximal radius."""
         return np.sqrt(np.sum(self.axes_length * 2))
+
+    def get_characteristic_length(self):
+        """Get a characeteric (or maximal) length of the obstacle.
+        For an ellipse obstacle,the longest axes."""
+        return np.prod(self.axes_length + self.margin_absolut) ** (1 / self.dimension)
 
     def get_reference_length(self):
         """Get a characeteric (or maximal) length of the obstacle.
@@ -283,6 +267,7 @@ class Ellipse(Obstacle):
         self,
         position,
         in_global_frame=False,
+        with_reference_point_expansion=True,
         gamma_type=None,
         gamma_distance=None,
         inverted=None,
@@ -390,7 +375,8 @@ class Ellipse(Obstacle):
 
         return angle2refencePatch
 
-    def get_normal_direction(self, position, in_global_frame=False, normalize=True):
+    def get_normal_direction(self, position, in_global_frame=False):
+        """Return normal direction."""
         if in_global_frame:
             position = self.transform_global2relative(position)
 
@@ -420,16 +406,6 @@ class Ellipse(Obstacle):
                 raise NotImplementedError()
 
             else:
-                # normal_distances = np.zeros(self.normal_vectors.shape[1])
-                # for ii in range(self.normal_vectors.shape[1]):
-                # normal_distances[ii] = self.normal_vector[:, ii].T.dot(position)
-
-                # normal_distances = normal_distances-self.normalDistance2center
-
-                # for ii in range(normal_distances.shape[0]):
-                # if not normal_distances[ii]:
-                # return self.normal_vector[:, 1-ii]
-
                 angle2referencePlane = self.get_angle2referencePatch(position)
                 weights = self.get_angle_weight(angle2referencePlane)
 
@@ -441,18 +417,12 @@ class Ellipse(Obstacle):
                     normalize_reference=True,
                 )
 
-        if normalize:
-            # TODO: can it be removed?
-            vec_norm = np.linalg.norm(normal_vector)
-            if vec_norm:  # nonzero
-                normal_vector = normal_vector / vec_norm
-
         if in_global_frame:
             normal_vector = self.transform_relative2global_dir(normal_vector)
 
-        # Invert normal direction to be consistent!
-        # if self.dim==2:
-        normal_vector = (-1) * normal_vector
+        mag_norm = LA.norm(normal_vector)
+        if mag_norm:
+            normal_vector = normal_vector / mag_norm
 
         return normal_vector
 
@@ -708,6 +678,52 @@ class Ellipse(Obstacle):
             dist = np.linalg.norm(intersection - relative_center)
         return dist
 
+    def get_local_radius_with_outside_reference(self, position: np.array) -> float:
+        """Returns the local radius for case of reference point in the local frame
+        everything happens in the local frame for a single position."""
+        if self.position_is_in_direction_of_ellipse(position):
+            radius = self._get_local_radius_ellipse(position)
+        else:
+            angle_position = np.arctan2(position[1], position[0])
+
+            dist_intersect = -1
+            for ii, sign in zip(range(self.n_planes), [1, -1]):
+                angle_ref = np.arctan2(
+                    self.edge_reference_points[1, self.ind_edge_ref, ii],
+                    self.edge_reference_points[0, self.ind_edge_ref, ii],
+                )
+
+                if sign * angle_difference_directional(angle_ref, angle_position) >= 0:
+                    surface_dir = (
+                        self.edge_reference_points[:, self.ind_edge_ref, ii]
+                        - self.edge_reference_points[:, self.ind_edge_tang, 1 - ii]
+                    )
+
+                    dist_intersect, dist_tangent = np.linalg.lstsq(
+                        np.vstack((position[:], -surface_dir)).T,
+                        self.edge_reference_points[:, self.ind_edge_ref, ii],
+                        rcond=-1,
+                    )[0]
+
+                    dist_intersect = dist_intersect * np.linalg.norm(position[:])
+
+            if dist_intersect < 0:  #
+                if not margin_absolut:
+                    raise ValueError("Negative value not possible.")
+
+                intersections = self.get_intersection_with_surface(
+                    edge_point=np.zeros(self.dim),
+                    direction=position[:],
+                    axes=np.ones(self.dim) * margin_absolut,
+                )
+
+                # self.get_intersectionWithEllipse()
+
+                distances = np.linalg.norm(intersections, axis=0)
+                dist_intersect = np.max(distances)
+            radius = dist_intersect
+        return radius
+
     def _get_local_radius(self, position, relative_center=None):
         # TODO: test for margin / reference point
         # TODO: improve speed
@@ -726,186 +742,29 @@ class Ellipse(Obstacle):
         if self.dim == 2:
             if self.reference_point_is_inside:
                 for pp in range(n_points):
-                    # radius[pp] = self._get_local_radius_ellipse(position[:, pp], relative_center)
                     radius[pp] = self._get_local_radius_ellipse(position[:, pp])
             else:
                 for pp in range(n_points):
-                    if self.position_is_in_direction_of_ellipse(position[:, pp]):
-                        # radius[pp] = self._get_local_radius_ellipse(position[:, pp], relative_center)
-                        radius[pp] = self._get_local_radius_ellipse(position[:, pp])
-                    else:
-                        angle_position = np.arctan2(position[1, pp], position[0, pp])
-
-                        dist_intersect = -1
-                        for ii, sign in zip(range(self.n_planes), [1, -1]):
-                            angle_ref = np.arctan2(
-                                self.edge_reference_points[1, self.ind_edge_ref, ii],
-                                self.edge_reference_points[0, self.ind_edge_ref, ii],
-                            )
-
-                            if (
-                                sign
-                                * angle_difference_directional(
-                                    angle_ref, angle_position
-                                )
-                                >= 0
-                            ):
-                                surface_dir = (
-                                    self.edge_reference_points[:, self.ind_edge_ref, ii]
-                                    - self.edge_reference_points[
-                                        :, self.ind_edge_tang, 1 - ii
-                                    ]
-                                )
-
-                                dist_intersect, dist_tangent = np.linalg.lstsq(
-                                    np.vstack((position[:, pp], -surface_dir)).T,
-                                    self.edge_reference_points[
-                                        :, self.ind_edge_ref, ii
-                                    ],
-                                    rcond=-1,
-                                )[0]
-
-                                dist_intersect = dist_intersect * np.linalg.norm(
-                                    position[:, pp]
-                                )
-
-                        if dist_intersect < 0:  #
-                            if not margin_absolut:
-                                raise ValueError("Negative value not possible.")
-
-                            intersections = self.get_intersection_with_surface(
-                                edge_point=np.zeros(self.dim),
-                                direction=position[:, pp],
-                                axes=np.ones(self.dim) * margin_absolut,
-                            )
-
-                            # self.get_intersectionWithEllipse()
-
-                            distances = np.linalg.norm(intersections, axis=0)
-                            dist_intersect = np.max(distances)
-                        radius[pp] = dist_intersect
+                    radius[pp] = self.get_local_radius_with_outside_reference(
+                        position[:, pp]
+                    )
         return radius
 
-    def get_gamma_old(
-        self,
-        position,
-        in_global_frame=False,
-        gamma_type="proportional",
-        margin_absolut=None,
-    ):
-        """
-        Get distance function from surface
-        """
-        # TODO: depreciated... remove
-        warnings.warn("'get_gamma_old' is depreciated. Use 'get_gamma' instead.")
-
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-
-        multiple_positions = len(position.shape) > 1
-
-        if multiple_positions:
-            n_points = position.shape[1]
-        else:
-            n_points = 1
-            position = position.reshape((self.dim, n_points))
-
-        Gamma = np.zeros(n_points)
-        intersecting_ind = np.ones(n_points, dtype=bool)  # TODO -- still used?
-
-        if margin_absolut is None:
-            margin_absolut = self.margin_absolut
-
-        # Original Gamma
-        if gamma_type == "proportional":
-            if self.dim == 2:
-                if self.reference_point_is_inside:
-                    Gamma = self.get_gamma_ellipse(position)
-                    # Gamma[intersecting_ind] = np.sum( (position / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.curvature, (n_points,1)).T), axis=0)
-                else:
-                    for pp in range(n_points):
-                        if self.position_is_in_direction_of_ellipse(position[:, pp]):
-                            # Gamma[intersecting_ind] = np.sum( (position[:, intersecting_ind] / np.tile(self.axes_with_margin, (n_points,1)).T ) ** (2*np.tile(self.curvature, (n_points,1)).T), axis=0)
-                            Gamma[pp] = self.get_gamma_ellipse(position[:, pp])
-                        else:
-                            angle_position = np.arctan2(
-                                position[1, pp], position[0, pp]
-                            )
-
-                            dist_intersect = -1
-                            for ii, sign in zip(range(self.n_planes), [1, -1]):
-                                angle_ref = np.arctan2(
-                                    self.edge_reference_points[
-                                        1, self.ind_edge_ref, ii
-                                    ],
-                                    self.edge_reference_points[
-                                        0, self.ind_edge_ref, ii
-                                    ],
-                                )
-
-                                # print('angle ref', angle_ref)
-
-                                if (
-                                    sign
-                                    * angle_difference_directional(
-                                        angle_ref, angle_position
-                                    )
-                                    >= 0
-                                ):
-                                    surface_dir = (
-                                        self.edge_reference_points[
-                                            :, self.ind_edge_ref, ii
-                                        ]
-                                        - self.edge_reference_points[
-                                            :, self.ind_edge_tang, 1 - ii
-                                        ]
-                                    )
-
-                                    (dist_intersect, dist_tangent,) = np.linalg.lstsq(
-                                        np.vstack((position[:, pp], -surface_dir)).T,
-                                        self.edge_reference_points[
-                                            :, self.ind_edge_ref, ii
-                                        ],
-                                        rcond=-1,
-                                    )[0]
-
-                            if dist_intersect < 0:  #
-                                if not margin_absolut:
-                                    import pdb
-
-                                    pdb.set_trace()  ## DEBUG ##
-                                    raise ValueError("Negative value not possible.")
-
-                                intersections = get_intersectionWithEllipse(
-                                    edge_point=np.zeros(self.dim),
-                                    direction=position,
-                                    axes=np.ones(self.dim) * margin_absolut,
-                                )
-
-                                distances = np.linalg.norm(intersections, axis=0)
-                                dist_intersect = np.max(distances)
-                            Gamma[pp] = 1.0 / dist_intersect
-
-                    if np.sum(intersecting_ind):
-                        n_points = np.sum(intersecting_ind)
-        else:
-            raise NotImplementedError()
-
-        if self.is_boundary:
-            Gamma = self.get_boundaryGamma(Gamma, Gamma_ref=self.Gamma_ref)
-
-        if not multiple_positions:
-            return Gamma[0]  # 1x1-array to value
-        return Gamma
-
-    def create_shape(self):
+    def create_shapely(self):
         """Create object (shape) based on the shapely library."""
         if self.dim != 2:
             raise NotImplementedError("Shapely object only existing for 2D")
-        circ = Point(self.center_position).buffer(1)
-        ell = affinity.scale(circ, self.axes_length[0], self.axes_length[1])
-        ellr = affinity.rotate(ell, self.orientation * 180.0 / pi)
-        self.shape = ellr
+
+        # Point is set at zero, and only moved when needed
+        circ = Point(np.zeros(self.dimension)).buffer(1)
+
+        axes = self.axes_length
+        shapely_outside = affinity.scale(circ, axes[0], axes[1])
+        self.shapely.set(in_global_frame=False, margin=False, value=shapely_outside)
+
+        axes = self.axes_with_margin
+        shapely_outside = affinity.scale(circ, axes[0], axes[1])
+        self.shapely.set(in_global_frame=False, margin=True, value=shapely_outside)
 
     def draw_obstacle(
         self,
@@ -1168,9 +1027,7 @@ class Sphere(Ellipse):
         if sys.version_info > (3, 0):
             super().__init__(axes_length=axes_length, *args, **kwargs)
         else:
-            super(CircularObstacle, self).__init__(
-                axes_length=axes_length, *args, **kwargs
-            )
+            super(Ellipse, self).__init__(axes_length=axes_length, *args, **kwargs)
             # super(Ellipse, self).__init__(*args, **kwargs) # works for python < 3.0?!
 
         if self.is_deforming:
@@ -1197,6 +1054,9 @@ class Sphere(Ellipse):
     @inflation_speed_radial.setter
     def inflation_speed_radial(self, value):
         self._inflation_speed_radial = value
+
+    def get_characteristic_length(self):
+        return self.radius + self.margin_absolut
 
     def _get_local_radius(self, *args, **kwargs):
         return self.radius_with_margin
@@ -1241,5 +1101,5 @@ class Sphere(Ellipse):
 
 
 class CircularObstacle(Sphere):
-    # TODO: redunant - remove
+    # Depreciated remove
     pass

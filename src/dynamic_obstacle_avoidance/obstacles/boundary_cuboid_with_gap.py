@@ -1,9 +1,9 @@
 """
 Two dimensional boundary obstacles with gaps. Agent can exit and enter them.
 """
-__author__ = "LukasHuber"
-__date__ = "2021-05-12"
-__email__ = "lukas.huber@epfl.ch"
+# Author: Lukas Huber
+# Date: 2021-05-12
+# Email:lukas.huber@epfl.ch
 
 import sys
 import os
@@ -36,12 +36,8 @@ class BoundaryCuboidWithGaps(Cuboid):
     ):
         kwargs["is_boundary"] = True
         kwargs["tail_effect"] = False
-        # kwargs['sticky'] = True
 
-        if sys.version_info > (3, 0):  # TODO: remove in future
-            super().__init__(*args, **kwargs)
-        else:
-            super(BoundaryCuboidWithGaps, **kwargs)
+        # kwargs['sticky'] = True
 
         if gap_points_absolute is not None:
             self._gap_points = (
@@ -50,8 +46,14 @@ class BoundaryCuboidWithGaps(Cuboid):
             )
         elif gap_points_relative is not None:
             self._gap_points = np.array(gap_points_relative)
+
         else:
-            warnings.warn("No gap array assigned")
+            raise Exception("No gap array assigned")
+
+        if sys.version_info > (3, 0):  # TODO: remove in future
+            super().__init__(*args, **kwargs)
+        else:
+            super(BoundaryCuboidWithGaps, **kwargs)
 
         self.guiding_reference_point = True
         self.has_gap_points = True
@@ -184,17 +186,19 @@ class BoundaryCuboidWithGaps(Cuboid):
                 (self._gap_points.shape[1], 1),
             ).T
         )
-        # print('gap angles afer', self.gap_angles)
-
-        # import pdb; pdb.set_trace()
-        # self.update_gap_angles()
 
         if sys.version_info > (3, 0):
             super().update_deforming_obstacle(delta_time)
         else:
             super(BoundaryCuboidWithGaps, self).update_deforming_obstacle(delta_time)
 
-    def get_gamma(self, position, in_global_frame=False, gamma_distance=None):
+    def get_gamma(
+        self,
+        position,
+        in_global_frame=False,
+        with_reference_point_expansion=True,
+        gamma_distance=None,
+    ):
         """Caclulate Gamma for 2D-Wall Case with selected Reference-Point."""
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -206,7 +210,6 @@ class BoundaryCuboidWithGaps(Cuboid):
 
         if not ref_norm:
             # Aligned at center. Gamma >> 1 (almost infinity)
-            # return sys.float_info.max
             return 1e30
 
         max_dist = self.get_maximal_distance()

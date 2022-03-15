@@ -1,4 +1,3 @@
-#!/USSR/bin/python3
 """
 Basic class to represent obstacles
 """
@@ -6,10 +5,11 @@ import time
 import warnings
 import sys
 from math import sin, cos, pi, ceil
-from abc import ABC, abstractmethod
-from functools import lru_cache
 
-from enum import Enum
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum, auto
+from functools import lru_cache
 
 import numpy as np
 import numpy.linalg as LA
@@ -20,12 +20,11 @@ from scipy.spatial.transform import Rotation  # scipy rotation
 
 from vartools.angle_math import angle_difference_directional
 from vartools.linalg import get_orthogonal_basis
-
 from vartools.angle_math import periodic_weighted_sum
-
-# from vartools.angle_math import *
-from vartools.states import ObjectPose
+from vartools.states import ObjectPose, ObjectTwist
 from vartools.directional_space import get_angle_space_inverse
+
+from .hull_storer import ObstacleHullsStorer
 
 
 class GammaType(Enum):
@@ -33,10 +32,10 @@ class GammaType(Enum):
     The gamma value is given in [1 - infinity] outside the obstacle
     except (!) the barrier type is from"""
 
-    RELATIVE = 0
-    EUCLEDIAN = 1
-    SCALED_EUCLEDIAN = 2
-    BARRIER = 3
+    RELATIVE = auto()
+    EUCLEDIAN = auto()
+    SCALED_EUCLEDIAN = auto()
+    BARRIER = auto()
 
 
 class Obstacle(ABC):
@@ -49,142 +48,110 @@ class Obstacle(ABC):
     # TODO: clean up & cohesion vs inhertiance! (decouble /lighten class)
 
     def __repr__(self):
+        repr_str = (
+            f"{type(self).__name__}(\n"
+            + f"center_position=np.{repr(self.center_position)},\n"
+        )
+
+        if self.orientation:
+            repr_str += f"orientation={float(self.orientation)},\n"
+
+        if LA.norm(self.linear_velocity):
+            repr_str += f"linear_velocity=np.{repr(self.linear_velocity)},\n"
+
+        if LA.norm(self.angular_velocity):
+            repr_str += f"angular_velocity={repr(float(self.angular_velocity))},\n"
+
         if self.is_boundary:
-            return "Wall <<{}>> is of Type: <{}>".format(self.name, type(self).__name__)
-        else:
-            return "Obstacle <<{}>> is of Type  <{}>".format(
-                self.name, type(self).__name__
-            )
+            repr_str += f"is_boundary={self.is_boundary},\n"
+
+        if hasattr(self, "axes_length"):
+            repr_str += f"axes_length=np.{repr(self.axes_length)},\n"
+
+        elif hasattr(self, "edge_points"):
+            repr_str += f"edge_points=np.{repr(self.edge_points)},\n"
+
+        repr_str += ")\n"
+
+        return repr_str
 
     def __init__(
         self,
         center_position=None,
         orientation=None,
+        linear_velocity=None,
+        angular_velocity=None,
+        pose=None,
+        twist=None,
         tail_effect=True,
         has_sticky_surface=True,
-        sf=1,
         repulsion_coeff=1,
         reactivity=1,
         name=None,
         is_dynamic=False,
         is_deforming=False,
-        # reference_point=None,
         margin_absolut=0,
-        x0=None,
         dimension=None,
-        linear_velocity=None,
-        angular_velocity=None,
-        xd=None,
-        w=None,
-        func_w=None,
-        func_xd=None,
-        x_start=0,
-        x_end=0,
-        timeVariant=False,
         Gamma_ref=0,
         is_boundary=False,
-        hirarchy=0,
-        ind_parent=-1,
         gamma_distance=None,
         sigma=None,
-        # *args, **kwargs # maybe random arguments
+        relative_hull_extension_margin=0.1,
     ):
-
         if name is None:
-            self.name = "obstacle{}".format(Obstacle.id_counter)
+            self.name = f"obstacle_{Obstacle.id_counter}"
         else:
             self.name = name
 
         self.is_boundary = is_boundary
 
-        self.position = center_position
-        self.center_position = self.position
+        if pose is None:
+            self.pose = ObjectPose(
+                position=center_position,
+                orientation=orientation)
+        else:
+            self.pose = pose
+
+        if twist is None:
+            self.twist = ObjectTwist(
+                linear=linear_velocity,
+                angular=angular_velocity,
+                )
+        else:
+            self.twist = twist
+            
+            
+        # self.position = center_position
+        # self.center_position = self.position
+        
+        # self.orientation = orientation
+
+        # self.linear_velocity = linear_velocity
+        # self.angular_velocity = angular_velocity
 
         # Dimension of space
         self.dim = len(self.center_position)
-        self.d = len(self.center_position)  # TODO: depreciated -> remove
 
         # Relative Reference point // Dyanmic center
-        # if reference_point is None:
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
-        self.reference_point_is_inside = True
 
         # Margin
-        self.sf = sf  # TODO: depreciated -> remove
-        # self.delta_margin = delta_margin
-        self.margin_absolut = margin_absolut
         if sigma is not None:
             raise Exception("Remove / rename sigma argument.")
-        self.sigma = 1  # TODO: rename sigma argument
+        # self.sigma = 1  # TODO: rename sigma argument
+
+        self.relative_hull_extension_margin = relative_hull_extension_margin
 
         self.tail_effect = tail_effect  # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
 
-        self._rotation_matrix = None
-        self.orientation = orientation
 
         self.resolution = 0  # Resolution of drawing
 
         self._boundary_points = None  # Numerical drawing of obstacle boundarywq
         self._boundary_points_margin = None  # Obstacle boundary plus margin!
 
-        self.timeVariant = timeVariant
-        if self.timeVariant:
-            self.func_xd = 0
-            self.func_w = 0
-        # else:
-        # self.always_moving = always_moving
-
-        if angular_velocity is None:
-            if w is None:
-                if self.dim == 2:
-                    angular_velocity = 0
-                elif self.dim == 3:
-                    angular_velocity = np.zeros(self.dim)
-                else:
-                    import pdb
-
-                    pdb.set_trace()
-                    raise ValueError("Define angular velocity for higher dimensions.")
-            else:
-                angular_velocity = w
-        self.angular_velocity_const = angular_velocity
-
-        if linear_velocity is None:
-            if xd is None:
-                self.linear_velocity = np.zeros(self.dim)
-            else:
-                self.linear_velocity = xd
-        else:
-            self.linear_velocity = linear_velocity
-
-        if angular_velocity is None:
-            self.angular_velocity = np.zeros(self.dim)
-        else:
-            self.angular_velocity = angular_velocity
-
-        # TODO: remove
-        # Special case of moving obstacle (Create subclass)
-        if (
-            sum(np.abs(self.linear_velocity))
-            or np.sum(self.angular_velocity)
-            or self.timeVariant
-        ):
-            # Dynamic simulation - assign varibales:
-            self.x_start = x_start
-            self.x_end = x_end
-            self.always_moving = False
-        else:
-            self.x_start = 0
-            self.x_end = 0
-            self.always_moving = False
-
         self.update_timestamp()
-
-        # Trees of stars // move 'container'
-        self.hirarchy = hirarchy
-        self.ind_parent = ind_parent
-        self.ind_children = []
 
         # Set reference point value to None
         self.reset_relative_reference()
@@ -204,23 +171,23 @@ class Obstacle(ABC):
             self.inflation_speed_radial = 0
 
         # Repulsion coefficient to actively move away from obstacles (if possible)
-        # [1, infinity]
         self.repulsion_coeff = repulsion_coeff
         self.reactivity = reactivity
 
         # Distance which decides over 'proportional' factor for gamma
         self.gamma_distance = gamma_distance
 
-        # Convergence direction defined at a reference point of the obstacle
-        # self._convergence_direction = None
-
-        # self.properties = {} # TODO (maybe): use kwargs for properties..
-
         Obstacle.id_counter += 1  # New obstacle created
         Obstacle.active_counter += 1
 
         # Needed for drawing polygon
         self.obs_polygon = None
+
+        # Pass as pose-reference to the storer
+        self.shapely = ObstacleHullsStorer(self)
+        self._margin_absolut = margin_absolut
+
+        self._reference_point_is_inside = True
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -242,8 +209,6 @@ class Obstacle(ABC):
         # Coefficient > 1 are accepted;
         # Good range is in [1, 2]
         # if value < 1.0:
-        # warnings.warn("Repulsion coeff smaller than 1. Reset to 1.")
-        # value = 1.0
         self._repulsion_coeff = value
 
     @property
@@ -268,9 +233,38 @@ class Obstacle(ABC):
         else:
             self._relative_reference_point = self.transform_global2relative(value)
 
+    def get_reference_point_with_margin(self):
+        """Get reference point projected with the additional margin (in the local frame)."""
+        ref_norm = LA.norm(self.reference_point)
+
+        if not ref_norm:
+            return self.reference_point
+
+        dist_max = self.get_maximal_distance() * self.relative_hull_extension_margin
+        reference_point_temp = self.reference_point * (1 + dist_max / ref_norm)
+
+        return reference_point_temp
+
+    def is_reference_point_inside(self):
+        ref_extended = self.get_reference_point_with_margin()
+        return (
+            self.get_gamma(
+                ref_extended,
+                in_global_frame=False,
+                with_reference_point_expansion=False,
+            )
+            < 1
+        )
+
     @property
-    def center_dyn(self):  # TODO: depreciated -- delete
-        return self.reference_point
+    def reference_point_is_inside(self):
+        # Depreciated -> evalute in realtime
+        return self._reference_point_is_inside
+
+    @reference_point_is_inside.setter
+    def reference_point_is_inside(self, value):
+        # Depreciated -> evalute in realtime
+        self._reference_point_is_inside = value
 
     @property
     def global_reference_point(self):
@@ -296,63 +290,44 @@ class Obstacle(ABC):
     def reference_point(self, value):
         self._reference_point = value
 
-    @property
-    def pose(self):
-        return ObjectPose(position=self.position, orientation=self.orientation)
-
+    # @property
+    # def pose(self):
+        # return self._pose
+        
     @property
     def orientation(self):
-        return self._orientation
+        return self.pose.orientation
 
     @orientation.setter
     def orientation(self, value):
-        if value is None:
-            self._orientation = value
-            return
-
-        if self.dim == 2:
-            self._orientation = value
-            self.compute_rotation_matrix()
-
-        elif self.dim == 3:
-            if not isinstance(value, Rotation):
-                raise TypeError("Use 'scipy - Rotation' type for 3D orientation.")
-            self._orientation = value
-
-        else:
-            if value is not None and np.sum(np.abs(value)):  # nonzero value
-                warnings.warn("Rotation for dimensions > 3 not defined.")
-            self._orientation = value
+        self.pose.orientation = value
 
     @property
-    def th_r(self):  # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        return self.orientation  # getter
+    def orientation_in_degree(self) -> float:
+        if self.orientation is None:
+            return 0
+        else:
+            return self.orientation * 180 / np.pi
 
-    @th_r.setter
-    def th_r(self, value):  # TODO: will be removed since outdated
-        warnings.warn("'th_r' is an outdated name use 'orientation' instead.")
-        if True:
-            raise ValueError()
-        self.orientation = value  # setter
+    @property
+    def rotation_matrix(self):
+        return self.pose.rotation_matrix
 
     @property
     def position(self):
-        return self.center_position
+        return self.pose.position
 
     @position.setter
     def position(self, value):
-        self.center_position = value
+        self.pose.position = value
 
     @property
-    def center_position(self):
-        return self._center_position
+    def center_position(self) -> np.ndarray:
+        return self.pose.position
 
     @center_position.setter
     def center_position(self, value):
-        self._center_position = np.array(value)
+        self.pose.position = np.array(value)
 
     @property
     def timestamp(self):
@@ -360,64 +335,26 @@ class Obstacle(ABC):
 
     @timestamp.setter
     def timestamp(self, value):
-        # if timestamp is None:
         self._timestamp = value
 
     def update_timestamp(self):
         self._timestamp = time.time()
 
     @property
-    def xd(self):  # TODO: remove
-        warnings.warn("'xd' is an outdated name use 'lienar_velocity' instead.")
-        breakpoint()
-        return self._linear_velocity_const
-
-    # @property
-    # def velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @property
-    # def linear_velocity_const(self):
-    # return self._linear_velocity_const
-
-    # @linear_velocity_const.setter
-    # def linear_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._linear_velocity_const = value
-
-    @property
     def linear_velocity(self) -> np.ndarray:
-        return self._linear_velocity
+        return self.twist.linear
 
     @linear_velocity.setter
     def linear_velocity(self, value: np.ndarray):
-        self._linear_velocity = value
-        # self._linear_velocity_const = value
+        self.twist.linear = value
 
     @property
     def angular_velocity(self) -> np.ndarray:
-        return self._angular_velocity
+        return self.twist.angular
 
     @angular_velocity.setter
     def angular_velocity(self, value: np.ndarray):
-        self._angular_velocity = value
-
-    # @property
-    # def angular_velocity_const(self):
-    # return self._angular_velocity_const
-
-    # @angular_velocity_const.setter
-    # def angular_velocity_const(self, value):
-    # if isinstance(value, list):
-    # value = np.array(value)
-    # self._angular_velocity_const = value
-    # self._angular_velocity = value
-
-    @property
-    def w(self):  # TODO: remove
-        warnings.warn("Outdated name")
-        return self._angular_velocity_const
+        self.twist.angular = value
 
     @property
     def boundary_points(self):
@@ -436,11 +373,6 @@ class Obstacle(ABC):
         self._boundary_points = value
 
     @property
-    def x_obs(self):
-        warnings.warn("Outdated name 'x_obs'")
-        return self.boundary_points_global_closed
-
-    @property
     def boundary_points_global_closed(self):
         boundary = self.boundary_points_global
         return np.hstack((boundary, boundary[:, 0:1]))
@@ -456,11 +388,6 @@ class Obstacle(ABC):
     @boundary_points_margin_local.setter
     def boundary_points_margin_local(self, value):
         self._boundary_points_margin = value
-
-    @property
-    def x_obs_sf(self):
-        warnings.warn("Outdated name 'x_obs_sf'")
-        return self.boundary_points_margin_global_closed
 
     @property
     def boundary_points_margin_global(self):
@@ -481,16 +408,16 @@ class Obstacle(ABC):
         if self.dim == 2:
             if len(position.shape) == 1:
                 position = position - np.array(self.center_position)
-                if self._rotation_matrix is None:
+                if self.rotation_matrix is None:
                     return position
-                return self._rotation_matrix.T.dot(position)
+                return self.rotation_matrix.T.dot(position)
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
                 position = position - np.tile(self.center_position, (n_points, 1)).T
-                if self._rotation_matrix is None:
+                if self.rotation_matrix is None:
                     return position
-                return self._rotation_matrix.T.dot(position)
+                return self.rotation_matrix.T.dot(position)
 
             else:
                 raise ValueError("Unexpected position-shape")
@@ -498,16 +425,16 @@ class Obstacle(ABC):
         elif self.dim == 3:
             if len(position.shape) == 1:
                 position = position - self.center_position
-                if self._orientation is None:
+                if self.orientation is None:
                     return position
-                return self._orientation.inv().apply(position)
+                return self.orientation.inv().apply(position)
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
                 position = position.T - np.tile(self.center_position, (n_points, 1))
-                if self._orientation is None:
+                if self.orientation is None:
                     return position.T
-                return self._orientation.inv().apply(position).T
+                return self.orientation.inv().apply(position).T
             else:
                 raise ValueError("Unexpected position shape.")
 
@@ -527,14 +454,14 @@ class Obstacle(ABC):
 
         if self.dim == 2:
             if len(position.shape) == 1:
-                if self._rotation_matrix is not None:
-                    position = self._rotation_matrix.dot(position)
+                if self.rotation_matrix is not None:
+                    position = self.rotation_matrix.dot(position)
                 return position + self.center_position
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
-                if self._rotation_matrix is not None:
-                    position = self._rotation_matrix.dot(position)
+                if self.rotation_matrix is not None:
+                    position = self.rotation_matrix.dot(position)
                 return position + np.tile(self.center_position, (n_points, 1)).T
 
             else:
@@ -542,14 +469,14 @@ class Obstacle(ABC):
 
         elif self.dim == 3:
             if len(position.shape) == 1:
-                if self._orientation is not None:
-                    position = self._orientation.apply(position)
+                if self.orientation is not None:
+                    position = self.orientation.apply(position)
                 return position + self.center_position
 
             elif len(position.shape) == 2:
                 n_points = position.shape[1]
-                if self._orientation is not None:
-                    position = self._orientation.apply(position.T).T
+                if self.orientation is not None:
+                    position = self.orientation.apply(position.T).T
                 return position + np.tile(self.center_position, (n_points, 1)).T
 
             else:
@@ -563,14 +490,14 @@ class Obstacle(ABC):
 
     def transform_relative2global_dir(self, direction):
         """Transform a direction, velocity or relative position to the global-frame"""
-        if self._orientation is None:
+        if self.orientation is None:
             return direction
 
         if self.dim == 2:
-            return self._rotation_matrix.dot(direction)
+            return self.rotation_matrix.dot(direction)
 
         elif self.dim == 3:
-            return self._orientation.apply(direction.T).T
+            return self.orientation.apply(direction.T).T
 
         else:
             warnings.warn("Not implemented for higer dimensions")
@@ -578,14 +505,14 @@ class Obstacle(ABC):
 
     def transform_global2relative_dir(self, direction):
         """Transform a direction, velocity or relative position to the obstacle-frame"""
-        if self._orientation is None:
+        if self.orientation is None:
             return direction
 
         if self.dim == 2:
-            return self._rotation_matrix.T.dot(direction)
+            return self.rotation_matrix.T.dot(direction)
 
         elif self.dim == 3:
-            return self._orientation.inv.apply(direction.T).T
+            return self.orientation.inv.apply(direction.T).T
 
         else:
             warnings.warn("Not implemented for higer dimensions")
@@ -595,39 +522,54 @@ class Obstacle(ABC):
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return matrix
-        return self._rotation_matrix.T.dot(matrix).dot(self._rotation_matrix)
+        return self.rotation_matrix.T.dot(matrix).dot(self.rotation_matrix)
 
     def transform_relative2global_matr(self, matrix):
         if self.dim > 3:
             warnings.warn("Not implemented for higer dimensions")
             return matrix
-        return self._rotation_matrix.dot(matrix).dot(self._rotation_matrix.T)
+        return self.rotation_matrix.dot(matrix).dot(self.rotation_matrix.T)
 
-    def mirror_local_position_on_boundary(self,
-                                          position: np.ndarray,
-                                          local_radius: np.ndarray = None,
-                                          pos_norm: np.ndarray = None
-                                          ) -> np.ndarray:
-        """ Returns the position (in the local frame) mirrored on the surface of the obstacle.
-        i.e. positions outside will end up outside (and vice versa). """
+    @property
+    def margin_absolut(self):
+        return self._margin_absolut
+
+    @margin_absolut.setter
+    def margin_absolut(self, value):
+        self._margin_absolut = value
+
+        if not self.is_reference_point_inside():
+            self.extend_hull_around_reference()
+
+    # @abstractmethod
+    def create_shapely(self):
+        raise NotImplementedError()
+
+    def mirror_local_position_on_boundary(
+        self,
+        position: np.ndarray,
+        local_radius: np.ndarray = None,
+        pos_norm: np.ndarray = None,
+    ) -> np.ndarray:
+        """Returns the position (in the local frame) mirrored on the surface of the obstacle.
+        i.e. positions outside will end up outside (and vice versa)."""
         if pos_norm is None:
             pos_norm = LA.norm(position)
-        
+
         if not pos_norm:
             # Return a point very far away, when the point is at the center
             position = np.zeros(position.shape)
             position[0] = sys.float_info.max
             return position
-            
+
         if local_radius is None:
             local_radius = self.get_local_radius(position)
-        return position * (local_radius/(pos_norm*pos_norm))
-    
+        return position * (local_radius / (pos_norm * pos_norm))
+
     @abstractmethod
-    def get_normal_direction(self,
-                             position: np.ndarray,
-                             in_global_frame: bool = False
-                             ) -> np.ndarray:
+    def get_normal_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
         """Get normal direction to the surface.
         IMPORTANT: Based on convention normal.dot(reference)>0 ."""
         raise NotImplementedError("Implement function in child-class of <Obstacle>.")
@@ -636,130 +578,77 @@ class Obstacle(ABC):
     def get_local_radius(self, position, in_local_frame: bool):
         raise NotImplementedError("Not implemented for base-class.")
 
+    # @abstractmethod
+    def get_surface_point(self, position, in_local_frame: bool):
+        raise NotImplementedError("Not implemented for base-class.")
+
     # Store five previous values
     # @lru_cache(maxsize=5)
-    def get_gamma(self, position, *args, **kwargs):
-        """Get gamma value of obstacle."""
-        if len(position.shape) == 1:
-            position = np.reshape(position, (self.dim, 1))
-
-            return np.reshape(self._get_gamma(position, *args, **kwargs), (-1))
-
-        elif len(position.shape) == 2:
-            return self._get_gamma(position, *args, **kwargs)
-
-        else:
-            ValueError("Triple dimensional position are unexpected")
-
-    def _get_gamma(
-        self,
-        position,
-        reference_point=None,
-        in_global_frame=False,
-        gamma_type="proportional",
-    ):
-        """Calculates the norm of the function.
-        Position input has to be 2-dimensional array"""
-        # TODO: depreciated
-        breakpoint()
-
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-            if reference_point is not None:
-                reference_point = self.transform_global2relative(reference_point)
-
-        if reference_point is None:
-            reference_point = self.local_reference_point
-        else:
-            if self.get_gamma(reference_point) > 0:
-                raise ValueError("Reference point is outside hull")
-
-        dist_position = np.linalg.norm(position, axis=0)
-        ind_nonzero = dist_position > 0
-
-        if not np.sum(ind_nonzero):  # only zero values
-            if self.is_boundary:
-                return np.ones(dist_position.shape) * sys.float_info.max
-            else:
-                return np.zeros(dist_position.shape)
-
-        gamma = np.zeros(dist_position.shape)
-        # radius = self._get_local_radius(position[:, ind_nonzero], reference_point)
-        # With respect to center. Is this ok?
-        radius = self._get_local_radius(position[:, ind_nonzero])
-
-        import pdb
-
-        pdb.set_trace()
-
-        if gamma_type == "proportional":
-            gamma[ind_nonzero] = dist_position[ind_nonzero] / radius[ind_nonzero]
-            if self.is_boundary:
-                gamma[ind_nonzero] = 1 / gamma[ind_nonzero]
-                gamma[~ind_nonzero] = sys.float_info.max
-
-        elif gamma_type == "linear":
-            if self.is_boundary:
-                raise NotImplementedError("Not implemented for other gamma types.")
-            else:
-                ind_outside = dist_position > radius
-
-                # import pdb; pdb.set_trace()
-                if np.sum(ind_outside):
-                    ind_ = ind_outside
-                    dd = dist_position[ind_]
-                    rr = radius[ind_]
-                    gamma[ind_] = 1 + (dd - rr)
-
-                if np.sum(~ind_outside):
-                    ind_ = np.logical_and(ind_nonzero, ~ind_outside)
-                    dd = dist_position[ind_]
-                    rr = radius[ind_]
-                    gamma[ind_] = 1 / (rr * rr / dd - rr + 1)
-
-        else:
-            raise NotImplementedError("Not implemented for other gamma types.")
-
-        return gamma
-
     @abstractmethod
-    def draw_obstacle(self, n_resolution=20):
-        """Create obstacle boundary points and stores them as attribute."""
+    def get_gamma(self, position, with_reference_point_expansion=True):
         pass
 
-    def plot_obstacle(
+    def get_baoundary_normal_direction(self, *args, **kwargs):
+        return (-1) * self.get_normal_direction(*args, **kwargs)
+
+    def draw_obstacle(self, n_resolution=20):
+        """Create obstacle boundary points and stores them as attribute."""
+        raise Exception("Outdated function - replaced with plot2D")
+
+    def plot2D(
         self,
         ax,
-        fill_color="#00ff00ff",
+        # fill_color="#00ff00ff",
+        fill_color="#b07c7c",
         outline_color=None,
         plot_center_position=True,
+        plot_reference_position=True,
     ):
         """Plots obstacle on given axes."""
-        if self.boundary_points is None:
-            self.draw_obstacle()
+        if self.dimension != 2:
+            raise Exception("Only implemented for 2D case.")
 
-        x_obs = self.boundary_points_global_closed
+        # Get inside one
+        points_outer = self.shapely.get_global_with_everything_as_array()
+        points_core = self.shapely.get_global_without_margin_as_array()
+
+        ax.plot(points_outer[0, :], points_outer[1, :], "k--", linewidth=2)
+        ax.plot(points_core[0, :], points_core[1, :], "k--", linewidth=2)
+
         # obs_polygon = plt.Polygon(x_obs.T, zorder=-3)
         if fill_color is not None:
-            self.obs_polygon = plt.Polygon(x_obs.T)
+            self.obs_polygon = plt.Polygon(points_core.T)
             self.obs_polygon.set_color(fill_color)
 
             ax.add_patch(self.obs_polygon)
+
             # Somehow only appears when additionally a 'plot is generated' (BUG?)
             ax.plot([], [])
 
         if outline_color is not None:
-            ax.plot(x_obs[0, :], x_obs[1, :], "-", color=outline_color)
+            ax.plot(inner_margin[0, :], inner_margin[1, :], "-", color=outline_color)
 
         if plot_center_position:
             ax.plot(
                 self.center_position[0],
                 self.center_position[1],
                 "k.",
-                linewidth=18,
                 markeredgewidth=4,
                 markersize=13,
             )
+
+        if plot_reference_position:
+            if self.reference_point is not None and not np.isclose(
+                LA.norm(self.reference_point), 0
+            ):
+                ref_point = self.global_reference_point
+                ax.plot(
+                    ref_point[0],
+                    ref_point[1],
+                    "k+",
+                    markeredgewidth=4,
+                    markersize=13,
+                )
 
     def get_surface_derivative_angle_num(
         self,
@@ -848,34 +737,18 @@ class Obstacle(ABC):
             )
             # point_low = np.linalg.norm(local_radius)*point_low
             norm_derivs[dd, :] = ((normal_high - normal_low) / (2 * delta_dir)).T
-        # if in_global_frame:
-        # norm_derivs = self.transform_relative2global_dir(norm_derivs)
         return norm_derivs
 
-    def compute_rotation_matrix(self):
-        # TODO - replace with quaternions
-        # Find solution for higher dimensions
-        if self.dim != 2:
-            warnings.warn("Orientation matrix only used for useful for 2-D rotations.")
-            return
-
-        orientation = self._orientation
-        self._rotation_matrix = np.array(
-            [
-                [cos(orientation), -sin(orientation)],
-                [sin(orientation), cos(orientation)],
-            ]
-        )
-
-    def set_reference_point(self, position, in_global_frame=False):  # Inherit
+    def set_reference_point(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> None:  # Inherit
         """Defines reference point.
         It is used to create reference direction for the modulation of the system."""
-
         if in_global_frame:
             position = self.transform_global2relative(position)
-
         self.reference_point = position
-        self.extend_hull_around_reference()
+        if not self.is_boundary:
+            self.extend_hull_around_reference()
 
     def extend_hull_around_reference(self):
         """Updates the obstacles such that they are star-shaped with respect to the reference
@@ -886,7 +759,7 @@ class Obstacle(ABC):
         if self.linear_velocity is not None:
             self.position = self.position + self.linear_velocity * delta_time
 
-        if self.angular_velocity is not None:
+        if self.angular_velocity and self.orientation:
             if self.dimension == 2:
                 self.orientation = self.orientation + self.angular_velocity * delta_time
             else:
@@ -909,6 +782,25 @@ class Obstacle(ABC):
             position = self.transform_relative2global(position)
 
         self.center_position = position
+
+    def update_position(self, t, dt):
+        # Inherit
+        # TODO - implement function dependend movement (yield), nonlinear integration
+        # Euler / Runge-Kutta integration
+        # TODO: make one updater only & update also shapely
+
+        lin_vel = self.get_linear_velocity(t)  # nonzero
+        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
+            self.center_position = self.center_position + dt * lin_vel
+            self.has_moved = True
+
+        ang_vel = self.get_angular_velocity(t)  # nonzero
+        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
+            self.orientation = self.orientation + dt * ang_vel
+            self.has_moved = True
+
+        if self.has_moved:
+            self.draw_obstacle()
 
     def update_position_and_orientation(
         self,
@@ -978,9 +870,7 @@ class Obstacle(ABC):
                 ],
                 weights=[k_orientation, (1 - k_orientation)],
             )
-
         self.timestamp = time_current
-
         self.draw_obstacle()  # Really needed?
 
         self.has_moved = True
@@ -1066,29 +956,6 @@ class Obstacle(ABC):
     def has_relative_gamma(self):
         return self._relative_gamma is not None
 
-    def get_boundaryGamma(self, Gamma, Gamma_ref=0):  #
-        """Reverse Gamma value such that boundaries can be treated with
-        the same algorithm as obstacles
-
-        Basic rule: [1, oo] -> [1, 0] AND [0, 1] -> [oo, 1]
-        """
-        # TODO: make a decorator out of this (!?)
-        if isinstance(Gamma, (float, int)):
-            if Gamma <= Gamma_ref:
-                return sys.float_info.max
-            else:
-                return (1 - Gamma_ref) / (Gamma - Gamma_ref)
-
-        else:
-            if isinstance(Gamma, (list)):
-                Gamma = np.array(Gamma)
-            ind_small_gamma = Gamma <= Gamma_ref
-            Gamma[ind_small_gamma] = sys.float_info.max
-            Gamma[~ind_small_gamma] = (1 - Gamma_ref) / (
-                Gamma[~ind_small_gamma] - Gamma_ref
-            )
-            return Gamma
-
     def get_angle2dir(self, position_dir, tangent_dir, needs_normalization=True):
         if needs_normalization:
             if len(position_dir.shape) > 1:
@@ -1110,6 +977,7 @@ class Obstacle(ABC):
         check_range=False,
         weight_pow=1,
     ):
+        # TODO: move to utils (?) / angle utils
         n_angles = np.array(angles).shape[0]
         if check_range:
             ind_low = angles <= min_angle
@@ -1159,100 +1027,36 @@ class Obstacle(ABC):
         # weights[~ind_positiveDistance] = 0
         return weights
 
-    def draw_reference_hull(self, normal_vector, position):
-        pos_abs = self.transform_relative2global(position)
-        norm_abs = self.transform_relative2global_dir(normal_vector)
+    def get_outwards_reference_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
+        """Returns reference direction pointing away from obstacle.
+        At the reference point, a (dummy) vector of length one is returned."""
+        return (-1) * self.get_reference_direction(position, in_global_frame)
 
-        plt.quiver(
-            pos_abs[0],
-            pos_abs[1],
-            norm_abs[0],
-            norm_abs[1],
-            color="k",
-            label="Normal",
-        )
-
-        ref_dir = self.transform_relative2global_dir(
-            self.get_reference_direction(
-                position, in_global_frame=False, normalize=True
-            )
-        )
-
-        plt.quiver(
-            pos_abs[0],
-            pos_abs[1],
-            ref_dir[0],
-            ref_dir[1],
-            color="g",
-            label="Reference",
-        )
-
-        ref_abs = self.transform_relative2global(self.hull_edge)
-
-        for ii in range(2):
-            tang_abs = self.transform_relative2global(self.tangent_points[:, ii])
-            plt.plot([tang_abs[0], ref_abs[0]], [tang_abs[1], ref_abs[1]], "k--")
-
-    def get_reference_direction(self, position, in_global_frame=False, normalize=True):
-        """Get direction from 'position' to the reference point of the obstacle.
-        The global frame is considered by the choice of the reference point."""
-        # Inherit
-
-        if hasattr(self, "reference_point") or hasattr(
-            self, "center_dyn"
-        ):  # automatic adaptation of center
-            ref_point = (
-                self.global_reference_point
-                if in_global_frame
-                else self.local_reference_point
-            )
-            if len(position.shape) == 1:
-                reference_direction = -(position - ref_point)
-            else:
-                reference_direction = -(
-                    position - np.tile(ref_point, (position.shape[1], 1)).T
-                )
+    def get_reference_direction(
+        self, position: np.ndarray, in_global_frame: bool = False
+    ) -> np.ndarray:
+        """Returns reference direction pointing away from obstacle.
+        At the reference point, a (dummy) vector of length one is returned."""
+        if in_global_frame:
+            ref_dir = self.transform_relative2global(self.reference_point) - position
         else:
-            reference_direction = -position
+            ref_dir = self.reference_point - position
 
-        if normalize:
-            if len(position.shape) == 1:
-                ref_norm = LA.norm(reference_direction)
-                if ref_norm > 0:
-                    reference_direction = reference_direction / ref_norm
-            else:
-                ref_norm = LA.norm(reference_direction, axis=0)
-                ind_nonzero = ref_norm > 0
-                reference_direction[:, ind_nonzero] = (
-                    reference_direction[:, ind_nonzero] / ref_norm[ind_nonzero]
-                )
+        # Normal direction
+        norm_of_ref = LA.norm(ref_dir)
 
-        return reference_direction
+        if norm_of_ref:
+            return ref_dir / norm_of_ref
+        else:
+            return np.ones(self.dim) / self.dim
 
     def get_linear_velocity(self, *arg, **kwargs):
         return self.linear_velocity_const
 
     def get_angular_velocity(self, *arg, **kwargs):
         return self.angular_velocity_const
-
-    def update_position(self, t, dt, x_lim=[], stop_at_edge=True):
-        # Inherit
-        # TODO - implement function dependend movement (yield), nonlinear integration
-        # Euler / Runge-Kutta integration
-
-        lin_vel = self.get_linear_velocity(t)  # nonzero
-        if not (lin_vel is None or np.sum(np.abs(lin_vel)) < 1e-8):
-            self.center_position = self.center_position + dt * lin_vel
-            self.has_moved = True
-
-        ang_vel = self.get_angular_velocity(t)  # nonzero
-        if not (ang_vel is None or np.sum(np.abs(ang_vel)) < 1e-8):
-            self.orientation = self.orientation + dt * ang_vel
-            self.compute_rotation_matrix()
-            self.has_moved = True
-
-        if self.has_moved:
-            self.draw_obstacle()
 
     def get_scaled_boundary_points(
         self, scale, safety_margin=True, redraw_obstacle=False

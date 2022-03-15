@@ -74,11 +74,14 @@ def get_relative_obstacle_velocity(
     xd_obs = np.zeros((dim))
     for ii, it_obs in zip(range(np.sum(ind_obs)), np.arange(n_obstacles)[ind_obs]):
         if dim == 2:
-            xd_w = np.cross(
-                np.hstack(([0, 0], obs[it_obs].angular_velocity)),
-                np.hstack((position - np.array(obs[it_obs].center_position), 0)),
-            )
-            xd_w = xd_w[0:2]
+            if obs[it_obs].angular_velocity is None:
+                xd_w = np.zeros(dim)
+            else:
+                xd_w = np.cross(
+                    np.hstack(([0, 0], obs[it_obs].angular_velocity)),
+                    np.hstack((position - np.array(obs[it_obs].center_position), 0)),
+                )
+                xd_w = xd_w[0:2]
         elif dim == 3:
             xd_w = np.cross(
                 obs[it_obs].angular_velocity,
@@ -88,23 +91,13 @@ def get_relative_obstacle_velocity(
             xd_w = np.zeros(dim)
             warnings.warn("Angular velocity is not defined for={}".format(d))
 
-        weight_angular = np.exp(
-            -1.0 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
-        )
+        weight_angular = np.exp(-1.0 * (np.max([gamma_list[ii], 1]) - 1))
 
         linear_velocity = obs[it_obs].linear_velocity
 
         if velocity_only_in_positive_normal_direction:
-            if E_orth[:, 0, ii].dot(position - obs[it_obs].center_position) > 0:
-                # Normal is (at the time of implementation) pointing away from the obstacle.
-                # but this is expected to change (!)
-                raise Exception(
-                    "Normal direciton is not pointing along reference."
-                    + "-> change the sign of the inequality"
-                )
-
             lin_vel_local = (E_orth[:, :, ii]).T.dot(obs[it_obs].linear_velocity)
-            if (-1) * lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
+            if lin_vel_local[0] < 0 and not obs[it_obs].is_boundary:
                 # Obstacle is moving towards the agent
                 linear_velocity = np.zeros(lin_vel_local.shape[0])
             else:
@@ -112,17 +105,13 @@ def get_relative_obstacle_velocity(
                 lin_vel_local[0] = normal_weight_factor * lin_vel_local[0]
                 linear_velocity = E_orth[:, 0, ii].dot(lin_vel_local[0])
 
-            weight_linear = np.exp(
-                -1 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
-            )
+            weight_linear = np.exp(-1 / 1 * (np.max([gamma_list[ii], 1]) - 1))
         xd_obs_n = weight_linear * linear_velocity + weight_angular * xd_w
 
         # The Exponential term is very helpful as it help to avoid
         # the crazy rotation of the robot due to the rotation of the object
         if obs[it_obs].is_deforming:
-            weight_deform = np.exp(
-                -1 / obs[it_obs].sigma * (np.max([gamma_list[ii], 1]) - 1)
-            )
+            weight_deform = np.exp(-1 / 1 * (np.max([gamma_list[ii], 1]) - 1))
             vel_deformation = obs[it_obs].get_deformation_velocity(pos_relative[:, ii])
 
             if velocity_only_in_positive_normal_direction:
