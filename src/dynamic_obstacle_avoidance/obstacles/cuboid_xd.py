@@ -18,11 +18,8 @@ from dynamic_obstacle_avoidance import obstacles
 class CuboidXd(obstacles.Obstacle):
     """Cuboid with axes length.
     methods such as `extend_hull_around_reference'."""
-    def __init__(
-        self,
-        axes_length: np.ndarray,
-        *args,
-        **kwargs):
+
+    def __init__(self, axes_length: np.ndarray, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.axes_length = axes_length
@@ -40,11 +37,11 @@ class CuboidXd(obstacles.Obstacle):
         self._axes_length = value
 
     @property
-    def axes_with_margin(self)-> np.ndarray:
+    def axes_with_margin(self) -> np.ndarray:
         if self.is_boundary:
-            return self._axes_length - 2*self.margin_absolut
+            return self._axes_length - 2 * self.margin_absolut
         else:
-            return self._axes_length + 2*self.margin_absolut
+            return self._axes_length + 2 * self.margin_absolut
 
     @property
     def semiaxes(self) -> np.ndarray:
@@ -163,53 +160,62 @@ class CuboidXd(obstacles.Obstacle):
         if not in_obstacle_frame:
             normal = self.pose.transform_direction_from_local_to_reference(normal)
 
-
         return normal
 
-    def get_distance_to_surface(self, position, in_obstacle_frame: bool = True):
+    def get_distance_to_surface(
+        self, position, in_obstacle_frame: bool = True, margin_absolut: float = None
+    ):
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
+        if margin_absolut is None:
+            margin_absolut = self.margin_absolut
 
         relative_position = np.abs(position) - self.semiaxes
-        
+
         if any(relative_position > 0):
             # Corner case is treated separately
             relative_position = np.maximum(relative_position, 0)
             distance = LA.norm(relative_position)
 
-            if distance > self.margin_absolut:
-                return distance - self.margin_absolut
-            
-            distance =  self.margin_absolut - distance
-            
+            if distance > margin_absolut:
+                return distance - margin_absolut
+
+            distance = margin_absolut - distance
+
         else:
-            distance = self.margin_absolut + (-1)*np.max(relative_position)
+            distance = margin_absolut + (-1) * np.max(relative_position)
 
         # Case: within margin but outside boundary -> edges have to be rounded
         pos_norm = LA.norm(position)
 
         # Negative distance [0, -1] beacuse inside
-        return (-1)*distance / (pos_norm + distance)
-            
+        return (-1) * distance / (pos_norm + distance)
+
         # relative_position = relative_position / (self.semiaxes + self.margin_absolut)
         # return np.max(relative_position) - self.margin_absolut
 
     def get_gamma(
-        self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None
+        self,
+        position,
+        in_obstacle_frame: bool = True,
+        in_global_frame: bool = None,
+        margin_absolut=None,
     ):
 
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
-            
+
         distance = self.get_distance_to_surface(
-            position=position, in_obstacle_frame=in_obstacle_frame
+            position=position,
+            in_obstacle_frame=in_obstacle_frame,
+            margin_absolut=margin_absolut,
         )
 
         gamma = distance + 1
-        
+
         if self.is_boundary:
             gamma = 1 / gamma
-            
+
         return gamma
 
     def get_point_on_surface(self, position, in_obstacle_frame: bool = True):
