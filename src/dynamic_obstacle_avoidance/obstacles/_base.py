@@ -759,7 +759,7 @@ class Obstacle(ABC):
         if self.linear_velocity is not None:
             self.position = self.position + self.linear_velocity * delta_time
 
-        if self.angular_velocity and self.orientation:
+        if self.angular_velocity:
             if self.dimension == 2:
                 self.orientation = self.orientation + self.angular_velocity * delta_time
             else:
