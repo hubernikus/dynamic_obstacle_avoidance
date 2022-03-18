@@ -12,7 +12,8 @@ To setup got to your install/code directory, and type:
 ```sh
 git clone --recurse-submodules https://github.com/epfl-lasa/dynamic_obstacle_avoidance.git
 ```
-(Make sure submodules are there if `various_tools` library is not installed. To initialize submodules after cloning use `git submodule update --recursive`.) 
+(Make sure submodules are there if `various_tools` library is not installed. To initialize submodules after cloning use `git submodule update --init --recursive`.
+To update all submodules `git submodule update --recursive`
 
 Go to file directory:
 ```sh
