@@ -16,7 +16,7 @@ from vartools.dynamical_systems import DynamicalSystem
 from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.obstacles import GammaType
 
-from .modulation import obs_avoidance_interpolation_moving
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
 
 class ObstacleAvoiderWithInitialDynamcis:
@@ -133,7 +133,8 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         for ii, obs in enumerate(env):
             # gamma_type needs to be implemented for all obstacles
             gamma_list[ii] = obs.get_gamma(
-                position, in_global_frame=True, gamma_type=gamma_type
+                position, in_global_frame=True
+                # , gamma_type=gamma_type
             )
 
         n_obs = len(gamma_list)

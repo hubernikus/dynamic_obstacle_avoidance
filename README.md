@@ -37,13 +37,13 @@ source .venv/bin/activate
 # Setup Dependencies
 Install all requirements:
 ``` bash
-pip install -r requirements.txt && python setup.py develop
+pip install -r requirements.txt && pip install -e .
 ```
 make sure you also install the submodules (mainly `vartools`)
 
 Install the submodules:
 ``` bash
-cd libraries/various_tools && pip install -r requirements.txt && python setup.py develop && cd ../..
+cd libraries/various_tools && pip install -r requirements.txt && pip install -e . && cd ../..
 ```
 
 ## Installation Options
