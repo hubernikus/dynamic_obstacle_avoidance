@@ -16,6 +16,11 @@ from dynamic_obstacle_avoidance.utils import *
 class BaseContainer(ABC):
     def __init__(self, obs_list=None):
         self._obstacle_list = []
+        
+        if obs_list is not None:
+            # Add all obstacles
+            for obs in self._obstacle_list:
+                self.append(obs)
 
         if isinstance(obs_list, (list, BaseContainer)):
             self._obstacle_list = obs_list
@@ -87,6 +92,14 @@ class BaseContainer(ABC):
     def has_environment(self):
         return bool(len(self))
 
+    def get_multiobstacle_gamma(self, position: np.ndarray) -> float:
+        gammas = np.zeros(self.n_obstacles)
+        
+        for ii, obs in enumerate(self._obstacle_list):
+            gammas[ii] = obs.get_gamma(position, in_obstacle_frame=False)
+            
+        return np.min(gammas)
+
     def check_collision(self, position: np.ndarray) -> bool:
         """Returns collision with environment (type Bool)
 
@@ -117,3 +130,5 @@ class BaseContainer(ABC):
         for it in range(positions.shape[1]):
             collision_array[it] = self.check_collision(positions[:, it])
         return collision_array
+
+    

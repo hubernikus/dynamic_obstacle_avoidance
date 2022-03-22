@@ -1,27 +1,212 @@
-#!/USSR/bin/python3
-''' Script to show lab environment on computer '''
+s#!/USSR/bin/python3
+""" Script to show lab environment on computer """
 
-# Custom libraries
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import *
-
-from sequence_reference_point import derivative_gamma_sum
+# Author: Lukas Huber
+# Created: 2020-01-15
+# Email: lukas.huber@epfl.ch
 
 import numpy as np
+from numpy import linalg as LA
 from numpy import pi
-import matplotlib.pyplot as plt
 
-__author__ = "LukasHuber"
-__date__ = "2020-01-15"
-__email__ = "lukas.huber@epfl.ch"
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
+
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
+
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
+    Simulation_vectorFields, plot_obstacles
+)
+
+from vartools.dynamical_systems import LinearSystem
+
 
 plt.close('all')
 plt.ion()
 
 
+def main_simple_ellipse(n_resolution=10, save_figure=False):
+    x_lim = [-5, 5]
+    y_lim = [-5, 5]
+
+    ellipse_0 = Ellipse(
+        center_position=[0, 0],
+        orientation=45*np.pi/180,
+        axes_length=[4, 8])
+
+
+    ellipse_inv = Ellipse(
+        center_position=ellipse_0.center_position,
+        orientation=ellipse_0.orientation,
+        axes_length=ellipse_0.axes_length,
+        is_boundary=True
+        )
+
+    nx = n_resolution
+    ny = n_resolution
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], nx),
+                                 np.linspace(y_lim[0], y_lim[1], ny))
+
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+
+    gamma_0 = np.zeros(positions.shape[1])
+    gamma_inv = np.zeros(positions.shape[1])
+
+    for ii in range(positions.shape[1]):
+        gamma_0[ii] = ellipse_0.get_gamma(positions[:, ii], in_global_frame=True)
+        gamma_inv[ii] = ellipse_inv.get_gamma(positions[:, ii], in_global_frame=True)
+
+    # fig, axs = plt.subplots(1, 2, figsize=(10, 4.5))
+    fig = plt.figure(figsize=(8, 3.5))
+    grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
+                 nrows_ncols=(1, 2),
+                 axes_pad=0.15,
+                 share_all=True,
+                 cbar_location="right",
+                 cbar_mode="single",
+                 cbar_size="7%",
+                 cbar_pad=0.15,
+                 )
+
+    axs = grid
+
+    levels = np.linspace(1, 4, 7)
+
+    axs[0].contourf(
+        positions[0, :].reshape(nx, ny),
+        positions[1, :].reshape(nx, ny),
+        gamma_0.reshape(nx, ny),
+        levels=levels,
+        extend='max',
+        zorder=-10,
+        cmap='winter'
+        )
+    
+    plot_obstacles(
+        obstacle_container=[ellipse_0],
+        ax=axs[0],
+        x_lim=x_lim,
+        y_lim=y_lim,
+        noTicks=True,
+        # draw_reference=,
+        )
+
+    cols = axs[1].contourf(
+        positions[0, :].reshape(nx, ny),
+        positions[1, :].reshape(nx, ny),
+        gamma_inv.reshape(nx, ny),
+        levels=levels,
+        extend='max',
+        # interpolation='none',
+        zorder=0,
+        cmap='winter'
+        )
+
+    plot_obstacles(
+        obstacle_container=[ellipse_inv],
+        ax=axs[1],
+        x_lim=x_lim,
+        y_lim=y_lim,
+        noTicks=True,
+        # draw_reference=,
+        )
+
+
+    # Colorbar
+    cbar = axs[0].cax.colorbar(cols)
+    axs[1].cax.toggle_label(True)
+    cbar.ax.set_title(r'$\Gamma(\xi) $')
+    
+    if save_figure:
+        figure_name = "gamma_visualization_ellipse"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight", dpi=600)
+
+
+def main_multicuboid_gamma(n_resolution=10, save_figure=False):
+    x_lim = [-3, 3]
+    y_lim = [-.5, 3.5]
+
+    obstacle_environment = ObstacleContainer()
+    obstacle_environment.append(Cuboid(
+        center_position=[0, 2.5],
+        orientation=-30*np.pi/180,
+        axes_length=np.array([1, 5])/2,
+        margin_absolut=0.2))
+    obstacle_environment[-1].set_reference_point(np.array([0, 1.0]), in_obstacle_frame=True)
+
+    obstacle_environment.append(Cuboid(
+        center_position=[1.24, 0.25],
+        orientation=0*np.pi/180,
+        axes_length=np.array([1, 3])/2,
+        margin_absolut=0.2))
+    
+    obstacle_environment[-1].set_reference_point(np.array([0, -0.7]), in_obstacle_frame=True)
+
+    initial_dynamics = LinearSystem(attractor_position=np.array([2.5, 0.5]))
+
+    nx = n_resolution
+    ny = n_resolution
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], nx),
+                                 np.linspace(y_lim[0], y_lim[1], ny))
+
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+
+    gamma = np.zeros(positions.shape[1])
+
+    for ii in range(positions.shape[1]):
+        gamma[ii] = obstacle_environment.get_multiobstacle_gamma(positions[:, ii])
+        
+    fig = plt.figure(figsize=(8, 4.0))
+    grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
+                     nrows_ncols=(1, 1),
+                     axes_pad=0.1,
+                     share_all=True,
+                     cbar_location="right",
+                     cbar_mode="single",
+                     cbar_size="4%",
+                     cbar_pad=0.10,
+                     )
+
+    axs = grid
+
+    # levels = np.linspace(1, 6.0, 41)
+    levels = np.linspace(1, 4.0, 31)
+
+    cols = axs[0].contourf(
+        positions[0, :].reshape(nx, ny),
+        positions[1, :].reshape(nx, ny),
+        gamma.reshape(nx, ny),
+        levels=levels,
+        extend='max',
+        zorder=-10,
+        cmap='hot',
+        alpha=0.8,
+        )
+
+    Simulation_vectorFields(
+        x_lim, y_lim,
+        point_grid=n_resolution,
+        obs=obstacle_environment,
+        pos_attractor=initial_dynamics.attractor_position,
+        dynamical_system=initial_dynamics.evaluate,
+        noTicks=True, automatic_reference_point=False,
+        show_streamplot=True, draw_vectorField=True,
+        normalize_vectors=False, showLabel=False,
+        streamColor='black',
+        fig_and_ax_handle=(fig, axs[0]),
+    )
+
+    cbar = axs[0].cax.colorbar(cols)
+    axs[0].cax.toggle_label(True)
+    cbar.ax.set_title(r'$\Gamma^d(\xi) $')
+
+    if save_figure:
+        figure_name = "gamma_danger_field_for_multiobstacle_and_vector_field"
+        plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight", dpi=600)
+        
+        
 def main(n_resol=20, *args, **kwargs):
     x_lim = [-5.4, 5.4]
     y_lim = [-5.1, 5.1]
@@ -62,10 +247,10 @@ def main(n_resol=20, *args, **kwargs):
         
         # Displacement
         obs[-1].center_position += np.array([-2.4, 0])
-        obs[-1].orientation += 0.5/180*pi
+        obs[-1].orientation += 0.5/180*np.pi
 
         # Human
-        obs.append(Ellipse(center_position=[-1.0, 0.8], axes_length=[0.35, 0.15], orientation=30/180.*pi, margin_absolut=robot_radius, sigma=exponential_weight, name='coworker'))
+        obs.append(Ellipse(center_position=[-1.0, 0.8], axes_length=[0.35, 0.15], orientation=30/180.*np.pi, margin_absolut=robot_radius, sigma=exponential_weight, name='coworker'))
         obs[-1].is_static = False
 
         # Table
@@ -104,7 +289,7 @@ def main(n_resol=20, *args, **kwargs):
         obs.append( Cuboid(center_position=[-2.5, 0.0], axes_length=[0.8, 0.8], margin_absolut=0.4, name="table"))
         
         # Tool-Trolley
-        obs.append( Cuboid(center_position=[2.1, -1.5], axes_length=[0.2, 0.4], margin_absolut=0.4, name="trolley", orientation=90/180.*pi))
+        obs.append( Cuboid(center_position=[2.1, -1.5], axes_length=[0.2, 0.4], margin_absolut=0.4, name="trolley", orientation=90/180.*np.pi))
 
         # Human
         obs.append( Ellipse(center_position=[-0.5, -2.0], orientation=-30/180.*pi, axes_length=[0.5, 0.3], margin_absolut=0.4, name="human"))
@@ -321,4 +506,7 @@ def main(n_resol=20, *args, **kwargs):
     
 
 if (__name__)=="__main__":
-    main(n_resol=100)
+    # main(n_resol=100)
+
+    # main_simple_ellipse(n_resolution=100, save_figure=True)
+    main_multicuboid_gamma(n_resolution=100, save_figure=True)
