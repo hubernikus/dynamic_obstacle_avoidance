@@ -14,7 +14,7 @@ from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.utils import *
 
 
-def get_sticky_surface_imiation(relative_velocity, gamma_proportional, E_orth, obs):
+def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):
     # TODO: test & review sticky surface feature [!]
     relative_velocity_norm = np.linalg.norm(relative_velocity)
 
@@ -28,13 +28,13 @@ def get_sticky_surface_imiation(relative_velocity, gamma_proportional, E_orth, o
         sticky_surface_power = 2
 
         # Treat inside obstacle as on the surface
-        Gamma_mag = max(gamma_proportional[n], 1)
-        if abs(gamma_proportional[n]) < 1:
+        Gamma_mag = max(Gamma[n], 1)
+        if abs(Gamma[n]) < 1:
             # if abs(Gamma_mag) < 1:
             eigenvalue_magnitude = 0
         else:
             eigenvalue_magnitude = (
-                1 - 1.0 / abs(gamma_proportional[n]) ** sticky_surface_power
+                1 - 1.0 / abs(Gamma[n]) ** sticky_surface_power
             )
             # eigenvalue_magnitude = 1 - 1./abs(Gamma_mag)**sticky_surface_power
 
@@ -229,14 +229,6 @@ def obs_avoidance_interpolation_moving(
         # else:
         # pass
 
-    gamma_proportional = np.zeros((N_obs))
-    for n in range(N_obs):
-        gamma_proportional[n] = obs[n].get_gamma(
-            pos_relative[:, n],
-            in_global_frame=evaluate_in_global_frame,
-            # gamma_distance=gamma_distance,
-        )
-
     # Worst case of being at the center
     if any(Gamma == 0):
         return np.zeros(dim)
@@ -248,7 +240,7 @@ def obs_avoidance_interpolation_moving(
     if any(~ind_obs):
         return initial_velocity
 
-    weight = compute_weights(gamma_proportional, N_obs)
+    weight = compute_weights(Gamma, N_obs)
 
     # Modulation matrices
     E = np.zeros((dim, dim, N_obs))
@@ -275,7 +267,7 @@ def obs_avoidance_interpolation_moving(
         position=position,
         obstacle_list=obs,
         E_orth=E_orth,
-        gamma_list=gamma_proportional,
+        gamma_list=Gamma,
         weights=weight,
     )
 
