@@ -139,12 +139,14 @@ class EllipseWithAxes(obstacles.Obstacle):
         margin_absolut: float = None,
     ):
         """Gets a gamma which is not directly related to the axes length."""
-
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
+
+        if margin_absolut is None:
+            margin_absolut = self.margin_absolut
 
         surface_point = self.get_point_on_surface(
             position=position,
@@ -207,7 +209,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         if margin_absolut is None:
             circle_position = position / self.semiaxes_with_magin
         else:
-            circle_position = position / (self.semiaxes + margin_absolu)
+            circle_position = position / (self.semiaxes + margin_absolut)
 
         pos_norm = LA.norm(circle_position)
         if not pos_norm:
