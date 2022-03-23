@@ -268,7 +268,7 @@ class ObstacleContainer(BaseContainer):
                     ind_short_connection[ii + 1], ind_short_connection[ii]
                 ]
             )
-            angle_space_difference += get_directional_spaceget_directional_space(
+            angle_space_difference += get_directional_space(
                 basis_direction, transform_direction
             )
 

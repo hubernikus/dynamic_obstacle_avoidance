@@ -47,7 +47,7 @@ class Obstacle(ABC):
     active_counter = 0
     # TODO: clean up & cohesion vs inhertiance! (decouble /lighten class)
 
-    def __repr__(self):
+    def old__repr__(self):
         repr_str = (
             f"{type(self).__name__}(\n"
             + f"center_position=np.{repr(self.center_position)},\n"
