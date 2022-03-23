@@ -46,7 +46,7 @@ def plot_multihulls(
     boundary_polygon.set_color(obstacle_color)
     ax.add_patch(boundary_polygon)
     obs_polygon = []
-    for obs in obstacle_environment:
+    for ii, obs in enumerate(obstacle_environment):
         x_obs = np.array(obs.get_boundary_xy()).T
         obs_polygon.append(plt.Polygon(x_obs, alpha=1.0, zorder=-3))
         obs_polygon[-1].set_color(np.array([1.0, 1.0, 1.0]))
@@ -56,7 +56,8 @@ def plot_multihulls(
             x_obs_sf = np.array(obs.get_boundary_with_margin_xy()).T
 
             if plot_boundary_multicolor:
-                ax.plot(x_obs_sf[:, 0], x_obs_sf[:, 1], "--", linewidth=5)
+                ax.plot(x_obs_sf[:, 0], x_obs_sf[:, 1], "--", linewidth=5,
+                        color=base_color_list[ii])
             else:
                 ax.plot(x_obs_sf[:, 0], x_obs_sf[:, 1], "k--")
 
@@ -68,15 +69,34 @@ def plot_multihulls(
     ax.axes.xaxis.set_visible(False)
     ax.axes.yaxis.set_visible(False)
 
-    for ds in obstacle_environment.dynamical_systems:
+    for ii, ds in enumerate(obstacle_environment.dynamical_systems):
         attractor = ds.attractor_position
-        ax.plot(
-            attractor[0], attractor[1],
-            "k*",
-            markeredgewidth=2,
-            markersize=12,
-            zorder=5,
-        )
+        if plot_boundary_multicolor:
+            ax.plot(
+                attractor[0], attractor[1],
+                "*",
+                color=base_color_list[ii],
+                markeredgewidth=2,
+                markersize=12,
+                zorder=5,
+            )
+
+            ax.plot(
+                attractor[0], attractor[1],
+                'o',
+                color="white",
+                markeredgewidth=2,
+                markersize=15,
+                zorder=4,
+                )
+        else:
+            ax.plot(
+                attractor[0], attractor[1],
+                "k*",
+                markeredgewidth=2,
+                markersize=12,
+                zorder=5,
+            )
 
 
 class SimpleMultiBoundary(ObstacleContainer):
