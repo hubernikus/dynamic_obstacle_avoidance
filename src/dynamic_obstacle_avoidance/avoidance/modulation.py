@@ -77,7 +77,6 @@ def compute_diagonal_matrix(
         # Point inside the obstacle
         delta_eigenvalue = 1
     else:
-        breakpoint()
         delta_eigenvalue = 1.0 / abs(Gamma) ** (self_priority / rho)
     eigenvalue_reference = 1 - delta_eigenvalue * repulsion_coeff
 
