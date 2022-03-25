@@ -419,8 +419,10 @@ def plot_obstacles(
         )
 
     if showLabel:
-        ax.set_xlabel(r"$\xi_1$", fontsize=16)
-        ax.set_ylabel(r"$\xi_2$", fontsize=16)
+        # ax.set_xlabel(r"$\xi_1$", fontsize=16)
+        # ax.set_ylabel(r"$\xi_2$", fontsize=16)
+        ax.set_xlabel(r"$\xi_1$")
+        ax.set_ylabel(r"$\xi_2$")
 
     # ax.tick_params(axis="both", which="major", labelsize=14)
     # ax.tick_params(axis="both", which="minor", labelsize=12)

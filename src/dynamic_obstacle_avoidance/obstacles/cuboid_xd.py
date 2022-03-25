@@ -140,21 +140,24 @@ class CuboidXd(obstacles.Obstacle):
         ind_relevant = np.abs(position) > self.semiaxes
 
         if not any(ind_relevant):
-            # Take the inverse
-            gamma = self.get_gamma(position, in_obstacle_frame=True)
-            position = position / gamma ** 2
+            # Mirror at the boundary (Take the inverse)
+            minimum_factor = max(np.abs(position)/self.semiaxes)
+            
+            # gamma = self.get_gamma(
+                # position, in_obstacle_frame=True, is_boundary=False, margin_absolut=0)
+            position = position / minimum_factor ** 2
             ind_relevant = np.abs(position) > self.semiaxes
 
             # return np.ones(position.shape) / position.shape[0]
-
-        # relevant_axes =
-        # relevant_pos = position
 
         normal = np.zeros(position.shape)
         normal[ind_relevant] = position[ind_relevant] - np.copysign(
             self.semiaxes[ind_relevant], position[ind_relevant]
         )
-        # No normalization chack needed, since at least one axes was relevatn
+        
+        if not LA.norm(normal):
+            breakpoint()
+        # No normalization chack needed, since at least one axes was relevatn    
         normal = normal / LA.norm(normal)
 
         if not in_obstacle_frame:
@@ -200,6 +203,7 @@ class CuboidXd(obstacles.Obstacle):
         in_obstacle_frame: bool = True,
         in_global_frame: bool = None,
         margin_absolut=None,
+        is_boundary=None
     ):
 
         if in_global_frame is not None:
@@ -213,7 +217,10 @@ class CuboidXd(obstacles.Obstacle):
 
         gamma = distance + 1
 
-        if self.is_boundary:
+        if is_boundary is None:
+            is_boundary = self.is_boundary
+            
+        if is_boundary:
             gamma = 1 / gamma
 
         return gamma

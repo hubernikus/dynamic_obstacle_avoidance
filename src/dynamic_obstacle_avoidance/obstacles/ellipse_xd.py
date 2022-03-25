@@ -161,8 +161,12 @@ class EllipseWithAxes(obstacles.Obstacle):
             distance = LA.norm(position - surface_point)
         else:
             distance = distance_position / distance_surface - 1
+        
+        gamma = distance + 1
+        if self.is_boundary:
+            gamma = 1 / gamma
 
-        return distance + 1
+        return gamma
 
     def get_normal_direction(
         self,
