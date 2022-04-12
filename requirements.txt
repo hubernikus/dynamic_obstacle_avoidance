@@ -1,11 +1,8 @@
-# Requirement
-# python=3.9
-ipython
 numpy
-matplotlib
 scipy
-PyYAML
-# sciki
 shapely
 
+# Currently needed for all the plotting and visualization packages
+matplotlib
+pyqt5 # Allow animation and visualization
 

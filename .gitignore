@@ -1,14 +1,18 @@
+# Python
 **/*.pyc
 **/*~
 **/*#
 **/*~
 **/*.egg-info/*
 
+# Don't store figures, rosbag and data on git-repo
 figures/**
 data/**
 **/*.bag
 
-
+# Virtual environment
+venv/*
+.venv/*
 
 # scripts/*.png
 # scripts/*.pdf

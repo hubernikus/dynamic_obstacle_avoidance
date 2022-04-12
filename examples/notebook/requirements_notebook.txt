@@ -1,0 +1,7 @@
+# Jupyter Notebook
+ipython
+jupyter
+jupyterlab
+notebook
+ipykernel
+jupyterlab
