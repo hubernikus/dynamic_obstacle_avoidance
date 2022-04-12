@@ -431,48 +431,60 @@ def plot_obstacles(
 
 
 def Simulation_vectorFields(
-    x_range=[0, 10],
-    y_range=[0, 10],
-    point_grid=10,
-    obs=[],
-    sysDyn_init=False,
-    pos_attractor=None,
-    saveFigure=False,
-    figName="default",
-    noTicks=True,
-    showLabel=True,
-    figureSize=(12.0, 9.5),
-    obs_avoidance_func=obs_avoidance_interpolation_moving,
-    attractingRegion=False,
-    drawVelArrow=False,
-    colorCode=False,
-    streamColor=[0.05, 0.05, 0.7],
-    obstacle_color=None,
-    plotObstacle=True,
-    plotStream=True,
-    fig_and_ax_handle=None,
-    dynamical_system=None,
-    draw_vectorField=True,
-    points_init=[],
-    show_obstacle_number=False,
-    automatic_reference_point=True,
-    show_streamplot=True,
-    reference_point_number=False,
-    normalize_vectors=True,
-    tangent_eigenvalue_isometric=True,
-    draw_wall_reference=False,
-    gamma_distance=None,
-    vector_field_only_outside=True,
-    print_info=False,
-    **kwargs
+        x_range=[0, 10],
+        y_range=[0, 10],
+        point_grid=10,
+        obstacle_list=[],
+        x_lim=None,     # For future replacement
+        y_lim=None,     # For future replacement
+        n_resolution=-1,     # For future replacement
+        sysDyn_init=False,
+        pos_attractor=None,
+        saveFigure=False,
+        figName="default",
+        noTicks=True,
+        showLabel=True,
+        figureSize=(12.0, 9.5),
+        obs_avoidance_func=obs_avoidance_interpolation_moving,
+        attractingRegion=False,
+        drawVelArrow=False,
+        colorCode=False,
+        streamColor=[0.05, 0.05, 0.7],
+        obstacle_color=None,
+        plotObstacle=True,
+        plotStream=True,
+        fig_and_ax_handle=None,
+        dynamical_system=None,
+        draw_vectorField=True,
+        points_init=[],
+        show_obstacle_number=False,
+        automatic_reference_point=True,
+        show_streamplot=True,
+        reference_point_number=False,
+        normalize_vectors=True,
+        tangent_eigenvalue_isometric=True,
+        draw_wall_reference=False,
+        gamma_distance=None,
+        vector_field_only_outside=True,
+        print_info=False,
+        **kwargs
 ):
     """
     Draw obstacle and vectorfield. Several parameters and defaults
     allow easy customization of plot.
     """
     # TODO: gamma ditance does not fit as paramtere here (since not visual)...
+    obs = obstacle_list
 
-    dim = 2
+    if x_lim is not None:
+        x_range = x_lim
+        
+    if y_lim is not None:
+        y_range = y_lim
+
+    if n_resolution > 0:
+        point_grid = n_resolution
+    # dim = 2
 
     # Adjust dynamic center
     if automatic_reference_point:

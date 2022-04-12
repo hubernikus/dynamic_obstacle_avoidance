@@ -4,6 +4,9 @@
 # Email: hubernikus@gmail.com
 # License: BSD (c) 2021
 
+# TODO: Speed up using cython / cpp e.g. eigen?
+# TODO: list / array stack for lru_cache to speed
+
 import warnings
 import copy
 from math import pi
@@ -19,27 +22,13 @@ from vartools.directional_space import (
 )
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.dynamical_systems import DynamicalSystem
 
 from dynamic_obstacle_avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 
 
-class WeightOutOfBoundError(Exception):
-    def __init__(self, weight):
-        self.weight = weight
-        super().__init__()
-
-    def __str__(self):
-        return (
-            f"weight={self.weight} -> Weight out of bounded, expected to be in [0, 1]."
-        )
-
-
-# TODO: Speed up using cython / cpp e.g. eigen?
-# TODO: list / array stack for lru_cache to speed
-
-# TODO: speed up learning through cpp / c / cython(!?)
 def get_intersection_with_circle(
     start_position: np.ndarray,
     direction: np.ndarray,
@@ -258,8 +247,6 @@ def directional_convergence_summing(
     -------
     converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
     """
-    # if weight > 1 or weight < 0:
-    # raise WeightOutOfBoundError(weight=weight)
     if weight >= 1:
         weight = 1
     elif weight < 0:
@@ -319,12 +306,12 @@ def directional_convergence_summing(
 
 
 def obstacle_avoidance_rotational(
-    position: np.ndarray,
-    initial_velocity: np.ndarray,
-    obstacle_list: list,
-    # obstacle_list: ObstacleContainer,
-    cut_off_gamma: float = 1e6,
-    gamma_distance: float = None,
+        position: np.ndarray,
+        initial_velocity: np.ndarray,
+        obstacle_list: list,
+        avoidance_velocity: np.ndarray = None,
+        cut_off_gamma: float = 1e6,
+        gamma_distance: float = None,
 ) -> np.ndarray:
     """Obstacle avoidance based on 'local' rotation and the directional weighted mean.
 
@@ -352,14 +339,10 @@ def obstacle_avoidance_rotational(
 
     gamma_array = np.zeros((n_obstacles))
     for ii in range(n_obstacles):
-        # try:
         gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
-        # except:
-        # breakpoint()
 
         if gamma_array[ii] < 1 and not obstacle_list[ii].is_boundary:
             # Since boundaries are mutually subtracted,
-            # breakpoint()
             raise NotImplementedError()
 
     ind_obs = np.logical_and(gamma_array < cut_off_gamma, gamma_array >= 1)
@@ -377,8 +360,8 @@ def obstacle_avoidance_rotational(
         gamma_proportional[it] = obstacle_list[it_obs].get_gamma(
             position,
             in_global_frame=True,
-            gamma_distance=gamma_distance,
         )
+        
         normal_dir = obstacle_list[it_obs].get_normal_direction(
             position, in_global_frame=True
         )
@@ -393,30 +376,39 @@ def obstacle_avoidance_rotational(
         E_orth=normal_orthogonal_matrix,
         weights=weights,
     )
-    modulated_velocity = initial_velocity - relative_velocity
+    # modulated_velocity = initial_velocity - relative_velocity
 
     inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
     # rotated_velocities = np.zeros((dimension, n_obs_close))
+    
     rotated_directions = [None] * n_obs_close
-    for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
+    for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
-        reference_dir = obstacle_list[oo].get_reference_direction(
+
+        # => the null matrix should be based on the normal direction (not reference, right?!)
+        reference_dir = obstacle_list[it_obs].get_reference_direction(
             position, in_global_frame=True
         )
 
-        if obstacle_list[oo].is_boundary:
+        if obstacle_list[it_obs].is_boundary:
             reference_dir = (-1) * reference_dir
-            null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
+            # null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
+            
         else:
-            null_matrix = normal_orthogonal_matrix[:, :, it]
+            # null_matrix = normal_orthogonal_matrix[:, :, it]
+            null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
 
+        # Convergence direcctions can be local for certain obstacles
+        # / convergence environments
         convergence_velocity = obstacle_list.get_convergence_direction(
-            position=position, it_obs=oo
+            position=position, it_obs=it_obs
         )
 
         conv_vel_norm = np.linalg.norm(convergence_velocity)
-        if conv_vel_norm:  # Zero value
+        if conv_vel_norm:
+            # Zero value
             base = DirectionBase(matrix=null_matrix)
+            
             # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
             rotated_directions[it] = UnitDirection(base).from_vector(initial_velocity)
 
@@ -451,3 +443,16 @@ def obstacle_avoidance_rotational(
     rotated_velocity = rotated_velocity - relative_velocity
     # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
     return rotated_velocity
+
+
+class RotationalAvoider():
+    # TODO: include thins int the class
+    def __init__(self,
+                 initial_system: DynamicalSystem,
+                 convergence_system: DynamicalSystem):
+        """ Initial dynamics, convergence direction and obstacle list are used. """
+        initial_system = initial_system
+        convergence_system = convergence_system
+
+    def avoid(self, *args, **kwargs):
+        obstacle_avoidance_rotational(*args, **kwargs)

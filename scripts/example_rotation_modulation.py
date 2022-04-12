@@ -184,7 +184,7 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         draw_vectorField=True,
         dynamical_system=initial_dynamics.evaluate,
         automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
+        pos_attractor=initial_dynamics.attractor_position,
         fig_and_ax_handle=(fig, axs[1]),
     )
 
@@ -905,7 +905,7 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 
 if (__name__) == "__main__":
-    single_ellipse_linear_triple_plot(save_figure=False, n_resolution=100)
+    single_ellipse_linear_triple_plot(save_figure=False, n_resolution=20)
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
 
     # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)

@@ -35,11 +35,11 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
 
     positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
     normals = np.zeros(positions.shape)
-    reference_dirs = np.zeros(positions.shape)
+    # reference_dirs = np.zeros(positions.shape)
 
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]),
-        orientation=30*np.pi/180,
+        orientation=30 * np.pi / 180,
         axes_length=np.array([2, 4]),
     )
 
@@ -48,15 +48,15 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
     for ii in range(positions.shape[1]):
         gammas[ii] = obstacle.get_gamma(
             position=positions[:, ii], in_obstacle_frame=False
-            )
+        )
 
         normals[:, ii] = obstacle.get_normal_direction(
             position=positions[:, ii], in_obstacle_frame=False
-            )
+        )
 
         # reference_dirs[:, ii] = obstacle.get_reference_direction(
-            # position=positions[:, ii], in_obstacle_frame=True
-            # )
+        #     position=positions[:, ii], in_obstacle_frame=True
+        #     )
         
         surf_point = obstacle.get_point_on_surface(
             positions[:, ii], in_obstacle_frame=True)
@@ -85,8 +85,6 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
 
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
         ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")
-
-
 
 
 def test_gamma_for_circular_ellipse(visualize=False):
@@ -122,14 +120,71 @@ def test_surface_point_for_equal_axes(visualize=False):
     assert np.allclose(surf_point, position / LA.norm(position))
 
 
-def test_normal_directions():
-    pass
+def test_normal_and_reference_directions(visualize=False):
+    x_lim = [-5, 5]
+    y_lim = [-5, 5]
+        
+    n_resolution = 10
+    nx = n_resolution
+    ny = n_resolution
+    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], nx),
+                                 np.linspace(y_lim[0], y_lim[1], ny))
+
+    obstacle = EllipseWithAxes(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([5, 8]),
+    )
+
+    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+    normals = np.zeros(positions.shape)
+    references = np.zeros(positions.shape)
+
+    for it in range(positions.shape[1]):
+        if not LA.norm(positions[:, it] - obstacle.center_position):
+            # Not defined at the center
+            continue
+
+        references[:, it] = obstacle.get_normal_direction(
+            positions[:, it], in_global_frame=True)
+
+        normals[:, it] = obstacle.get_reference_direction(
+            positions[:, it], in_global_frame=True)
+
+        assert normals[:, it].dot(references[:, it]) < 0, \
+            "Print reference and normal are not opposing."
+        
+    if visualize:
+        fig, ax = plt.subplots(figsize=(6, 5))
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            normals[0, :],
+            normals[1, :],
+            color='red',
+        )
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            references[0, :],
+            references[1, :],
+            color='blue',
+        )
+        
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+        ax.axis("equal")
+
+        obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
+        ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")
 
 
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
     
-    test_gamma_and_normal(visualize=True, n_resolution=20)
+    # test_gamma_and_normal(visualize=True, n_resolution=20)
+    test_normal_and_reference_directions(visualize=False)
     
     # test_normal_directions()
