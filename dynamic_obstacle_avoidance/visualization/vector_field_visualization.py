@@ -446,7 +446,8 @@ def Simulation_vectorFields(
     figName="default",
     noTicks=True,
     showLabel=True,
-    figureSize=(12.0, 9.5),
+    figureSize=None,
+    figsize=None,
     obs_avoidance_func=obs_avoidance_interpolation_moving,
     attractingRegion=False,
     drawVelArrow=False,
@@ -486,6 +487,9 @@ def Simulation_vectorFields(
 
     if n_resolution > 0:
         point_grid = n_resolution
+
+    if figsize is not None:
+        figureSize = figsize
     # dim = 2
 
     # Adjust dynamic center
