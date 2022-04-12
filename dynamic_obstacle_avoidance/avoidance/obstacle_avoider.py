@@ -109,18 +109,18 @@ class DynamicModulationAvoider(ObstacleAvoiderWithInitialDynamcis):
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
     def __init__(
-            self,
-            initial_dynamics: DynamicalSystem,
-            environment: BaseContainer,
-            maximum_speed: float = None,
-            obs_multi_agent=None,
+        self,
+        initial_dynamics: DynamicalSystem,
+        environment: BaseContainer,
+        maximum_speed: float = None,
+        obs_multi_agent=None,
     ):
         super().__init__(initial_dynamics, environment, maximum_speed)
         self.obs = None
         self.obs_multi_agent = obs_multi_agent
 
     def env_slicer(self, obs_index):
-        temp_env = self.environment[0:obs_index] + self.environment[obs_index + 1:]
+        temp_env = self.environment[0:obs_index] + self.environment[obs_index + 1 :]
         return temp_env
 
     @staticmethod
@@ -133,7 +133,8 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         for ii, obs in enumerate(env):
             # gamma_type needs to be implemented for all obstacles
             gamma_list[ii] = obs.get_gamma(
-                position, in_global_frame=True
+                position,
+                in_global_frame=True
                 # , gamma_type=gamma_type
             )
 
@@ -162,7 +163,9 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         return gamma_values
 
     @staticmethod
-    def get_weight_from_gamma(gammas, cutoff_gamma, n_points, gamma0=1.0, frac_gamma_nth=0.5):
+    def get_weight_from_gamma(
+        gammas, cutoff_gamma, n_points, gamma0=1.0, frac_gamma_nth=0.5
+    ):
         weights = (gammas - gamma0) / (cutoff_gamma - gamma0)
         weights = weights / frac_gamma_nth
         weights = 1.0 / weights
@@ -170,7 +173,9 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         weights = weights / n_points
         return weights
 
-    def get_influence_weight_at_ctl_points(self, control_points, cutoff_gamma=5, return_gamma: bool = False):
+    def get_influence_weight_at_ctl_points(
+        self, control_points, cutoff_gamma=5, return_gamma: bool = False
+    ):
         # TODO
         ctl_weight_list = []
         gamma_values_list = np.empty(shape=0)
@@ -179,18 +184,22 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             if not self.obs_multi_agent[obs]:
                 break
             temp_env = self.env_slicer(obs)
-            gamma_values = self.get_gamma_at_control_point(control_points[self.obs_multi_agent[obs]], obs, temp_env)
+            gamma_values = self.get_gamma_at_control_point(
+                control_points[self.obs_multi_agent[obs]], obs, temp_env
+            )
 
             ctl_point_weight = np.zeros(gamma_values.shape)
             ind_nonzero = gamma_values < cutoff_gamma
             if not any(ind_nonzero):
                 # ctl_point_weight[-1] = 1
-                ctl_point_weight = np.full(gamma_values.shape, 1/len(self.obs_multi_agent[obs]))
+                ctl_point_weight = np.full(
+                    gamma_values.shape, 1 / len(self.obs_multi_agent[obs])
+                )
             # for index in range(len(gamma_values)):
             ctl_point_weight[ind_nonzero] = self.get_weight_from_gamma(
                 gamma_values[ind_nonzero],
                 cutoff_gamma=cutoff_gamma,
-                n_points=len(self.obs_multi_agent[obs])
+                n_points=len(self.obs_multi_agent[obs]),
             )
 
             ctl_point_weight_sum = np.sum(ctl_point_weight)
@@ -270,7 +279,9 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         for obs in self.obs_multi_agent:
             if not self.obs_multi_agent[obs]:
                 break
-            gamma_values = self.get_gamma_at_control_point(control_points[self.obs_multi_agent[obs]], obs, obstacle)
+            gamma_values = self.get_gamma_at_control_point(
+                control_points[self.obs_multi_agent[obs]], obs, obstacle
+            )
             gamma_values_list = np.append(gamma_values_list, gamma_values)
 
         return gamma_values_list

@@ -376,7 +376,7 @@ def obs_avoidance_nonlinear_hirarchy(
 
             k_ds[:, n] = np.arccos(sumHat) * k_fn.squeeze()
 
-        xd_mags = np.sqrt(np.sum(xd_hat ** 2, axis=0))
+        xd_mags = np.sqrt(np.sum(xd_hat**2, axis=0))
 
         if N_attr:
             # Enforce convergence in the region of the attractor
@@ -387,7 +387,7 @@ def obs_avoidance_nonlinear_hirarchy(
 
         # Weighted interpolation
         weightPow = 1  # Hyperparameter for several obstacles !!!!
-        weight_hirarchy = weight ** weightPow
+        weight_hirarchy = weight**weightPow
         if not LA.norm(weight, 2):
             warnings.warn("trivial weight.")
 

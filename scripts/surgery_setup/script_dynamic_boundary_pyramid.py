@@ -89,9 +89,7 @@ def test_normal_direction():
             continue
 
         vector_normal = obs.get_normal_direction(pos, in_global_frame=True)
-        vector_reference = obs.get_reference_direction(
-            pos, in_global_frame=True
-        )
+        vector_reference = obs.get_reference_direction(pos, in_global_frame=True)
 
         # print('position', pos)
         # print('vector normal', vector_normal)

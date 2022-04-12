@@ -43,7 +43,7 @@ def get_object_weight(weights, weight_max=1, weight_pow=1):
         return new_weights
 
     new_weights = 1 / (weight_max - weights) - 1
-    new_weights = new_weights ** weight_pow
+    new_weights = new_weights**weight_pow
     new_weights = new_weights / np.sum(new_weights)
     return new_weights
 
@@ -256,7 +256,7 @@ def dynamic_center_3d_old(
                     ** 2,
                     axis=0,
                 )
-                < ref_dist ** 2
+                < ref_dist**2
             )
 
             if not sum(ind):

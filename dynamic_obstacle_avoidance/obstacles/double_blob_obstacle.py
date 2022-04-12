@@ -30,9 +30,9 @@ class DoubleBlob(Obstacle):
     def barrier_function(self, position):
         """Barrier funciton in local-frame."""
         x1, x2 = position[0], position[1]
-        return ((x1 - self.aa) ** 2 + x2 ** 2) * (
-            (x1 + self.aa) ** 2 + x2 ** 2
-        ) - self.bb ** 4
+        return ((x1 - self.aa) ** 2 + x2**2) * (
+            (x1 + self.aa) ** 2 + x2**2
+        ) - self.bb**4
 
     def get_local_radius_not_working(
         self,
@@ -159,13 +159,9 @@ class DoubleBlob(Obstacle):
     def draw_obstacle(self, n_grid=50):
         angles = np.linspace(0, 2 * pi, n_grid)
         dirs = np.vstack((np.cos(angles), np.sin(angles)))
-        local_rad = [
-            self.get_local_radius(dirs[:, dd]) for dd in range(dirs.shape[1])
-        ]
+        local_rad = [self.get_local_radius(dirs[:, dd]) for dd in range(dirs.shape[1])]
 
-        self.boundary_points_local = dirs * np.tile(
-            local_rad, (self.dimension, 1)
-        )
+        self.boundary_points_local = dirs * np.tile(local_rad, (self.dimension, 1))
 
         if self.margin_absolut:  # Nonzero
             raise NotImplementedError("Margin not implemented.")

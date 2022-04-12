@@ -246,10 +246,10 @@ class SphereWorldOptimizer(BaseContainer):
         return np.array(sol["x"]).flatten()
 
     def h_0(self, q, q_0, r_0):
-        return r_0 ** 2 - LA.norm(q_0 - q) ** 2
+        return r_0**2 - LA.norm(q_0 - q) ** 2
 
     def h_i(self, q, q_i, r_i):
-        return LA.norm(q_i - q) ** 2 - r_i ** 2
+        return LA.norm(q_i - q) ** 2 - r_i**2
 
     def h_ij(self, q_i, q_j, r_i, r_j):
         return LA.norm(q_i - q_j) ** 2 - (r_i + r_j) ** 2

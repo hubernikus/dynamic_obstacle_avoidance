@@ -381,9 +381,11 @@ def plot_obstacles(
                 weight="bold",
             )  #
 
-        if (drawVelArrow
+        if (
+            drawVelArrow
             and obs.linear_velocity is not None
-            and np.linalg.norm(obs.linear_velocity) > 0):
+            and np.linalg.norm(obs.linear_velocity) > 0
+        ):
             # col=[0.5,0,0.9]
             col = [255 / 255.0, 51 / 255.0, 51 / 255.0]
             ax.arrow(
@@ -431,43 +433,43 @@ def plot_obstacles(
 
 
 def Simulation_vectorFields(
-        x_range=[0, 10],
-        y_range=[0, 10],
-        point_grid=10,
-        obstacle_list=[],
-        x_lim=None,     # For future replacement
-        y_lim=None,     # For future replacement
-        n_resolution=-1,     # For future replacement
-        sysDyn_init=False,
-        pos_attractor=None,
-        saveFigure=False,
-        figName="default",
-        noTicks=True,
-        showLabel=True,
-        figureSize=(12.0, 9.5),
-        obs_avoidance_func=obs_avoidance_interpolation_moving,
-        attractingRegion=False,
-        drawVelArrow=False,
-        colorCode=False,
-        streamColor=[0.05, 0.05, 0.7],
-        obstacle_color=None,
-        plotObstacle=True,
-        plotStream=True,
-        fig_and_ax_handle=None,
-        dynamical_system=None,
-        draw_vectorField=True,
-        points_init=[],
-        show_obstacle_number=False,
-        automatic_reference_point=True,
-        show_streamplot=True,
-        reference_point_number=False,
-        normalize_vectors=True,
-        tangent_eigenvalue_isometric=True,
-        draw_wall_reference=False,
-        gamma_distance=None,
-        vector_field_only_outside=True,
-        print_info=False,
-        **kwargs
+    x_range=[0, 10],
+    y_range=[0, 10],
+    point_grid=10,
+    obstacle_list=[],
+    x_lim=None,  # For future replacement
+    y_lim=None,  # For future replacement
+    n_resolution=-1,  # For future replacement
+    sysDyn_init=False,
+    pos_attractor=None,
+    saveFigure=False,
+    figName="default",
+    noTicks=True,
+    showLabel=True,
+    figureSize=(12.0, 9.5),
+    obs_avoidance_func=obs_avoidance_interpolation_moving,
+    attractingRegion=False,
+    drawVelArrow=False,
+    colorCode=False,
+    streamColor=[0.05, 0.05, 0.7],
+    obstacle_color=None,
+    plotObstacle=True,
+    plotStream=True,
+    fig_and_ax_handle=None,
+    dynamical_system=None,
+    draw_vectorField=True,
+    points_init=[],
+    show_obstacle_number=False,
+    automatic_reference_point=True,
+    show_streamplot=True,
+    reference_point_number=False,
+    normalize_vectors=True,
+    tangent_eigenvalue_isometric=True,
+    draw_wall_reference=False,
+    gamma_distance=None,
+    vector_field_only_outside=True,
+    print_info=False,
+    **kwargs
 ):
     """
     Draw obstacle and vectorfield. Several parameters and defaults
@@ -478,7 +480,7 @@ def Simulation_vectorFields(
 
     if x_lim is not None:
         x_range = x_lim
-        
+
     if y_lim is not None:
         y_range = y_lim
 
@@ -653,7 +655,7 @@ def Simulation_vectorFields(
         else:
             # Normalize
             if normalize_vectors:
-                normVel = np.sqrt(dx1_noColl ** 2 + dx2_noColl ** 2)
+                normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
 
                 max_vel = 0.3
                 ind_nonZero = normVel > 0
@@ -674,7 +676,7 @@ def Simulation_vectorFields(
                 quiver_factor = 1.0
 
                 if not normalize_vectors:
-                    normVel = np.sqrt(dx1_noColl ** 2 + dx2_noColl ** 2)
+                    normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
                     ind_nonZero = normVel > 0
                 # Only display non-collision quiver-arrows
                 ind_flatten = ind_nonZero.flatten()

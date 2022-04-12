@@ -381,9 +381,9 @@ class DynamicBoundariesPolygon(Polygon):
                     [za[0] ** 4, za[0] ** 3, za[0] ** 2, za[0], 1],
                     [za[1] ** 4, za[1] ** 3, za[1] ** 2, za[1], 1],
                     [
-                        self.height ** 4,
-                        self.height ** 3,
-                        self.height ** 2,
+                        self.height**4,
+                        self.height**3,
+                        self.height**2,
                         self.height,
                         1,
                     ],
@@ -397,10 +397,10 @@ class DynamicBoundariesPolygon(Polygon):
             yz = wz / 4.0
 
             # 4th order polynom evaluation
-            a = np.array([z_val ** 4, z_val ** 3, z_val ** 2, z_val, 1]).dot(ca)
+            a = np.array([z_val**4, z_val**3, z_val**2, z_val, 1]).dot(ca)
             b = (a + yz) / (wz / 2) ** 2  # -yz = -b*(wz/2)**2+a
 
-            y_val = -b * (x_val ** 2).T + a - yz
+            y_val = -b * (x_val**2).T + a - yz
 
             # Project y_val to >0
             y_val = y_val * (-1)

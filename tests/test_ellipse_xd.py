@@ -57,16 +57,17 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
         # reference_dirs[:, ii] = obstacle.get_reference_direction(
         #     position=positions[:, ii], in_obstacle_frame=True
         #     )
-        
+
         surf_point = obstacle.get_point_on_surface(
-            positions[:, ii], in_obstacle_frame=True)
+            positions[:, ii], in_obstacle_frame=True
+        )
 
     if visualize:
         fig, ax = plt.subplots(figsize=(6, 5))
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
         ax.axis("equal")
-        
+
         levels = np.linspace(0, 5, 10)
         ax.contourf(
             positions[0, :].reshape(nx, ny),
@@ -74,13 +75,13 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
             gammas.reshape(nx, ny),
             levels=levels,
         )
-        
+
         ax.quiver(
             positions[0, :],
             positions[1, :],
             normals[0, :],
             normals[1, :],
-            color='black',
+            color="black",
         )
 
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
@@ -88,7 +89,7 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
 
 
 def test_gamma_for_circular_ellipse(visualize=False):
-    """ Two opposing points should have the same gamma. """
+    """Two opposing points should have the same gamma."""
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]), axes_length=np.array([2, 2])
     )
@@ -97,12 +98,12 @@ def test_gamma_for_circular_ellipse(visualize=False):
 
     position = np.array([-1, -1])
     gamma2 = obstacle.get_gamma(position, in_obstacle_frame=True)
-    
+
     assert np.isclose(gamma1, gamma2)
 
-    
+
 def test_surface_point_for_equal_axes(visualize=False):
-    """ Surface points should be projected onto sphere with radius=1."""
+    """Surface points should be projected onto sphere with radius=1."""
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]), axes_length=np.array([2, 2])
     )
@@ -123,12 +124,13 @@ def test_surface_point_for_equal_axes(visualize=False):
 def test_normal_and_reference_directions(visualize=False):
     x_lim = [-5, 5]
     y_lim = [-5, 5]
-        
+
     n_resolution = 10
     nx = n_resolution
     ny = n_resolution
-    x_vals, y_vals = np.meshgrid(np.linspace(x_lim[0], x_lim[1], nx),
-                                 np.linspace(y_lim[0], y_lim[1], ny))
+    x_vals, y_vals = np.meshgrid(
+        np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+    )
 
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]),
@@ -145,14 +147,17 @@ def test_normal_and_reference_directions(visualize=False):
             continue
 
         references[:, it] = obstacle.get_normal_direction(
-            positions[:, it], in_global_frame=True)
+            positions[:, it], in_global_frame=True
+        )
 
         normals[:, it] = obstacle.get_reference_direction(
-            positions[:, it], in_global_frame=True)
+            positions[:, it], in_global_frame=True
+        )
 
-        assert normals[:, it].dot(references[:, it]) < 0, \
-            "Print reference and normal are not opposing."
-        
+        assert (
+            normals[:, it].dot(references[:, it]) < 0
+        ), "Print reference and normal are not opposing."
+
     if visualize:
         fig, ax = plt.subplots(figsize=(6, 5))
 
@@ -161,7 +166,7 @@ def test_normal_and_reference_directions(visualize=False):
             positions[1, :],
             normals[0, :],
             normals[1, :],
-            color='red',
+            color="red",
         )
 
         ax.quiver(
@@ -169,9 +174,9 @@ def test_normal_and_reference_directions(visualize=False):
             positions[1, :],
             references[0, :],
             references[1, :],
-            color='blue',
+            color="blue",
         )
-        
+
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
         ax.axis("equal")
@@ -183,8 +188,8 @@ def test_normal_and_reference_directions(visualize=False):
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
-    
+
     # test_gamma_and_normal(visualize=True, n_resolution=20)
     test_normal_and_reference_directions(visualize=False)
-    
+
     # test_normal_directions()

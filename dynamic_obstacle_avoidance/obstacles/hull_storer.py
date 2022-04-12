@@ -44,8 +44,8 @@ class ObstacleHullsStorer:
     dimension = 2
 
     def __init__(self, state, margin=None) -> None:
-        self._hull_list_local = [None for ii in range(self.n_options ** 2)]
-        self._hull_list_global = [None for ii in range(self.n_options ** 2)]
+        self._hull_list_local = [None for ii in range(self.n_options**2)]
+        self._hull_list_global = [None for ii in range(self.n_options**2)]
 
         # TODO: instead of obstacle, pass state
         self._state = state
@@ -72,7 +72,7 @@ class ObstacleHullsStorer:
 
         # Reset state
         self.temp_state = temp_state
-        self._hulls_global = [None for ii in range(self.n_options ** 2)]
+        self._hulls_global = [None for ii in range(self.n_options**2)]
 
         return True
 

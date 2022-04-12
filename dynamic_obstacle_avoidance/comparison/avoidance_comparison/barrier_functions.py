@@ -55,7 +55,7 @@ class CirclularBarrier(BarrierFunction):
     def get_barrier_value(self, position):
         relative_position = position - self.center_position
         # return 0.5*LA.norm(relative_position)**2 - 0.5*self.radius**2
-        return LA.norm(relative_position) ** 2 - self.radius ** 2
+        return LA.norm(relative_position) ** 2 - self.radius**2
 
     # def get_gradient(self, position):
     # relative_position = position - self.center_position

@@ -31,11 +31,13 @@ def test_gamma_function(n_resolution=10, visualize=False):
 
     positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
     normals = np.zeros(positions.shape)
-    
-    obstacle = CuboidXd(center_position=np.array([0, 0]),
-                        orientation=20*np.pi/180,
-                        axes_length=np.array([1, 2]),
-                        margin_absolut=1.0)
+
+    obstacle = CuboidXd(
+        center_position=np.array([0, 0]),
+        orientation=20 * np.pi / 180,
+        axes_length=np.array([1, 2]),
+        margin_absolut=1.0,
+    )
 
     gammas = np.zeros(positions.shape[1])
 
@@ -46,8 +48,7 @@ def test_gamma_function(n_resolution=10, visualize=False):
 
         normals[:, ii] = obstacle.get_normal_direction(
             position=positions[:, ii], in_obstacle_frame=False
-            )
-
+        )
 
     if visualize:
         fig, ax = plt.subplots(figsize=(6, 5))
@@ -67,7 +68,7 @@ def test_gamma_function(n_resolution=10, visualize=False):
             positions[1, :],
             normals[0, :],
             normals[1, :],
-            color='black',
+            color="black",
         )
 
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())

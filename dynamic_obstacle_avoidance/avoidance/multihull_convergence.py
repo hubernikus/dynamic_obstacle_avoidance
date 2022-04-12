@@ -103,9 +103,7 @@ def get_desired_radius(
             gamma_hat = (gamma - 1) * gamma_weight
 
             new_intersection_weight = dotprod_hat / (dotprod_hat + gamma_hat)
-            intersection_weight = min(
-                intersection_weight, new_intersection_weight
-            )
+            intersection_weight = min(intersection_weight, new_intersection_weight)
     return radius_single_obstacle * intersection_weight
 
 
@@ -140,9 +138,7 @@ def multihull_attraction(
 
     gamma_array = np.zeros((n_obstacles))
     for ii in range(n_obstacles):
-        gamma_array[ii] = obstacle_list[ii].get_gamma(
-            position, in_global_frame=True
-        )
+        gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
 
     ind_obs = np.logical_and(
         gamma_array < cutoff_gamma_high, gamma_array > cutoff_gamma_low
@@ -179,9 +175,7 @@ def multihull_attraction(
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:  # Zero value
             base = DirectionBase(matrix=normal_orthogonal_matrix)
-            rotated_directions[it] = UnitDirection(base).from_angle(
-                initial_velocity
-            )
+            rotated_directions[it] = UnitDirection(base).from_angle(initial_velocity)
 
         # position, gamma_value, it_obs, obstacle_list, dotprod_weight=1, gamma_weight=1):
         convergence_radius = get_desired_radius(

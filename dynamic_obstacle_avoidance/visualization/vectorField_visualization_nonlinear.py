@@ -296,7 +296,7 @@ def VectorFields_nonlinear(
                 # strm = res_ifd = ax_ifd.quiver(XX, YY,dx1_noColl, dx2_noColl, color=velMag, cmap='winter', norm=matplotlib.colors.Normalize(vmin=0, vmax=10.) )
             else:
                 # Normalize
-                normVel = np.sqrt(dx1_noColl ** 2 + dx2_noColl ** 2)
+                normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
                 nonZeroInd = normVel.astype(bool)
 
                 # dx1_noColl, dx2_noColl = dx1_noColl/normVel, dx2_noColl/normVel

@@ -33,9 +33,7 @@ def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):
             # if abs(Gamma_mag) < 1:
             eigenvalue_magnitude = 0
         else:
-            eigenvalue_magnitude = (
-                1 - 1.0 / abs(Gamma[n]) ** sticky_surface_power
-            )
+            eigenvalue_magnitude = 1 - 1.0 / abs(Gamma[n]) ** sticky_surface_power
             # eigenvalue_magnitude = 1 - 1./abs(Gamma_mag)**sticky_surface_power
 
         if not evaluate_in_global_frame:

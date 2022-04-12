@@ -43,10 +43,10 @@ def get_intersection_with_circle(
 
     # Binomial Formula to solve for x in:
     # || dir_reference + x * (delta_dir_conv) || = radius
-    AA = np.sum(direction ** 2)
+    AA = np.sum(direction**2)
     BB = 2 * np.dot(direction, start_position)
-    CC = np.sum(start_position ** 2) - radius ** 2
-    DD = BB ** 2 - 4 * AA * CC
+    CC = np.sum(start_position**2) - radius**2
+    DD = BB**2 - 4 * AA * CC
 
     if DD < 0:
         # No intersection with circle
@@ -306,12 +306,12 @@ def directional_convergence_summing(
 
 
 def obstacle_avoidance_rotational(
-        position: np.ndarray,
-        initial_velocity: np.ndarray,
-        obstacle_list: list,
-        avoidance_velocity: np.ndarray = None,
-        cut_off_gamma: float = 1e6,
-        gamma_distance: float = None,
+    position: np.ndarray,
+    initial_velocity: np.ndarray,
+    obstacle_list: list,
+    avoidance_velocity: np.ndarray = None,
+    cut_off_gamma: float = 1e6,
+    gamma_distance: float = None,
 ) -> np.ndarray:
     """Obstacle avoidance based on 'local' rotation and the directional weighted mean.
 
@@ -361,7 +361,7 @@ def obstacle_avoidance_rotational(
             position,
             in_global_frame=True,
         )
-        
+
         normal_dir = obstacle_list[it_obs].get_normal_direction(
             position, in_global_frame=True
         )
@@ -380,7 +380,7 @@ def obstacle_avoidance_rotational(
 
     inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
     # rotated_velocities = np.zeros((dimension, n_obs_close))
-    
+
     rotated_directions = [None] * n_obs_close
     for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -393,7 +393,7 @@ def obstacle_avoidance_rotational(
         if obstacle_list[it_obs].is_boundary:
             reference_dir = (-1) * reference_dir
             # null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
-            
+
         else:
             # null_matrix = normal_orthogonal_matrix[:, :, it]
             null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
@@ -408,7 +408,7 @@ def obstacle_avoidance_rotational(
         if conv_vel_norm:
             # Zero value
             base = DirectionBase(matrix=null_matrix)
-            
+
             # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
             rotated_directions[it] = UnitDirection(base).from_vector(initial_velocity)
 
@@ -445,12 +445,12 @@ def obstacle_avoidance_rotational(
     return rotated_velocity
 
 
-class RotationalAvoider():
+class RotationalAvoider:
     # TODO: include thins int the class
-    def __init__(self,
-                 initial_system: DynamicalSystem,
-                 convergence_system: DynamicalSystem):
-        """ Initial dynamics, convergence direction and obstacle list are used. """
+    def __init__(
+        self, initial_system: DynamicalSystem, convergence_system: DynamicalSystem
+    ):
+        """Initial dynamics, convergence direction and obstacle list are used."""
         initial_system = initial_system
         convergence_system = convergence_system
 

@@ -170,8 +170,8 @@ def get_radius_ellipsoid(x_t, a=[], ob=[]):
 
     if x_t[0]:  # nonzero value
         rat_x1_x2 = x_t[1] / x_t[0]
-        x_1_val = np.sqrt(1.0 / (1.0 / a[0] ** 2 + 1.0 * rat_x1_x2 ** 2 / a[1] ** 2))
-        return x_1_val * np.sqrt(1 + rat_x1_x2 ** 2)
+        x_1_val = np.sqrt(1.0 / (1.0 / a[0] ** 2 + 1.0 * rat_x1_x2**2 / a[1] ** 2))
+        return x_1_val * np.sqrt(1 + rat_x1_x2**2)
     else:
         return a[1]
 
@@ -508,7 +508,7 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
     A_ = edge_point[0] ** 2 - axes[0] ** 2
     B_ = -2 * edge_point[0] * edge_point[1]
     C_ = edge_point[1] ** 2 - axes[1] ** 2
-    D_ = B_ ** 2 - 4 * A_ * C_
+    D_ = B_**2 - 4 * A_ * C_
 
     if D_ < 0:
         # print(edge_point)
@@ -585,7 +585,7 @@ def get_reference_weight(
 
     dist_temp = distance[ind_range]
     weights = 1 / (dist_temp - distance_min) - 1 / (distance_max - distance_min)
-    weights = weights ** weight_pow
+    weights = weights**weight_pow
 
     # Normalize
     weights = weights / np.sum(weights)

@@ -106,9 +106,7 @@ class Obstacle(ABC):
         self.is_boundary = is_boundary
 
         if pose is None:
-            self.pose = ObjectPose(
-                position=center_position,
-                orientation=orientation)
+            self.pose = ObjectPose(position=center_position, orientation=orientation)
         else:
             self.pose = pose
 
@@ -116,14 +114,13 @@ class Obstacle(ABC):
             self.twist = ObjectTwist(
                 linear=linear_velocity,
                 angular=angular_velocity,
-                )
+            )
         else:
             self.twist = twist
-            
-            
+
         # self.position = center_position
         # self.center_position = self.position
-        
+
         # self.orientation = orientation
 
         # self.linear_velocity = linear_velocity
@@ -144,7 +141,6 @@ class Obstacle(ABC):
 
         self.tail_effect = tail_effect  # Modulation if moving away behind obstacle
         self.has_sticky_surface = has_sticky_surface
-
 
         self.resolution = 0  # Resolution of drawing
 
@@ -292,8 +288,8 @@ class Obstacle(ABC):
 
     # @property
     # def pose(self):
-        # return self._pose
-        
+    # return self._pose
+
     @property
     def orientation(self):
         return self.pose.orientation

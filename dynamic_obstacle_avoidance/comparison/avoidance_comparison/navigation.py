@@ -25,9 +25,9 @@ def get_beta_circle(obstacle, position):
     """Beta value based on 'gamma' such that beta>0 in free space."""
     # return obstacle.get_gamma(position, in_global_frame=True) - 1
     if obstacle.is_boundary:
-        return obstacle.radius ** 2 - LA.norm(position - obstacle.position) ** 2
+        return obstacle.radius**2 - LA.norm(position - obstacle.position) ** 2
     else:
-        return LA.norm(position - obstacle.position) ** 2 - obstacle.radius ** 2
+        return LA.norm(position - obstacle.position) ** 2 - obstacle.radius**2
 
 
 def get_beta(obstacle, position, in_global_frame=True):
@@ -128,7 +128,7 @@ class SphereToStarTransformer(BaseContainer):
                 + "environment of intersecting obstacles."
             )
 
-        scaled_dist = beta_bar * rel_dist_attractor ** 2
+        scaled_dist = beta_bar * rel_dist_attractor**2
         switch_value = scaled_dist / (scaled_dist + self.lambda_constant * beta_values)
         # breakpoint()
         return switch_value
@@ -266,7 +266,7 @@ class NavigationContainer(SphereToStarTransformer):
             ].radius ** 2
 
             if self[ii].is_boundary:
-                beta_i_max[ii] = rho0 ** 2
+                beta_i_max[ii] = rho0**2
 
         norm_beta_i_j_grad_min = np.zeros(
             (self.dimension, self.n_obstacles, self.n_obstacles)
@@ -322,7 +322,7 @@ class NavigationContainer(SphereToStarTransformer):
         rel_pos_attractor = self.get_relative_attractor_position(position)
         rel_dist_attractor = LA.norm(rel_pos_attractor)
 
-        phi = rel_dist_attractor ** 2 / (
-            rel_dist_attractor ** kappa_factor + beta_prod
+        phi = rel_dist_attractor**2 / (
+            rel_dist_attractor**kappa_factor + beta_prod
         ) ** (1.0 / kappa_factor)
         return phi

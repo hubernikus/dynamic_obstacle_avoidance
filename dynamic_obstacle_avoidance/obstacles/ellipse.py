@@ -491,7 +491,7 @@ class Ellipse(Obstacle):
 
         local_radius = np.linalg.norm(local_radius, 2)
         derivative = direction_perp * local_radius - 0.5 * direction * (
-            local_radius ** 3
+            local_radius**3
         ) * self.get_radius_derivative_direction(angle_space)
 
         if in_global_frame:
