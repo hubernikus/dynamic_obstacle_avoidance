@@ -130,7 +130,43 @@ def test_single_circle_linear(visualize=False):
     assert np.dot(mod_vel3, velocity) < np.dot(mod_vel4, velocity)
 
 
-def test_double_ellipse():
+def test_single_perpendicular_ellipse(visualize=False):
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2, 2]),
+        )
+    )
+
+    # Arbitrary constant velocity
+    initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
+
+    obstacle_list.set_convergence_directions(ConvergingDynamics=initial_dynamics)
+    # ConvergingDynamics=ConstantValue (initial_velocity)
+
+    if visualize:
+        # Plot Normals
+        Simulation_vectorFields(
+            x_lim=[-2, 2],
+            y_lim=[-2, 2],
+            n_resolution=20,
+            obstacle_list=obstacle_list,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=initial_dynamics.evaluate,
+            obs_avoidance_func=obstacle_avoidance_rotational,
+            automatic_reference_point=False,
+            pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or Streamplot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
+
+
+
+def test_double_ellipse(visualize=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
@@ -155,6 +191,26 @@ def test_double_ellipse():
         ConvergingDynamics=ConstantValue(initial_velocity)
     )
 
+    if visualize:
+        # Plot Normals
+        Simulation_vectorFields(
+            x_lim=[-2, 2],
+            y_lim=[-2, 2],
+            n_resolution=20,
+            obstacle_list=obstacle_list,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=lambda x: initial_velocity,
+            obs_avoidance_func=obstacle_avoidance_rotational,
+            automatic_reference_point=False,
+            # pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or Streamplot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
+    
+
     # Random evaluation
     position = np.array([-4, 2])
     modulated_velocity = obstacle_avoidance_rotational(
@@ -170,10 +226,47 @@ def test_double_ellipse():
     normal_dir = obstacle_list[0].get_normal_direction(position, in_global_frame=True)
 
     assert np.isclose(np.dot(modulated_velocity, normal_dir), 0)
+    
+
+def test_stable_linear_avoidance(visualize=False):
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2, 2]),
+        )
+    )
+
+    # Arbitrary constant velocity
+    initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
+
+    obstacle_list.set_convergence_directions(ConvergingDynamics=initial_dynamics)
+    # ConvergingDynamics=ConstantValue (initial_velocity)
+
+    if visualize:
+        # Plot Normals
+        Simulation_vectorFields(
+            x_lim=[-2, 2],
+            y_lim=[-2, 2],
+            n_resolution=20,
+            obstacle_list=obstacle_list,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=initial_dynamics.evaluate,
+            obs_avoidance_func=obstacle_avoidance_rotational,
+            automatic_reference_point=False,
+            pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or Streamplot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
 
 
 if (__name__) == "__main__":
-    test_single_circle_linear(visualize=False)
-    test_double_ellipse()
+    # test_single_circle_linear(visualize=True)
+    test_single_perpendicular_ellipse(visualize=True)
+    test_double_ellipse(visualize=True)
+    # test_stable_linear_avoidance(visualize=False)
 
     print("[Rotational Tests] Done tests")

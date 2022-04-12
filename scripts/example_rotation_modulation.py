@@ -34,7 +34,8 @@ def single_ellipse(rot_degree=0.0):
     obs_list.append(
         Ellipse(
             center_position=np.array([0, 0]),
-            axes_length=np.array([2, 5]),
+            # axes_length=np.array([2, 5]),
+            axes_length=np.array([3, 3]),
             orientation=rot_degree / 180.0 * pi,
             tail_effect=False,
         )
@@ -122,7 +123,7 @@ def multiple_ellipse_hulls():
     return obs_list
 
 
-def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
+def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False, show_streamplot=True):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
 
@@ -150,11 +151,12 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False):
         pos_attractor=initial_dynamics.attractor_position,
         fig_and_ax_handle=(fig, axs[2]),
         # Quiver or Streamplot
-        show_streamplot=True,
+        show_streamplot=show_streamplot,
         # show_streamplot=False,
     )
-    # if True:
-    # return
+    
+    if True:
+        return
 
     obstacle_list = []
     Simulation_vectorFields(
