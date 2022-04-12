@@ -906,6 +906,7 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 if (__name__) == "__main__":
     single_ellipse_linear_triple_plot(save_figure=False, n_resolution=20)
+
     # single_ellipse_nonlinear_triple_plot(save_figure=False)
 
     # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
@@ -915,7 +916,6 @@ if (__name__) == "__main__":
     #         What do we need to know about the field?
     # single_ellipse_multiattractor_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=100)
-
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
     # starshape_hull_linear_triple_plot(save_figure=True, n_resolution=100)
@@ -927,4 +927,5 @@ if (__name__) == "__main__":
 
     # multiple_hull_empty(save_figure=True)
     # single_ellipse_hull(save_figure=True)
+
     pass

@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+black
+flake8
+=======
 ipython
 # pytest>=6.0
 # pytest-cov>=2.0
@@ -13,3 +17,4 @@ sympy
 
 # Parser / Lark
 # slark
+>>>>>>> main
