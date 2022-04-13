@@ -29,14 +29,15 @@ from dynamic_obstacle_avoidance.avoidance.multihull_convergence import (
     multihull_attraction,
 )
 
-from dynamic_obstacle_avoidance.avoidance.rotation import get_intersection_with_circle
-from dynamic_obstacle_avoidance.avoidance.rotation import (
-    directional_convergence_summing,
-)
+from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
+from dynamic_obstacle_avoidance.avoidance.rotational_avoider import get_intersection_with_circle
+# from dynamic_obstacle_avoidance.avoidance.rotation import (
+#    directional_convergence_summing,
+# )
 
 
 def get_positions(x_lim, y_lim, n_resolution, flattened=False):
-    dimension = 2
+    # dimension = 2
     nx, ny = n_resolution, n_resolution
     x_vals, y_vals = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
@@ -91,28 +92,27 @@ class TestOverrotation(unittest.TestCase):
         self.assertTrue(ratio[0] > 0)
 
     def test_directional_deviation_weight(self, visualize=False, save_figure=False):
-        from dynamic_obstacle_avoidance.avoidance.rotation import (
-            _get_directional_deviation_weight,
-        )
+        from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
 
-        w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=1)
+        avoider = RotationalAvoider()
+        w_conv = avoider._get_directional_deviation_weight(weight=1, weight_deviation=1)
         self.assertTrue(w_conv == 1)
 
-        w_conv = _get_directional_deviation_weight(weight=0, weight_deviation=1)
+        w_conv = avoider._get_directional_deviation_weight(weight=0, weight_deviation=1)
         self.assertTrue(w_conv == 1)
 
-        w_conv = _get_directional_deviation_weight(weight=1, weight_deviation=0)
+        w_conv = avoider._get_directional_deviation_weight(weight=1, weight_deviation=0)
         self.assertTrue(w_conv == 0)
 
-        w_conv = _get_directional_deviation_weight(weight=0, weight_deviation=0)
+        w_conv = avoider._get_directional_deviation_weight(weight=0, weight_deviation=0)
         self.assertTrue(w_conv == 0)
 
-        w_low = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
-        w_high = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.7)
+        w_low = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
+        w_high = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.7)
         self.assertTrue(0 < w_low < w_high < 1)
 
-        w_low = _get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
-        w_high = _get_directional_deviation_weight(weight=0.7, weight_deviation=0.3)
+        w_low = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
+        w_high = avoider._get_directional_deviation_weight(weight=0.7, weight_deviation=0.3)
         self.assertTrue(0 < w_low < w_high < 1)
 
     def test_directional_convergence_summing(self):
@@ -127,7 +127,8 @@ class TestOverrotation(unittest.TestCase):
         weight = 0.0
         # nonlinear_velocity = convergence_vector
 
-        converged_vector = directional_convergence_summing(
+        avoider = RotationalAvoider()
+        converged_vector = avoider.directional_convergence_summing(
             convergence_vector=convergence_vector,
             reference_vector=reference_vector,
             base=base,
@@ -139,7 +140,7 @@ class TestOverrotation(unittest.TestCase):
         self.assertTrue(np.allclose(convergence_vector, converged_vector.as_vector()))
 
         weight = 1
-        converged_vector = directional_convergence_summing(
+        converged_vector = avoider.directional_convergence_summing(
             convergence_vector=convergence_vector,
             reference_vector=reference_vector,
             base=base,
@@ -443,28 +444,6 @@ class TestOverrotation(unittest.TestCase):
         if save_figure:
             figure_name = "double_ellipse_radius_value"
             plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight")
-
-    def plottest_vectorfield(
-        self, assert_check=True, visualize=False, save_figure=False
-    ):
-        Simulation_vectorFields(
-            x_lim,
-            y_lim,
-            n_resolution,
-            obstacle_list,
-            saveFigure=False,
-            noTicks=True,
-            showLabel=False,
-            draw_vectorField=True,
-            dynamical_system=InitialDynamics.evaluate,
-            obs_avoidance_func=obstacle_avoidance_rotational,
-            automatic_reference_point=False,
-            pos_attractor=InitialDynamics.attractor_position,
-            # fig_and_ax_handle=(fig, ax),
-            show_streamplot=False,
-            # show_streamplot=True,
-            vector_field_only_outside=False,
-        )
 
 
 if (__name__) == "__main__":

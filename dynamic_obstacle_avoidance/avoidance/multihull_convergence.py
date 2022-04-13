@@ -25,9 +25,10 @@ from vartools.directional_space import (
 from dynamic_obstacle_avoidance.utils import get_weight_gamma
 from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 
-from dynamic_obstacle_avoidance.avoidance.rotation import (
-    directional_convergence_summing,
-)
+# from dynamic_obstacle_avoidance.avoidance.rotation import (
+    # directional_convergence_summing,
+# )
+from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
 
 get_directional_weighted_sum_from_unit_directions
 
@@ -185,7 +186,8 @@ def multihull_attraction(
         # convergence_radius = pi*0.9
         # inv_gamma_weight[it] = 1
         # TODO: better weight-function (less doubling with the radius)
-        rotated_directions[it] = directional_convergence_summing(
+        avoider = RotationalAvoider()
+        rotated_directions[it] = avoider.directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
             weight=inv_gamma_weight[it],

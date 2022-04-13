@@ -30,6 +30,14 @@ class TestRotational(unittest.TestCase):
         test_name=None,
     ):
         """Normal has to point alongside reference"""
+        if not plot_normals:
+            return
+
+        from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
+            Simulation_vectorFields,
+        )  #
+        from dynamic_obstacle_avoidance.obstacles import GradientContainer
+
         # TODO: this will potentially be moved
         # Add specific library (still in prototopye phase)
         rel_path = os.path.join(".", "scripts")
@@ -61,56 +69,41 @@ class TestRotational(unittest.TestCase):
                     position=positions[:, ix, iy], in_global_frame=True
                 )
 
-                # TODO: check edge / boundary case
-                if assert_check:
-                    self.assertTrue(
-                        normal_vectors[:, ix, iy].dot(reference_vectors[:, ix, iy])
-                        >= 0,
-                        "Reference and Normal not in same direction ({}).".format(
-                            test_name
-                        ),
-                    )
-
-        if plot_normals:
-            from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-                Simulation_vectorFields,
-            )  #
-            from dynamic_obstacle_avoidance.obstacles import GradientContainer
 
             obs_list = GradientContainer()
-            obs_list.append(obs)
+        obs_list.append(obs)
 
-            fig, ax = plt.subplots()
-            Simulation_vectorFields(
-                x_range,
-                y_range,
-                obs=obs_list,
-                # xAttractor=attractor_position,
-                saveFigure=False,
-                noTicks=False,
-                showLabel=True,
-                show_streamplot=False,
-                draw_vectorField=False,
-                fig_and_ax_handle=(fig, ax),
-                normalize_vectors=False,
-                automatic_reference_point=False,
-            )
+        fig, ax = plt.subplots()
+        Simulation_vectorFields(
+            x_range,
+            y_range,
+            obs=obs_list,
+            # xAttractor=attractor_position,
+            saveFigure=False,
+            noTicks=False,
+            showLabel=True,
+            show_streamplot=False,
+            draw_vectorField=False,
+            fig_and_ax_handle=(fig, ax),
+            normalize_vectors=False,
+            automatic_reference_point=False,
+        )
 
-            ax.quiver(
-                positions[0, :, :],
-                positions[1, :, :],
-                normal_vectors[0, :, :],
-                normal_vectors[1, :, :],
-                color="green",
-            )
+        ax.quiver(
+            positions[0, :, :],
+            positions[1, :, :],
+            normal_vectors[0, :, :],
+            normal_vectors[1, :, :],
+            color="green",
+        )
 
-            ax.quiver(
-                positions[0, :, :],
-                positions[1, :, :],
-                reference_vectors[0, :, :],
-                reference_vectors[1, :, :],
-                color="blue",
-            )
+        ax.quiver(
+            positions[0, :, :],
+            positions[1, :, :],
+            reference_vectors[0, :, :],
+            reference_vectors[1, :, :],
+            color="blue",
+        )
 
     def test_obstacle_list_creation(self):
         """Create empty obstacle list."""

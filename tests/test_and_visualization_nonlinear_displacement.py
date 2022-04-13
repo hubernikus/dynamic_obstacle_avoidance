@@ -20,12 +20,14 @@ import matplotlib as mpl
 from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.directional_space.visualization import circular_space_setup
 
-from dynamic_obstacle_avoidance.avoidance.rotation import (
-    _get_projection_of_inverted_convergence_direction,
-)
-from dynamic_obstacle_avoidance.avoidance.rotation import (
-    _get_projected_nonlinear_velocity,
-)
+# from dynamic_obstacle_avoidance.avoidance.rotation import (
+    # _get_projection_of_inverted_convergence_direction,
+# )
+# from dynamic_obstacle_avoidance.avoidance.rotation import (
+    # _get_projected_nonlinear_velocity,
+# )
+
+from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
 
 # plt.close('all')
 plt.ion()
@@ -56,15 +58,16 @@ def visualize_displacements(
     if visualize:
         fig, ax = plt.subplots(figsize=(7.2, 7))
 
+    avoider = RotationalAvoider()
     for it_nonl, inv_nonlinear in enumerate(inv_nonlinear_list):
         for it_conv, inv_conv_rotated in enumerate(inv_conv_rotated_list):
-            inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+            inv_conv_proj = avoider._get_projection_of_inverted_convergence_direction(
                 inv_conv_rotated=inv_conv_rotated,
                 inv_nonlinear=inv_nonlinear,
                 inv_convergence_radius=inv_convergence_radius,
             )
 
-            dir_nonl_rotated = _get_projected_nonlinear_velocity(
+            dir_nonl_rotated = avoider._get_projected_nonlinear_velocity(
                 dir_conv_rotated=inv_conv_rotated.invert_normal(),
                 dir_nonlinear=inv_nonlinear.invert_normal(),
                 weight=1,
@@ -162,7 +165,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
             return
 
         dot_normalized = np.dot(vec32, vec21) / (LA.norm(vec32), LA.norm(vec21))
-        serf.assertTrue(np.isclose(dot_normalized, 1))
+        self.assertTrue(np.isclose(dot_normalized, 1))
 
     def test_radius_pi_quarter(self):
         dim = 3
@@ -173,20 +176,21 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         inv_nonlinear = UnitDirection(base).from_angle(np.array([0.4 * pi, 0.6 * pi]))
         inv_convergence_radius = pi / 4
 
-        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+        avoider = RotationalAvoider()
+        inv_conv_proj = avoider._get_projection_of_inverted_convergence_direction(
             inv_conv_rotated=inv_conv_rotated,
             inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius,
         )
 
-        dir_nonl_rotated = _get_projected_nonlinear_velocity(
+        dir_nonl_rotated = avoider._get_projected_nonlinear_velocity(
             dir_conv_rotated=inv_conv_rotated.invert_normal(),
             dir_nonlinear=inv_nonlinear.invert_normal(),
             weight=1,
             convergence_radius=(pi - inv_convergence_radius),
         )
 
-        inv_nonl_rotated = dir_nonl_rotated.transform_to_base(base)
+        # inv_nonl_rotated = dir_nonl_rotated.transform_to_base(base)
 
         self.assertTrue(dir_nonl_rotated.norm() > inv_convergence_radius)
         self.assertTrue(
@@ -204,13 +208,14 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         inv_nonlinear = UnitDirection(base).from_angle(np.array([0.4 * pi, 0.6 * pi]))
         inv_convergence_radius = pi / 2
 
-        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+        avoider = RotationalAvoider()
+        inv_conv_proj = avoider._get_projection_of_inverted_convergence_direction(
             inv_conv_rotated=inv_conv_rotated,
             inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius,
         )
 
-        dir_nonl_rotated = _get_projected_nonlinear_velocity(
+        dir_nonl_rotated = avoider._get_projected_nonlinear_velocity(
             dir_conv_rotated=inv_conv_rotated.invert_normal(),
             dir_nonlinear=inv_nonlinear.invert_normal(),
             weight=1,
@@ -231,13 +236,14 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         inv_nonlinear = UnitDirection(base).from_angle(np.array([0.4 * pi, 0.6 * pi]))
         inv_convergence_radius = 3 * pi / 2
 
-        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+        avoider = RotationalAvoider()
+        inv_conv_proj = avoider._get_projection_of_inverted_convergence_direction(
             inv_conv_rotated=inv_conv_rotated,
             inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius,
         )
 
-        dir_nonl_rotated = _get_projected_nonlinear_velocity(
+        dir_nonl_rotated = avoider._get_projected_nonlinear_velocity(
             dir_conv_rotated=inv_conv_rotated.invert_normal(),
             dir_nonlinear=inv_nonlinear.invert_normal(),
             weight=1,
@@ -262,13 +268,14 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         inv_nonlinear = UnitDirection(base).from_angle(np.array([0.4 * pi, 0.6 * pi]))
         inv_convergence_radius = pi
 
-        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
+        avoider = RotationalAvoider()
+        inv_conv_proj = avoider._get_projection_of_inverted_convergence_direction(
             inv_conv_rotated=inv_conv_rotated,
             inv_nonlinear=inv_nonlinear,
             inv_convergence_radius=inv_convergence_radius,
         )
 
-        dir_nonl_rotated = _get_projected_nonlinear_velocity(
+        dir_nonl_rotated = avoider._get_projected_nonlinear_velocity(
             dir_conv_rotated=inv_conv_rotated.invert_normal(),
             dir_nonlinear=inv_nonlinear.invert_normal(),
             weight=1,
@@ -283,38 +290,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         self.assertTrue(
             np.allclose(inv_nonlinear.as_angle(), inv_nonl_rotated.as_angle())
         )
-
-    def test_radius_null(self):
-        dim = 3
-        base = DirectionBase(np.eye(dim))
-        inv_conv_rotated = UnitDirection(base).from_angle(
-            np.array([0.3 * pi, pi * 0.3])
-        )
-        inv_nonlinear = UnitDirection(base).from_angle(np.array([0.3 * pi, 0.3 * pi]))
-        inv_convergence_radius = 0.001
-
-        inv_conv_proj = _get_projection_of_inverted_convergence_direction(
-            inv_conv_rotated=inv_conv_rotated,
-            inv_nonlinear=inv_nonlinear,
-            inv_convergence_radius=inv_convergence_radius,
-        )
-
-        dir_nonl_rotated = _get_projected_nonlinear_velocity(
-            dir_conv_rotated=inv_conv_rotated.invert_normal(),
-            dir_nonlinear=inv_nonlinear.invert_normal(),
-            weight=1,
-            convergence_radius=(pi - inv_convergence_radius),
-        )
-
-        inv_nonl_rotated = dir_nonl_rotated.invert_normal()
-
-        self.assertTrue(
-            np.allclose(inv_conv_rotated.as_angle(), inv_conv_proj.as_angle())
-        )
-        self.assertTrue(
-            np.allclose(inv_nonlinear.as_angle(), inv_nonl_rotated.as_angle())
-        )
-
+    
 
 if (__name__) == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)

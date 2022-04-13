@@ -36,11 +36,29 @@ class TestDoubleBlob(unittest.TestCase):
 
     def test_normal_double_blob(self, visualize=False):
         """Test if the normal is pointing outwards on the double-blob obstacle."""
+        obs = DoubleBlob(a_value=1, b_value=1.1, center_position=np.array([0.0, 3.0]))
+
+        position = np.array([1, 2])
+
+        normal = obs.get_normal_direction(
+            position=position, in_global_frame=True
+        )
+
+        ref_dir = obs.get_reference_direction(
+            position=position, in_global_frame=True
+        )
+
+        self.assertTrue(
+            normal.dot(ref_dir) >= 0,
+            f"Normal/reference error at position={position}",
+        )
+
+        if not visualize:
+            return
+        
         x_lim = [-2.05, 2.05]
         y_lim = [-0.3, 6.3]
         dim = 2
-
-        obs = DoubleBlob(a_value=1, b_value=1.1, center_position=np.array([0.0, 3.0]))
 
         n_grid = 10
 
