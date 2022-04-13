@@ -136,29 +136,25 @@ def test_normal_and_reference_directions(visualize=False):
         center_position=np.array([0, 0]),
         axes_length=np.array([5, 8]),
     )
-
-    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-    normals = np.zeros(positions.shape)
-    references = np.zeros(positions.shape)
-
-    for it in range(positions.shape[1]):
-        if not LA.norm(positions[:, it] - obstacle.center_position):
-            # Not defined at the center
-            continue
-
-        references[:, it] = obstacle.get_normal_direction(
-            positions[:, it], in_global_frame=True
-        )
-
-        normals[:, it] = obstacle.get_reference_direction(
-            positions[:, it], in_global_frame=True
-        )
-
-        assert (
-            normals[:, it].dot(references[:, it]) < 0
-        ), "Print reference and normal are not opposing."
-
+    
     if visualize:
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        normals = np.zeros(positions.shape)
+        references = np.zeros(positions.shape)
+
+        for it in range(positions.shape[1]):
+            if not LA.norm(positions[:, it] - obstacle.center_position):
+                # Not defined at the center
+                continue
+
+            references[:, it] = obstacle.get_normal_direction(
+                positions[:, it], in_global_frame=True
+            )
+
+            normals[:, it] = obstacle.get_reference_direction(
+                positions[:, it], in_global_frame=True
+            )
+
         fig, ax = plt.subplots(figsize=(6, 5))
 
         ax.quiver(
@@ -184,12 +180,24 @@ def test_normal_and_reference_directions(visualize=False):
         obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
         ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")
 
+    position = np.array([-10, 10])
+    reference = obstacle.get_normal_direction(position, in_global_frame=True)
+    normal = obstacle.get_reference_direction(position, in_global_frame=True)
+    assert reference.dot(normal) < 0, "Print reference and normal are not opposing."
+
+    position = np.array([10, 10])
+    reference = obstacle.get_normal_direction(position, in_global_frame=True)
+    normal = obstacle.get_reference_direction(position, in_global_frame=True)
+    assert reference.dot(normal) < 0, "Print reference and normal are not opposing."
+
 
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
 
     # test_gamma_and_normal(visualize=True, n_resolution=20)
-    test_normal_and_reference_directions(visualize=False)
+    # test_normal_and_reference_directions(visualize=False)
 
     # test_normal_directions()
+
+    print("Tests done.")

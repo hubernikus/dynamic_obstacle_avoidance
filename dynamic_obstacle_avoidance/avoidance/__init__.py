@@ -16,6 +16,7 @@ from .rotation import obstacle_avoidance_rotational
 from .rk4 import obs_avoidance_rk4, obs_avoidance_rungeKutta
 
 # Avoider Classes
+from .rotational_avoider import RotationalAvoider
 from .obstacle_avoider import (
     ObstacleAvoiderWithInitialDynamcis,
     DynamicModulationAvoider,
@@ -33,4 +34,5 @@ __all__ = [
     "ObstacleAvoiderWithInitialDynamcis",
     "DynamicModulationAvoider",
     "DynamicCrowdAvoider",
+    "RotationalAvoider",
 ]
