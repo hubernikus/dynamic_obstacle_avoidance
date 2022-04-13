@@ -68,7 +68,7 @@ def compute_diagonal_matrix(
     tangent_eigenvalue_isometric=True,
     tangent_power=5,
     treat_obstacle_special=True,
-    self_priority = 1,
+    self_priority=1,
 ):
     """Compute diagonal Matrix"""
     if Gamma <= 1 and treat_obstacle_special:
@@ -178,7 +178,7 @@ def obs_avoidance_interpolation_moving(
     tangent_eigenvalue_isometric=True,
     gamma_distance=None,
     xd=None,
-    self_priority = 1
+    self_priority=1,
 ):
     """
     This function modulates the dynamical system at position x and dynamics xd
@@ -255,7 +255,7 @@ def obs_avoidance_interpolation_moving(
             repulsion_coeff=obs[n].repulsion_coeff,
             tangent_eigenvalue_isometric=tangent_eigenvalue_isometric,
             rho=obs[n].reactivity,
-            self_priority=self_priority
+            self_priority=self_priority,
         )
 
         E[:, :, n], E_orth[:, :, n] = compute_decomposition_matrix(

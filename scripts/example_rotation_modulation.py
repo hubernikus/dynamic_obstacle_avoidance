@@ -123,7 +123,9 @@ def multiple_ellipse_hulls():
     return obs_list
 
 
-def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False, show_streamplot=True):
+def single_ellipse_linear_triple_plot(
+    n_resolution=100, save_figure=False, show_streamplot=True
+):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
 
@@ -154,7 +156,7 @@ def single_ellipse_linear_triple_plot(n_resolution=100, save_figure=False, show_
         show_streamplot=show_streamplot,
         # show_streamplot=False,
     )
-    
+
     if True:
         return
 
