@@ -52,7 +52,7 @@ def get_intersection_with_circle(
     if DD < 0:
         # No intersection with circle
         return None
-    
+
     if only_positive:
         # Only negative direction due to expected negative A (?!) [returns max-direciton]..
         fac_direction = (-BB + np.sqrt(DD)) / (2 * AA)
@@ -79,6 +79,7 @@ class RotationalAvoider(BaseAvoider):
     """
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
     """
+
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
@@ -136,7 +137,9 @@ class RotationalAvoider(BaseAvoider):
 
         gamma_array = np.zeros((n_obstacles))
         for ii in range(n_obstacles):
-            gamma_array[ii] = obstacle_list[ii].get_gamma(position, in_global_frame=True)
+            gamma_array[ii] = obstacle_list[ii].get_gamma(
+                position, in_global_frame=True
+            )
 
             if gamma_array[ii] < 1 and not obstacle_list[ii].is_boundary:
                 # Since boundaries are mutually subtracted,
@@ -155,7 +158,8 @@ class RotationalAvoider(BaseAvoider):
 
         for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
             gamma_proportional[it] = obstacle_list[it_obs].get_gamma(
-                position, in_global_frame=True,
+                position,
+                in_global_frame=True,
             )
 
             normal_dir = obstacle_list[it_obs].get_normal_direction(
@@ -208,7 +212,9 @@ class RotationalAvoider(BaseAvoider):
                 base = DirectionBase(matrix=null_matrix)
 
                 # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
-                rotated_directions[it] = UnitDirection(base).from_vector(initial_velocity)
+                rotated_directions[it] = UnitDirection(base).from_vector(
+                    initial_velocity
+                )
 
             # Note that the inv_gamma_weight was prepared for the multiboundary
             # environment through the reference point displacement (see 'loca_reference_point')
@@ -274,6 +280,18 @@ class RotationalAvoider(BaseAvoider):
     ) -> UnitDirection:
         """Returns projected converenge direction based in the (normal)-direction space.
 
+        The method only projects when crossing is actually needed.
+        It checks the connection points on the direction-circle from dir_nonlinear to dir_convergence,
+        and does following:
+        - [dir_nolinear in convergence_radius] => no rotation => return dir_nonlinear
+        - [No Intersection] => [weight=0] => no rotation => return dir_nonlinear
+        - [dir_convergence in convergence_radius] => return the intersection point
+        - [two intersection points] => return relative sectant
+
+        Note: This method has the danger that the modulation only ever happens if the rotation is going
+        in the correct direction, i.e., it is in correct part of the circle.
+        It is hence important to activate the rotation early enough.
+
         Parameters
         ----------
         dir_conv_rotated
@@ -288,7 +306,18 @@ class RotationalAvoider(BaseAvoider):
             # Already converging
             return inv_conv_rotated
 
-        # inv_conv_rotated = inv_conv_rotated
+        # Both points are returned since we need to measure the 'sequente'
+        if inv_conv_rotated.norm() <= inv_convergence_radius:
+            point = get_intersection_with_circle(
+                start_position=inv_conv_rotated.as_angle(),
+                direction=(inv_conv_rotated - inv_nonlinear).as_angle(),
+                radius=inv_convergence_radius,
+                only_positive=True,
+            )
+            # sectant_dist = LA.norm(point - inv_conv_rotated.as_angle())
+            # Since $w_cp = 1$ it we directly return the value
+            return UnitDirection(inv_conv_rotated.base).from_angle(point)
+
         points = get_intersection_with_circle(
             start_position=inv_conv_rotated.as_angle(),
             direction=(inv_conv_rotated - inv_nonlinear).as_angle(),
@@ -296,51 +325,37 @@ class RotationalAvoider(BaseAvoider):
             only_positive=False,
         )
 
-        if inv_conv_rotated.norm() <= inv_convergence_radius:
-            # weight=1 -> set to point far-away
-            return UnitDirection(inv_conv_rotated.base).from_angle(points[:, 0])
-
-        print('base', (inv_conv_rotated).base_matrix[:, 0])
-        print('inv_conv_rotated', (inv_conv_rotated).as_vector())
-        print('inv_nonlinear', (inv_nonlinear).as_vector())
-        print('direction', (inv_conv_rotated - inv_nonlinear).as_angle())
-
         if points is None:
+            # No intersection => we are outside
             return inv_conv_rotated
 
-        # 2 points are returned [why do we need both?]
-        nonl_angle = inv_nonlinear.as_angle()
-        convrot_angle = inv_conv_rotated.as_angle()
-        for ii in range(points.shape[0]):
-            nonl_dir = points[ii, 1] - nonl_angle[ii]
-            if not np.isclose(nonl_dir, 0):  # Nonzero
-                point_dir = convrot_angle[ii] - nonl_angle[ii]
-                break
-        
-        # print("nonl_dir", nonl_dir)
-        # print("point_dir", nonl_dir)
-        # print('ii', ii)
-        # print('points', points)
-        # if point_dir / nonl_dir <= 1:
-            # return inv_conv_rotated
-        
-        dist = LA.norm(np.tile(inv_nonlinear.as_angle(), (2, 1)).T - points, axis=0)
-        it_max = np.argmax(dist)
+        # Check if the two intersection points are inbetween the two directions
+        # Any of the points can be chosen for the u check, since either both
+        # or none points are between / outside
+        dir_vector_conv = (inv_conv_rotated - inv_nonlinear).as_angle()
+        dir_vector_point = points[:, 1] - inv_nonlinear.as_angle()
+
+        if np.dot(dir_vector_conv, dir_vector_point) < 0 or np.dot(
+            dir_vector_conv, dir_vector_point
+        ) > np.dot(dir_vector_conv, dir_vector_conv):
+            # Intersections are behind or in front of both points with respect to the two angles
+            return inv_conv_rotated
+
         w_cp = LA.norm(points[:, 0] - points[:, 1]) / LA.norm(
-            inv_conv_rotated.as_angle() - points[:, it_max]
+            inv_conv_rotated.as_angle() - points[:, 1]
         )
 
         inv_conv_proj = (
-            w_cp
-            * UnitDirection(inv_conv_rotated.base).from_angle(points[:, it_max])
+            w_cp * UnitDirection(inv_conv_rotated.base).from_angle(points[:, 1])
             + (1 - w_cp) * inv_conv_rotated
         )
 
         if LA.norm(inv_conv_proj.as_angle()) > np.pi:
             # -> DEBUG
-            raise NotImplementedError(f"Unexpected value of {LA.norm(inv_conv_proj.as_angle())}")
+            raise NotImplementedError(
+                f"Unexpected value of {LA.norm(inv_conv_proj.as_angle())}"
+            )
 
-        
         return inv_conv_proj
 
     def _get_projected_nonlinear_velocity(
@@ -373,28 +388,28 @@ class RotationalAvoider(BaseAvoider):
         if inv_nonlinear.norm() <= inv_convergence_radius:
             return dir_nonlinear
 
-        else:
-            inv_conv_rotated = dir_conv_rotated.invert_normal()
-            weight_nonl = self._get_nonlinear_inverted_weight(
-                inv_conv_rotated.norm(),
-                inv_nonlinear.norm(),
-                inv_convergence_radius,
-                weight=weight,
-            )
+        inv_conv_rotated = dir_conv_rotated.invert_normal()
+        weight_nonl = self._get_nonlinear_inverted_weight(
+            inv_conv_rotated.norm(),
+            inv_nonlinear.norm(),
+            inv_convergence_radius,
+            weight=weight,
+        )
 
-            if not weight_nonl:  # zero value
-                return inv_nonlinear.invert_normal()
+        if not weight_nonl:  # zero value
+            return inv_nonlinear.invert_normal()
 
-            inv_conv_proj = self._get_projection_of_inverted_convergence_direction(
-                inv_conv_rotated=inv_conv_rotated,
-                inv_nonlinear=inv_nonlinear,
-                inv_convergence_radius=inv_convergence_radius,
-            )
+        # TODO: integrate this function here
+        inv_conv_proj = self._get_projection_of_inverted_convergence_direction(
+            inv_conv_rotated=inv_conv_rotated,
+            inv_nonlinear=inv_nonlinear,
+            inv_convergence_radius=inv_convergence_radius,
+        )
 
-            inv_nonlinear_conv = (
-                weight_nonl * inv_conv_proj + (1 - weight_nonl) * inv_nonlinear
-            )
-            return inv_nonlinear_conv.invert_normal()
+        inv_nonlinear_conv = (
+            weight_nonl * inv_conv_proj + (1 - weight_nonl) * inv_nonlinear
+        )
+        return inv_nonlinear_conv.invert_normal()
 
     def _get_rotated_convergence_direction(
         self,
@@ -404,7 +419,7 @@ class RotationalAvoider(BaseAvoider):
         reference_vector: np.ndarray,
         base: DirectionBase,
     ) -> UnitDirection:
-        """ Rotates the convergence vector according to given input and basis"""
+        """Rotates the convergence vector according to given input and basis"""
 
         dir_reference = UnitDirection(base).from_vector(reference_vector)
         dir_convergence = UnitDirection(base).from_vector(convergence_vector)
@@ -420,7 +435,7 @@ class RotationalAvoider(BaseAvoider):
         delta_dir_conv = dir_convergence - dir_reference
 
         norm_dir_conv = delta_dir_conv.norm()
-        if not norm_dir_conv:    # Zero value
+        if not norm_dir_conv:  # Zero value
             return None
 
         angle_tangent = get_intersection_with_circle(
@@ -428,7 +443,7 @@ class RotationalAvoider(BaseAvoider):
             direction=delta_dir_conv.as_angle(),
             radius=convergence_radius,
         )
-        
+
         dir_tangent = UnitDirection(base).from_angle(angle_tangent)
 
         norm_tangent_dist = (dir_tangent - dir_reference).norm()
@@ -438,7 +453,7 @@ class RotationalAvoider(BaseAvoider):
         w_conv = self._get_directional_deviation_weight(
             weight, weight_deviation=weight_deviation
         )
-        
+
         return w_conv * dir_tangent + (1 - w_conv) * dir_convergence
 
     def directional_convergence_summing(
@@ -450,7 +465,7 @@ class RotationalAvoider(BaseAvoider):
         nonlinear_velocity: np.ndarray = None,
         convergence_radius: float = np.pi / 2,
     ) -> UnitDirection:
-        """ Rotating / modulating a vector by using directional space.
+        """Rotating / modulating a vector by using directional space.
 
         Parameters
         ---------
@@ -483,7 +498,7 @@ class RotationalAvoider(BaseAvoider):
                 return UnitDirection(base).from_vector(convergence_vector)
             else:
                 return UnitDirection(base).from_vector(nonlinear_velocity)
-        
+
         if nonlinear_velocity is None:
             return dir_conv_rotated
 

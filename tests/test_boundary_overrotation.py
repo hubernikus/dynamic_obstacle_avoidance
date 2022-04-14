@@ -30,7 +30,10 @@ from dynamic_obstacle_avoidance.avoidance.multihull_convergence import (
 )
 
 from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-from dynamic_obstacle_avoidance.avoidance.rotational_avoider import get_intersection_with_circle
+from dynamic_obstacle_avoidance.avoidance.rotational_avoider import (
+    get_intersection_with_circle,
+)
+
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
 #    directional_convergence_summing,
 # )
@@ -107,12 +110,20 @@ class TestOverrotation(unittest.TestCase):
         w_conv = avoider._get_directional_deviation_weight(weight=0, weight_deviation=0)
         self.assertTrue(w_conv == 0)
 
-        w_low = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
-        w_high = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.7)
+        w_low = avoider._get_directional_deviation_weight(
+            weight=0.3, weight_deviation=0.3
+        )
+        w_high = avoider._get_directional_deviation_weight(
+            weight=0.3, weight_deviation=0.7
+        )
         self.assertTrue(0 < w_low < w_high < 1)
 
-        w_low = avoider._get_directional_deviation_weight(weight=0.3, weight_deviation=0.3)
-        w_high = avoider._get_directional_deviation_weight(weight=0.7, weight_deviation=0.3)
+        w_low = avoider._get_directional_deviation_weight(
+            weight=0.3, weight_deviation=0.3
+        )
+        w_high = avoider._get_directional_deviation_weight(
+            weight=0.7, weight_deviation=0.3
+        )
         self.assertTrue(0 < w_low < w_high < 1)
 
     def test_directional_convergence_summing(self):

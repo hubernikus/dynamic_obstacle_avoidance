@@ -21,10 +21,10 @@ from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.directional_space.visualization import circular_space_setup
 
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
-    # _get_projection_of_inverted_convergence_direction,
+# _get_projection_of_inverted_convergence_direction,
 # )
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
-    # _get_projected_nonlinear_velocity,
+# _get_projected_nonlinear_velocity,
 # )
 
 from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
@@ -290,7 +290,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
         self.assertTrue(
             np.allclose(inv_nonlinear.as_angle(), inv_nonl_rotated.as_angle())
         )
-    
+
 
 if (__name__) == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)

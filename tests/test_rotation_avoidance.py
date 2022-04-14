@@ -19,7 +19,9 @@ from vartools.directional_space import UnitDirection, DirectionBase
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-from dynamic_obstacle_avoidance.avoidance.rotational_avoider import get_intersection_with_circle
+from dynamic_obstacle_avoidance.avoidance.rotational_avoider import (
+    get_intersection_with_circle,
+)
 from dynamic_obstacle_avoidance.containers import RotationContainer
 
 from dynamic_obstacle_avoidance.visualization import (
@@ -106,36 +108,48 @@ def test_rotated_convergence_direction_circle():
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
     norm_base = DirectionBase(vector=normal * (-1))
-    
+
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
         weight=weight,
         convergence_radius=np.pi / 2.0,
         convergence_vector=inital_velocity,
-        reference_vector=obstacle.get_reference_direction(position, in_global_frame=True),
+        reference_vector=obstacle.get_reference_direction(
+            position, in_global_frame=True
+        ),
         base=norm_base,
     )
 
     initial_dir = UnitDirection(norm_base).from_vector(inital_velocity)
 
-    assert convergence_dir.norm() > initial_dir.norm(), \
-      "Rotational convergence not further away from norm."
+    assert (
+        convergence_dir.norm() > initial_dir.norm()
+    ), "Rotational convergence not further away from norm."
 
-    assert np.cross(inital_velocity, convergence_dir.as_vector()) > 0, \
-      "Rotation in the wrong direction."
+    assert (
+        np.cross(inital_velocity, convergence_dir.as_vector()) > 0
+    ), "Rotation in the wrong direction."
 
     # Testing the non-linear 'pulling' (based on linear velocity)
     nonlinear_velocity = inital_velocity
     dir_nonlinear = UnitDirection(norm_base).from_vector(nonlinear_velocity)
-    
+
     nonlinear_conv = main_avoider._get_projected_nonlinear_velocity(
         dir_conv_rotated=convergence_dir,
         dir_nonlinear=dir_nonlinear,
         convergence_radius=np.pi / 2,
-        weight=weight
+        weight=weight,
     )
 
-    # assert convergence_dir.as_vector()
+    # The velocity needs to be in between
+    assert (
+        np.cross(dir_nonlinear.as_vector(), nonlinear_conv.as_vector()) > 0
+    ), " Not rotated enough."
+
+    # The velocity needs to be in between
+    assert (
+        np.cross(convergence_dir.as_vector(), nonlinear_conv.as_vector()) < 0
+    ), "Rotated too much."
 
 
 def test_rotated_convergence_direction_ellipse():
@@ -153,24 +167,27 @@ def test_rotated_convergence_direction_ellipse():
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
     norm_base = DirectionBase(vector=normal * (-1))
-    
+
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
         weight=weight,
         convergence_radius=np.pi / 2.0,
         convergence_vector=inital_velocity,
-        reference_vector=obstacle.get_reference_direction(position, in_global_frame=True),
+        reference_vector=obstacle.get_reference_direction(
+            position, in_global_frame=True
+        ),
         base=norm_base,
     )
 
     initial_dir = UnitDirection(norm_base).from_vector(inital_velocity)
 
-    assert convergence_dir.norm() > initial_dir.norm(), \
-      "Rotational convergence not further away from norm."
+    assert (
+        convergence_dir.norm() > initial_dir.norm()
+    ), "Rotational convergence not further away from norm."
 
-    assert np.cross(inital_velocity, convergence_dir.as_vector()) > 0, \
-      "Rotation in the wrong direction."
-
+    assert (
+        np.cross(inital_velocity, convergence_dir.as_vector()) > 0
+    ), "Rotation in the wrong direction."
 
 
 def test_single_circle_linear(visualize=False):
@@ -265,10 +282,11 @@ def test_single_circle_linear(visualize=False):
     modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
-        obstacle_list=obstacle_list
-        )
-    assert np.cross(initial_velocity, modulated_velocity) > 0, \
-      " Rotation in the wrong direction to avoid the circle."
+        obstacle_list=obstacle_list,
+    )
+    assert (
+        np.cross(initial_velocity, modulated_velocity) > 0
+    ), " Rotation in the wrong direction to avoid the circle."
 
     # Rotate to the right bellow
     position = np.array([-1, -0.5])
@@ -277,10 +295,11 @@ def test_single_circle_linear(visualize=False):
     modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
-        obstacle_list=obstacle_list
-        )
-    assert np.cross(initial_velocity, modulated_velocity) < 0, \
-      " Rotation in the wrong direction to avoid the circle."
+        obstacle_list=obstacle_list,
+    )
+    assert (
+        np.cross(initial_velocity, modulated_velocity) < 0
+    ), " Rotation in the wrong direction to avoid the circle."
 
 
 def test_single_perpendicular_ellipse(visualize=False):
@@ -299,9 +318,8 @@ def test_single_perpendicular_ellipse(visualize=False):
     # ConvergingDynamics=ConstantValue (initial_velocity)
 
     main_avoider = RotationalAvoider(
-        initial_dynamics=initial_dynamics,
-        obstacle_environment=obstacle_list
-        )
+        initial_dynamics=initial_dynamics, obstacle_environment=obstacle_list
+    )
 
     if visualize:
         Simulation_vectorFields(
@@ -324,14 +342,14 @@ def test_single_perpendicular_ellipse(visualize=False):
     initial_velocity = initial_dynamics.evaluate(position)
 
     # assert np.cross(initial_velocity, modulated_velocity) > 0, \
-      # " Rotation in the wrong direction to avoid the ellipse."
+    # " Rotation in the wrong direction to avoid the ellipse."
 
     print("<< Ellipse >>")
     modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
-        obstacle_list=obstacle_list
-        )
+        obstacle_list=obstacle_list,
+    )
     print("Velocities: ")
     print(initial_velocity / LA.norm(initial_velocity))
     print(modulated_velocity / LA.norm(modulated_velocity))
@@ -341,7 +359,7 @@ def test_single_perpendicular_ellipse(visualize=False):
     modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
-        obstacle_list=obstacle_list
+        obstacle_list=obstacle_list,
     )
     print("Velocities: ")
     print(initial_velocity / LA.norm(initial_velocity))
@@ -443,17 +461,16 @@ def test_stable_linear_avoidance(visualize=False):
         )
 
 
-
 if (__name__) == "__main__":
-    test_intersection_with_circle()
+    # test_intersection_with_circle()
 
-    test_rotated_convergence_direction_circle()
+    # test_single_circle_linear(visualize=True)
+
+    # test_rotated_convergence_direction_circle()
     test_rotated_convergence_direction_ellipse()
-    
-    test_single_circle_linear(visualize=False)
-    
+
     # test_single_perpendicular_ellipse(visualize=True)
-    
+
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=False)
 

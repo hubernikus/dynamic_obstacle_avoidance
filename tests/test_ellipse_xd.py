@@ -136,7 +136,7 @@ def test_normal_and_reference_directions(visualize=False):
         center_position=np.array([0, 0]),
         axes_length=np.array([5, 8]),
     )
-    
+
     if visualize:
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         normals = np.zeros(positions.shape)

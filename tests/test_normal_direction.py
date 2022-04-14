@@ -69,7 +69,6 @@ class TestRotational(unittest.TestCase):
                     position=positions[:, ix, iy], in_global_frame=True
                 )
 
-
             obs_list = GradientContainer()
         obs_list.append(obs)
 

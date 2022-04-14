@@ -40,13 +40,9 @@ class TestDoubleBlob(unittest.TestCase):
 
         position = np.array([1, 2])
 
-        normal = obs.get_normal_direction(
-            position=position, in_global_frame=True
-        )
+        normal = obs.get_normal_direction(position=position, in_global_frame=True)
 
-        ref_dir = obs.get_reference_direction(
-            position=position, in_global_frame=True
-        )
+        ref_dir = obs.get_reference_direction(position=position, in_global_frame=True)
 
         self.assertTrue(
             normal.dot(ref_dir) >= 0,
@@ -55,7 +51,7 @@ class TestDoubleBlob(unittest.TestCase):
 
         if not visualize:
             return
-        
+
         x_lim = [-2.05, 2.05]
         y_lim = [-0.3, 6.3]
         dim = 2
