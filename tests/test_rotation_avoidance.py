@@ -99,30 +99,25 @@ def old_test_rotational_pulling(visualize=False):
     # Testing the non-linear 'pulling' (based on linear velocity)
     # nonlinear_velocity = np.array([1, 0])
 
-    normal = (-1)*np.array([-1, -1])
+    normal = (-1) * np.array([-1, -1])
     base = DirectionBase(vector=normal)
-    
+
     dir_nonlinear = UnitDirection(base).from_vector(np.array([1, 0]))
     convergence_dir = UnitDirection(base).from_vector(np.array([0, 1]))
 
     inv_nonlinear = dir_nonlinear.invert_normal()
     inv_conv_rotated = convergence_dir.invert_normal()
-    
+
     main_avoider = RotationalAvoider()
     inv_conv_proj = main_avoider._get_projection_of_inverted_convergence_direction(
         inv_conv_rotated=inv_conv_rotated,
         inv_nonlinear=inv_nonlinear,
-        inv_convergence_radius=np.pi/2,
+        inv_convergence_radius=np.pi / 2,
     )
-    
-    assert (
-        inv_nonlinear.as_angle() < inv_conv_proj.as_angle()
-    ), " Not rotated enough."
 
-    assert (
-        inv_conv_proj.as_angle() < inv_conv_rotated.as_angle()
-    ), " Rotated too much."
+    assert inv_nonlinear.as_angle() < inv_conv_proj.as_angle(), " Not rotated enough."
 
+    assert inv_conv_proj.as_angle() < inv_conv_rotated.as_angle(), " Rotated too much."
 
     nonlinear_conv = main_avoider._get_projected_nonlinear_velocity(
         dir_conv_rotated=convergence_dir,
@@ -135,31 +130,32 @@ def old_test_rotational_pulling(visualize=False):
         # Inverted space
         fig, ax = plt.subplots()
         ax.set_title("Inverted Directions")
-        ax.plot([-3.5, 3.5], [0, 0], 'k--')
-        ax.plot([-np.pi, np.pi], [0, 0], color='red')
-        ax.plot([-np.pi/2, np.pi/2], [0, 0], color='green')
-        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], '|', color='black')
+        ax.plot([-3.5, 3.5], [0, 0], "k--")
+        ax.plot([-np.pi, np.pi], [0, 0], color="red")
+        ax.plot([-np.pi / 2, np.pi / 2], [0, 0], color="green")
+        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], "|", color="black")
 
-        ax.plot(inv_nonlinear.as_angle(), 0,
-                'o', color='blue', label="Nonlinear")
-        ax.plot(inv_conv_rotated.as_angle(), 0,
-                'o', color='darkviolet', label="Convergence")
-        ax.plot(inv_conv_proj.as_angle(), 0,
-                'x', color='darkorange', label="Projected")
+        ax.plot(inv_nonlinear.as_angle(), 0, "o", color="blue", label="Nonlinear")
+        ax.plot(
+            inv_conv_rotated.as_angle(), 0, "o", color="darkviolet", label="Convergence"
+        )
+        ax.plot(inv_conv_proj.as_angle(), 0, "x", color="darkorange", label="Projected")
 
         ax.legend()
-        
+
         # Plot with normal at center
         fig, ax = plt.subplots()
         ax.set_title("General Directions")
-        ax.plot([-3.5, 3.5], [0, 0], 'k--')
-        ax.plot([-np.pi, np.pi], [0, 0], color='green')
-        ax.plot([-np.pi/2, np.pi/2], [0, 0], color='red')
-        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], '|', color='black')
+        ax.plot([-3.5, 3.5], [0, 0], "k--")
+        ax.plot([-np.pi, np.pi], [0, 0], color="green")
+        ax.plot([-np.pi / 2, np.pi / 2], [0, 0], color="red")
+        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], "|", color="black")
 
-        ax.plot(dir_nonlinear.as_angle(), 0, 'o', color='blue', label="Nonlinear")
-        ax.plot(convergence_dir.as_angle(), 0, 'o', color='darkviolet', label="Convergence")
-        ax.plot(nonlinear_conv.as_angle(), 0, 'x', color='darkorange', label="Rotated")
+        ax.plot(dir_nonlinear.as_angle(), 0, "o", color="blue", label="Nonlinear")
+        ax.plot(
+            convergence_dir.as_angle(), 0, "o", color="darkviolet", label="Convergence"
+        )
+        ax.plot(nonlinear_conv.as_angle(), 0, "x", color="darkorange", label="Rotated")
 
         ax.set_xlim([-3.5, 3.5])
         ax.set_ylim([-1, 1])
@@ -197,11 +193,11 @@ def test_convergence_tangent(visualize=True):
         convergence_vector=linear_velocity,
         reference_vector=(obstacle.center_position - position),
         base=normal_base,
-        convergence_radius=np.pi / 2
+        convergence_radius=np.pi / 2,
     )
 
-    assert (
-        np.allclose(tangent.as_vector(), np.sqrt(2) / 2 * np.array([1, 1]))
+    assert np.allclose(
+        tangent.as_vector(), np.sqrt(2) / 2 * np.array([1, 1])
     ), " Not rotated enough."
 
     if visualize:
@@ -225,18 +221,20 @@ def test_convergence_tangent(visualize=True):
 
             linear_velocity = initial_dynamics.evaluate(position)
 
-            normal = obstacle.get_normal_direction(positions[:, it], in_global_frame=True)
+            normal = obstacle.get_normal_direction(
+                positions[:, it], in_global_frame=True
+            )
             normal_base = DirectionBase(vector=normal * (-1))
-            
+
             unit_tangent = main_avoider._get_tangent_convergence_direction(
                 convergence_vector=linear_velocity,
                 reference_vector=(obstacle.center_position - positions[:, it]),
                 base=normal_base,
-                convergence_radius=np.pi/2
+                convergence_radius=np.pi / 2,
             )
 
             vectors[:, it] = unit_tangent.as_vector()
-            
+
         ax.quiver(
             positions[0, :],
             positions[1, :],
@@ -268,7 +266,7 @@ def test_rotating_towards_tangent():
         convergence_vector=linear_velocity,
         reference_vector=(obstacle.center_position - position),
         base=normal_base,
-        convergence_radius=np.pi / 2
+        convergence_radius=np.pi / 2,
     )
 
     rotated_velocity = main_avoider._get_projected_velocity(
@@ -285,7 +283,6 @@ def test_rotating_towards_tangent():
     assert (
         np.cross(rotated_velocity.as_vector(), tangent.as_vector()) > 0
     ), " Rotated too much."
-
 
 
 def test_rotated_convergence_direction_circle():
@@ -325,8 +322,6 @@ def test_rotated_convergence_direction_circle():
     assert (
         np.cross(inital_velocity, convergence_dir.as_vector()) > 0
     ), "Rotation in the wrong direction."
-
-    
 
 
 def test_rotated_convergence_direction_ellipse():
@@ -431,8 +426,8 @@ def test_single_circle_linear(visualize=False):
         initial_dynamics.evaluate(position),
         obstacle_list,
     )
-    assert (
-        np.allclose(initial_dynamics.evaluate(position), modulated_velocity)
+    assert np.allclose(
+        initial_dynamics.evaluate(position), modulated_velocity
     ), "Unexpected modulation behind the obstacle."
 
     # Velocity on surface is tangent after modulation
@@ -452,8 +447,6 @@ def test_single_circle_linear(visualize=False):
         obstacle_list,
     )
     assert np.allclose(initial_dynamics.evaluate(position), modulated_velocity)
-
-    
 
     # Rotate to the left on top
     position = np.array([-1, 0.5])
@@ -644,12 +637,12 @@ def test_stable_linear_avoidance(visualize=False):
 if (__name__) == "__main__":
     # test_intersection_with_circle()
     # test_rotational_pulling(visualize=True)
-    
+
     # test_convergence_tangent(visualize=False)
     # test_rotating_towards_tangent()
 
     # test_convergence_pulling()
-    
+
     test_single_circle_linear(visualize=False)
 
     # test_rotated_convergence_direction_circle()

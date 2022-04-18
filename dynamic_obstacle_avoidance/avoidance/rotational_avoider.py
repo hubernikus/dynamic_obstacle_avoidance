@@ -249,27 +249,28 @@ class RotationalAvoider(BaseAvoider):
     def _limit_magnitude(
         self, modulated_velocity, initial_magintude, gammas, normals, weights
     ):
-        """ Returns scaled velocity such that zero on the surface of an obstacle. """
+        """Returns scaled velocity such that zero on the surface of an obstacle."""
         # magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
         min_dot_prod = 0
         it_min = None
         for ii in range(len(gammas)):
-            
+
             # Under the assumption of normalized input vectors
             dot_prod = np.dot(modulated_velocity, normals[:, ii])
-            
+
             if dot_prod < min_dot_prod:
-               min_dot_prod = dot_prod
-               it_min = ii
-                
+                min_dot_prod = dot_prod
+                it_min = ii
+
         if it_min is None:
             return modulated_velocity * initial_magintude
 
         modulated_velocity = (
             modulated_velocity
-            * initial_magintude * (1 + (1 / gammas[it_min]) * min_dot_prod)
+            * initial_magintude
+            * (1 + (1 / gammas[it_min]) * min_dot_prod)
         )
-        
+
         return modulated_velocity
 
     def _get_directional_deviation_weight(
@@ -291,7 +292,7 @@ class RotationalAvoider(BaseAvoider):
         inv_convergence_radius: float,
         weight: float,
     ) -> float:
-        """ Returns modified weight which ensure continuous transformation of direction."""
+        """Returns modified weight which ensure continuous transformation of direction."""
         # Potentially set to 0 when approaching radius, since this would allow continuity.
 
         if inverted_nonlinear_norm <= inv_convergence_radius:
@@ -337,7 +338,7 @@ class RotationalAvoider(BaseAvoider):
         """
         # TODO: remove
         warnings.warn("This function is outdated.")
-        
+
         if inv_nonlinear.norm() <= inv_convergence_radius:
             # Already converging
             return inv_conv_rotated
@@ -367,7 +368,7 @@ class RotationalAvoider(BaseAvoider):
 
         if False:
             # => Don't do this check anymore since its done at the follow up weight
-            
+
             # Check if the two intersection points are inbetween the two directions
             # Any of the points can be chosen for the u check, since either both
             # or none points are between / outside
@@ -391,9 +392,12 @@ class RotationalAvoider(BaseAvoider):
 
         angle_inv_conv_proj = (
             # (1 - w_cp) * points[:, 0] + (w_cp) * points[:, 1]
-            (1 - w_cp) * points[:, 0] + w_cp * inv_conv_rotated.as_angle()
+            (1 - w_cp) * points[:, 0]
+            + w_cp * inv_conv_rotated.as_angle()
         )
-        inv_conv_proj = UnitDirection(inv_conv_rotated.base).from_angle(angle_inv_conv_proj)
+        inv_conv_proj = UnitDirection(inv_conv_rotated.base).from_angle(
+            angle_inv_conv_proj
+        )
 
         if LA.norm(inv_conv_proj.as_angle()) > np.pi:
             # -> DEBUG
@@ -442,7 +446,7 @@ class RotationalAvoider(BaseAvoider):
             inv_convergence_radius,
             weight=weight,
         )
-        
+
         if not weight_nonl:  # Zero value
             return inv_nonlinear.invert_normal()
 
@@ -472,14 +476,16 @@ class RotationalAvoider(BaseAvoider):
         Parameters
         ----------
         ...
-        
+
         Returns
         -------
         ...
         """
         if convergence_radius != dir_convergence_tangent.norm():
             dir_convergence_tangent = copy.deepcopy(
-                convergence_radius / dir_convergence_tangent.norm() * dir_convergence_tangent
+                convergence_radius
+                / dir_convergence_tangent.norm()
+                * dir_convergence_tangent
             )
 
         # Check if the velocity is already going in the correct direction
@@ -490,14 +496,14 @@ class RotationalAvoider(BaseAvoider):
         if not delta_norm:
             # Tangent and initial are identical vector, hence no interpolation needed
             return dir_initial_velocity
-        
-        weight_correct_direction = np.dot(
-            angle_tangent, delta_angle
-        ) / (LA.norm(angle_tangent) * delta_norm)
+
+        weight_correct_direction = np.dot(angle_tangent, delta_angle) / (
+            LA.norm(angle_tangent) * delta_norm
+        )
 
         if weight_correct_direction > 0:
             weight = weight * (1 - weight_correct_direction)
-                
+
         dir_convergence = (
             weight * dir_convergence_tangent + (1 - weight) * dir_initial_velocity
         )
@@ -505,7 +511,7 @@ class RotationalAvoider(BaseAvoider):
         if weight < 0 or weight > 1:
             breakpoint()
             raise ValueError("Unexpected weight value... -> DEBUG")
-        
+
         return dir_convergence
 
     def _get_tangent_convergence_direction(
@@ -515,7 +521,7 @@ class RotationalAvoider(BaseAvoider):
         base: DirectionBase,
         convergence_radius: float = np.pi / 2,
     ):
-        """ Projects the reference direction onto the surface """
+        """Projects the reference direction onto the surface"""
 
         dir_convergence = UnitDirection(base).from_vector(convergence_vector)
         dir_reference = UnitDirection(base).from_vector(reference_vector)
@@ -525,7 +531,7 @@ class RotationalAvoider(BaseAvoider):
             base_angle = np.zeros(UnitDirection(base).as_angle().shape)
             base_angle[0] = convergence_radius
             return UnitDirection(base).from_angle(base_angle)
-            
+
         surface_angle = get_intersection_with_circle(
             start_position=dir_reference.as_angle(),
             direction=(dir_convergence - dir_reference).as_angle(),
@@ -534,8 +540,10 @@ class RotationalAvoider(BaseAvoider):
         )
 
         if surface_angle is None:
-            raise ValueError("No intersection with surface found with"
-                             + f"radius={convergence_radius}.")
+            raise ValueError(
+                "No intersection with surface found with"
+                + f"radius={convergence_radius}."
+            )
 
         return UnitDirection(base).from_angle(surface_angle)
 
@@ -609,39 +617,39 @@ class RotationalAvoider(BaseAvoider):
         if weight >= 1:
             # TODO return special
             weight = 1
-        
+
         elif weight <= 0:
             # TODO return special
             weight = 0
 
         # dir_conv_rotated = self._get_rotated_convergence_direction(
-            # weight=weight,
-            # convergence_radius=convergence_radius,
-            # convergence_vector=convergence_vector,
-            # reference_vector=reference_vector,
-            # base=base,
+        # weight=weight,
+        # convergence_radius=convergence_radius,
+        # convergence_vector=convergence_vector,
+        # reference_vector=reference_vector,
+        # base=base,
         # )
 
         tangent = self._get_tangent_convergence_direction(
             convergence_vector=convergence_vector,
             reference_vector=reference_vector,
             base=base,
-            convergence_radius=np.pi / 2
+            convergence_radius=np.pi / 2,
         )
 
         if nonlinear_velocity is None:
             return UnitDirection(base).from_vector(convergence_vector)
 
         # if nonlinear_velocity is None:
-            # return dir_conv_rotated
+        # return dir_conv_rotated
 
         dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
 
         # nonlinear_conv = self._get_projected_nonlinear_velocity(
-            # dir_conv_rotated=dir_conv_rotated,
-            # dir_nonlinear=dir_nonlinear,
-            # convergence_radius=convergence_radius,
-            # weight=weight,
+        # dir_conv_rotated=dir_conv_rotated,
+        # dir_nonlinear=dir_nonlinear,
+        # convergence_radius=convergence_radius,
+        # weight=weight,
 
         rotated_velocity = self._get_projected_velocity(
             dir_convergence_tangent=tangent,

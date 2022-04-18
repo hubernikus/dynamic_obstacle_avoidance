@@ -221,27 +221,22 @@ def test_normal_vectors_cuboid(visualize=False, x_lim=[-4, 4], y_lim=[-4, 4]):
     )
 
     position = np.array([2, 3])
-    normal = my_obstacle.get_normal_direction(
-        position, in_global_frame=True
-    )
-    ref = my_obstacle.get_outwards_reference_direction(
-        position, in_global_frame=True
-    )
-    
-    assert (
-        np.dot(normal, ref) > 0
-    ), f"Normal is not pointing outwards at {position}."
+    normal = my_obstacle.get_normal_direction(position, in_global_frame=True)
+    ref = my_obstacle.get_outwards_reference_direction(position, in_global_frame=True)
+
+    assert np.dot(normal, ref) > 0, f"Normal is not pointing outwards at {position}."
 
     if visualize:
         fig, ax = plt.subplots()
 
         my_obstacle.plot2D(ax)
         ax.set_aspect("equal")
-        
+
         n_grid = 10
-        
+
         x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
+            np.linspace(x_lim[0], x_lim[1], n_grid),
+            np.linspace(y_lim[0], y_lim[1], n_grid),
         )
 
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
@@ -279,22 +274,16 @@ def test_normal_vectors_cuboid_outside_ref(
     my_obstacle.set_reference_point(np.array([3, 2]), in_global_frame=False)
 
     position = np.array([3, -4])
-    normal = my_obstacle.get_normal_direction(
-        position, in_global_frame=True
-    )
-    ref = my_obstacle.get_outwards_reference_direction(
-        position, in_global_frame=True
-    )
-    
-    assert (
-        np.dot(normal, ref) > 0
-    ), f"Normal is not pointing outwards at {position}."
+    normal = my_obstacle.get_normal_direction(position, in_global_frame=True)
+    ref = my_obstacle.get_outwards_reference_direction(position, in_global_frame=True)
 
+    assert np.dot(normal, ref) > 0, f"Normal is not pointing outwards at {position}."
 
     if visualize:
         n_grid = 10
         x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
+            np.linspace(x_lim[0], x_lim[1], n_grid),
+            np.linspace(y_lim[0], y_lim[1], n_grid),
         )
 
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
