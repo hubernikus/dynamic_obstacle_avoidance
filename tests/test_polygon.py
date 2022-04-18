@@ -220,36 +220,48 @@ def test_normal_vectors_cuboid(visualize=False, x_lim=[-4, 4], y_lim=[-4, 4]):
         axes_length=np.array([1, 2]),
     )
 
+    position = np.array([2, 3])
+    normal = my_obstacle.get_normal_direction(
+        position, in_global_frame=True
+    )
+    ref = my_obstacle.get_outwards_reference_direction(
+        position, in_global_frame=True
+    )
+    
+    assert (
+        np.dot(normal, ref) > 0
+    ), f"Normal is not pointing outwards at {position}."
+
     if visualize:
         fig, ax = plt.subplots()
 
         my_obstacle.plot2D(ax)
         ax.set_aspect("equal")
-
-    n_grid = 10
-    x_vals, y_vals = np.meshgrid(
-        np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
-    )
-
-    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-    normals = np.zeros(positions.shape)
-    refs = np.zeros(positions.shape)
-
-    for ii in range(positions.shape[1]):
-        if my_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
-            continue
-
-        normals[:, ii] = my_obstacle.get_normal_direction(
-            positions[:, ii], in_global_frame=True
+        
+        n_grid = 10
+        
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
         )
-        refs[:, ii] = my_obstacle.get_outwards_reference_direction(
-            positions[:, ii], in_global_frame=True
-        )
-        assert (
-            np.dot(normals[:, ii], refs[:, ii]) > 0
-        ), f"Normal is not pointing outwards at {positions[:, ii]}."
 
-    if visualize:
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        normals = np.zeros(positions.shape)
+        refs = np.zeros(positions.shape)
+
+        for ii in range(positions.shape[1]):
+            if my_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
+                continue
+
+            normals[:, ii] = my_obstacle.get_normal_direction(
+                positions[:, ii], in_global_frame=True
+            )
+            refs[:, ii] = my_obstacle.get_outwards_reference_direction(
+                positions[:, ii], in_global_frame=True
+            )
+            assert (
+                np.dot(normals[:, ii], refs[:, ii]) > 0
+            ), f"Normal is not pointing outwards at {positions[:, ii]}."
+
         ax.quiver(
             positions[0, :], positions[1, :], normals[0, :], normals[1, :], color="blue"
         )
@@ -266,31 +278,44 @@ def test_normal_vectors_cuboid_outside_ref(
 
     my_obstacle.set_reference_point(np.array([3, 2]), in_global_frame=False)
 
-    n_grid = 10
-    x_vals, y_vals = np.meshgrid(
-        np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
+    position = np.array([3, -4])
+    normal = my_obstacle.get_normal_direction(
+        position, in_global_frame=True
     )
+    ref = my_obstacle.get_outwards_reference_direction(
+        position, in_global_frame=True
+    )
+    
+    assert (
+        np.dot(normal, ref) > 0
+    ), f"Normal is not pointing outwards at {position}."
 
-    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-    normals = np.zeros(positions.shape)
-    refs = np.zeros(positions.shape)
-
-    for ii in range(positions.shape[1]):
-        if my_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
-            continue
-
-        normals[:, ii] = my_obstacle.get_normal_direction(
-            positions[:, ii], in_global_frame=True
-        )
-        refs[:, ii] = my_obstacle.get_outwards_reference_direction(
-            positions[:, ii], in_global_frame=True
-        )
-
-        assert (
-            np.dot(normals[:, ii], refs[:, ii]) > 0
-        ), f"Normal is not pointing outwards at {positions[:, ii]}."
 
     if visualize:
+        n_grid = 10
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_grid), np.linspace(y_lim[0], y_lim[1], n_grid)
+        )
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        normals = np.zeros(positions.shape)
+        refs = np.zeros(positions.shape)
+
+        for ii in range(positions.shape[1]):
+            if my_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
+                continue
+
+            normals[:, ii] = my_obstacle.get_normal_direction(
+                positions[:, ii], in_global_frame=True
+            )
+            refs[:, ii] = my_obstacle.get_outwards_reference_direction(
+                positions[:, ii], in_global_frame=True
+            )
+
+            assert (
+                np.dot(normals[:, ii], refs[:, ii]) > 0
+            ), f"Normal is not pointing outwards at {positions[:, ii]}."
+
         fig, ax = plt.subplots()
 
         my_obstacle.plot2D(ax)
