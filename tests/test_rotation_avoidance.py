@@ -92,6 +92,37 @@ def test_intersection_with_circle():
     assert np.isclose(LA.norm(circle_positions[:, 1]), radius)
 
 
+def test_rotational_pulling():
+    # Testing the non-linear 'pulling' (based on linear velocity)
+    # nonlinear_velocity = np.array([1, 0])
+
+    normal = np.array([-1, -1])
+    base = DirectionBase(vector=(-1)*normal)
+    
+    dir_nonlinear = UnitDirection(base).from_vector(np.array([1, 0]))
+    convergence_dir = UnitDirection(base).from_vector(np.array([0, 1]))
+
+    main_avoider = RotationalAvoider()
+    nonlinear_conv = main_avoider._get_projected_nonlinear_velocity(
+        dir_conv_rotated=convergence_dir,
+        dir_nonlinear=dir_nonlinear,
+        convergence_radius=np.pi / 2,
+        weight=0.5,
+    )
+
+    print("Semi done 113")
+    breakpoint()
+    # The velocity needs to be in between
+    assert (
+        np.cross(dir_nonlinear.as_vector(), nonlinear_conv.as_vector()) >= 0
+    ), " Not rotated enough."
+
+    # The velocity needs to be in between
+    assert (
+        np.cross(convergence_dir.as_vector(), nonlinear_conv.as_vector()) <= 0
+    ), "Rotated too much."
+    
+
 def test_rotated_convergence_direction_circle():
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
 
@@ -130,26 +161,7 @@ def test_rotated_convergence_direction_circle():
         np.cross(inital_velocity, convergence_dir.as_vector()) > 0
     ), "Rotation in the wrong direction."
 
-    # Testing the non-linear 'pulling' (based on linear velocity)
-    nonlinear_velocity = inital_velocity
-    dir_nonlinear = UnitDirection(norm_base).from_vector(nonlinear_velocity)
-
-    nonlinear_conv = main_avoider._get_projected_nonlinear_velocity(
-        dir_conv_rotated=convergence_dir,
-        dir_nonlinear=dir_nonlinear,
-        convergence_radius=np.pi / 2,
-        weight=weight,
-    )
-
-    # The velocity needs to be in between
-    assert (
-        np.cross(dir_nonlinear.as_vector(), nonlinear_conv.as_vector()) > 0
-    ), " Not rotated enough."
-
-    # The velocity needs to be in between
-    assert (
-        np.cross(convergence_dir.as_vector(), nonlinear_conv.as_vector()) < 0
-    ), "Rotated too much."
+    
 
 
 def test_rotated_convergence_direction_ellipse():
@@ -463,7 +475,7 @@ def test_stable_linear_avoidance(visualize=False):
 
 if (__name__) == "__main__":
     # test_intersection_with_circle()
-
+    test_rotational_pulling()
     # test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()

@@ -281,15 +281,15 @@ class RotationalAvoider(BaseAvoider):
         """Returns projected converenge direction based in the (normal)-direction space.
 
         The method only projects when crossing is actually needed.
-        It checks the connection points on the direction-circle from dir_nonlinear to dir_convergence,
-        and does following:
-        - [dir_nolinear in convergence_radius] => no rotation => return dir_nonlinear
+        It checks the connection points on the direction-circle from dir_nonlinear to
+        dir_convergence, and does following:
+        - [dir_nolinear in convergence_radius] => [weight=0] => return dir_nonlinear
         - [No Intersection] => [weight=0] => no rotation => return dir_nonlinear
-        - [dir_convergence in convergence_radius] => return the intersection point
-        - [two intersection points] => return relative sectant
+        - [dir_convergence in convergence_radius] => [weight=1] => return the intersection point
+        - [two intersection points] => return relative secant
 
-        Note: This method has the danger that the modulation only ever happens if the rotation is going
-        in the correct direction, i.e., it is in correct part of the circle.
+        Note: This method has the danger that the modulation only ever happens if the rotation is
+        going in the correct direction, i.e., it is in correct part of the circle.
         It is hence important to activate the rotation early enough.
 
         Parameters
@@ -306,7 +306,6 @@ class RotationalAvoider(BaseAvoider):
             # Already converging
             return inv_conv_rotated
 
-        # Both points are returned since we need to measure the 'sequente'
         if inv_conv_rotated.norm() <= inv_convergence_radius:
             point = get_intersection_with_circle(
                 start_position=inv_conv_rotated.as_angle(),
@@ -318,6 +317,7 @@ class RotationalAvoider(BaseAvoider):
             # Since $w_cp = 1$ it we directly return the value
             return UnitDirection(inv_conv_rotated.base).from_angle(point)
 
+        # Both points are returned since we need to measure the 'sequente'
         points = get_intersection_with_circle(
             start_position=inv_conv_rotated.as_angle(),
             direction=(inv_conv_rotated - inv_nonlinear).as_angle(),
@@ -333,7 +333,7 @@ class RotationalAvoider(BaseAvoider):
         # Any of the points can be chosen for the u check, since either both
         # or none points are between / outside
         dir_vector_conv = (inv_conv_rotated - inv_nonlinear).as_angle()
-        dir_vector_point = points[:, 1] - inv_nonlinear.as_angle()
+        dir_vector_point = points[:, 0] - inv_nonlinear.as_angle()
 
         if np.dot(dir_vector_conv, dir_vector_point) < 0 or np.dot(
             dir_vector_conv, dir_vector_point
@@ -395,8 +395,10 @@ class RotationalAvoider(BaseAvoider):
             inv_convergence_radius,
             weight=weight,
         )
+        
+        print('weight nonl', weight_nonl)
 
-        if not weight_nonl:  # zero value
+        if not weight_nonl:  # Zero value
             return inv_nonlinear.invert_normal()
 
         # TODO: integrate this function here
@@ -409,6 +411,7 @@ class RotationalAvoider(BaseAvoider):
         inv_nonlinear_conv = (
             weight_nonl * inv_conv_proj + (1 - weight_nonl) * inv_nonlinear
         )
+
         return inv_nonlinear_conv.invert_normal()
 
     def _get_rotated_convergence_direction(
