@@ -34,7 +34,6 @@ from vartools.visualization import VectorfieldPlotter
 plt.ion()
 
 
-
 def starshape():
     obs_list = RotationContainer()
 
@@ -119,9 +118,9 @@ def single_ellipse_linear_triple_plot(
     n_resolution=100, save_figure=False, show_streamplot=True
 ):
     figure_name = "comparison_linear_vectorfield"
-    
+
     initial_dynamics = LinearSystem(attractor_position=np.array([8, 0]))
-    
+
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
@@ -135,7 +134,9 @@ def single_ellipse_linear_triple_plot(
     obstacle_list.set_convergence_directions(initial_dynamics)
 
     my_plotter = VectorfieldPlotter(
-        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        x_lim=[-10, 10],
+        y_lim=[-10, 10],
+        figsize=(4.5, 4.0),
         attractor_position=initial_dynamics.attractor_position,
     )
     # my_plotter.plottype = "quiver"
@@ -145,7 +146,7 @@ def single_ellipse_linear_triple_plot(
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
     )
-    
+
     my_plotter.plot(
         my_avoider.evaluate,
         obstacle_list=obstacle_list,
@@ -155,7 +156,6 @@ def single_ellipse_linear_triple_plot(
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
-
 
     my_avoider = ModulationAvoider(
         initial_dynamics=initial_dynamics,
@@ -187,7 +187,7 @@ def single_ellipse_linear_triple_plot(
 
 def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
     figure_name = "comparison_nonlinear_vectorfield"
-    
+
     initial_dynamics = QuadraticAxisConvergence(
         stretching_factor=3,
         maximum_velocity=1.0,
@@ -206,9 +206,11 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         )
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
-    
+
     my_plotter = VectorfieldPlotter(
-        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        x_lim=[-10, 10],
+        y_lim=[-10, 10],
+        figsize=(4.5, 4.0),
         attractor_position=initial_dynamics.attractor_position,
     )
 
@@ -218,7 +220,7 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
     )
-    
+
     my_plotter.plot(
         my_avoider.evaluate,
         obstacle_list=obstacle_list,
@@ -228,7 +230,6 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
-
 
     my_avoider = ModulationAvoider(
         initial_dynamics=initial_dynamics,
@@ -261,7 +262,7 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
 def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
     # TODO: this does not work very well...
     figure_name = "spiral_single_ellipse"
-    
+
     initial_dynamics = LinearSystem(
         attractor_position=np.array([0, -5]),
         A_matrix=np.array([[-1.0, -3.0], [3.0, -1.0]]),
@@ -279,7 +280,9 @@ def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
     my_plotter = VectorfieldPlotter(
-        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        x_lim=[-10, 10],
+        y_lim=[-10, 10],
+        figsize=(4.5, 4.0),
         attractor_position=initial_dynamics.attractor_position,
     )
 
@@ -289,7 +292,7 @@ def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
     )
-    
+
     my_plotter.plot(
         my_avoider.evaluate,
         obstacle_list=obstacle_list,
@@ -299,7 +302,6 @@ def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
-
 
     my_avoider = ModulationAvoider(
         initial_dynamics=initial_dynamics,
@@ -896,9 +898,9 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 
 if (__name__) == "__main__":
-    plt.close('all')
+    plt.close("all")
     plt.ion()
-    
+
     # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=70)
     # single_ellipse_nonlinear_triple_plot(save_figure=False, n_resolution=40)
 

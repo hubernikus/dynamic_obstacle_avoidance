@@ -71,7 +71,8 @@ def get_intersection_with_circle(
 
 
 class BaseAvoider(ABC):
-    """ BaseAvoider which Allow the Evaluate """
+    """BaseAvoider which Allow the Evaluate"""
+
     def __init__(self, initial_dynamics, obstacle_list):
         self.initial_dynamics = initial_dynamics
         self.obstacle_list = obstacle_list
@@ -79,7 +80,7 @@ class BaseAvoider(ABC):
     @property
     def attractor(self):
         return self.initial_dynamics.attractor
-        
+
     def evaluate(self, position):
         initial_velocity = self.initial_dynamics.evaluate(position)
         return self.avoid(position, initial_velocity, self.obstacle_list)
@@ -103,7 +104,7 @@ class RotationalAvoider(BaseAvoider):
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
         super().__init__(initial_dynamics, obstacle_environment)
-        
+
         if convergence_system is None:
             self.convergence_system = self.initial_dynamics
         else:

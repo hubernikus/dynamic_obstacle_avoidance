@@ -32,14 +32,14 @@ class ModulationAvoider(BaseAvoider):
             self.convergence_system = self.initial_dynamics
         else:
             self.convergence_system = convergence_system
-    
+
     def avoid(
         self,
         position: np.ndarray,
         initial_velocity: np.ndarray,
         obstacle_list: list,
     ) -> np.ndarray:
-        """Obstacle avoidance based on 'local' rotation and the directional weighted mean. """
+        """Obstacle avoidance based on 'local' rotation and the directional weighted mean."""
 
         return obs_avoidance_interpolation_moving(
             position, initial_velocity, obstacle_list

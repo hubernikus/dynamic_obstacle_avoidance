@@ -614,8 +614,8 @@ def Simulation_vectorFields(
             # try:
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:, ix, iy], obs)
             # except:
-                # print('pos', pos)
-                # breakpoint()
+            # print('pos', pos)
+            # breakpoint()
             # xd_mod[:, ix, iy] = xd_init[:, ix, iy]  # DEBUGGING only!!
 
     t_end = timer()

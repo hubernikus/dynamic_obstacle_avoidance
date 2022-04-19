@@ -107,7 +107,7 @@ class BaseContainer(ABC):
 
         # No collision with any obstacle
         return True
-        
+
     def is_position_colliding(self, position: np.ndarray) -> bool:
         """Returns collision with environment (type Bool)
 
