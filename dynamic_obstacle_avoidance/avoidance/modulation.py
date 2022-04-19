@@ -10,8 +10,40 @@ import numpy as np
 import numpy.linalg as LA
 
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.dynamical_systems import DynamicalSystem
+
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.utils import *
+
+from .rotational_avoider import BaseAvoider
+
+
+class ModulationAvoider(BaseAvoider):
+    def __init__(
+        self,
+        initial_dynamics: DynamicalSystem = None,
+        convergence_system: DynamicalSystem = None,
+        obstacle_environment=None,
+    ):
+        """Initial dynamics, convergence direction and obstacle list are used."""
+        super().__init__(initial_dynamics, obstacle_environment)
+
+        if convergence_system is None:
+            self.convergence_system = self.initial_dynamics
+        else:
+            self.convergence_system = convergence_system
+    
+    def avoid(
+        self,
+        position: np.ndarray,
+        initial_velocity: np.ndarray,
+        obstacle_list: list,
+    ) -> np.ndarray:
+        """Obstacle avoidance based on 'local' rotation and the directional weighted mean. """
+
+        return obs_avoidance_interpolation_moving(
+            position, initial_velocity, obstacle_list
+        )
 
 
 def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):

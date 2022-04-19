@@ -100,7 +100,15 @@ class BaseContainer(ABC):
 
         return np.min(gammas)
 
-    def check_collision(self, position: np.ndarray) -> bool:
+    def is_collision_free(self, position: np.ndarray) -> bool:
+        for obs in self._obstacle_list:
+            if obs.get_gamma(position, in_global_frame=True) < 1:
+                return False
+
+        # No collision with any obstacle
+        return True
+        
+    def is_position_colliding(self, position: np.ndarray) -> bool:
         """Returns collision with environment (type Bool)
 
         Convention for this model is that:
@@ -128,5 +136,5 @@ class BaseContainer(ABC):
         """Return array of checked collisions of type bool."""
         collision_array = np.zeros(positions.shape[1], dtype=bool)
         for it in range(positions.shape[1]):
-            collision_array[it] = self.check_collision(positions[:, it])
+            collision_array[it] = self.is_position_colliding(positions[:, it])
         return collision_array

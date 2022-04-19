@@ -611,7 +611,11 @@ def Simulation_vectorFields(
                 continue
             pos = np.array([XX[ix, iy], YY[ix, iy]])
             xd_init[:, ix, iy] = dynamical_system(pos)  # initial DS
+            # try:
             xd_mod[:, ix, iy] = obs_avoidance(pos, xd_init[:, ix, iy], obs)
+            # except:
+                # print('pos', pos)
+                # breakpoint()
             # xd_mod[:, ix, iy] = xd_init[:, ix, iy]  # DEBUGGING only!!
 
     t_end = timer()

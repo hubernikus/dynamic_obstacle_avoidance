@@ -71,8 +71,21 @@ def get_intersection_with_circle(
 
 
 class BaseAvoider(ABC):
+    """ BaseAvoider which Allow the Evaluate """
+    def __init__(self, initial_dynamics, obstacle_list):
+        self.initial_dynamics = initial_dynamics
+        self.obstacle_list = obstacle_list
+
+    @property
+    def attractor(self):
+        return self.initial_dynamics.attractor
+        
+    def evaluate(self, position):
+        initial_velocity = self.initial_dynamics.evaluate(position)
+        return self.avoid(position, initial_velocity, self.obstacle_list)
+
     @abstractmethod
-    def avoid(self, *args, **kwargs):
+    def avoid(self, position, initial_velocity, obstacle_list):
         pass
 
 
@@ -84,18 +97,17 @@ class RotationalAvoider(BaseAvoider):
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
-        convergence_system: DynamicalSystem = None,
         obstacle_environment=None,
+        convergence_system: DynamicalSystem = None,
         cut_off_gamma: float = 1e6,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
-        self.initial_dynamics = initial_dynamics
+        super().__init__(initial_dynamics, obstacle_environment)
+        
         if convergence_system is None:
             self.convergence_system = self.initial_dynamics
         else:
             self.convergence_system = convergence_system
-
-        self.obstacle_list = obstacle_environment
 
         self.cut_off_gamma = cut_off_gamma
 
@@ -528,7 +540,7 @@ class RotationalAvoider(BaseAvoider):
 
         if not (dir_convergence - dir_reference).norm():
             # What if they are aligned -> for now return default vector
-            base_angle = np.zeros(UnitDirection(base).as_angle().shape)
+            base_angle = np.zeros(dir_convergence.as_angle().shape)
             base_angle[0] = convergence_radius
             return UnitDirection(base).from_angle(base_angle)
 

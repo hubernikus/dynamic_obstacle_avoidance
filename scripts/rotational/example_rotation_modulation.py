@@ -20,27 +20,19 @@ from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
+from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
+from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
+
 from dynamic_obstacle_avoidance.visualization import (
     Simulation_vectorFields,
     plot_obstacles,
 )
 
+from vartools.visualization import VectorfieldPlotter
+
 # plt.close('all')
 plt.ion()
 
-
-def single_ellipse(rot_degree=0.0):
-    obs_list = RotationContainer()
-    obs_list.append(
-        Ellipse(
-            center_position=np.array([0, 0]),
-            # axes_length=np.array([2, 5]),
-            axes_length=np.array([3, 3]),
-            orientation=rot_degree / 180.0 * pi,
-            tail_effect=False,
-        )
-    )
-    return obs_list
 
 
 def starshape():
@@ -126,228 +118,214 @@ def multiple_ellipse_hulls():
 def single_ellipse_linear_triple_plot(
     n_resolution=100, save_figure=False, show_streamplot=True
 ):
-    x_lim = [-10, 10]
-    y_lim = [-10, 10]
-
+    figure_name = "comparison_linear_vectorfield"
+    
     initial_dynamics = LinearSystem(attractor_position=np.array([8, 0]))
-
-    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
-    # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    # axs = [None, None, ax]
-
-    obstacle_list = single_ellipse()
+    
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2.5, 5]),
+            orientation=0.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
     obstacle_list.set_convergence_directions(initial_dynamics)
 
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=initial_dynamics.evaluate,
-        obs_avoidance_func=obstacle_avoidance_rotational,
-        automatic_reference_point=False,
-        pos_attractor=initial_dynamics.attractor_position,
-        fig_and_ax_handle=(fig, axs[2]),
-        # Quiver or Streamplot
-        show_streamplot=show_streamplot,
-        # show_streamplot=False,
+    my_plotter = VectorfieldPlotter(
+        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        attractor_position=initial_dynamics.attractor_position,
     )
+    # my_plotter.plottype = "quiver"
+    my_plotter.obstacle_alpha = 1
 
-    if True:
-        return
-
-    obstacle_list = []
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=initial_dynamics.evaluate,
-        automatic_reference_point=False,
-        pos_attractor=initial_dynamics.attractor_position,
-        fig_and_ax_handle=(fig, axs[0]),
+    my_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
     )
-
-    obstacle_list = single_ellipse()
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=initial_dynamics.evaluate,
-        automatic_reference_point=False,
-        pos_attractor=initial_dynamics.attractor_position,
-        fig_and_ax_handle=(fig, axs[1]),
+    
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
     )
 
     if save_figure:
-        figure_name = "comparison_linear_vectorfield"
-        plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight")
+        my_plotter.save(figure_name + "_rotated")
+
+
+    my_avoider = ModulationAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_modulated")
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        initial_dynamics.evaluate,
+        obstacle_list=None,
+        check_functor=None,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_initial")
 
 
 def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
-    x_lim = [-10, 10]
-    y_lim = [-10, 10]
-
-    InitialSystem = QuadraticAxisConvergence(
+    figure_name = "comparison_nonlinear_vectorfield"
+    
+    initial_dynamics = QuadraticAxisConvergence(
         stretching_factor=3,
         maximum_velocity=1.0,
         dimension=2,
         attractor_position=np.array([8, 0]),
     )
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 7))
-
-    obstacle_list = single_ellipse()
-    obstacle_list.set_convergence_directions(InitialSystem)
-
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        obs_avoidance_func=obstacle_avoidance_rotational,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[2]),
-        show_streamplot=True,
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([3, 3]),
+            orientation=0.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
+    obstacle_list.set_convergence_directions(initial_dynamics)
+    
+    my_plotter = VectorfieldPlotter(
+        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        attractor_position=initial_dynamics.attractor_position,
     )
 
-    obstacle_list = []
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[0]),
-    )
+    my_plotter.obstacle_alpha = 1
 
-    obstacle_list = single_ellipse()
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[1]),
+    my_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+    
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
     )
 
     if save_figure:
-        figure_name = "comparison_nonlinear_vectorfield"
-        plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight")
+        my_plotter.save(figure_name + "_rotated")
+
+
+    my_avoider = ModulationAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_modulated")
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        initial_dynamics.evaluate,
+        obstacle_list=None,
+        check_functor=None,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_initial")
 
 
 def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
-    x_lim = [-10, 10]
-    y_lim = [-10, 10]
-
-    InitialSystem = LinearSystem(
+    # TODO: this does not work very well...
+    figure_name = "spiral_single_ellipse"
+    
+    initial_dynamics = LinearSystem(
         attractor_position=np.array([0, -5]),
         A_matrix=np.array([[-1.0, -3.0], [3.0, -1.0]]),
     )
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 6))
-    # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    # axs = [None, None, ax]
-
-    obstacle_list = single_ellipse(rot_degree=30)
-    obstacle_list.set_convergence_directions(InitialSystem)
-
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        obs_avoidance_func=obstacle_avoidance_rotational,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[2]),
-        # Quiver or Streamplot
-        show_streamplot=True,
-        # show_streamplot=False,
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([3, 3]),
+            orientation=30.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
+    obstacle_list.set_convergence_directions(initial_dynamics)
+    my_plotter = VectorfieldPlotter(
+        x_lim=[-10, 10], y_lim=[-10, 10], figsize=(4.5, 4.0),
+        attractor_position=initial_dynamics.attractor_position,
     )
 
-    # if True:
-    # return
+    my_plotter.obstacle_alpha = 1
 
-    obstacle_list = single_ellipse(rot_degree=30)
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        # obs_avoidance_func=obstacle_avoidance_rotational,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[1]),
-        # Quiver or Streamplot
-        show_streamplot=True,
-        # show_streamplot=False,
+    my_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
     )
-
-    obstacle_list = []
-    Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        n_resolution,
-        obstacle_list,
-        saveFigure=False,
-        noTicks=True,
-        showLabel=False,
-        draw_vectorField=True,
-        dynamical_system=InitialSystem.evaluate,
-        obs_avoidance_func=obstacle_avoidance_rotational,
-        automatic_reference_point=False,
-        pos_attractor=InitialSystem.attractor_position,
-        fig_and_ax_handle=(fig, axs[0]),
-        # Quiver or Streamplot
-        show_streamplot=True,
-        # show_streamplot=False,
+    
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
     )
 
     if save_figure:
-        figure_name = "spiral_single_ellipse"
-        plt.savefig("figures/" + figure_name + ".png", bbox_inches="tight")
+        my_plotter.save(figure_name + "_rotated")
+
+
+    my_avoider = ModulationAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_modulated")
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        initial_dynamics.evaluate,
+        obstacle_list=None,
+        check_functor=None,
+        n_resolution=n_resolution,
+    )
+    if save_figure:
+        my_plotter.save(figure_name + "_initial")
 
 
 def single_ellipse_spiral_analysis(save_figure=False, n_resolution=40):
@@ -363,7 +341,16 @@ def single_ellipse_spiral_analysis(save_figure=False, n_resolution=40):
     # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     # axs = [None, None, ax]
 
-    obstacle_list = single_ellipse(rot_degree=30)
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2.5, 5]),
+            orientation=0.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
     obstacle_list.set_convergence_directions(InitialSystem)
 
     Simulation_vectorFields(
@@ -909,12 +896,14 @@ def multiple_hull_linear(save_figure=False, n_resolution=4):
 
 
 if (__name__) == "__main__":
-    single_ellipse_linear_triple_plot(save_figure=False, n_resolution=20)
+    plt.close('all')
+    plt.ion()
+    
+    # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=70)
+    # single_ellipse_nonlinear_triple_plot(save_figure=False, n_resolution=40)
 
-    # single_ellipse_nonlinear_triple_plot(save_figure=False)
-
-    # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=100)
-    # single_ellipse_spiral_analysis(save_figure=True, n_resolution=100)
+    single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=30)
+    single_ellipse_spiral_analysis(save_figure=True, n_resolution=30)
 
     # TODO: analyse this local-convergence better / what velocity is needed.
     #         What do we need to know about the field?
