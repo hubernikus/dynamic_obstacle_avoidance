@@ -643,12 +643,12 @@ if (__name__) == "__main__":
 
     # test_convergence_pulling()
 
-    test_single_circle_linear(visualize=False)
+    # test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
 
-    # test_single_perpendicular_ellipse(visualize=True)
+    test_single_perpendicular_ellipse(visualize=True)
 
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=False)
