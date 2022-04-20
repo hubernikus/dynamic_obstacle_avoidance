@@ -122,10 +122,10 @@ def test_surface_point_for_equal_axes(visualize=False):
 
 
 def test_normal_and_reference_directions(visualize=False):
-    x_lim = [-5, 5]
-    y_lim = [-5, 5]
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
 
-    n_resolution = 10
+    n_resolution = 20
     nx = n_resolution
     ny = n_resolution
     x_vals, y_vals = np.meshgrid(
@@ -134,7 +134,7 @@ def test_normal_and_reference_directions(visualize=False):
 
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]),
-        axes_length=np.array([5, 8]),
+        axes_length=np.array([2.5, 5]),
     )
 
     if visualize:
@@ -155,7 +155,7 @@ def test_normal_and_reference_directions(visualize=False):
                 positions[:, it], in_global_frame=True
             )
 
-        fig, ax = plt.subplots(figsize=(6, 5))
+        fig, ax = plt.subplots(figsize=(10, 9))
 
         ax.quiver(
             positions[0, :],
@@ -196,8 +196,8 @@ if (__name__) == "__main__":
     # test_gamma_for_circular_ellipse()
 
     # test_gamma_and_normal(visualize=True, n_resolution=20)
-    # test_normal_and_reference_directions(visualize=False)
+    test_normal_and_reference_directions(visualize=True)
 
-    # test_normal_directions()
+    # test_normal_directionsp(visualize=False)
 
     print("Tests done.")

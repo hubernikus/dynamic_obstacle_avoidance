@@ -188,11 +188,13 @@ def test_convergence_tangent(visualize=True):
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
     normal_base = DirectionBase(vector=normal * (-1))
 
+    delta_pos = obstacle.center_position - position
+
     main_avoider = RotationalAvoider()
     tangent = main_avoider._get_tangent_convergence_direction(
-        convergence_vector=linear_velocity,
-        reference_vector=(obstacle.center_position - position),
-        base=normal_base,
+        dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
+        dir_reference=UnitDirection(normal_base).from_vector(delta_pos),
+        # base=normal_base,
         convergence_radius=np.pi / 2,
     )
 
@@ -225,11 +227,11 @@ def test_convergence_tangent(visualize=True):
                 positions[:, it], in_global_frame=True
             )
             normal_base = DirectionBase(vector=normal * (-1))
-
+            delta_dir = obstacle.center_position - positions[:, it]
             unit_tangent = main_avoider._get_tangent_convergence_direction(
-                convergence_vector=linear_velocity,
-                reference_vector=(obstacle.center_position - positions[:, it]),
-                base=normal_base,
+                dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
+                dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
+                # base=normal_base,
                 convergence_radius=np.pi / 2,
             )
 
@@ -261,11 +263,12 @@ def test_rotating_towards_tangent():
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
     normal_base = DirectionBase(vector=normal * (-1))
 
+    delta_dir = obstacle.center_position - position
     main_avoider = RotationalAvoider()
     tangent = main_avoider._get_tangent_convergence_direction(
-        convergence_vector=linear_velocity,
-        reference_vector=(obstacle.center_position - position),
-        base=normal_base,
+        dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
+        dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
+        # base=normal_base,
         convergence_radius=np.pi / 2,
     )
 
@@ -374,7 +377,7 @@ def test_single_circle_linear(visualize=False):
     # Arbitrary constant velocity
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
 
-    obstacle_list.set_convergence_directions(ConvergingDynamics=initial_dynamics)
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
     # ConvergingDynamics=ConstantValue (initial_velocity)
 
     main_avoider = RotationalAvoider()
@@ -487,7 +490,7 @@ def test_single_perpendicular_ellipse(visualize=False):
     # Arbitrary constant velocity
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
 
-    obstacle_list.set_convergence_directions(ConvergingDynamics=initial_dynamics)
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
     # ConvergingDynamics=ConstantValue (initial_velocity)
 
     main_avoider = RotationalAvoider(
@@ -561,7 +564,7 @@ def test_double_ellipse(visualize=False):
     initial_velocity = np.array([1, 1])
 
     obstacle_list.set_convergence_directions(
-        ConvergingDynamics=ConstantValue(initial_velocity)
+        converging_dynamics=ConstantValue(initial_velocity)
     )
 
     if visualize:
@@ -611,8 +614,7 @@ def test_stable_linear_avoidance(visualize=False):
     # Arbitrary constant velocity
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
 
-    obstacle_list.set_convergence_directions(ConvergingDynamics=initial_dynamics)
-    # ConvergingDynamics=ConstantValue (initial_velocity)
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
 
     if visualize:
         # Plot Normals

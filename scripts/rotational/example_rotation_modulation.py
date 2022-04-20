@@ -114,7 +114,7 @@ def multiple_ellipse_hulls():
     return obs_list
 
 
-def single_ellipse_linear_triple_plot(
+def single_ellipse_linear_triple_plot_quiver(
     n_resolution=100, save_figure=False, show_streamplot=True
 ):
     figure_name = "comparison_linear_vectorfield"
@@ -132,27 +132,36 @@ def single_ellipse_linear_triple_plot(
         )
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
-
+    
     my_plotter = VectorfieldPlotter(
-        x_lim=[-10, 10],
         y_lim=[-10, 10],
-        figsize=(4.5, 4.0),
+        x_lim=[-10, 10],
+        figsize=(10.0, 8.0),
+        # figsize=(4.5, 4.0),
         attractor_position=initial_dynamics.attractor_position,
     )
-    # my_plotter.plottype = "quiver"
+
+    my_plotter.plottype = "quiver"
     my_plotter.obstacle_alpha = 1
 
     my_avoider = RotationalAvoider(
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
     )
+    # my_avoider.smooth_continuation_power = 0.1
+    my_avoider.smooth_continuation_power = 0.3
 
+    # my_plotter.positions = np.linspace([-3.32, 6.00], [-2.0, 6.00], 30).T
     my_plotter.plot(
+        # lambda x: obstacle_list[0].get_normal_direction(x, in_global_frame=True),
         my_avoider.evaluate,
         obstacle_list=obstacle_list,
         check_functor=obstacle_list.is_collision_free,
         n_resolution=n_resolution,
     )
+
+    # if True:
+        # return
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
@@ -901,14 +910,14 @@ if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
-    # single_ellipse_linear_triple_plot(save_figure=False, n_resolution=70)
+    single_ellipse_linear_triple_plot_quiver(save_figure=False, n_resolution=20)
     # single_ellipse_nonlinear_triple_plot(save_figure=False, n_resolution=40)
 
-    single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=30)
-    single_ellipse_spiral_analysis(save_figure=True, n_resolution=30)
+    # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=30)
+    # single_ellipse_spiral_analysis(save_figure=True, n_resolution=30)
 
     # TODO: analyse this local-convergence better / what velocity is needed.
-    #         What do we need to know about the field?
+    # What do we need to know about the field?
     # single_ellipse_multiattractor_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=100)
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)

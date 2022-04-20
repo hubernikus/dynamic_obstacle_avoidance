@@ -94,7 +94,7 @@ class RotationalAvoider(BaseAvoider):
     """
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
     """
-
+    # TODO: don't use UnitDirection (as it has a large overhead)
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
@@ -111,6 +111,10 @@ class RotationalAvoider(BaseAvoider):
             self.convergence_system = convergence_system
 
         self.cut_off_gamma = cut_off_gamma
+
+        # Zero continuation power -> not smoothing at the end
+        # The larger the smoother (a good value is 1) )
+        self.smooth_continuation_power = 0
 
     def avoid(
         self,
@@ -192,6 +196,10 @@ class RotationalAvoider(BaseAvoider):
         )
         # modulated_velocity = initial_velocity - relative_velocity
 
+        initial_velocity = initial_velocity - relative_velocity
+        if not LA.norm(initial_velocity):
+            return initial_velocity + relative_velocity
+
         inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
         # rotated_velocities = np.zeros((dimension, n_obs_close))
 
@@ -231,6 +239,8 @@ class RotationalAvoider(BaseAvoider):
                 )
                 continue
 
+            # breakpoint()
+            
             # Note that the inv_gamma_weight was prepared for the multiboundary
             # environment through the reference point displacement (see 'loca_reference_point')
             rotated_directions[it] = self.directional_convergence_summing(
@@ -254,7 +264,7 @@ class RotationalAvoider(BaseAvoider):
             weights=weights,
         )
 
-        rotated_velocity = rotated_velocity - relative_velocity
+        rotated_velocity = rotated_velocity + relative_velocity
 
         # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
         return rotated_velocity
@@ -287,7 +297,7 @@ class RotationalAvoider(BaseAvoider):
         return modulated_velocity
 
     def _get_directional_deviation_weight(
-        self, weight: float, weight_deviation: float, power_factor: float = 3.0
+        self, weight: float, weight_deviation: float, power_factor: float = 3.0,
     ) -> float:
         """This 'smooth'-weighting needs to be done, in order to have a smooth vector-field
         which can be approximated by the nonlinear DS."""
@@ -489,7 +499,7 @@ class RotationalAvoider(BaseAvoider):
         Parameters
         ----------
         ...
-
+        
         Returns
         -------
         ...
@@ -510,12 +520,12 @@ class RotationalAvoider(BaseAvoider):
             # Tangent and initial are identical vector, hence no interpolation needed
             return dir_initial_velocity
 
-        weight_correct_direction = np.dot(angle_tangent, delta_angle) / (
+        dot_prod_direction = np.dot(angle_tangent, delta_angle) / (
             LA.norm(angle_tangent) * delta_norm
         )
 
-        if weight_correct_direction > 0:
-            weight = weight * (1 - weight_correct_direction)
+        if dot_prod_direction > 0:
+            weight = weight * (1 - dot_prod_direction)
 
         dir_convergence = (
             weight * dir_convergence_tangent + (1 - weight) * dir_initial_velocity
@@ -529,21 +539,18 @@ class RotationalAvoider(BaseAvoider):
 
     def _get_tangent_convergence_direction(
         self,
-        convergence_vector: np.ndarray,
-        reference_vector: np.ndarray,
-        base: DirectionBase,
+        dir_convergence: UnitDirection,
+        dir_reference: UnitDirection,
+        # base: DirectionBase,
         convergence_radius: float = np.pi / 2,
-    ):
+    ) -> UnitDirection:
         """Projects the reference direction onto the surface"""
-
-        dir_convergence = UnitDirection(base).from_vector(convergence_vector)
-        dir_reference = UnitDirection(base).from_vector(reference_vector)
 
         if not (dir_convergence - dir_reference).norm():
             # What if they are aligned -> for now return default vector
             base_angle = np.zeros(dir_convergence.as_angle().shape)
             base_angle[0] = convergence_radius
-            return UnitDirection(base).from_angle(base_angle)
+            return UnitDirection(dir_reference.base).from_angle(base_angle)
 
         surface_angle = get_intersection_with_circle(
             start_position=dir_reference.as_angle(),
@@ -558,7 +565,7 @@ class RotationalAvoider(BaseAvoider):
                 + f"radius={convergence_radius}."
             )
 
-        return UnitDirection(base).from_angle(surface_angle)
+        return UnitDirection(dir_reference.base).from_angle(surface_angle)
 
     def _get_rotated_convergence_direction(
         self,
@@ -603,6 +610,8 @@ class RotationalAvoider(BaseAvoider):
             weight, weight_deviation=weight_deviation
         )
 
+        # Weight which ensures continuity at far end
+        
         return w_conv * dir_tangent + (1 - w_conv) * dir_convergence
 
     def directional_convergence_summing(
@@ -643,10 +652,13 @@ class RotationalAvoider(BaseAvoider):
         # base=base,
         # )
 
+        dir_convergence = UnitDirection(base).from_vector(convergence_vector)
+        dir_reference = UnitDirection(base).from_vector(reference_vector)
+
         tangent = self._get_tangent_convergence_direction(
-            convergence_vector=convergence_vector,
-            reference_vector=reference_vector,
-            base=base,
+            dir_convergence=dir_convergence,
+            dir_reference=dir_reference,
+            # base=base,
             convergence_radius=np.pi / 2,
         )
 
@@ -664,6 +676,23 @@ class RotationalAvoider(BaseAvoider):
         # convergence_radius=convergence_radius,
         # weight=weight,
 
+        convergence_radius = np.pi / 2
+        if (self.smooth_continuation_power
+            and weight < 1
+            and LA.norm(dir_convergence.as_angle()) < convergence_radius
+        ):
+            # MAYBE: incorporate this in the tangent length(?)
+            continuation_weight = LA.norm((dir_convergence - dir_reference).as_angle())
+            continuation_weight = continuation_weight / convergence_radius
+
+            if continuation_weight <= 0:
+                weight = 0
+            elif continuation_weight < 1:
+                continuation_weight = continuation_weight ** self.smooth_continuation_power
+                weight = weight ** (1 / continuation_weight)
+            
+        # breakpoint()
+        
         rotated_velocity = self._get_projected_velocity(
             dir_convergence_tangent=tangent,
             dir_initial_velocity=dir_initial,
