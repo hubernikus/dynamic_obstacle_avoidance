@@ -74,6 +74,7 @@ class RotationalAvoider(BaseAvoider):
     """
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
     """
+
     # TODO: don't use UnitDirection (as it has a large overhead)
     def __init__(
         self,
@@ -220,7 +221,7 @@ class RotationalAvoider(BaseAvoider):
                 continue
 
             # breakpoint()
-            
+
             # Note that the inv_gamma_weight was prepared for the multiboundary
             # environment through the reference point displacement (see 'loca_reference_point')
             rotated_directions[it] = self.directional_convergence_summing(
@@ -277,7 +278,10 @@ class RotationalAvoider(BaseAvoider):
         return modulated_velocity
 
     def _get_directional_deviation_weight(
-        self, weight: float, weight_deviation: float, power_factor: float = 3.0,
+        self,
+        weight: float,
+        weight_deviation: float,
+        power_factor: float = 3.0,
     ) -> float:
         """This 'smooth'-weighting needs to be done, in order to have a smooth vector-field
         which can be approximated by the nonlinear DS."""
@@ -479,7 +483,7 @@ class RotationalAvoider(BaseAvoider):
         Parameters
         ----------
         ...
-        
+
         Returns
         -------
         ...
@@ -591,7 +595,7 @@ class RotationalAvoider(BaseAvoider):
         )
 
         # Weight which ensures continuity at far end
-        
+
         return w_conv * dir_tangent + (1 - w_conv) * dir_convergence
 
     def directional_convergence_summing(
@@ -656,8 +660,8 @@ class RotationalAvoider(BaseAvoider):
         # convergence_radius=convergence_radius,
         # weight=weight,
 
-        convergence_radius = np.pi / 2
-        if (self.smooth_continuation_power
+        if (
+            self.smooth_continuation_power
             and weight < 1
             and LA.norm(dir_convergence.as_angle()) < convergence_radius
         ):
@@ -668,11 +672,13 @@ class RotationalAvoider(BaseAvoider):
             if continuation_weight <= 0:
                 weight = 0
             elif continuation_weight < 1:
-                continuation_weight = continuation_weight ** self.smooth_continuation_power
+                continuation_weight = (
+                    continuation_weight**self.smooth_continuation_power
+                )
                 weight = weight ** (1 / continuation_weight)
-            
+
         # breakpoint()
-        
+
         rotated_velocity = self._get_projected_velocity(
             dir_convergence_tangent=tangent,
             dir_initial_velocity=dir_initial,

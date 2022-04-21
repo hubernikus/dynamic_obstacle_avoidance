@@ -69,9 +69,9 @@ class RotationContainer(BaseContainer):
                     self._convergence_dynamics[it_obs] = LinearSystem(
                         attractor_position=position
                     )
-                    
+
             return
-            
+
         attractor = nonlinear_dynamics.attractor_position
 
         for it_obs in range(self.n_obstacles):
@@ -86,16 +86,17 @@ class RotationContainer(BaseContainer):
                 continue
 
             local_velocity = nonlinear_dynamics.evaluate(position)
-            dot_prod = (np.dot(position, local_velocity)
-                        / (pos_norm * LA.norm(local_velocity)))
-            
+            dot_prod = np.dot(position, local_velocity) / (
+                pos_norm * LA.norm(local_velocity)
+            )
+
             if dot_prod == (-1):
                 # Simpler and faster DS -> no rotation need, hence linear is sufficient
                 self._convergence_dynamics[it_obs] = LinearSystem(
                     attractor_position=attractor
                 )
                 continue
-            
+
             # Nonzero / not at attractor
             reference_radius = self[it_obs].get_reference_length()
 
@@ -110,7 +111,7 @@ class RotationContainer(BaseContainer):
                 influence_radius=reference_radius,
                 attractor_position=attractor,
             )
-            
+
     def get_convergence_direction(self, position, it_obs):
         """Return 'convergence direction' at input 'position'."""
         return self._convergence_dynamics[it_obs].evaluate(position)

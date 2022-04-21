@@ -23,9 +23,15 @@ from dynamic_obstacle_avoidance.visualization import (
     plot_obstacles,
 )
 
-from dynamic_obstacle_avoidance.rotational.multiboundary_container import MultiBoundaryContainer
-from dynamic_obstacle_avoidance.rotational.multihull_convergence import get_desired_radius
-from dynamic_obstacle_avoidance.rotational.multihull_convergence import multihull_attraction
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
+    MultiBoundaryContainer,
+)
+from dynamic_obstacle_avoidance.rotational.multihull_convergence import (
+    get_desired_radius,
+)
+from dynamic_obstacle_avoidance.rotational.multihull_convergence import (
+    multihull_attraction,
+)
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
@@ -35,6 +41,7 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
 #    directional_convergence_summing,
 # )
+
 
 def get_positions(x_lim, y_lim, n_resolution, flattened=False):
     # dimension = 2

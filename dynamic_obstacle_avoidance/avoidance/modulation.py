@@ -17,6 +17,7 @@ from dynamic_obstacle_avoidance.utils import *
 
 from .base_avoider import BaseAvoider
 
+
 class ModulationAvoider(BaseAvoider):
     def __init__(
         self,
@@ -43,7 +44,6 @@ class ModulationAvoider(BaseAvoider):
         return obs_avoidance_interpolation_moving(
             position, initial_velocity, obstacle_list
         )
-
 
 
 def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):

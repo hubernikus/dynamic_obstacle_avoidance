@@ -18,7 +18,9 @@ from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 
-from dynamic_obstacle_avoidance.rotational.multiboundary_container import  MultiBoundaryContainer
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
+    MultiBoundaryContainer,
+)
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
@@ -133,7 +135,7 @@ def single_ellipse_linear_triple_plot_quiver(
         )
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
-    
+
     my_plotter = VectorfieldPlotter(
         y_lim=[-10, 10],
         x_lim=[-10, 10],
@@ -162,7 +164,7 @@ def single_ellipse_linear_triple_plot_quiver(
     )
 
     # if True:
-        # return
+    # return
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
@@ -308,9 +310,7 @@ def single_ellipse_linear_triple_integration_lines(
         obstacle_environment=obstacle_list,
     )
 
-    my_plotter.plot_streamlines(
-        
-    )
+    my_plotter.plot_streamlines()
 
     my_plotter.plot(
         my_avoider.evaluate,
@@ -320,7 +320,7 @@ def single_ellipse_linear_triple_integration_lines(
 
     if True:
         return
-        
+
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
 
@@ -350,7 +350,6 @@ def single_ellipse_linear_triple_integration_lines(
 
     if save_figure:
         my_plotter.save(figure_name + "_initial")
-
 
 
 def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
@@ -998,7 +997,7 @@ if (__name__) == "__main__":
     # single_ellipse_linear_triple_plot_quiver(save_figure=True, n_resolution=15)
     single_ellipse_linear_triple_integration_lines(save_figure=False)
     # single_ellipse_nonlinear_triple_plot(save_figure=True, n_resolution=40)
-    
+
     # single_ellipse_linear_triple_plot(save_figure=True, n_resolution=15)
 
     # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=30)

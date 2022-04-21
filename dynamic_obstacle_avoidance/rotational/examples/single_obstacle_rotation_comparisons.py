@@ -19,7 +19,9 @@ from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 
-from dynamic_obstacle_avoidance.rotational.multiboundary_container import  MultiBoundaryContainer
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
+    MultiBoundaryContainer,
+)
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
@@ -51,7 +53,7 @@ def single_ellipse_linear_triple_plot_quiver(
         )
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
-    
+
     my_plotter = VectorfieldPlotter(
         y_lim=[-10, 10],
         x_lim=[-10, 10],
@@ -200,7 +202,7 @@ def single_ellipse_linear_triple_plot_streampline(
         )
     )
     obstacle_list.set_convergence_directions(initial_dynamics)
-    
+
     my_plotter = VectorfieldPlotter(
         y_lim=[-10, 10],
         x_lim=[-10, 10],
@@ -223,7 +225,7 @@ def single_ellipse_linear_triple_plot_streampline(
         check_functor=obstacle_list.is_collision_free,
         n_resolution=n_resolution,
     )
-    
+
     if save_figure:
         my_plotter.save(figure_name + "_03")
 
@@ -237,7 +239,7 @@ def single_ellipse_linear_triple_plot_streampline(
         check_functor=obstacle_list.is_collision_free,
         n_resolution=n_resolution,
     )
-    
+
     if save_figure:
         my_plotter.save(figure_name + "_00")
 
@@ -251,7 +253,7 @@ def single_ellipse_linear_triple_plot_streampline(
         check_functor=obstacle_list.is_collision_free,
         n_resolution=n_resolution,
     )
-    
+
     if save_figure:
         my_plotter.save(figure_name + "_10")
 
@@ -260,13 +262,12 @@ def single_ellipse_linear_triple_integration_lines(
     save_figure=False, it_max=300, dt_step=0.02
 ):
     figure_name = "comparison_linear_integration"
-    
 
     # initial_dynamics = QuadraticAxisConvergence(
-        # stretching_factor=3,
-        # maximum_velocity=1.0,
-        # dimension=2,
-        # attractor_position=np.array([8, 0]),
+    # stretching_factor=3,
+    # maximum_velocity=1.0,
+    # dimension=2,
+    # attractor_position=np.array([8, 0]),
     # )
     initial_dynamics = LinearSystem(attractor_position=np.array([8, 0]))
 
@@ -284,7 +285,7 @@ def single_ellipse_linear_triple_integration_lines(
 
     x_lim = [-10, 10]
     y_lim = [-10, 10]
-    
+
     my_plotter = VectorfieldPlotter(
         x_lim=x_lim,
         y_lim=y_lim,
@@ -294,13 +295,15 @@ def single_ellipse_linear_triple_integration_lines(
     my_plotter.obstacle_alpha = 1
     my_plotter.dt_step = dt_step
     my_plotter.it_max = it_max
-    
-    initial_positions = np.vstack((
-        np.linspace([x_lim[0], y_lim[0]], [x_lim[1], y_lim[0]], 10),
-        np.linspace([x_lim[0], y_lim[0]], [x_lim[0], y_lim[1]], 10),
-        np.linspace([x_lim[0], y_lim[1]], [x_lim[1], y_lim[1]], 10),
-    )).T
-    
+
+    initial_positions = np.vstack(
+        (
+            np.linspace([x_lim[0], y_lim[0]], [x_lim[1], y_lim[0]], 10),
+            np.linspace([x_lim[0], y_lim[0]], [x_lim[0], y_lim[1]], 10),
+            np.linspace([x_lim[0], y_lim[1]], [x_lim[1], y_lim[1]], 10),
+        )
+    ).T
+
     my_avoider = RotationalAvoider(
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
@@ -320,11 +323,11 @@ def single_ellipse_linear_triple_integration_lines(
         my_plotter.save(figure_name + "_03")
 
     # if True:
-        # return
+    # return
 
     # New continuation power value
     my_avoider.smooth_continuation_power = 0.0
-    
+
     my_plotter.create_new_figure()
     my_plotter.plot_streamlines(
         initial_positions,
@@ -335,10 +338,10 @@ def single_ellipse_linear_triple_integration_lines(
     )
     if save_figure:
         my_plotter.save(figure_name + "_00")
-    
+
     # New continuation power value
     my_avoider.smooth_continuation_power = 1.0
-    
+
     my_plotter.create_new_figure()
     my_plotter.plot_streamlines(
         initial_positions,

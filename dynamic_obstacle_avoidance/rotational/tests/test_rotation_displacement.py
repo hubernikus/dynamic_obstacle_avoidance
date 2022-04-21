@@ -22,6 +22,7 @@ from vartools.directional_space.visualization import circular_space_setup
 
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
+
 def visualize_displacements(
     inv_nonlinear_list: list,
     inv_conv_rotated_list: list,
