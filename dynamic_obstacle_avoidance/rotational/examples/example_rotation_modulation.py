@@ -14,14 +14,15 @@ from vartools.dynamical_systems import LinearSystem, QuadraticAxisConvergence
 from vartools.dynamical_systems import BifurcationSpiral
 from vartools.dynamical_systems import plot_dynamical_system_streamplot
 
-from dynamic_obstacle_avoidance.containers import BaseContainer, MultiBoundaryContainer
-from dynamic_obstacle_avoidance.containers import RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse, StarshapedFlower
-from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
-
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
 from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
+
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import  MultiBoundaryContainer
+from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
+from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
+
 
 from dynamic_obstacle_avoidance.visualization import (
     Simulation_vectorFields,
@@ -300,19 +301,26 @@ def single_ellipse_linear_triple_integration_lines(
     )
 
     my_plotter.obstacle_alpha = 1
+    my_plotter.it_max = it_max
 
     my_avoider = RotationalAvoider(
         initial_dynamics=initial_dynamics,
         obstacle_environment=obstacle_list,
     )
 
+    my_plotter.plot_streamlines(
+        
+    )
+
     my_plotter.plot(
         my_avoider.evaluate,
         obstacle_list=obstacle_list,
         check_functor=obstacle_list.is_collision_free,
-        n_resolution=n_resolution,
     )
 
+    if True:
+        return
+        
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
 

@@ -70,7 +70,6 @@ def get_intersection_with_circle(
         return points
 
 
-
 class RotationalAvoider(BaseAvoider):
     """
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
