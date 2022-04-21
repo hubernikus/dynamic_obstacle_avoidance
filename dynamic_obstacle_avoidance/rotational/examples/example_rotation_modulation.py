@@ -117,7 +117,7 @@ def multiple_ellipse_hulls():
 def single_ellipse_linear_triple_plot_quiver(
     n_resolution=100, save_figure=False, show_streamplot=True
 ):
-    figure_name = "comparison_linear_vectorfield"
+    figure_name = "comparison_linear_"
 
     initial_dynamics = LinearSystem(attractor_position=np.array([8, 0]))
 
@@ -136,8 +136,8 @@ def single_ellipse_linear_triple_plot_quiver(
     my_plotter = VectorfieldPlotter(
         y_lim=[-10, 10],
         x_lim=[-10, 10],
-        figsize=(10.0, 8.0),
-        # figsize=(4.5, 4.0),
+        # figsize=(10.0, 8.0),
+        figsize=(4.0, 3.5),
         attractor_position=initial_dynamics.attractor_position,
     )
 
@@ -266,6 +266,83 @@ def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
 
     if save_figure:
         my_plotter.save(figure_name + "_initial")
+
+
+def single_ellipse_linear_triple_integration_lines(
+    save_figure=False, it_max=100, dt_step=0.1
+):
+    figure_name = "comparison_linear_integration"
+
+    initial_dynamics = QuadraticAxisConvergence(
+        stretching_factor=3,
+        maximum_velocity=1.0,
+        dimension=2,
+        attractor_position=np.array([8, 0]),
+    )
+
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([3, 3]),
+            orientation=0.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
+    obstacle_list.set_convergence_directions(initial_dynamics)
+
+    my_plotter = VectorfieldPlotter(
+        x_lim=[-10, 10],
+        y_lim=[-10, 10],
+        figsize=(4.5, 4.0),
+        attractor_position=initial_dynamics.attractor_position,
+    )
+
+    my_plotter.obstacle_alpha = 1
+
+    my_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_rotated")
+
+    my_avoider = ModulationAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_modulated")
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        initial_dynamics.evaluate,
+        obstacle_list=None,
+        check_functor=None,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_initial")
+
 
 
 def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
@@ -910,8 +987,11 @@ if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
-    single_ellipse_linear_triple_plot_quiver(save_figure=False, n_resolution=20)
-    # single_ellipse_nonlinear_triple_plot(save_figure=False, n_resolution=40)
+    # single_ellipse_linear_triple_plot_quiver(save_figure=True, n_resolution=15)
+    single_ellipse_linear_triple_integration_lines(save_figure=False)
+    # single_ellipse_nonlinear_triple_plot(save_figure=True, n_resolution=40)
+    
+    # single_ellipse_linear_triple_plot(save_figure=True, n_resolution=15)
 
     # single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=30)
     # single_ellipse_spiral_analysis(save_figure=True, n_resolution=30)

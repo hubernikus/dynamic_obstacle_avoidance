@@ -28,7 +28,7 @@ from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
 # directional_convergence_summing,
 # )
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 get_directional_weighted_sum_from_unit_directions
 

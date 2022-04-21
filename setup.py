@@ -10,7 +10,7 @@ setup(
     zip_safe=True,
     maintainer="Lukas Huber",
     maintainer_email="lukas.huber@epfl.ch",
-    description="Various Mathematical Tools",
+    description="Dynamic Obstacle Avoidance",
     license="TODO",
     # package_dir={'': 'src'},
     tests_require=["pytest"],

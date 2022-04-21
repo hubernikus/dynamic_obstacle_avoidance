@@ -20,12 +20,13 @@ from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.dynamical_systems import plot_vectorfield
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
-from dynamic_obstacle_avoidance.avoidance import obstacle_avoidance_rotational
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-from dynamic_obstacle_avoidance.avoidance.rotational_avoider import (
+
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
 )
-from dynamic_obstacle_avoidance.containers import RotationContainer
+from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
+from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 from dynamic_obstacle_avoidance.visualization import (
     Simulation_vectorFields,

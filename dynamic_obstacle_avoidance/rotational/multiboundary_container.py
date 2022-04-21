@@ -8,7 +8,7 @@ Container for Obstacle to treat the intersction (and exiting) between different 
 import warnings
 import numpy as np
 
-from dynamic_obstacle_avoidance.containers import RotationContainer
+from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 
 from vartools.dynamical_systems import LinearSystem
 

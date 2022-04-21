@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 
 from vartools.dynamical_systems import LinearSystem
 
-from dynamic_obstacle_avoidance.containers import RotationContainer
 from dynamic_obstacle_avoidance.obstacles import Ellipse
+
+from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 
 
 class TestRotational(unittest.TestCase):

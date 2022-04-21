@@ -27,7 +27,7 @@ from vartools.directional_space.visualization import circular_space_setup
 # _get_projected_nonlinear_velocity,
 # )
 
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 # plt.close('all')
 plt.ion()

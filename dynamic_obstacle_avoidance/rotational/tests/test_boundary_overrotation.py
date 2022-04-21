@@ -15,7 +15,6 @@ from vartools.dynamical_systems import LinearSystem
 from vartools.directional_space import UnitDirection, DirectionBase
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
-from dynamic_obstacle_avoidance.containers import MultiBoundaryContainer
 from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import (
     gamma_field_visualization,
 )
@@ -24,20 +23,18 @@ from dynamic_obstacle_avoidance.visualization import (
     plot_obstacles,
 )
 
-from dynamic_obstacle_avoidance.avoidance.multihull_convergence import (
-    get_desired_radius,
-    multihull_attraction,
-)
-
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-from dynamic_obstacle_avoidance.avoidance.rotational_avoider import (
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import MultiBoundaryContainer
+from dynamic_obstacle_avoidance.rotational.multihull_convergence import get_desired_radius
+from dynamic_obstacle_avoidance.rotational.multihull_convergence import multihull_attraction
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
 )
+
 
 # from dynamic_obstacle_avoidance.avoidance.rotation import (
 #    directional_convergence_summing,
 # )
-
 
 def get_positions(x_lim, y_lim, n_resolution, flattened=False):
     # dimension = 2
@@ -95,8 +92,6 @@ class TestOverrotation(unittest.TestCase):
         self.assertTrue(ratio[0] > 0)
 
     def test_directional_deviation_weight(self, visualize=False, save_figure=False):
-        from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-
         avoider = RotationalAvoider()
         w_conv = avoider._get_directional_deviation_weight(weight=1, weight_deviation=1)
         self.assertTrue(w_conv == 1)

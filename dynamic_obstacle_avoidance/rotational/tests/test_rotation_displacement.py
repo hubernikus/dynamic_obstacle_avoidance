@@ -20,18 +20,7 @@ import matplotlib as mpl
 from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.directional_space.visualization import circular_space_setup
 
-# from dynamic_obstacle_avoidance.avoidance.rotation import (
-# _get_projection_of_inverted_convergence_direction,
-# )
-# from dynamic_obstacle_avoidance.avoidance.rotation import (
-# _get_projected_nonlinear_velocity,
-# )
-
-from dynamic_obstacle_avoidance.avoidance import RotationalAvoider
-
-# plt.close('all')
-plt.ion()
-
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 def visualize_displacements(
     inv_nonlinear_list: list,
@@ -293,6 +282,8 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
 
 if (__name__) == "__main__":
+    plt.ion()
+    plt.close(all)
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
 
     visualize = False

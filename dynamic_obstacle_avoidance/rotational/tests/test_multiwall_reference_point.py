@@ -11,10 +11,10 @@ from math import pi
 import numpy as np
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
-from dynamic_obstacle_avoidance.containers import MultiBoundaryContainer
 from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import (
     gamma_field_visualization,
 )
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import MultiBoundaryContainer
 
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 

@@ -2,14 +2,12 @@
 Library for the Rotation (Modulation Imitation) of Linear Systems
 """
 # Author: Lukas Huber
-# Email: hubernikus@gmail.com
-# License: BSD (c) 2021
+# GitHub: hubernikus
+# Created: 2021-09-01
 
 import warnings
 import copy
 from math import pi
-
-from abc import ABC, abstractmethod
 
 import numpy as np
 from numpy import linalg as LA
@@ -28,6 +26,8 @@ from vartools.dynamical_systems import DynamicalSystem
 from dynamic_obstacle_avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
+
+from dynamic_obstacle_avoidance.avoidance import BaseAvoider
 
 
 def get_intersection_with_circle(
@@ -70,25 +70,6 @@ def get_intersection_with_circle(
         return points
 
 
-class BaseAvoider(ABC):
-    """BaseAvoider which Allow the Evaluate"""
-
-    def __init__(self, initial_dynamics, obstacle_list):
-        self.initial_dynamics = initial_dynamics
-        self.obstacle_list = obstacle_list
-
-    @property
-    def attractor(self):
-        return self.initial_dynamics.attractor
-
-    def evaluate(self, position):
-        initial_velocity = self.initial_dynamics.evaluate(position)
-        return self.avoid(position, initial_velocity, self.obstacle_list)
-
-    @abstractmethod
-    def avoid(self, position, initial_velocity, obstacle_list):
-        pass
-
 
 class RotationalAvoider(BaseAvoider):
     """
@@ -113,8 +94,8 @@ class RotationalAvoider(BaseAvoider):
         self.cut_off_gamma = cut_off_gamma
 
         # Zero continuation power -> not smoothing at the end
-        # The larger the smoother (a good value is 1) )
-        self.smooth_continuation_power = 0
+        # The larger the smoother (a good value is 0.3) )
+        self.smooth_continuation_power = 0.3
 
     def avoid(
         self,
