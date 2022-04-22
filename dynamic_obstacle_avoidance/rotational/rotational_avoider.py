@@ -508,6 +508,7 @@ class RotationalAvoider(BaseAvoider):
             LA.norm(angle_tangent) * delta_norm
         )
 
+        # Reduce the tail effect -> already going in the correct direction
         if dot_prod_direction > 0:
             weight = weight * (1 - dot_prod_direction)
 
