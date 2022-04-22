@@ -110,6 +110,81 @@ def single_ellipse_linear_triple_plot_quiver(
         my_plotter.save(figure_name + "_initial")
 
 
+def rotated_ellipse_linear_triple_plot_quiver(
+    n_resolution=100, save_figure=False, show_streamplot=True
+):
+    figure_name = "comparison_rotated_"
+
+    initial_dynamics = LinearSystem(attractor_position=np.array([8, 0]))
+
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2.5, 5]),
+            orientation=30.0 / 180 * pi,
+            is_boundary=False,
+            tail_effect=False,
+        )
+    )
+    obstacle_list.set_convergence_directions(initial_dynamics)
+
+    my_plotter = VectorfieldPlotter(
+        y_lim=[-10, 10],
+        x_lim=[-10, 10],
+        # figsize=(10.0, 8.0),
+        figsize=(4.0, 3.5),
+        attractor_position=initial_dynamics.attractor_position,
+    )
+
+    my_plotter.plottype = "quiver"
+    my_plotter.obstacle_alpha = 1
+
+    my_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+    my_avoider.smooth_continuation_power = 0.3
+
+    my_plotter.plot(
+        # lambda x: obstacle_list[0].get_normal_direction(x, in_global_frame=True),
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_rotated")
+
+    my_avoider = ModulationAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        my_avoider.evaluate,
+        obstacle_list=obstacle_list,
+        check_functor=obstacle_list.is_collision_free,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_modulated")
+
+    my_plotter.create_new_figure()
+    my_plotter.plot(
+        initial_dynamics.evaluate,
+        obstacle_list=None,
+        check_functor=None,
+        n_resolution=n_resolution,
+    )
+
+    if save_figure:
+        my_plotter.save(figure_name + "_initial")
+
+
 def single_ellipse_nonlinear_triple_plot(n_resolution=100, save_figure=False):
     figure_name = "comparison_nonlinear_vectorfield"
 
@@ -430,8 +505,10 @@ if (__name__) == "__main__":
     plt.ion()
 
     # single_ellipse_linear_triple_plot_quiver(save_figure=True, n_resolution=15)
-    single_ellipse_linear_triple_integration_lines(save_figure=True)
-    single_ellipse_linear_triple_plot_streampline(save_figure=True, n_resolution=30)
+    # single_ellipse_linear_triple_integration_lines(save_figure=False)
+    # single_ellipse_linear_triple_plot_streampline(save_figure=False, n_resolution=30)
     # single_ellipse_nonlinear_triple_plot(save_figure=True, n_resolution=40)
+
+    rotated_ellipse_linear_triple_plot_quiver(save_figure=False, n_resolution=30)
 
     pass
