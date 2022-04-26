@@ -12,7 +12,7 @@ import numpy as np
 from numpy import linalg as LA
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.directional_space import UnitDirection
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.visualization.gamma_field_visualization import (
@@ -133,7 +133,7 @@ class TestOverrotation(unittest.TestCase):
         # TODO: check and restore
         # Weighting der
         dim = 3
-        base = DirectionBase(matrix=np.eye(dim))
+        base = np.eye(dim)
 
         convergence_vector = np.array([1, 0.1, 0])
         convergence_vector = convergence_vector / LA.norm(convergence_vector)

@@ -17,7 +17,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib as mpl
 
-from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.directional_space import UnitDirection
 from vartools.directional_space.visualization import circular_space_setup
 
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
@@ -36,14 +36,13 @@ def visualize_displacements(
     inv_nonlinear_list = copy.deepcopy(inv_nonlinear_list)
     inv_conv_rotated_list = copy.deepcopy(inv_conv_rotated_list)
 
-    if not isinstance(inv_nonlinear_list[0], DirectionBase):
-        base = DirectionBase(np.eye(dim))
+    base = np.eye(dim)
 
-        for ii, inv in enumerate(inv_nonlinear_list):
-            inv_nonlinear_list[ii] = UnitDirection(base).from_angle(np.array(inv))
-
-        for ii, inv in enumerate(inv_conv_rotated_list):
-            inv_conv_rotated_list[ii] = UnitDirection(base).from_angle(np.array(inv))
+    for ii, inv in enumerate(inv_nonlinear_list):
+        inv_nonlinear_list[ii] = UnitDirection(base).from_angle(np.array(inv))
+        
+    for ii, inv in enumerate(inv_conv_rotated_list):
+        inv_conv_rotated_list[ii] = UnitDirection(base).from_angle(np.array(inv))
 
     if visualize:
         fig, ax = plt.subplots(figsize=(7.2, 7))
@@ -159,7 +158,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
     def test_radius_pi_quarter(self):
         dim = 3
-        base = DirectionBase(np.eye(dim))
+        base = np.eye(dim)
         inv_conv_rotated = UnitDirection(base).from_angle(
             np.array([-0.2 * pi, pi * 0.5])
         )
@@ -190,7 +189,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
     def test_radius_pi_half(self):
         dim = 3
-        base = DirectionBase(np.eye(dim))
+        base = np.eye(dim)
 
         inv_conv_rotated = UnitDirection(base).from_angle(
             np.array([-0.8 * pi, -pi * 0.2])
@@ -219,7 +218,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
     def test_radius_pi_three_quarter(self):
         dim = 3
-        base = DirectionBase(np.eye(dim))
+        base = np.eye(dim)
         inv_conv_rotated = UnitDirection(base).from_angle(
             np.array([-0.2 * pi, pi * 0.5])
         )
@@ -251,7 +250,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
     def test_radius_pi(self):
         dim = 3
-        base = DirectionBase(np.eye(dim))
+        base = np.eye(dim)
         inv_conv_rotated = UnitDirection(base).from_angle(
             np.array([-0.2 * pi, pi * 0.5])
         )
@@ -284,7 +283,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
 if (__name__) == "__main__":
     plt.ion()
-    plt.close(all)
+    plt.close('all')
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
 
     visualize = False

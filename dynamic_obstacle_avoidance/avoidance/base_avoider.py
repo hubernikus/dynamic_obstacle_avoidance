@@ -11,9 +11,9 @@ from abc import ABC, abstractmethod
 class BaseAvoider(ABC):
     """BaseAvoider which Allow the Evaluate"""
 
-    def __init__(self, initial_dynamics, obstacle_list):
+    def __init__(self, initial_dynamics, obstacle_environment):
         self.initial_dynamics = initial_dynamics
-        self.obstacle_list = obstacle_list
+        self.obstacle_environment = obstacle_environment
 
     @property
     def attractor(self):

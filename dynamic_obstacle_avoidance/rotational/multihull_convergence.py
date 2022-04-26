@@ -14,7 +14,8 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt  # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
-from vartools.directional_space import DirectionBase, UnitDirection
+# from vartools.directional_space import DirectionBase
+from vartools.directional_space import UnitDirection
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import (
     get_directional_weighted_sum_from_unit_directions,
@@ -175,7 +176,8 @@ def multihull_attraction(
 
         conv_vel_norm = np.linalg.norm(convergence_velocity)
         if conv_vel_norm:  # Zero value
-            base = DirectionBase(matrix=normal_orthogonal_matrix)
+            # base = DirectionBase(matrix=normal_orthogonal_matrix)
+            base = normal_orthogonal_matrix
             rotated_directions[it] = UnitDirection(base).from_angle(initial_velocity)
 
         # position, gamma_value, it_obs, obstacle_list, dotprod_weight=1, gamma_weight=1):
@@ -193,7 +195,8 @@ def multihull_attraction(
             weight=inv_gamma_weight[it],
             # weight=1, #
             nonlinear_velocity=initial_velocity,
-            base=DirectionBase(matrix=normal_orthogonal_matrix),
+            # base=DirectionBase(matrix=normal_orthogonal_matrix),
+            base=normal_orthogonal_matrix,
             convergence_radius=convergence_radius,
         )
 
@@ -206,7 +209,9 @@ def multihull_attraction(
     #     directions=rotated_velocities,
     #     weights=inv_gamma_weight,
     #     )
-    base = DirectionBase(vector=initial_velocity)
+    # base = DirectionBase(vector=initial_velocity)
+    base = get_orthogonal_basis(initial_velocity)
+    # breakpoint()
     rotated_velocity = get_directional_weighted_sum_from_unit_directions(
         base=base, weights=gamma_weight, unit_directions=rotated_directions
     )

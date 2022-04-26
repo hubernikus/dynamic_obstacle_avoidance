@@ -15,12 +15,12 @@ import matplotlib.pyplot as plt  # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
-from vartools.directional_space import UnitDirection
 from vartools.directional_space import (
     get_directional_weighted_sum_from_unit_directions,
 )
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
-from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.directional_space import UnitDirection
+# from vartools.directional_space DirectionBase
 from vartools.dynamical_systems import DynamicalSystem
 
 from dynamic_obstacle_avoidance.utils import compute_weights
@@ -212,15 +212,14 @@ class RotationalAvoider(BaseAvoider):
             conv_vel_norm = np.linalg.norm(convergence_velocity)
             if not conv_vel_norm:
                 # Zero value
-                base = DirectionBase(matrix=null_matrix)
+                # base = DirectionBase(matrix=null_matrix)
+                base = null_matrix
 
                 # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
                 rotated_directions[it] = UnitDirection(base).from_vector(
                     initial_velocity
                 )
                 continue
-
-            # breakpoint()
 
             # Note that the inv_gamma_weight was prepared for the multiboundary
             # environment through the reference point displacement (see 'loca_reference_point')
@@ -229,14 +228,15 @@ class RotationalAvoider(BaseAvoider):
                 reference_vector=reference_dir,
                 weight=inv_gamma_weight[it],
                 nonlinear_velocity=initial_velocity,
-                base=DirectionBase(matrix=null_matrix),
+                base=null_matrix,
+                # base=DirectionBase(matrix=null_matrix),
             )
 
-        base = DirectionBase(vector=initial_velocity)
+        # base = DirectionBase(vector=initial_velocity)
+        base = get_orthogonal_basis(initial_velocity)
         rotated_velocity = get_directional_weighted_sum_from_unit_directions(
             base=base, weights=weights, unit_directions=rotated_directions
         )
-
         rotated_velocity = self._limit_magnitude(
             modulated_velocity=rotated_velocity,
             initial_magintude=LA.norm(initial_velocity),
@@ -558,7 +558,8 @@ class RotationalAvoider(BaseAvoider):
         convergence_radius: float,
         convergence_vector: np.ndarray,
         reference_vector: np.ndarray,
-        base: DirectionBase,
+        # base: DirectionBase,
+        base: np.ndarray,
     ) -> UnitDirection:
         """Rotates the convergence vector according to given input and basis"""
 
@@ -603,7 +604,8 @@ class RotationalAvoider(BaseAvoider):
         self,
         convergence_vector: np.ndarray,
         reference_vector: np.ndarray,
-        base: DirectionBase,
+        # base: DirectionBase,
+        base: np.ndarray,
         weight: float,
         nonlinear_velocity: np.ndarray = None,
         convergence_radius: float = np.pi / 2,
@@ -686,5 +688,7 @@ class RotationalAvoider(BaseAvoider):
             weight=weight,
             convergence_radius=np.pi / 2,
         )
+
+        breakpoint()
 
         return rotated_velocity

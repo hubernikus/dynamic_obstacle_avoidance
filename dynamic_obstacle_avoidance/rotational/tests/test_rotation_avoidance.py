@@ -15,8 +15,10 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
+from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import LinearSystem, ConstantValue
-from vartools.directional_space import UnitDirection, DirectionBase
+from vartools.directional_space import UnitDirection
+# DirectionBase
 from vartools.dynamical_systems import plot_vectorfield
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
@@ -101,7 +103,7 @@ def old_test_rotational_pulling(visualize=False):
     # nonlinear_velocity = np.array([1, 0])
 
     normal = (-1) * np.array([-1, -1])
-    base = DirectionBase(vector=normal)
+    base = get_orthogonal_basis(vector=normal)
 
     dir_nonlinear = UnitDirection(base).from_vector(np.array([1, 0]))
     convergence_dir = UnitDirection(base).from_vector(np.array([0, 1]))
@@ -187,7 +189,7 @@ def test_convergence_tangent(visualize=True):
     linear_velocity = initial_dynamics.evaluate(position)
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
-    normal_base = DirectionBase(vector=normal * (-1))
+    normal_base = get_orthogonal_basis(normal * (-1))
 
     delta_pos = obstacle.center_position - position
 
@@ -227,7 +229,7 @@ def test_convergence_tangent(visualize=True):
             normal = obstacle.get_normal_direction(
                 positions[:, it], in_global_frame=True
             )
-            normal_base = DirectionBase(vector=normal * (-1))
+            normal_base = get_orthogonal_basis(normal * (-1))
             delta_dir = obstacle.center_position - positions[:, it]
             unit_tangent = main_avoider._get_tangent_convergence_direction(
                 dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
@@ -262,7 +264,7 @@ def test_rotating_towards_tangent():
     linear_velocity = initial_dynamics.evaluate(position)
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
-    normal_base = DirectionBase(vector=normal * (-1))
+    normal_base = get_orthogonal_basis(normal * (-1))
 
     delta_dir = obstacle.center_position - position
     main_avoider = RotationalAvoider()
@@ -304,7 +306,7 @@ def test_rotated_convergence_direction_circle():
     inital_velocity = initial_dynamics.evaluate(position)
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
-    norm_base = DirectionBase(vector=normal * (-1))
+    norm_base = get_orthogonal_basis(normal * (-1))
 
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
@@ -342,7 +344,7 @@ def test_rotated_convergence_direction_ellipse():
     inital_velocity = initial_dynamics.evaluate(position)
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
-    norm_base = DirectionBase(vector=normal * (-1))
+    norm_base = get_orthogonal_basis(normal * (-1))
 
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
@@ -402,6 +404,17 @@ def test_single_circle_linear(visualize=False):
             # show_streamplot=False,
         )
 
+    # No effect when already pointing away (save circle)
+    position = np.array([1.12, 0.11])
+    modulated_velocity = obstacle_avoidance_rotational(
+        position,
+        initial_dynamics.evaluate(position),
+        obstacle_list,
+    )
+    assert np.allclose(
+        initial_dynamics.evaluate(position), modulated_velocity
+    ), "Unexpected modulation behind the obstacle."
+
     # Decreasing influence with decreasing distance
     position = np.array([-1, 0.1])
     mod_vel = obstacle_avoidance_rotational(
@@ -422,17 +435,6 @@ def test_single_circle_linear(visualize=False):
     velocity = initial_dynamics.evaluate(position)
 
     assert np.dot(mod_vel1, velocity) < np.dot(mod_vel2, velocity)
-
-    # No effect when already pointing away (save circle)
-    position = np.array([1.12, 0.11])
-    modulated_velocity = obstacle_avoidance_rotational(
-        position,
-        initial_dynamics.evaluate(position),
-        obstacle_list,
-    )
-    assert np.allclose(
-        initial_dynamics.evaluate(position), modulated_velocity
-    ), "Unexpected modulation behind the obstacle."
 
     # Velocity on surface is tangent after modulation
     rad_x = np.sqrt(2) / 2 + 1e-9
@@ -646,7 +648,7 @@ if (__name__) == "__main__":
 
     # test_convergence_pulling()
 
-    # test_single_circle_linear(visualize=True)
+    test_single_circle_linear(visualize=False)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

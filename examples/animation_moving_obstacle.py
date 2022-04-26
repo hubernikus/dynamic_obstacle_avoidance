@@ -14,10 +14,14 @@ import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib import animation
 
-from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Polygon
+# from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
-from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
+from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from vartools.dynamical_systems import LinearSystem
@@ -41,9 +45,9 @@ class DynamicalSystemAnimation(Animator):
         self.obstacle_environment = obstacle_environment
         self.initial_dynamics = initial_dynamics
 
-        self.dynamic_avoider = DynamicModulationAvoider(
+        self.dynamic_avoider = ModulationAvoider(
             initial_dynamics=self.initial_dynamics,
-            environment=self.obstacle_environment,
+            obstacle_environment=self.obstacle_environment,
         )
 
         self.position_list = np.zeros((self.dim, self.it_max))
@@ -56,7 +60,7 @@ class DynamicalSystemAnimation(Animator):
             print(f"it={ii}")
 
         # Here come the main calculation part
-        velocity = self.dynamic_avoider.evaluate(self.position_list[:, ii - 1])
+        velocity = self.dynamic_avoider.avoid(self.position_list[:, ii - 1])
         self.position_list[:, ii] = (
             velocity * self.dt_simulation + self.position_list[:, ii - 1]
         )
