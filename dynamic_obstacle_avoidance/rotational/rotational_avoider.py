@@ -237,6 +237,7 @@ class RotationalAvoider(BaseAvoider):
         rotated_velocity = get_directional_weighted_sum_from_unit_directions(
             base=base, weights=weights, unit_directions=rotated_directions
         )
+        
         rotated_velocity = self._limit_magnitude(
             modulated_velocity=rotated_velocity,
             initial_magintude=LA.norm(initial_velocity),
@@ -680,15 +681,11 @@ class RotationalAvoider(BaseAvoider):
                 )
                 weight = weight ** (1 / continuation_weight)
 
-        # breakpoint()
-
         rotated_velocity = self._get_projected_velocity(
             dir_convergence_tangent=tangent,
             dir_initial_velocity=dir_initial,
             weight=weight,
             convergence_radius=np.pi / 2,
         )
-
-        breakpoint()
 
         return rotated_velocity

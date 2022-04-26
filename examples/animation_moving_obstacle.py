@@ -180,7 +180,6 @@ def run_stationary_point_avoiding_dynamic_robot():
         )
     )
 
-
     initial_dynamics = LinearSystem(
         attractor_position=np.array([0.0, 0.0]),
         maximum_velocity=1,

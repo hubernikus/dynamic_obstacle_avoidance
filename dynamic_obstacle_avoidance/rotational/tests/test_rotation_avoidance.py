@@ -411,6 +411,7 @@ def test_single_circle_linear(visualize=False):
         initial_dynamics.evaluate(position),
         obstacle_list,
     )
+    # breakpoint()
     assert np.allclose(
         initial_dynamics.evaluate(position), modulated_velocity
     ), "Unexpected modulation behind the obstacle."
@@ -648,7 +649,7 @@ if (__name__) == "__main__":
 
     # test_convergence_pulling()
 
-    test_single_circle_linear(visualize=False)
+    test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
