@@ -40,7 +40,7 @@ class DynamicalSystemAnimation(Animator):
         y_lim=[-0.5, 2.5],
     ):
         self.x_lim = x_lim
-        self.y_lim = x_lim
+        self.y_lim = y_lim
 
         self.obstacle_environment = obstacle_environment
         self.initial_dynamics = initial_dynamics
