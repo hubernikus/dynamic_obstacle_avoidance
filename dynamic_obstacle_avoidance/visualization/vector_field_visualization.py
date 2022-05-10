@@ -228,12 +228,11 @@ def plot_streamlines(
         )
     # return x_pos
 
-
 def plot_obstacles(
-    ax,
     obstacle_container,
     x_lim=None,
     y_lim=None,
+    ax=None,
     pos_attractor=None,
     obstacle_color=None,
     show_obstacle_number=False,
@@ -262,6 +261,9 @@ def plot_obstacles(
     if obs is not None:
         # Depreciated -> remove in the future
         obstacle_container = obs
+
+    if ax is None:
+        _, ax = plt.subplots()
 
     if pos_attractor is not None:
         ax.plot(
@@ -429,7 +431,7 @@ def plot_obstacles(
     # ax.tick_params(axis="both", which="major", labelsize=14)
     # ax.tick_params(axis="both", which="minor", labelsize=12)
 
-    return
+    return ax
 
 
 def Simulation_vectorFields(
