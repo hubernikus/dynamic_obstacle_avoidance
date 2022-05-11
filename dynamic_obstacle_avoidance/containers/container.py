@@ -142,11 +142,11 @@ class BaseContainer(ABC):
             collision_array[it] = self.is_position_colliding(positions[:, it])
         return collision_array
 
-    def get_maximum_gamma(self, positions: np.ndarray) -> np.ndarray:
+    def get_minimum_gamma(self, positions: np.ndarray) -> np.ndarray:
         gamma_array = np.zeros((len(self._obstacle_list), positions.shape[1]))
 
         for ii, obs in enumerate(self._obstacle_list):
             for jj in range(positions.shape[1]):
                 gamma_array[ii, jj] = obs.get_gamma(positions[:, jj], in_global_frame=True)
 
-        return np.max(gamma_array, axis=0)
+        return np.min(gamma_array, axis=0)

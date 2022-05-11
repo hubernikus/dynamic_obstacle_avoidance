@@ -1,7 +1,9 @@
-<<<<<<< HEAD
+### Packages for More Extensive Testing and Scripting. ###
 black
 flake8
-=======
+
+# =======
+
 ipython
 # pytest>=6.0
 # pytest-cov>=2.0
@@ -15,6 +17,9 @@ pytest
 # For the robot class
 sympy
 
+
 # Parser / Lark
 # slark
->>>>>>> main
+
+# For using the newer learning libraries
+scikit-learn
