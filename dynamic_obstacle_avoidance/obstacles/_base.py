@@ -537,10 +537,6 @@ class Obstacle(ABC):
         if not self.is_reference_point_inside():
             self.extend_hull_around_reference()
 
-    # @abstractmethod
-    def create_shapely(self):
-        raise NotImplementedError()
-
     def mirror_local_position_on_boundary(
         self,
         position: np.ndarray,

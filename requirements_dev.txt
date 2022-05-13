@@ -19,7 +19,8 @@ sympy
 
 
 # Parser / Lark
-# slark
+lark
+
 
 # For using the newer learning libraries
 scikit-learn

@@ -16,6 +16,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn import svm
 
 
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
@@ -41,8 +42,27 @@ def collision_sample_space(obstacle_container, num_samples, x_lim, y_lim):
     return rand_points, value
 
 
+class MultiGuassianObstacle(Obstacle):
+    def __init__(self, n_components=1, **kwargs):
+        super().__init__(**kwargs)
+        
+        self.n_components = n_components
+        self._gmm = GaussianMixture(n_components=n_components)
+
+    def fit(self, X):
+        self._gmm.fit(X)
+
+    def get_normal_direction(self):
+        pass
+
+    def get_gamma(self):
+        pass
+        
+
+
 class GaussianMixtureClassifier:
     # class GaussianMixtureClassifier(BaseEstimator):
+    # TODO: currently this does not work very well -> try to improve
     def __init__(self, n_components, n_classes=2, **kwargs):
         self.n_classes = n_classes
         self._gmm_models = [
@@ -79,42 +99,22 @@ class GaussianMixtureClassifier:
         for gmm in self._gmm_models:
             gmm.set_params(**params)
 
-    def plot_model(self):
-        fig, ax = plt.subplots()
-
-        colors = ["navy", "turquoise", "darkorange"]
-        for ii, gmm in enumerate(self._gmm_models):
-            color = colors[ii]
-            for jj in range(len(gmm.covariances_)):
-                covariances = gmm.covariances_[jj][:2, :2]
-            
-                v, w = np.linalg.eigh(covariances)
-                u = w[0] / np.linalg.norm(w[0])
-            
-                angle = np.arctan2(u[1], u[0])
-                angle = 180 * angle / np.pi  # convert to degrees
-                v = 2.0 * np.sqrt(2.0) * np.sqrt(v)
-                ell = mpl.patches.Ellipse(
-                    gmm.means_[jj, :2], v[0], v[1], 180 + angle, color=color
-                    )
-
-                ell.set_clip_box(ax.bbox)
-                ell.set_alpha(0.5)
-                ax.add_artist(ell)
-                
-        ax.set_aspect("equal", "datalim")
-                
 
 class EnvironmentLearner:
-    def __init__(self, data_points, label):
+    def __init__(self, data_points, label, learning_type='svr'):
         self.data_points = data_points
         self.label = label
 
         self.my_classifier = None
-        
-        self.learn_gmm()
-        # self.learn_svc()
-        # self.learn_svr()
+
+        if learning_type == "gmm":
+            self.learn_gmm()
+        elif learning_type == "svc":
+            self.learn_svc()
+        elif learning_type == "svr":
+            self.learn_svr()
+        else:
+            logging.warn(f"Unexpected learning type '{learning_type}'")
 
     def learn_svr(self):
         self.my_classifier = svm.SVR(
@@ -249,6 +249,11 @@ def plot_obstacle_classification(
         # positions[1, :].reshape(nx, ny),
         # c=color_tot
     # )
+
+
+def gaussian_clustering():
+    pass
+    
     
     
 if (__name__) == "__main__":
@@ -256,5 +261,5 @@ if (__name__) == "__main__":
     my_learner = get_three_elipse_learner()
     # my_learner.learn_gmm()
 
-    # plot_obstacle_regression(my_learner.my_classifier)
-    plot_obstacle_classification(my_learner.my_classifier)
+    plot_obstacle_regression(my_learner.my_classifier)
+    # plot_obstacle_classification(my_learner.my_classifier)
