@@ -7,6 +7,10 @@ from __future__ import annotations  # Not needed from python 3.10 onwards
 import logging
 from dataclasses import dataclass, field
 
+from numpy import np
+
+GraphType = np.nparray
+
 
 # @dataclass(slots=True)
 @dataclass
@@ -14,7 +18,7 @@ class GraphElement:
     """ Hirarchy Element which Tracks the parent and children of current obstacle. """
     # __slots__ = ['ID', 'parent', 'children']
 
-    reference: int
+    reference: GraphType
     parent: GraphElement = None
     children: list[GraphElement] = field(default_factory=lambda : [])
 
@@ -27,10 +31,15 @@ class GraphElement:
         parent.children.append(self)
 
     # def __delete__(self):
+    # def __del__(self):
+        # self.delete()
+        
     def delete(self):
+        logging.warn("Active deleting of graph element is not fully defined.")
+        # TODO: this requires updating of 'referenceID' etc.
         for child in self.children:
             child.parent = None
-            
+
         if self.parent is not None:
             self.parent.children.remove(self)
 

@@ -26,4 +26,4 @@ def test_graph_element():
     
 if (__name__) == "__main__":
     test_graph_element()
-    # print("Done")
+    print("Done")
