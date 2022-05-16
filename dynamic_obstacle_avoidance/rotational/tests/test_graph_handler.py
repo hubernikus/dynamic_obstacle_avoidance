@@ -7,14 +7,14 @@ from dynamic_obstacle_avoidance.rotational.graph_handler import GraphHandler
 
 
 def test_graph_element():
-    oma = GraphElement(ID=0)
-    dad = GraphElement(ID=1)
-    baby = GraphElement(ID=2)
+    oma = GraphElement(0)
+    dad = GraphElement(1)
+    baby = GraphElement(2)
 
     dad.add_child(baby)
     assert baby.parent == dad
     
-    dad.set_parrent(oma)
+    dad.set_parent(oma)
     assert len(oma.children) == 1
     assert oma.children[0] == dad
 
