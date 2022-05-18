@@ -19,11 +19,13 @@ class BaseAvoider(ABC):
     def attractor(self):
         return self.initial_dynamics.attractor
 
-    def evaluate(self, position, velocity=None):
-        if velocity is None:
-            velocity = self.initial_dynamics.evaluate(position)
+    def evaluate(self, position):
+        if self.initial_dynamics is None:
+            raise NotImplementedError("You have to define 'initial_dynamics' first.")
+        
+        velocity = self.initial_dynamics.evaluate(position)
         return self.avoid(position, velocity, self.obstacle_list)
 
     @abstractmethod
-    def avoid(self, position, initial_velocity, obstacle_list):
+    def avoid(self, position, velocity):
         pass

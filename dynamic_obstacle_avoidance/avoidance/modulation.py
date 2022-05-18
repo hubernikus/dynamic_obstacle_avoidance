@@ -36,13 +36,9 @@ class ModulationAvoider(BaseAvoider):
     def avoid(
         self,
         position: np.ndarray,
-        velocity: np.ndarray = None,
+        velocity: np.ndarray,
     ) -> np.ndarray:
         """Obstacle avoidance based on 'local' rotation and the directional weighted mean."""
-
-        if velocity is None:
-            velocity = self.initial_dynamics.evaluate(position)
-            
         return obs_avoidance_interpolation_moving(
             position, velocity, self.obstacle_environment
         )
