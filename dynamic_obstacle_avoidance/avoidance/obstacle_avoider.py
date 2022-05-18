@@ -22,8 +22,8 @@ from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_mov
 class ObstacleAvoiderWithInitialDynamcis:
     def __init__(
         self,
-        initial_dynamics: DynamicalSystem,
         environment: BaseContainer,
+        initial_dynamics: DynamicalSystem = None,
         maximum_speed: float = None,
     ) -> None:
         self.initial_dynamics = initial_dynamics
