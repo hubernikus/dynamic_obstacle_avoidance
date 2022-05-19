@@ -26,7 +26,10 @@ class ModulationAvoider(BaseAvoider):
         obstacle_environment=None,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
-        super().__init__(initial_dynamics, obstacle_environment)
+        super().__init__(
+            initial_dynamics=initial_dynamics,
+            obstacle_environment=obstacle_environment
+        )
 
         if convergence_system is None:
             self.convergence_system = self.initial_dynamics
