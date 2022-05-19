@@ -7,9 +7,9 @@ from __future__ import annotations  # Not needed from python 3.10 onwards
 import logging
 from dataclasses import dataclass, field
 
-from numpy import np
+import numpy as np
 
-GraphType = np.nparray
+GraphType = np.ndarray
 
 
 # @dataclass(slots=True)
