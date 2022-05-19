@@ -142,7 +142,7 @@ class BaseContainer(ABC):
             collision_array[it] = self.is_position_colliding(positions[:, it])
         return collision_array
 
-    def get_minimum_gamma(self, positions: np.ndarray) -> np.ndarray:
+    def get_minimum_gamma_of_array(self, positions: np.ndarray) -> np.ndarray:
         gamma_array = np.zeros((len(self._obstacle_list), positions.shape[1]))
 
         for ii, obs in enumerate(self._obstacle_list):
@@ -150,3 +150,11 @@ class BaseContainer(ABC):
                 gamma_array[ii, jj] = obs.get_gamma(positions[:, jj], in_global_frame=True)
 
         return np.min(gamma_array, axis=0)
+
+    def get_minimum_gamma(self, position: np.ndarray) -> np.ndarray:
+        gamma_array = np.zeros((len(self._obstacle_list)))
+
+        for ii, obs in enumerate(self._obstacle_list):
+            gamma_array[ii] = obs.get_gamma(position, in_global_frame=True)
+
+        return np.min(gamma_array)
