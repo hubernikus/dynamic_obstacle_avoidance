@@ -187,6 +187,9 @@ class Obstacle(ABC):
 
         self._reference_point_is_inside = True
 
+        # Scaling of the absolut-ellipse-distances 
+        self.distance_scaling = 1
+
     def __del__(self):
         Obstacle.active_counter -= 1
 

@@ -21,7 +21,6 @@ class EllipseWithAxes(obstacles.Obstacle):
     """
 
     def __init__(self, axes_length: np.ndarray, curvature: float = 1, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         self.axes_length = axes_length
@@ -162,7 +161,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         else:
             distance = distance_position / distance_surface - 1
 
-        gamma = distance + 1
+        gamma = distance*self.distance_scaling + 1
         if self.is_boundary:
             gamma = 1 / gamma
 
