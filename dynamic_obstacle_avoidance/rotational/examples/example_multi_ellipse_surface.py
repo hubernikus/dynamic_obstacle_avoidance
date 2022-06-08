@@ -7,6 +7,7 @@
 import logging
 
 import numpy as np
+from numpy import linalg
 from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
@@ -15,13 +16,44 @@ import matplotlib as mpl
 from sklearn.mixture import GaussianMixture
 from sklearn import svm
 
+import shapely
+from shapely.geometry import Point
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
-
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+from dynamic_obstacle_avoidance.rotational.gmm_obstacle import MultiGmmObstacle
+
+
+def get_ellipse_shapely(ellipse: Ellipse) -> shapely.affinity:
+    """ Returns the shapely of an ellipse (with margin) in th
+    e global frame."""
+    ellipse_shape = Point(ellipse.center_position).buffer(1)
+    axes = ellipse.axes_with_margin
+    ellipse_shape = shapely.affinity.scale(ellipse_shape, axes[0], axes[1])
+    ellipse_shape = shapely.affinity.rotate(
+        ellipse_shape, (-np.pi/180.0)*ellipse.orientation[2]
+    )
+    return ellipse_shape 
+
+
+def get_intersection_of_ellipses(ellipse1: Ellipse, ellipse2: Ellipse) -> np.ndarray:
+    """ Returns the position of intersection of two 2D-ellipses."""
+    shape_e1 = get_ellipse_shapely(ellipse1)
+    shape_e2 = get_ellipse_shapely(ellipse2)
+
+    intersections = shape_e1.intersection(shape_e2)
+    breakpoint()
+
+    breakpoint()
+    if len(intersections):
+        # Has an intersection
+        return np.mean(intersections.xy)
+
+    # Otherwise find the closest distance between two shapes
 
 
 def collision_sample_space(obstacle_container, num_samples, x_lim, y_lim):
@@ -30,17 +62,16 @@ def collision_sample_space(obstacle_container, num_samples, x_lim, y_lim):
     dimension = 2
     rand_points = np.random.rand(dimension, num_samples)
     
-    rand_points[0] = rand_points[0] * (x_lim[1] - x_lim[0]) + x_lim[0]
-    rand_points[1] = rand_points[1] * (y_lim[1] - y_lim[0]) + y_lim[0]
+    rand_points[0, :] = rand_points[0, :] * (x_lim[1] - x_lim[0]) + x_lim[0]
+    rand_points[1, :] = rand_points[1, :] * (y_lim[1] - y_lim[0]) + y_lim[0]
 
-    value = obstacle_container.get_minimum_gamma(rand_points)
+    value = obstacle_container.get_minimum_gamma_of_array(rand_points)
     
     # value = value - 1
     value = (value > 1).astype(int)
     value = 2 * value - 1   # Value is in [-1, 1]
     
     return rand_points, value
-
 
 class MultiGuassianObstacle(Obstacle):
     def __init__(self, n_components=1, **kwargs):
@@ -138,8 +169,13 @@ class EnvironmentLearner:
         
         self.my_classifier.fit(X=self.data_points.T, y=self.label)
 
+    def learn_gmm_cluster(self, n_gmm=2, **kwargs):
+        self.my_classifier = GaussianMixture(
+            n_components=10, covariance_type="full", max_iter=100
+        )
 
-def get_three_elipse_learner():
+
+def get_three_elipse_learner(do_the_plotting=False):
     x_lim = [-2, 7]
     y_lim = [-6.5, 6.5]
 
@@ -174,18 +210,19 @@ def get_three_elipse_learner():
     max_label = np.max(label)
     label_range = np.maximum(abs(min_label), max_label)
 
-    _, ax = plt.subplots()
-    ax.scatter(
-        data_points[0, :],
-        data_points[1, :],
-        s=10,
-        c=label,
-        cmap='seismic',
-        # norm=mpl.colors.Normalize(vmin=(-1)*label_range, vmax=label_range)
-    )
-    
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
+    if do_the_plotting:
+        _, ax = plt.subplots()
+        ax.scatter(
+            data_points[0, :],
+            data_points[1, :],
+            s=10,
+            c=label,
+            cmap='seismic',
+            # norm=mpl.colors.Normalize(vmin=(-1)*label_range, vmax=label_range)
+        )
+
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
 
     my_learner = EnvironmentLearner(data_points, label)
     return my_learner
@@ -221,26 +258,30 @@ def plot_obstacle_classification(
         np.linspace(x_lim[0], x_lim[1], nx),
         np.linspace(y_lim[0], y_lim[1], ny),
     )
-    positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+    
+    positions = np.vstack((
+        x_vals.reshape(1, -1), y_vals.reshape(1, -1)
+    ))
 
-    class_weights = my_classifier.predict_proba(positions.T)
-    # class_weights = my_classifier.predict(positions.T)
+    # breakpoint()
+    # class_weights = my_classifier.predict_proba(positions.T)
+    class_weights = my_classifier.predict(positions.T)
 
     colors = []
-    colors.append([0.0, 0.0, 1.0])
-    colors.append([1.0, 0.0, 0.0])
+    colors.append([0.0, 0.0, 1.0])     # blue
+    colors.append([1.0, 0.0, 0.0])     # red
     
     dim_rgb = 3
     n_samples = class_weights.shape[0]
 
     color_tot = np.zeros((n_samples, dim_rgb))
     for ii in range(len(colors)):
-        color_tot = color_tot + (np.tile(class_weights[:, ii], (dim_rgb, 1)).T
-            * np.tile(colors[ii], (n_samples, 1)))
+        breakpoint()
+        # color_tot = color_tot + (np.tile(class_weights[:, ii], (dim_rgb, 1)).T * np.tile(colors[ii], (n_samples, 1)))
+        color_tot = color_tot + (np.tile(class_weights[ii], (dim_rgb, 1)).T * np.tile(colors[ii], (n_samples, 1)))
     
     # my_classifier.plot_model()
 
-    # breakpoint()
     fig, ax = plt.subplots()
     plt.imshow(color_tot.reshape(nx, ny, 3))
 
@@ -251,15 +292,61 @@ def plot_obstacle_classification(
     # )
 
 
-def gaussian_clustering():
-    pass
+def gaussian_clustering(
+    n_resolution=30, n_gmms=3, x_lim=[-10, 10], y_lim=[-10, 10]
+):
+    from matplotlib.colors import LogNorm
     
+    my_learner = get_three_elipse_learner()
+    ind_inside = (my_learner.label < 0)
+    obstacle_points = my_learner.data_points[:, ind_inside]
+
+    gmm_obstacle = MultiGmmObstacle(n_gmms=n_gmms)
+    gmm_obstacle.fit(obstacle_points)
+
+    nx = n_resolution
+    ny = n_resolution
+    x_vals, y_vals = np.meshgrid(
+        np.linspace(x_lim[0], x_lim[1], nx),
+        np.linspace(y_lim[0], y_lim[1], ny),
+    )
     
+    positions = np.vstack((x_vals.ravel(), y_vals.ravel()))
+    my_learner.data_points
+    
+    regr_value = -gmm_obstacle._gmm.score_samples(positions.T)
+    regr_value = regr_value.reshape(x_vals.shape)
+
+    fig, ax = plt.subplots()
+    
+    CS = ax.contour(
+    # CS = ax.contourf(
+        x_vals, y_vals, regr_value,
+        norm=LogNorm(vmin=1.0, vmax=1000.0),
+        levels=np.logspace(0, 2.3, 20)
+    )
+    
+    CB = plt.colorbar(CS, shrink=0.8, extend="both")
+    
+    ax.set_aspect("equal", "datalim")
+
+    ellipse_obstacle.get_one_level_hirarchy()
+    # print('children of root', ellipse_obstacle.hirarchy.root.number_of_children.value)
+    
+    breakpoint()
+
+
     
 if (__name__) == "__main__":
     plt.close('all')
-    my_learner = get_three_elipse_learner()
+    # my_learner = get_three_elipse_learner()
     # my_learner.learn_gmm()
 
-    plot_obstacle_regression(my_learner.my_classifier)
+    # my_learner = get_three_elipse_learner()
+    # plot_obstacle_regression(my_learner.my_classifier)
+    
+    # my_learner = get_three_elipse_learner()
     # plot_obstacle_classification(my_learner.my_classifier)
+
+    gaussian_clustering()
+    

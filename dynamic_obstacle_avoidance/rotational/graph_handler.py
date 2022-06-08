@@ -18,9 +18,13 @@ class GraphElement:
     """ Hirarchy Element which Tracks the parent and children of current obstacle. """
     # __slots__ = ['ID', 'parent', 'children']
 
-    reference: GraphType
+    value: GraphType
     parent: GraphElement = None
     children: list[GraphElement] = field(default_factory=lambda : [])
+
+    @property
+    def number_of_children(self):
+        return len(self.children)
 
     def add_child(self, child):
         self.children.append(child)
@@ -30,11 +34,8 @@ class GraphElement:
         self.parent = parent
         parent.children.append(self)
 
-    # def __delete__(self):
-    # def __del__(self):
-        # self.delete()
-        
-    def delete(self):
+    def expel(self):
+        """ Removes all connection to all under and overlying elements."""
         logging.warn("Active deleting of graph element is not fully defined.")
         # TODO: this requires updating of 'referenceID' etc.
         for child in self.children:
@@ -46,23 +47,26 @@ class GraphElement:
 
 @dataclass
 class GraphHandler:
-    _graph: list[GraphElement] = field(default_factory=lambda : [])
     _root: int = None
+    _graph: list[GraphElement] = field(default_factory=lambda : [])
 
-    def set_root(self, reference):
-        self._graph.append(
-            GraphElement(reference=reference, parent=None)
-        )
-
-    def add_element_with_parent(self, reference):
-        self._graph.append(
-            GraphElement(reference=reference, parent=None)
-        )
-        
     @property
     def root(self):
-        if self._root is None:
-            logging.warning("The graph does not have a defined root.")
-            return None
-        
-        return self._root.id
+        return self._root
+
+    @root.setter
+    def root(self, value):
+        self._root = GraphElement(value=value, parent=None)
+        self._graph.append(
+            self._root
+        )
+
+    def add_element_with_parent(self, child, parent):
+        self._graph.append(
+            GraphElement(value=child, parent=parent)
+        )
+
+    def delete_element(self, element):
+        """ Value should the reference to the to-be-deleted element."""
+        element.expel() 
+        self._graph.remove(element)

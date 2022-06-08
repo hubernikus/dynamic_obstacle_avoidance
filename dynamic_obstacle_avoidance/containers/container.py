@@ -152,6 +152,7 @@ class BaseContainer(ABC):
         return np.min(gamma_array, axis=0)
 
     def get_minimum_gamma(self, position: np.ndarray) -> np.ndarray:
+        breakpoint()
         gamma_array = np.zeros((len(self._obstacle_list)))
 
         for ii, obs in enumerate(self._obstacle_list):

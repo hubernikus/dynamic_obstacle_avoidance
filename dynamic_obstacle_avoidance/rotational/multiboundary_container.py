@@ -20,7 +20,7 @@ class MultiBoundaryContainer(RotationContainer):
         super().__init__(obs_list=obs_list, *args, **kwargs)
 
         if obs_list is not None:
-            raise NotImplementederror()
+            raise NotImplementedError()
 
         else:
             self._parent_array = np.zeros(0, dtype=int)
