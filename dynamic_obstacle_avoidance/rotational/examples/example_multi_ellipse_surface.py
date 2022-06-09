@@ -25,7 +25,7 @@ from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
-from dynamic_obstacle_avoidance.rotational.gmm_obstacle import MultiGmmObstacle
+from dynamic_obstacle_avoidance.rotational.gmm_obstacle import GmmObstacle
 
 
 def get_ellipse_shapely(ellipse: Ellipse) -> shapely.affinity:
@@ -301,7 +301,7 @@ def gaussian_clustering(
     ind_inside = (my_learner.label < 0)
     obstacle_points = my_learner.data_points[:, ind_inside]
 
-    gmm_obstacle = MultiGmmObstacle(n_gmms=n_gmms)
+    gmm_obstacle = GmmObstacle(n_gmms=n_gmms)
     gmm_obstacle.fit(obstacle_points)
 
     nx = n_resolution
@@ -330,7 +330,7 @@ def gaussian_clustering(
     
     ax.set_aspect("equal", "datalim")
 
-    ellipse_obstacle.get_one_level_hirarchy()
+    gmm_obstacle.get_one_level_hirarchy()
     # print('children of root', ellipse_obstacle.hirarchy.root.number_of_children.value)
     
     breakpoint()
