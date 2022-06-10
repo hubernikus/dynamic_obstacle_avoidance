@@ -30,9 +30,10 @@ class GmmObstacle():
 
     The ellipses are defined such that the eigenvalues of the gmm-gaussian corresponding
     to the """
-    def __init__(self, n_gmms) -> None:
+    def __init__(self, n_gmms: int, variance_factor: float = 1) -> None:
         self.n_gmms = n_gmms
         self.gamma_list = None
+        self.variance_factor = variance_factor
 
     @property
     def dimension(self) -> int:
@@ -42,12 +43,13 @@ class GmmObstacle():
             logging.warning("Object-Shape has not been defined yet, returns 0 - dimension.")
             return 0
         
-    def fit(self, datapoints) -> None:
+    def fit(self, datapoints: np.ndarray) -> None:
         self._gmm = GaussianMixture(
             n_components=self.n_gmms, covariance_type="full"
         ).fit(datapoints.T)
 
-    def evaluate_gammas(self, position):
+    def evaluate_gammas(self, position: np.ndarray):
+        self.gamma_list = np.zeros(self.n_gmms)
         self.gamma_list = self._gmm.predict_proba(position)
         breakpoint()
 
@@ -94,7 +96,7 @@ class GmmObstacle():
     def modulate(self, velocity):
         pass
 
-    def transform_to_analytic_ellipses(self, axes_factor=2.0):
+    def transform_to_analytic_ellipses(self):
         """ Returns ObstacleContainer with n_gmm Ellipse obstacles
         with pose-axes description."""
         obstacle_environment = ObstacleContainer()
@@ -110,21 +112,23 @@ class GmmObstacle():
                 covariances = np.eye(self._gmm.means_.shape[1]) * self._gmm.covariances_[n]
 
             eig_vals, eig_vecs = LA.eigh(covariances)
-
+            
             uu = eig_vecs[0] / LA.norm(eig_vecs[0])
             angle = np.arctan2(uu[1], uu[0])
             angle = 180 * angle / np.pi  # convert to degrees
-            eig_vals = 2.0 * np.sqrt(2.0) * np.sqrt(eig_vals)
+            # eig_vals = 2.0 * np.sqrt(2.0) * np.sqrt(eig_vals)
+            eig_vals = 2.0 * np.sqrt(eig_vals) * self.variance_factor
+            # breakpoint()
 
             obstacle_environment.append(
                 Ellipse(
                     center_position=self._gmm.means_[n, :2],
                     orientation=angle,
-                    axes_length=axes_factor*np.array([eig_vals[0], eig_vals[1]]),
+                    axes_length=np.array([eig_vals[0], eig_vals[1]]),
                 )
             )
 
-        return obstacle_environment 
+        return obstacle_environment
 
     def get_subobstacle_weights(
         self, position, gamma_min_factor=0.9
@@ -144,15 +148,26 @@ class GmmObstacle():
     def _get_gauss_derivative(self, position, index, powerfactor=1):
         """ The additional powerfactor allows"""
         fraction_value = 1 / np.sqrt(
-            (2*np.pi)**self.dimension * LA.det(self._gmm.covariances_[ind, :, :])
+            (2 * np.pi)**self.dimension * LA.det(self._gmm.covariances_[index, :, :])
         )
-        delta_dist = position - self._gmm.means_[ind, :, :]
+        delta_dist = position - self._gmm.means_[index, :, :]
         exp_value = np.exp(
-            (-0.5) * delta_dist.T @ self._gmm.precisions_cholesky[ind, :, :] @ delta_dist
+            (-0.5) * delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist
             * powerfactor
         )
-        deriv_factor = (-0.5) * self._precisions_cholesky[ind, :, :] @ delta_dist
-        return  (powerfactor*deriv_factor) * fraction_value * exp_value
+        deriv_factor = (-0.5) * self._precisions_cholesky[index, :, :] @ delta_dist
+        return (powerfactor*deriv_factor) * fraction_value * exp_value
+
+    def get_gamma_proportional(self, position, index):
+        delta_dist = position - self._gmm.means_[index, :]
+        value = delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist
+        return np.sqrt(value) / self.variance_factor
+
+    def get_gamma(self, position, index):
+        gamma_prop = self.get_gamma_proportional(position, index)
+        if not gamma_prop:
+            return 0
+        return LA.norm(position - self._gmm.means_[index, :]) * (1 - 1. / gamma_prop) + 1
 
     def get_intersection_of_ellipses(
         self, indices, powerfactor: float = 10.0, it_max: int = 100,
@@ -184,7 +199,7 @@ class GmmObstacle():
                     pos_intersect, index, powerfactor)
 
             # TODO: maybe reduce power-factor to decrease the step size slightly
-            step_norm = LA.norm(linalg)
+            step_norm = LA.norm(gradient_step)
             if step_norm < abs_tol:
                 logging.info(f"Convergence at iteration {it_max}")
 
@@ -230,7 +245,7 @@ class MultiVariantGaussian:
     def evaluate(self, position):
         delta_dist = position - self.mean
         exp_value = np.exp( (-0.5)* delta_dist.T @ self._precision_cholesky @ delta_dist)
-        return (self._fraction_value * exp_value
+        return (self._fraction_value * exp_value)
 
     def evaluate_derivative(self, position):
         delta_dist = position - self.mean

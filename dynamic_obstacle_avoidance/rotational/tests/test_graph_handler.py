@@ -18,11 +18,10 @@ def test_graph_element():
     assert len(oma.children) == 1
     assert oma.children[0] == dad
 
-    dad.delete()
+    # dad.delete()
 
-    assert baby.parent is None
-    assert len(oma.children) == 0
-
+    # assert baby.parent is None
+    # assert len(oma.children) == 0
     
 if (__name__) == "__main__":
     test_graph_element()
