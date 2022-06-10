@@ -4,6 +4,9 @@
 # Github: hubernikus
 # Created: 2022-06-08
 
+# Use python 3.10 [annotations / typematching]
+from __future__ import annotations  # Not needed from python 3.10 onwards
+
 import logging
 
 import numpy as np
@@ -34,7 +37,27 @@ class GmmObstacle:
     def __init__(self, n_gmms: int, variance_factor: float = 1) -> None:
         self.n_gmms = n_gmms
         self.gamma_list = None
+        self._gmm = None
         self.variance_factor = variance_factor
+
+    @staticmethod
+    def from_container(cls, environment: ObstacleContainer) -> GmmObstacle:
+        n_gmms = len(environment)
+        dimension = environment[0].dimension
+        
+        new_instance = cls(n_gmms=n_gmms)
+
+        new_instance._gmm = GaussianMixture(
+            n_components=new_instance.n_gmms, covariance_type="full"
+        )
+
+        # Weights are assigned equally
+        new_instance._gmm.weights_ = 1.0 / n_gmms * np.ones(n_gmms)
+        new_instance._gmm.means_ = np.zeros((n_gmms, dimension))
+        new_instance._gmm.covarinaces_ = np.zeros((n_gmms, dimension, dimension))
+        new_instance._gmm.precisions_cholesky = np.zeros((n_gmms, dimension, dimension))
+
+        return new_instance
 
     @property
     def dimension(self) -> int:
@@ -164,8 +187,20 @@ class GmmObstacle:
 
     def get_gamma_proportional(self, position, index):
         delta_dist = position - self._gmm.means_[index, :]
-        value = delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist
-        return np.sqrt(value) / self.variance_factor
+        gamma = delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist
+        return np.sqrt(gamma) / self.variance_factor
+
+    def get_gamma_derivative(self, position, index, powerfactor: float = 1):
+        """ Returns the derivative of the proportional gamma."""
+        delta_dist = position - self._gmm.means_[index, :]
+        d_gamma = (
+            powerfactor/2.0 * 
+            (delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist)
+            ** (powerfactor/2.0 - 1)
+            * self.variance_factor ** (-1 * powerfactor)
+            * self._gmm.precisions_cholesky[index, :, :] @ delta_dist
+        )
+        return d_gamma
 
     def get_gamma(self, position, index):
         gamma_prop = self.get_gamma_proportional(position, index)
@@ -196,7 +231,7 @@ class GmmObstacle:
 
         if not abs_tol:  # Zero value
             logging.info("Almost identical center for two Gaussians detected.")
-            return self._gmm.means_[indeces[0]]
+            return self._gmm.means_[indices[0]]
 
         # Starting point is the center of the shortest connection
         pos_intersect = np.mean(self._gmm.means_[indices], axis=0)
@@ -204,7 +239,7 @@ class GmmObstacle:
         for ii in range(it_max):
             gradient_step = np.zeros(self.dimension)
             for index in indices:
-                gradient_step += self._get_gauss_derivative(
+                gradient_step += self.get_gamma_derivative(
                     pos_intersect, index, powerfactor
                 )
 

@@ -139,8 +139,73 @@ def test_obstacle_with_radius_3_from_gmm(visualize=False):
         plot_gammas_multigamma(gmm_ellipse, simple_ellipse)
 
 
+def test_obstacle_gradient_descent(visualize=False):
+    n_gmms = 2
+    dimension = 2
+
+    gmm_ellipse = GmmObstacle(n_gmms=1)
+    gmm_ellipse._gmm = GaussianMixture(n_components=n_gmms)
+    gmm_ellipse._gmm.means_ = np.zeros((n_gmms, dimension))
+    gmm_ellipse._gmm.means_[0, :] = [1.5, 0]
+    gmm_ellipse._gmm.means_[1, :] = [0, 1.5]
+    
+    gmm_ellipse._gmm.covariances_ = np.zeros((n_gmms, dimension, dimension))
+    gmm_ellipse._gmm.covariances_[0, :, :] = [[1, 0], [0, 3]]
+    gmm_ellipse._gmm.covariances_[1, :, :] = [[3, 0], [0, 1]]
+
+    gmm_ellipse._gmm.precisions_cholesky = np.zeros((n_gmms, dimension, dimension))
+    for ii in range(n_gmms):
+        gmm_ellipse._gmm.precisions_cholesky[ii, :, :] = LA.pinv(
+            gmm_ellipse._gmm.covariances_[ii, :, :]
+        )
+    gmm_ellipse._gmm.weights = 0.5 * np.ones(n_gmms)
+
+    if visualize:
+        n_resolution = 30
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gamma_vals_gmm_prop = np.zeros((n_gmms, positions.shape[1]))
+
+        for it_gmm in range(n_gmms):
+            for ii in range(positions.shape[1]):
+                gamma_vals_gmm_prop[it_gmm, ii] = gmm_ellipse.get_gamma_proportional(
+                    positions[:, ii], index=it_gmm
+                )
+
+        gamma_min = np.min(gamma_vals_gmm_prop, axis=0)
+        
+        fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+        levels = np.linspace(1.0, 10.0, 10)
+
+        cs0 = ax.contourf(
+            x_vals,
+            y_vals,
+            gamma_min.reshape(x_vals.shape),
+            levels=levels,
+            # cmap=cmap
+        )
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(x_lim)
+
+        ax.grid()
+
+        # fig.tight_layout()
+        
+        plt.colorbar(cs0, ax=ax)
+
+
+
 if (__name__) == "__main__":
     plt.close("all")
     # test_uniradius_obstacle_from_gmm(visualize=True)
-    test_obstacle_with_radius_3_from_gmm(visualize=True)
+    # test_obstacle_with_radius_3_from_gmm(visualize=True)
+    test_obstacle_gradient_descent(visualize=True)
     pass

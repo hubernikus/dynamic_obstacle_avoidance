@@ -72,7 +72,7 @@ def test_triple_obstacles():
     init_vel = initial_dynamics.evaluate(eval_position)
     mod_vel = avoider.avoid(eval_position, velocity=init_vel)
 
-    breakpoint()
+    # breakpoint()
     print("Done")
 
 
