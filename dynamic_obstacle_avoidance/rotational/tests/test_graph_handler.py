@@ -13,7 +13,7 @@ def test_graph_element():
 
     dad.add_child(baby)
     assert baby.parent == dad
-    
+
     dad.set_parent(oma)
     assert len(oma.children) == 1
     assert oma.children[0] == dad
@@ -22,7 +22,8 @@ def test_graph_element():
 
     # assert baby.parent is None
     # assert len(oma.children) == 0
-    
+
+
 if (__name__) == "__main__":
     test_graph_element()
     print("Done")

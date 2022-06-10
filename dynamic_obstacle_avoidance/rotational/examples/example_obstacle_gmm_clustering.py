@@ -26,33 +26,34 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 
 def collision_sample_space(obstacle_container, num_samples, x_lim, y_lim):
-    """ Returns random points based on collision with
-    [ >0 : free space // <0 : within obstacle ] """
+    """Returns random points based on collision with
+    [ >0 : free space // <0 : within obstacle ]"""
     dimension = 2
     rand_points = np.random.rand(dimension, num_samples)
-    
+
     rand_points[0] = rand_points[0] * (x_lim[1] - x_lim[0]) + x_lim[0]
     rand_points[1] = rand_points[1] * (y_lim[1] - y_lim[0]) + y_lim[0]
 
     value = obstacle_container.get_minimum_gamma(rand_points)
-    
+
     # value = value - 1
     value = (value > 1).astype(int)
-    value = 2 * value - 1   # Value is in [-1, 1]
-    
+    value = 2 * value - 1  # Value is in [-1, 1]
+
     return rand_points, value
 
-# class MultiEllipseObstacle(Obstacle):
-    # pass
 
-    
+# class MultiEllipseObstacle(Obstacle):
+# pass
+
+
 class MultiGuassianObstacle(Obstacle):
     def __init__(self, pose=None, n_components=1, dimension=2, **kwargs):
         if pose is None:
             pose = ObjectPose(position=np.zeros(dimension))
-            
+
         super().__init__(pose=pose, **kwargs)
-        
+
         self.n_components = n_components
         self._gmm = GaussianMixture(n_components=n_components)
 
@@ -62,16 +63,18 @@ class MultiGuassianObstacle(Obstacle):
 
         # Find core gaussian
         dists = LA.norm(
-            self._gmm.means_ - np.tile(self.center_position, (self._gmm.n_components, 1)), axis=1
+            self._gmm.means_
+            - np.tile(self.center_position, (self._gmm.n_components, 1)),
+            axis=1,
         )
 
         ind_core = np.argmin(dists)
-                            
+
         # =Parent <-> children
         # One child only one parent => how to do connection
-        
+
         # Define a rule that allow to continously decend the gaussians
-        
+
         # TODO: more smart/constraint gradient tescent to better align with limitations
 
     def get_normal_direction(self):
@@ -109,10 +112,10 @@ class MultiGuassianObstacle(Obstacle):
         # breakpoint()
         for jj in range(len(self._gmm.covariances_)):
             covariances = self._gmm.covariances_[jj][:2, :2]
-            
+
             v, w = np.linalg.eigh(covariances)
             u = w[0] / np.linalg.norm(w[0])
-            
+
             angle = np.arctan2(u[1], u[0])
             angle = 180 * angle / np.pi  # convert to degrees
             v = 2.0 * np.sqrt(2.0) * np.sqrt(v)
@@ -123,7 +126,7 @@ class MultiGuassianObstacle(Obstacle):
             ell.set_clip_box(ax.bbox)
             ell.set_alpha(0.5)
             ax.add_artist(ell)
-        
+
         if x_lim is not None:
             ax.set_xlim(x_lim)
         if y_lim is not None:
@@ -141,34 +144,34 @@ def gaussian_clustering():
         Cuboid(
             center_position=[4.5, 0],
             axes_length=[2, 8],
-        ))
+        )
+    )
 
     environment.append(
         Cuboid(
             center_position=[2, 3],
             axes_length=[5, 2],
-        ))
+        )
+    )
 
     environment.append(
         Cuboid(
             center_position=[2, -3],
             axes_length=[5, 2],
-        ))
+        )
+    )
 
     # plot_obstacles(obstacle_container=environment, x_lim=x_lim, y_lim=y_lim)
     data_points, label = collision_sample_space(
-        obstacle_container=environment,
-        num_samples=1000,
-        x_lim=x_lim,
-        y_lim=y_lim
+        obstacle_container=environment, num_samples=1000, x_lim=x_lim, y_lim=y_lim
     )
 
     x_lim = [-10, 10]
     y_lim = [-10, 10]
-    
+
     obs_points = data_points[:, label < 0]
     fig, ax = plt.subplots()
-    ax.plot(obs_points[0, :], obs_points[1, :], '.')
+    ax.plot(obs_points[0, :], obs_points[1, :], ".")
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
     ax.set_aspect("equal", adjustable="box")
@@ -177,8 +180,8 @@ def gaussian_clustering():
     my_obstacle.fit(obs_points.T)
     my_obstacle.plot_gaussians(x_lim=x_lim, y_lim=y_lim)
     my_obstacle.plot_probability(x_lim=x_lim, y_lim=y_lim, n_resolution=100)
-    
-    
+
+
 if (__name__) == "__main__":
-    plt.close('all')
+    plt.close("all")
     gaussian_clustering()

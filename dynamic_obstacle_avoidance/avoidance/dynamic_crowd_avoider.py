@@ -1,6 +1,6 @@
 """ Obstacle Avoider Virtual Base # from abc import ABC, abstractmethod. """
 # Author Lukas Huber
-# Github 
+# Github
 # Created 2022-05-20
 # License: BSD (c) 2022
 
@@ -16,7 +16,7 @@ from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.obstacles import GammaType
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
-from .obstacle_avoider import  ObstacleAvoiderWithInitialDynamcis
+from .obstacle_avoider import ObstacleAvoiderWithInitialDynamcis
 
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
@@ -32,7 +32,10 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         self.obs_multi_agent = obs_multi_agent
 
     def environment_slicer(self, obs_index):
-        temp_env = self.obstalce_environment[0:obs_index] + self.obstalce_environment[obs_index + 1 :]
+        temp_env = (
+            self.obstalce_environment[0:obs_index]
+            + self.obstalce_environment[obs_index + 1 :]
+        )
         return temp_env
 
     @staticmethod

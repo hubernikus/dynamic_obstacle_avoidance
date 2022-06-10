@@ -15,6 +15,7 @@ import matplotlib
 from matplotlib import animation
 
 from dynamic_obstacle_avoidance.obstacles import Polygon
+
 # from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse

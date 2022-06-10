@@ -228,6 +228,7 @@ def plot_streamlines(
         )
     # return x_pos
 
+
 def plot_obstacles(
     obstacle_container,
     x_lim=None,

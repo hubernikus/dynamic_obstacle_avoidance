@@ -83,8 +83,9 @@ def get_relative_obstacle_velocity(
                 )
                 xd_w = xd_w[0:2]
         elif dim == 3:
-            if (obs[it_obs].angular_velocity is not None
-                and LA.norm(obs[it_obs].angular_velocity)):
+            if obs[it_obs].angular_velocity is not None and LA.norm(
+                obs[it_obs].angular_velocity
+            ):
                 xd_w = np.cross(
                     obs[it_obs].angular_velocity,
                     position - obs[it_obs].center_position,
@@ -92,11 +93,11 @@ def get_relative_obstacle_velocity(
             else:
                 xd_w = np.zeros(dim)
         else:
-            if (obs[it_obs].angular_velocity is not None
-                and LA.norm(obs[it_obs].angular_velocity)):
+            if obs[it_obs].angular_velocity is not None and LA.norm(
+                obs[it_obs].angular_velocity
+            ):
                 warnings.warn("Angular velocity is not defined for={}".format(d))
             xd_w = np.zeros(dim)
-            
 
         weight_angular = np.exp(-1.0 * (np.max([gamma_list[ii], 1]) - 1))
 

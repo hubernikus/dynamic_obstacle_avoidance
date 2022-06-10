@@ -10,6 +10,7 @@
 import warnings
 from .rotational_avoider import RotationalAvoider
 
+
 def obstacle_avoidance_rotational(*args, **kwargs):
     warnings.warn("Depreciated - switch to 'Avoider'.")
 

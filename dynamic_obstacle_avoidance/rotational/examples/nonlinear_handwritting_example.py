@@ -22,16 +22,16 @@ class DataPlotter:
 
     # @property
     # def positions(self):
-        # return
+    # return
 
     def visualize(self, it_demos=0):
         fig, ax = plt.subplots()
-        
+
         for it_demo in range(self.data_handler.n_demonstrations):
             # time = self.data_handler.get_times()
             positions = self.data_handler.get_positions(it_demo)
 
-            ax.plot(positions[0, :], positions[1, :], '.', markersize=1)
+            ax.plot(positions[0, :], positions[1, :], ".", markersize=1)
             # ax.plot(positions[0, :], positions[1, :], '.' , color='blue')
         ax.set_aspect("equal", adjustable="box")
 

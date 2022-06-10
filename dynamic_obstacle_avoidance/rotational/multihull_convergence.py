@@ -14,6 +14,7 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt  # For debugging only (!)
 
 from vartools.linalg import get_orthogonal_basis
+
 # from vartools.directional_space import DirectionBase
 from vartools.directional_space import UnitDirection
 from vartools.directional_space import get_directional_weighted_sum

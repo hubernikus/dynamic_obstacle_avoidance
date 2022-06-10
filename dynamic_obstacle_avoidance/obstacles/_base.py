@@ -182,12 +182,12 @@ class Obstacle(ABC):
         # Pass as pose-reference to the storer
         self.shapely = ObstacleHullsStorer(self)
         # => is this shapely really a good option?
-        
+
         self._margin_absolut = margin_absolut
 
         self._reference_point_is_inside = True
 
-        # Scaling of the absolut-ellipse-distances 
+        # Scaling of the absolut-ellipse-distances
         self.distance_scaling = 1
 
     def __del__(self):

@@ -161,7 +161,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         else:
             distance = distance_position / distance_surface - 1
 
-        gamma = distance*self.distance_scaling + 1
+        gamma = distance * self.distance_scaling + 1
         if self.is_boundary:
             gamma = 1 / gamma
 

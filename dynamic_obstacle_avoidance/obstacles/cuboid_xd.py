@@ -215,7 +215,7 @@ class CuboidXd(obstacles.Obstacle):
             margin_absolut=margin_absolut,
         )
 
-        gamma = distance*self.distance_scaling + 1
+        gamma = distance * self.distance_scaling + 1
 
         if is_boundary is None:
             is_boundary = self.is_boundary

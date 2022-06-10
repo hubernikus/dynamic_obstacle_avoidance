@@ -500,7 +500,6 @@ def single_ellipse_spiral_triple_plot(save_figure=False, n_resolution=40):
         my_plotter.save(figure_name + "_initial")
 
 
-
 if (__name__) == "__main__":
     plt.close("all")
     plt.ion()

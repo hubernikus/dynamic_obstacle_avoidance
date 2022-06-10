@@ -21,9 +21,9 @@ from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 
 
 def test_triple_obstacles():
-    
+
     radius_length = 1.2
-    
+
     obstacle_environment = ObstacleContainer()
     obstacle_environment.append(
         Ellipse(
@@ -35,7 +35,7 @@ def test_triple_obstacles():
             repulsion_coeff=1.0,
         )
     )
-    
+
     obstacle_environment.append(
         Ellipse(
             axes_length=[radius_length, radius_length, radius_length],
@@ -66,7 +66,7 @@ def test_triple_obstacles():
     )
 
     eval_position = np.array([0, 0, 1])
-    
+
     avoider = ModulationAvoider(obstacle_environment=obstacle_environment)
 
     init_vel = initial_dynamics.evaluate(eval_position)

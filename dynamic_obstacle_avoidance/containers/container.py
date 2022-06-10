@@ -147,7 +147,9 @@ class BaseContainer(ABC):
 
         for ii, obs in enumerate(self._obstacle_list):
             for jj in range(positions.shape[1]):
-                gamma_array[ii, jj] = obs.get_gamma(positions[:, jj], in_global_frame=True)
+                gamma_array[ii, jj] = obs.get_gamma(
+                    positions[:, jj], in_global_frame=True
+                )
 
         return np.min(gamma_array, axis=0)
 

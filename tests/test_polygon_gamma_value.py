@@ -260,8 +260,7 @@ class TestPolygon(unittest.TestCase):
         )
 
         dynamic_avoider = ModulationAvoider(
-            initial_dynamics=initial_dynamics,
-            obstacle_environment=obstacle_environment
+            initial_dynamics=initial_dynamics, obstacle_environment=obstacle_environment
         )
 
         if visualize:

@@ -32,34 +32,40 @@ def plot_gammas_multigamma(gmm_ellipse, simple_ellipse):
 
     for ii in range(positions.shape[1]):
         gamma_vals_analytic[ii] = simple_ellipse[-1].get_gamma(
-            positions[:, ii], in_obstacle_frame=False)
+            positions[:, ii], in_obstacle_frame=False
+        )
 
-        gamma_vals_gmm[ii] = gmm_ellipse.get_gamma(
-            positions[:, ii], index=0)
+        gamma_vals_gmm[ii] = gmm_ellipse.get_gamma(positions[:, ii], index=0)
 
         gamma_vals_gmm_prop[ii] = gmm_ellipse.get_gamma_proportional(
-            positions[:, ii], index=0)
+            positions[:, ii], index=0
+        )
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 6))
     levels = np.linspace(1.0, 10.0, 10)
 
     cs0 = axs[0].contourf(
-        x_vals, y_vals, gamma_vals_gmm_prop.reshape(x_vals.shape),
+        x_vals,
+        y_vals,
+        gamma_vals_gmm_prop.reshape(x_vals.shape),
         levels=levels,
         # cmap=cmap
     )
     axs[0].set_title("Proportional-Gamma Value for GMM-Obstacle")
 
     cs1 = axs[1].contourf(
-        x_vals, y_vals, gamma_vals_gmm.reshape(x_vals.shape),
+        x_vals,
+        y_vals,
+        gamma_vals_gmm.reshape(x_vals.shape),
         levels=levels,
         # cmap=cmap
     )
     axs[1].set_title("Gamma Value for GMM-Obstacle")
 
-
     cs2 = axs[2].contourf(
-        x_vals, y_vals, gamma_vals_analytic.reshape(x_vals.shape),
+        x_vals,
+        y_vals,
+        gamma_vals_analytic.reshape(x_vals.shape),
         levels=levels,
         # cmap=cmap
     )
@@ -77,14 +83,16 @@ def plot_gammas_multigamma(gmm_ellipse, simple_ellipse):
 
 
 def test_uniradius_obstacle_from_gmm(visualize=False):
-    """ Test to verify the consistent behavior between the Gmm-obstacle and the
+    """Test to verify the consistent behavior between the Gmm-obstacle and the
     corresponding analytic one."""
     dimension = 2
     n_gmms = 1
     gmm_ellipse = GmmObstacle(n_gmms=1)
     gmm_ellipse._gmm = GaussianMixture(n_components=n_gmms)
     gmm_ellipse._gmm.means_ = np.ones((n_gmms, dimension))
-    gmm_ellipse._gmm.covariances_ = 1.0 * np.eye(dimension).reshape(n_gmms, dimension, dimension)
+    gmm_ellipse._gmm.covariances_ = 1.0 * np.eye(dimension).reshape(
+        n_gmms, dimension, dimension
+    )
     gmm_ellipse._gmm.precisions_cholesky = LA.pinv(gmm_ellipse._gmm.covariances_)
     gmm_ellipse._gmm.weights = np.ones(n_gmms)
 
@@ -104,15 +112,17 @@ def test_uniradius_obstacle_from_gmm(visualize=False):
 
 
 def test_obstacle_with_radius_3_from_gmm(visualize=False):
-    """ Test to verify the consistent behavior between the Gmm-obstacle and the
+    """Test to verify the consistent behavior between the Gmm-obstacle and the
     corresponding analytic one."""
     dimension = 2
     n_gmms = 1
-    
+
     gmm_ellipse = GmmObstacle(n_gmms=1)
     gmm_ellipse._gmm = GaussianMixture(n_components=n_gmms)
     gmm_ellipse._gmm.means_ = np.zeros((n_gmms, dimension))
-    gmm_ellipse._gmm.covariances_ = 3.0 * np.eye(dimension).reshape(n_gmms, dimension, dimension)
+    gmm_ellipse._gmm.covariances_ = 3.0 * np.eye(dimension).reshape(
+        n_gmms, dimension, dimension
+    )
     gmm_ellipse._gmm.precisions_cholesky = LA.pinv(gmm_ellipse._gmm.covariances_)
     gmm_ellipse._gmm.weights = np.ones(n_gmms)
 
@@ -130,7 +140,7 @@ def test_obstacle_with_radius_3_from_gmm(visualize=False):
 
 
 if (__name__) == "__main__":
-    plt.close('all')
+    plt.close("all")
     # test_uniradius_obstacle_from_gmm(visualize=True)
     test_obstacle_with_radius_3_from_gmm(visualize=True)
     pass

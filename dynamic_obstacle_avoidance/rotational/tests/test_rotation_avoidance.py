@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import LinearSystem, ConstantValue
 from vartools.directional_space import UnitDirection
+
 # DirectionBase
 from vartools.dynamical_systems import plot_vectorfield
 

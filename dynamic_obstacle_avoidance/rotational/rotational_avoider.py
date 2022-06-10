@@ -20,6 +20,7 @@ from vartools.directional_space import (
 )
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
 from vartools.directional_space import UnitDirection
+
 # from vartools.directional_space DirectionBase
 from vartools.dynamical_systems import DynamicalSystem
 
@@ -237,7 +238,7 @@ class RotationalAvoider(BaseAvoider):
         rotated_velocity = get_directional_weighted_sum_from_unit_directions(
             base=base, weights=weights, unit_directions=rotated_directions
         )
-        
+
         rotated_velocity = self._limit_magnitude(
             modulated_velocity=rotated_velocity,
             initial_magintude=LA.norm(initial_velocity),

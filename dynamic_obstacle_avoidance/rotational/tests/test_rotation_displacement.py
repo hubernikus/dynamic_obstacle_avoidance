@@ -40,7 +40,7 @@ def visualize_displacements(
 
     for ii, inv in enumerate(inv_nonlinear_list):
         inv_nonlinear_list[ii] = UnitDirection(base).from_angle(np.array(inv))
-        
+
     for ii, inv in enumerate(inv_conv_rotated_list):
         inv_conv_rotated_list[ii] = UnitDirection(base).from_angle(np.array(inv))
 
@@ -283,7 +283,7 @@ class TestProjectionOfDisplacement(unittest.TestCase):
 
 if (__name__) == "__main__":
     plt.ion()
-    plt.close('all')
+    plt.close("all")
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
 
     visualize = False
