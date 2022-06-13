@@ -193,10 +193,11 @@ class GmmObstacle:
     def get_gamma_derivative(self, position, index, powerfactor: float = 1):
         """ Returns the derivative of the proportional gamma."""
         delta_dist = position - self._gmm.means_[index, :]
+        
         d_gamma = (
-            powerfactor/2.0 * 
-            (delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist)
-            ** (powerfactor/2.0 - 1)
+            powerfactor / 2.0
+            * (delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist)
+            ** (powerfactor / 2.0 - 1)
             * self.variance_factor ** (-1 * powerfactor)
             * self._gmm.precisions_cholesky[index, :, :] @ delta_dist
         )
@@ -213,10 +214,10 @@ class GmmObstacle:
     def get_intersection_of_ellipses(
         self,
         indices,
-        powerfactor: float = 10.0,
+        powerfactor: float = 3.0,
         it_max: int = 100,
         rtol: float = 1e-1,
-        step_size: float = 0.1,
+        step_size: float = 0.05,
     ) -> np.ndarray:
         """Returns the intersection of ellipses using gradient descent of the GMM.
 
@@ -225,7 +226,10 @@ class GmmObstacle:
         """
         # TODO: this convergence stepping could be improved by
         # considering the covariances
-        abs_tol = rtol**powerfactor * LA.norm(
+        # abs_tol = rtol**powerfactor * LA.norm(
+        #     self._gmm.means_[indices[0]] - self._gmm.means_[indices[1]]
+        # )
+        abs_tol = rtol * LA.norm(
             self._gmm.means_[indices[0]] - self._gmm.means_[indices[1]]
         )
 
@@ -245,66 +249,15 @@ class GmmObstacle:
 
             # TODO: maybe reduce power-factor to decrease the step size slightly
             step_norm = LA.norm(gradient_step)
+            
             if step_norm < abs_tol:
-                logging.info(f"Convergence at iteration {it_max}")
+                logging.info(f"Convergence at iteration {ii}")
+                break
 
-            gradient_step = (
-                gradient_step / step_norm * (step_norm) ** (1 / gradient_step)
-            )
-            pos_intersect += gradient_step * step_size
+            # gradient_step = (
+                # gradient_step / step_norm * (step_norm) ** (1 / powerfactor)
+            # )
 
-        # Gamma-gradient descent
-        # gamma_combo = lambda x: gamma1 ** powerfactor + gamma2 ** powerfactor
+            pos_intersect = pos_intersect - gradient_step * step_size
+
         return pos_intersect
-
-
-class MultiVariantGaussian:
-    # NOT used anymore(?!)
-    """
-    This class allows the evaluation of multivariant Gaussian distribution
-    (and their derivative).
-    Attributes
-    ----------
-    _precisions_cholesky: inverse of the covariance matrix (for faster calculation)
-    _fraction_value: similarly - too speed up computation
-    """
-
-    def __init__(self, mean, covariance, precision_cholesky=None):
-        self._mean = mean
-        self._covariance = covariance
-
-        if precision_cholesky is None:
-            self._precision_cholesky = LA.pinv(self._covariance)
-        else:
-            self._precision_cholesky = precision_cholesky
-
-        self._fraction_value = 1 / np.sqrt(
-            (2 * np.pi) ** self.dimension * LA.det(self._covariance)
-        )
-
-    @property
-    def dimension(self):
-        try:
-            return self._mean.shape[0]
-        except AttributeError:
-            logging.warning("Object not defined.")
-            return 0
-
-    def evaluate(self, position):
-        delta_dist = position - self.mean
-        exp_value = np.exp(
-            (-0.5) * delta_dist.T @ self._precision_cholesky @ delta_dist
-        )
-        return self._fraction_value * exp_value
-
-    def evaluate_derivative(self, position):
-        delta_dist = position - self.mean
-        exp_value = np.exp(
-            (-0.5) * delta_dist.T @ self._precision_cholesky @ delta_dist
-        )
-
-        return (
-            (-0.5 * self._precision_cholesky @ delta_dist)
-            * self._fraction_value
-            * exp_value
-        )
