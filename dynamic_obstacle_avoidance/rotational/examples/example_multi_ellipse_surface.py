@@ -301,7 +301,7 @@ def gaussian_clustering(n_resolution=30, n_gmms=3, x_lim=[-10, 10], y_lim=[-10, 
     ind_inside = my_learner.label < 0
     obstacle_points = my_learner.data_points[:, ind_inside]
 
-    gmm_obstacle = GmmObstacle(n_gmms=n_gmms)
+    gmm_obstacle = GmmObstacle(n_gmms=n_gmms, variance_factor=2.0)
     gmm_obstacle.fit(obstacle_points)
 
     nx = n_resolution
@@ -332,9 +332,8 @@ def gaussian_clustering(n_resolution=30, n_gmms=3, x_lim=[-10, 10], y_lim=[-10, 
 
     ax.set_aspect("equal", "datalim")
 
-    gmm_obstacle.get_one_level_hirarchy()
-    # print('children of root', ellipse_obstacle.hirarchy.root.number_of_children.value)
-
+    gmm_obstacle.evaluate_hirarchy_and_reference_points()
+    gmm_obstacle.plot_obstacle()
     breakpoint()
 
 

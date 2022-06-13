@@ -8,14 +8,18 @@
 import numpy as np
 
 from vartools.visualization import VectorfieldPlotter
+from vartools.dynamical_systems import LinearSystem
 
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
+
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 
 def single_ellipse_nonlinear(n_resolution=10, save_figure=False):
     figure_name = "comparison_nonlinear_vectorfield"
 
-    initial_dynamics = (
+    initial_dynamics = LinearSystem(
         stretching_factor=3,
         maximum_velocity=1.0,
         dimension=2,
