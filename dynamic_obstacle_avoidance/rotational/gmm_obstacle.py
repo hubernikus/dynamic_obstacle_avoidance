@@ -44,7 +44,7 @@ class GmmObstacle:
     def from_container(cls, environment: ObstacleContainer) -> GmmObstacle:
         n_gmms = len(environment)
         dimension = environment[0].dimension
-        
+
         new_instance = cls(n_gmms=n_gmms)
 
         new_instance._gmm = GaussianMixture(
@@ -191,15 +191,17 @@ class GmmObstacle:
         return np.sqrt(gamma) / self.variance_factor
 
     def get_gamma_derivative(self, position, index, powerfactor: float = 1):
-        """ Returns the derivative of the proportional gamma."""
+        """Returns the derivative of the proportional gamma."""
         delta_dist = position - self._gmm.means_[index, :]
-        
+
         d_gamma = (
-            powerfactor / 2.0
+            powerfactor
+            / 2.0
             * (delta_dist.T @ self._gmm.precisions_cholesky[index, :, :] @ delta_dist)
             ** (powerfactor / 2.0 - 1)
             * self.variance_factor ** (-1 * powerfactor)
-            * self._gmm.precisions_cholesky[index, :, :] @ delta_dist
+            * self._gmm.precisions_cholesky[index, :, :]
+            @ delta_dist
         )
         return d_gamma
 
@@ -249,13 +251,13 @@ class GmmObstacle:
 
             # TODO: maybe reduce power-factor to decrease the step size slightly
             step_norm = LA.norm(gradient_step)
-            
+
             if step_norm < abs_tol:
                 logging.info(f"Convergence at iteration {ii}")
                 break
 
             # gradient_step = (
-                # gradient_step / step_norm * (step_norm) ** (1 / powerfactor)
+            # gradient_step / step_norm * (step_norm) ** (1 / powerfactor)
             # )
 
             pos_intersect = pos_intersect - gradient_step * step_size
