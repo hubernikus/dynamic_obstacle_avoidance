@@ -13,6 +13,7 @@ from vartools.directional_space import get_directional_weighted_sum
 from vartools.dynamical_systems import DynamicalSystem
 
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
+from dynamic_obstacle_avoidance.utils import get_orthogonal_basis
 from dynamic_obstacle_avoidance.utils import *
 
 from .base_avoider import BaseAvoider

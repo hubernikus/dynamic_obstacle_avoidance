@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 
 # from vartools.states import ObjectPose
 
+from vartools.linalg import get_orthogonal_basis
+
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
@@ -47,6 +49,7 @@ class GmmObstacle:
         self.variance_factor = variance_factor
 
         self.reference_points = None
+        self.gmm_index_graph = None
 
     @staticmethod
     def from_container(cls, environment: ObstacleContainer) -> GmmObstacle:
@@ -67,6 +70,18 @@ class GmmObstacle:
             (n_gmms, dimension, dimension)
         )
 
+        for ii, ellipse in enumerate(environment):
+            if not isinstance(ellipse, Ellipse):
+                logging.warning(
+                    "Obstacle is not of type 'Ellipse', it will be ignored."
+                )
+                continue
+            new_instance._gmm.means_[ii, :] = ellipse.center_position
+            # new_instance._gmm.covariances_[ii, :, :] =
+            # new_instance._gmm.precisions_cholesky_ = LA.pinv(
+            #     new_instance._gmm.covariances_[ii, :, :])
+            raise NotImplementedError("Finish implementation.")
+
         return new_instance
 
     @property
@@ -78,6 +93,9 @@ class GmmObstacle:
                 "Object-Shape has not been defined yet, returns 0 - dimension."
             )
             return 0
+
+    def center_position(self, index: int) -> Vector:
+        return self._gmm.means_[index, :]
 
     def fit(self, datapoints: Vector) -> None:
         self._gmm = GaussianMixture(
@@ -156,31 +174,99 @@ class GmmObstacle:
     def avoid(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
         self.evaluate_gamma_weights(position)
 
-        descending_index = self.get_nodes_hirarchy_descending()
-        for ii in descending_index:
-            parent = self.get_parent(descending_index)
+        projected_tangents = np.zeros(())
 
+        descending_index = self.get_nodes_hirarchy_descending()
+        for index in descending_index:
+            # Get reference-basis
+            normal_vector = self.get_normal_direction(position, index)
+            modulation_basis = get_orthogonal_basis(normal_vector)
+            modulation_basis[:, 0] = self.get_reference_direction(position, index)
+
+            parent = self.get_parent(descending_index)
             if parent is None:
                 # Is a root -> get normal modulation
-                pass
-
-    def _get_projected_tangent(self, position: np.ndarray, index):
-        pass
+                ref_frame_velocity = LA.pinv(modulation_basis) @ velocity
+                projected_tangents[:, index] = (
+                    modulation_basis[:, 1:] @ ref_frame_velocity[1:]
+                )
 
     def evaluate_gamma_weights(
-        self, position: np.ndarray, gamma_min_factor: float = 0.9
+        self,
+        position: np.ndarray,
+        gamma_min_factor: float = 0.9,
+        gamma_min_summand: float = 0.1,
     ) -> np.array:
-        """Get the importance weight of the different sub-obstacles."""
+        """Get the importance weight of the different sub-obstacles.
+
+        Arguments
+        ---------
+        gamma_relative_cutoff: float in (0, 1) - defines at which value the relative cut-off
+        is applied, such that within obstacles are not too far
+        """
         self.gamma_list = np.zeros(self.n_gmms)
+        self.relative_weights = np.zeros(self.n_gmms)
+
         for index in range(self.n_gmms):
-            self.gamma_list[index] = self.get_gamma_proportional(index)
+            self.gamma_list[index] = self.get_gamma_proportional(position, index)
 
-        self.relative_weights = np.maximum(
-            0, (self.gamma_list - gamma_min_factor * np.min(self.gamma_list))
-        )
-        self.relative_weights = self.relative_weights / np.sum(self.relative_weights)
+        self.relative_weights = self.gamma_list - 1
 
-        self.gamma_weights = 1.0 / self.gamma_list
+        ind_zeros = self.relative_weights <= 0
+        if any(ind_zeros):
+            self.relative_weights = np.zeros(self.relative_weights.shape)
+            self.relative_weights[ind_zeros] = 1.0 / np.sum(ind_zeros)
+            return
+
+        # The weights are the inverse of the gammas
+        self.relative_weights = 1 / self.relative_weights
+        self.relative_weights *= self.get_obstacle_oclusion_factor(position)
+
+        sum_weights = np.sum(self.relative_weights)
+        if sum_weights:
+            self.relative_weights = self.relative_weights / sum_weights
+
+        # self.gamma_weights = 1.0 / self.gamma_list
+
+    def get_obstacle_oclusion_factor(
+        self, position: Vector, gamma_relative_cutoff: float = 0.7
+    ) -> np.array:
+        """Check if the projected-surface-point is within the other obstacles
+        for now this evaluation is only done for direct parents and children
+        Adapt weight if the point lies behind the intersection with parent or child"""
+        factors = np.ones(self.n_gmms)
+
+        for index in range(self.n_gmms):
+            surface_point_gammas = np.ones((self.n_gmms))
+
+            surface_point = self.project_point_on_surface(position, index)
+            ind_parent = self.gmm_index_graph.get_parent(index)
+
+            if ind_parent is not None:
+                surface_point_gammas[ind_parent] = self.get_gamma_proportional(
+                    surface_point, ind_parent
+                )
+
+            inds_chilren = self.gmm_index_graph.get_children(index)
+            for ind_child in inds_chilren:
+                surface_point_gammas[ind_child] = self.get_gamma_proportional(
+                    surface_point, ind_child
+                )
+
+            min_gamma = np.min(surface_point_gammas)
+
+            if min_gamma <= gamma_relative_cutoff:
+                factors[index] = 0
+
+            elif min_gamma > 1:
+                factors[index] = (
+                    self.relative_weights[index]
+                    * (min_gamma - gamma_relative_cutoff)
+                    / (1 - gamma_relative_cutoff)
+                )
+            # else factor 1 => no effect
+        return factors
+        breakpoint()
 
     def transform_to_analytic_ellipses(self):
         """Returns ObstacleContainer with n_gmm Ellipse obstacles with
@@ -223,6 +309,7 @@ class GmmObstacle:
     def plot_obstacle(
         self,
         ax=None,
+        alpha_obstacle=0.8,
     ):
         obstacles = self.transform_to_analytic_ellipses()
 
@@ -232,6 +319,7 @@ class GmmObstacle:
         plot_obstacles(
             obstacle_container=obstacles,
             ax=ax,
+            alpha_obstacle=alpha_obstacle,
         )
         # draw_reference=True
 
@@ -286,7 +374,7 @@ class GmmObstacle:
 
         return d_gamma
 
-    def get_gamma(self, position, index):
+    def get_gamma(self, position: Vector, index: int) -> int:
         gamma_prop = self.get_gamma_proportional(position, index)
         if not gamma_prop:
             return 0
@@ -294,7 +382,23 @@ class GmmObstacle:
             LA.norm(position - self._gmm.means_[index, :]) * (1 - 1.0 / gamma_prop) + 1
         )
 
-    def get_normal_direction(self, position, index):
+    def project_point_on_surface(self, position: Vector, index: int) -> Vector:
+        gamma = self.get_gamma(position, index)
+        return (position - self._gmm.means_[index, :]) / gamma + self._gmm.means_[
+            index, :
+        ]
+
+    def get_reference_direction(self, position: Vector, index: int) -> Vector:
+        """Reference direction."""
+        ref_dir = position - self._gmm.means_[index, :]
+        ref_norm = LA.norm(ref_dir)
+        if ref_norm:
+            ref_dir /= ref_norm
+        else:
+            ref_dir[0] = 1
+        return ref_dir
+
+    def get_normal_direction(self, position: Vector, index: int) -> Vector:
         """Get normal direction of obstacle =>"""
         delta_dist = position - self._gmm.means_[index, :]
 
