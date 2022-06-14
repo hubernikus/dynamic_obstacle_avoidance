@@ -22,10 +22,10 @@ from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
     MultiBoundaryContainer,
 )
+
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
-
 
 from dynamic_obstacle_avoidance.visualization import (
     Simulation_vectorFields,

@@ -159,9 +159,9 @@ class GmmObstacle:
         descending_index = self.get_nodes_hirarchy_descending()
         for ii in descending_index:
             parent = self.get_parent(descending_index)
+
             if parent is None:
                 # Is a root -> get normal modulation
-
                 pass
 
     def _get_projected_tangent(self, position: np.ndarray, index):
@@ -237,7 +237,17 @@ class GmmObstacle:
 
         if self.reference_points is not None:
             ax.plot(self.reference_points[0, :], self.reference_points[1, :], "k+")
-            ax.plot(self.reference_points[0, :], self.reference_points[1, :], "k--")
+
+            for ii in range(self.n_gmms):
+                ind_parent = self.gmm_index_graph.get_parent(ii)
+                if ind_parent is None:
+                    continue
+
+                ax.plot(
+                    self.reference_points[0, [ii, ind_parent]],
+                    self.reference_points[1, [ii, ind_parent]],
+                    "k--",
+                )
 
     def _get_gauss_derivative(self, position, index, powerfactor=1):
         """The additional powerfactor allows"""
@@ -283,6 +293,27 @@ class GmmObstacle:
         return (
             LA.norm(position - self._gmm.means_[index, :]) * (1 - 1.0 / gamma_prop) + 1
         )
+
+    def get_normal_direction(self, position, index):
+        """Get normal direction of obstacle =>"""
+        delta_dist = position - self._gmm.means_[index, :]
+
+        d_gamma = (
+            (delta_dist.T @ self._gmm.precisions_cholesky_[index, :, :] @ delta_dist)
+            ** (1.0 / 2.0 - 1)
+            * self.variance_factor ** (-1)
+            * self._gmm.precisions_cholesky_[index, :, :]
+            @ delta_dist
+        )
+
+        dgamma_norm = LA.norm(d_gamma)
+        if dgamma_norm:
+            d_gamma = d_gamma / dgamma_norm
+        else:
+            # Feasible default value
+            d_gamma[0] = 1
+
+        return d_gamma
 
     def get_intersection_of_ellipses(
         self,

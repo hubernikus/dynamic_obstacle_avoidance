@@ -102,6 +102,8 @@ class GraphHandler:
 
     def get_parent(self, value):
         parent_index = self._parent_index[self._node_values.index(value)]
+        if parent_index is None:
+            return parent_index
         return self._node_values[parent_index]
 
     def get_children(self, value):

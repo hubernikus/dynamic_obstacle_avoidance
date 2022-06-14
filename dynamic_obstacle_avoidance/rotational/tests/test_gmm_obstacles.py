@@ -236,6 +236,76 @@ def test_obstacle_gradient_descent(visualize=False):
             ax.plot(pos_intersection[0], pos_intersection[1], "ko")
 
 
+def test_normal_direction(visualize=False):
+    n_gmms = 2
+    dimension = 2
+
+    gmm_ellipse = GmmObstacle(n_gmms=n_gmms)
+    gmm_ellipse._gmm = GaussianMixture(n_components=n_gmms)
+    gmm_ellipse._gmm.means_ = np.zeros((n_gmms, dimension))
+    gmm_ellipse._gmm.means_[0, :] = [4.4, 0]
+    gmm_ellipse._gmm.means_[1, :] = [0, 4.0]
+
+    gmm_ellipse._gmm.covariances_ = np.zeros((n_gmms, dimension, dimension))
+    gmm_ellipse._gmm.covariances_[0, :, :] = [[0.6, 0], [0, 4.2]]
+    gmm_ellipse._gmm.covariances_[1, :, :] = [[3.7, 0], [0, 0.9]]
+
+    gmm_ellipse._gmm.precisions_cholesky_ = np.zeros((n_gmms, dimension, dimension))
+    for ii in range(n_gmms):
+        gmm_ellipse._gmm.precisions_cholesky_[ii, :, :] = LA.pinv(
+            gmm_ellipse._gmm.covariances_[ii, :, :]
+        )
+    gmm_ellipse._gmm.weights = 0.5 * np.ones(n_gmms)
+
+    position = np.array([0, 0])
+
+    normal0 = gmm_ellipse.get_normal_direction(position, index=0)
+    normal1 = gmm_ellipse.get_normal_direction(position, index=1)
+
+    assert np.dot(normal0, normal1) == 0, "Normals are not perpendicular."
+    assert LA.norm(normal0) > 0, "Normal is trivial"
+    assert LA.norm(normal1) > 0, "Normal is trivial"
+
+    if visualize:
+        n_resolution = 30
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+
+        colors = ["green", "red"]
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        normals = np.zeros((positions.shape[0], positions.shape[1], gmm_ellipse.n_gmms))
+        for it_gmm in range(gmm_ellipse.n_gmms):
+            for ii in range(positions.shape[1]):
+                normals[:, ii, it_gmm] = gmm_ellipse.get_normal_direction(
+                    position=positions[:, ii], index=it_gmm
+                )
+
+            ax.quiver(
+                positions[0, :],
+                positions[1, :],
+                normals[0, :, it_gmm],
+                normals[1, :, it_gmm],
+                color=colors[it_gmm]
+                # color="k",
+            )
+
+        gmm_ellipse.plot_obstacle(ax=ax)
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(x_lim)
+
+        ax.grid()
+
+
 if (__name__) == "__main__":
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
@@ -246,5 +316,6 @@ if (__name__) == "__main__":
     plt.ion()
     # test_uniradius_obstacle_from_gmm(visualize=True)
     # test_obstacle_with_radius_3_from_gmm(visualize=True)
-    test_obstacle_gradient_descent(visualize=True)
+    # test_obstacle_gradient_descent(visualize=True)
+    test_normal_direction(visualize=True)
     pass
