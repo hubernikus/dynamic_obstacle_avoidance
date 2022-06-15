@@ -124,11 +124,11 @@ class GmmObstacle:
         # Generate a consistent 'top-down'
         remaining_list = np.arange(self.n_gmms).tolist()
         del remaining_list[ind_closest]
-        proba_matrix = self._gmm.predict_proba(self._gmm.means_[remaining_list, :])
 
-        # Remove the 'center'-elements
-        # for ii in range(proba_matrix.shape[0]):
-        # proba_matrix[ii, remaining_list[ii]] = 0
+        if not remaining_list:
+            # Only has one element
+            return
+        proba_matrix = self._gmm.predict_proba(self._gmm.means_[remaining_list, :])
 
         # Top down adding of new values to the graph
         while len(remaining_list):
@@ -223,7 +223,6 @@ class GmmObstacle:
 
         # The weights are the inverse of the gammas
         self.relative_weights = 1 / self.relative_weights
-        # breakpoint()
         self.relative_weights *= self.get_obstacle_oclusion_factor(position)
 
         sum_weights = np.sum(self.relative_weights)
@@ -243,7 +242,9 @@ class GmmObstacle:
         for index in range(self.n_gmms):
             # surface_point_gammas = np.ones((self.n_gmms))
 
-            surface_point = self.project_point_on_surface(position, index)
+            surface_point = self.project_point_on_surface_with_offcenter_point(
+                position, self.reference_points[:, index], index
+            )
             ind_parent = self.gmm_index_graph.get_parent(index)
 
             # breakpoint()

@@ -330,6 +330,7 @@ def test_relative_weights(visualize=False):
     gmm_ellipse.evaluate_hirarchy_and_reference_points()
 
     position = np.array([4, -4])
+    gmm_ellipse.evaluate_axes_length_and_direction()
     gmm_ellipse.evaluate_gamma_weights(position=position)
 
     # position = np.array([0, 0])
@@ -359,7 +360,8 @@ def test_relative_weights(visualize=False):
 
         fig, axs = plt.subplots(1, 2, figsize=(15, 6))
         # levels = np.linspace(0.01, 1., 20 + 1)
-        levels = np.linspace(1e-5, 1.0, 20 + 1)
+        levels = np.linspace(1e-5, 1.0 + 1e-5, 40 + 1)
+        cmap = "YlGn"
 
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         weights = np.zeros((positions.shape[1], gmm_ellipse.n_gmms))
@@ -375,7 +377,7 @@ def test_relative_weights(visualize=False):
                 y_vals,
                 weights[:, it_gmm].reshape(x_vals.shape),
                 levels=levels,
-                # cmap=cmap
+                cmap=cmap,
             )
             axs[it_gmm].set_title(f"Gamma Obstacle {it_gmm}")
 
@@ -486,7 +488,7 @@ def test_project_point_on_surface_with_offset_center(visualize=False):
     gmm_ellipse._gmm.weights_ = np.ones(n_gmms) / n_gmms
 
     offset_center = np.array([0.2, 1.5])
-    # gmm_ellipse.evaluate_hirarchy_and_reference_points()
+    gmm_ellipse.evaluate_hirarchy_and_reference_points()
 
     position = np.array([0, 6])
     proj_pos = gmm_ellipse.project_point_on_surface(position, index=0)
@@ -551,7 +553,7 @@ if (__name__) == "__main__":
     # test_normal_direction(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
-    # test_project_point_on_surface_with_offset_center(visualize=True)
+    test_project_point_on_surface_with_offset_center(visualize=True)
     # test_relative_weights(visualize=True)
 
     print("Tests executed successfully.")
