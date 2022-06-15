@@ -333,19 +333,34 @@ def test_relative_weights(visualize=False):
     gmm_ellipse.evaluate_axes_length_and_direction()
     gmm_ellipse.evaluate_gamma_weights(position=position)
 
-    # position = np.array([0, 0])
-    # gmm_ellipse.evaluate_gamma_weights(position=position)
-    # assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
-    # assert (
-    #     gmm_ellipse.relative_weights[0] == gmm_ellipse.relative_weights[1]
-    # ), "Weights no equal in between."
+    position = np.array([0, 0])
+    gmm_ellipse.evaluate_gamma_weights(position=position)
+    assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
+    assert (
+        gmm_ellipse.relative_weights[0] == gmm_ellipse.relative_weights[1]
+    ), "Weights not equal inbetween."
 
-    # position = np.array([2, -6])
-    # gmm_ellipse.evaluate_gamma_weights(position=position)
-    # assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
-    # assert (
-    #     gmm_ellipse.relative_weights[0] > gmm_ellipse.relative_weights[1]
-    # ), "Weights of closer ellipse should be higher."
+    position = np.array([2, -6])
+    gmm_ellipse.evaluate_gamma_weights(position=position)
+    assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
+    assert (
+        gmm_ellipse.relative_weights[0] > gmm_ellipse.relative_weights[1]
+    ), "Weights of closer ellipse should be higher."
+
+    # Check which one is root => adapt test slightly
+    ind_roots = gmm_ellipse.gmm_index_graph.get_root_indices()
+    if ind_roots[0] == 0:
+        ind_child = 1
+        position = np.array([6, -6])
+    else:
+        ind_child = 0
+        position = np.array([-6, 6])
+        
+    gmm_ellipse.evaluate_gamma_weights(position=position)
+    assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
+    assert (
+        np.isclose(gmm_ellipse.relative_weights[ind_child], 0)
+    ), "Weight in parent shadow is not 0."
 
     if visualize:
         n_resolution = 50
@@ -553,8 +568,8 @@ if (__name__) == "__main__":
     # test_normal_direction(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
-    test_project_point_on_surface_with_offset_center(visualize=True)
-    # test_relative_weights(visualize=True)
+    # test_project_point_on_surface_with_offset_center(visualize=True)
+    test_relative_weights(visualize=True)
 
     print("Tests executed successfully.")
     pass
