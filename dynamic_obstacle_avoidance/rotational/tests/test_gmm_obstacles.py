@@ -329,19 +329,22 @@ def test_relative_weights(visualize=False):
     gmm_ellipse._gmm.weights_ = 0.5 * np.ones(n_gmms)
     gmm_ellipse.evaluate_hirarchy_and_reference_points()
 
-    position = np.array([0, 0])
+    position = np.array([4, -4])
     gmm_ellipse.evaluate_gamma_weights(position=position)
-    assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
-    assert (
-        gmm_ellipse.relative_weights[0] == gmm_ellipse.relative_weights[1]
-    ), "Weights no equal in between."
 
-    position = np.array([2, -6])
-    gmm_ellipse.evaluate_gamma_weights(position=position)
-    assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
-    assert (
-        gmm_ellipse.relative_weights[0] > gmm_ellipse.relative_weights[1]
-    ), "Weights of closer ellipse should be higher."
+    # position = np.array([0, 0])
+    # gmm_ellipse.evaluate_gamma_weights(position=position)
+    # assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
+    # assert (
+    #     gmm_ellipse.relative_weights[0] == gmm_ellipse.relative_weights[1]
+    # ), "Weights no equal in between."
+
+    # position = np.array([2, -6])
+    # gmm_ellipse.evaluate_gamma_weights(position=position)
+    # assert np.isclose(np.sum(gmm_ellipse.relative_weights), 1), "Weights not summing up to one"
+    # assert (
+    #     gmm_ellipse.relative_weights[0] > gmm_ellipse.relative_weights[1]
+    # ), "Weights of closer ellipse should be higher."
 
     if visualize:
         n_resolution = 50
@@ -386,17 +389,151 @@ def test_relative_weights(visualize=False):
                 fontweight="bold",
             )
 
+        print(f"roots = {gmm_ellipse.gmm_index_graph.get_root_indices()}")
+
         for ax in axs:
             ax.set_aspect("equal", adjustable="box")
             ax.set_xlim(x_lim)
             ax.set_ylim(x_lim)
-
             ax.grid()
 
-        # print(f"mean time: {np.mean(np.round(mean_time*1000, 2))}ms")
-
-        # fig.tight_layout()
         plt.colorbar(cs0, ax=axs)
+
+
+def test_project_point_on_surface(visualize=False):
+    n_gmms = 1
+    dimension = 2
+
+    gmm_ellipse = GmmObstacle(n_gmms=n_gmms)
+    gmm_ellipse._gmm = GaussianMixture(n_components=gmm_ellipse.n_gmms)
+    gmm_ellipse._gmm.means_ = np.zeros((gmm_ellipse.n_gmms, dimension))
+    gmm_ellipse._gmm.means_[0, :] = [0.0, 0]
+
+    gmm_ellipse._gmm.covariances_ = np.zeros((n_gmms, dimension, dimension))
+    gmm_ellipse._gmm.covariances_[0, :, :] = [[1.0, 0], [0, 4.0]]
+
+    gmm_ellipse._gmm.precisions_cholesky_ = np.zeros((n_gmms, dimension, dimension))
+    for ii in range(n_gmms):
+        gmm_ellipse._gmm.precisions_cholesky_[ii, :, :] = LA.pinv(
+            gmm_ellipse._gmm.covariances_[ii, :, :]
+        )
+    gmm_ellipse._gmm.weights_ = np.ones(n_gmms) / n_gmms
+    # gmm_ellipse.evaluate_hirarchy_and_reference_points()
+
+    position = np.array([0, 6])
+    proj_pos = gmm_ellipse.project_point_on_surface(position, index=0)
+    assert np.allclose(proj_pos, [0, 4])
+
+    position = np.array([3, 5.6])
+    proj_pos = gmm_ellipse.project_point_on_surface(position, index=0)
+    assert np.isclose(gmm_ellipse.get_gamma(proj_pos, index=0), 1)
+
+    if visualize:
+        n_resolution = 10
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+        gmm_ellipse.plot_obstacle(ax=ax, alpha_obstacle=0.2)
+
+        # levels = np.linspace(0.01, 1., 20 + 1)
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        proj_pos = np.zeros(positions.shape)
+
+        for ii in range(positions.shape[1]):
+            proj_pos[:, ii] = gmm_ellipse.project_point_on_surface(
+                positions[:, ii], index=0
+            )
+
+            ax.plot(
+                [positions[0, ii], proj_pos[0, ii]],
+                [positions[1, ii], proj_pos[1, ii]],
+                "k--",
+            )
+
+        ax.plot(positions[0, :], positions[1, :], "ro")
+        ax.plot(proj_pos[0, :], proj_pos[1, :], "go")
+
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(x_lim)
+        ax.grid()
+
+
+def test_project_point_on_surface_with_offset_center(visualize=False):
+    n_gmms = 1
+    dimension = 2
+
+    gmm_ellipse = GmmObstacle(n_gmms=n_gmms)
+    gmm_ellipse._gmm = GaussianMixture(n_components=gmm_ellipse.n_gmms)
+    gmm_ellipse._gmm.means_ = np.zeros((gmm_ellipse.n_gmms, dimension))
+    gmm_ellipse._gmm.means_[0, :] = [0.0, 0]
+
+    gmm_ellipse._gmm.covariances_ = np.zeros((n_gmms, dimension, dimension))
+    gmm_ellipse._gmm.covariances_[0, :, :] = [[1.0, 0], [0, 4.0]]
+
+    gmm_ellipse._gmm.precisions_cholesky_ = np.zeros((n_gmms, dimension, dimension))
+    for ii in range(n_gmms):
+        gmm_ellipse._gmm.precisions_cholesky_[ii, :, :] = LA.pinv(
+            gmm_ellipse._gmm.covariances_[ii, :, :]
+        )
+    gmm_ellipse._gmm.weights_ = np.ones(n_gmms) / n_gmms
+
+    offset_center = np.array([0.2, 1.5])
+    # gmm_ellipse.evaluate_hirarchy_and_reference_points()
+
+    position = np.array([0, 6])
+    proj_pos = gmm_ellipse.project_point_on_surface(position, index=0)
+    assert np.isclose(gmm_ellipse.get_gamma(proj_pos, index=0), 1)
+
+    position = np.array([3, 5.6])
+    proj_pos = gmm_ellipse.project_point_on_surface(position, index=0)
+    assert np.isclose(gmm_ellipse.get_gamma(proj_pos, index=0), 1)
+
+    if visualize:
+        n_resolution = 10
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+        gmm_ellipse.plot_obstacle(ax=ax, alpha_obstacle=0.2)
+
+        # levels = np.linspace(0.01, 1., 20 + 1)
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        proj_pos = np.zeros(positions.shape)
+
+        for ii in range(positions.shape[1]):
+            proj_pos[:, ii] = gmm_ellipse.project_point_on_surface_with_offcenter_point(
+                positions[:, ii], offcenter_point=offset_center, index=0
+            )
+
+            ax.plot(
+                [positions[0, ii], proj_pos[0, ii]],
+                [positions[1, ii], proj_pos[1, ii]],
+                "k--",
+            )
+
+        ax.plot(offset_center[0], offset_center[1], "+", color="k")
+
+        ax.plot(positions[0, :], positions[1, :], "ro")
+        ax.plot(proj_pos[0, :], proj_pos[1, :], "go")
+
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(x_lim)
+        ax.grid()
 
 
 if (__name__) == "__main__":
@@ -407,11 +544,14 @@ if (__name__) == "__main__":
 
     plt.close("all")
     plt.ion()
-    test_uniradius_obstacle_from_gmm(visualize=True)
+
+    # test_uniradius_obstacle_from_gmm(visualize=True)
     # test_obstacle_with_radius_3_from_gmm(visualize=True)
     # test_obstacle_gradient_descent(visualize=True)
     # test_normal_direction(visualize=True)
-
+    # test_project_point_on_surface(visualize=True)
+    # test_project_point_on_surface(visualize=True)
+    # test_project_point_on_surface_with_offset_center(visualize=True)
     # test_relative_weights(visualize=True)
 
     print("Tests executed successfully.")

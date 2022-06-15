@@ -18,7 +18,7 @@ from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 
 # from vartools.states import ObjectPose
-
+from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
@@ -50,6 +50,9 @@ class GmmObstacle:
 
         self.reference_points = None
         self.gmm_index_graph = None
+
+        self._axes_lengths = None
+        self._axes_directions = None
 
     @staticmethod
     def from_container(cls, environment: ObstacleContainer) -> GmmObstacle:
@@ -220,6 +223,7 @@ class GmmObstacle:
 
         # The weights are the inverse of the gammas
         self.relative_weights = 1 / self.relative_weights
+        # breakpoint()
         self.relative_weights *= self.get_obstacle_oclusion_factor(position)
 
         sum_weights = np.sum(self.relative_weights)
@@ -237,72 +241,74 @@ class GmmObstacle:
         factors = np.ones(self.n_gmms)
 
         for index in range(self.n_gmms):
-            surface_point_gammas = np.ones((self.n_gmms))
+            # surface_point_gammas = np.ones((self.n_gmms))
 
             surface_point = self.project_point_on_surface(position, index)
             ind_parent = self.gmm_index_graph.get_parent(index)
 
-            if ind_parent is not None:
-                surface_point_gammas[ind_parent] = self.get_gamma_proportional(
-                    surface_point, ind_parent
-                )
+            # breakpoint()
+            if ind_parent is None:
+                continue
 
-            inds_chilren = self.gmm_index_graph.get_children(index)
-            for ind_child in inds_chilren:
-                surface_point_gammas[ind_child] = self.get_gamma_proportional(
-                    surface_point, ind_child
-                )
+            surface_point_gamma = self.get_gamma_proportional(surface_point, ind_parent)
 
-            min_gamma = np.min(surface_point_gammas)
+            if surface_point_gamma >= 1:
+                continue
 
-            if min_gamma <= gamma_relative_cutoff:
+            position_rel = position - self.reference_points[:, index]
+            center_rel = (
+                self._gmm.means_[ind_parent, :] - self.reference_points[:, index]
+            )
+            dot_prod = np.dot(position_rel, center_rel) / (
+                LA.norm(position_rel) * LA.norm(center_rel)
+            )
+
+            if dot_prod <= 0:
+                continue
+            elif dot_prod >= 1:
                 factors[index] = 0
+                continue
 
-            elif min_gamma > 1:
-                factors[index] = (
-                    self.relative_weights[index]
-                    * (min_gamma - gamma_relative_cutoff)
-                    / (1 - gamma_relative_cutoff)
-                )
-            # else factor 1 => no effect
+            factors[index] = surface_point_gamma ** (1 / (1 - dot_prod))
+
         return factors
-        breakpoint()
+
+    def evaluate_axes_length_and_direction(self):
+        self._axes_lengths = np.zeros((self.dimension, self.n_gmms))
+        self._axes_directions = np.zeros((self.dimension, self.dimension, self.n_gmms))
+
+        if not self._gmm.covariance_type == "full":
+            raise NotImplementedError("Assumption of 'full' covariances.")
+
+        for ii in range(self.n_gmms):
+            eig_vals, self._axes_directions[:, :, ii] = LA.eigh(
+                self._gmm.covariances_[ii, :, :]
+            )
+            self._axes_lengths[:, ii] = 2.0 * np.sqrt(eig_vals) * self.variance_factor
 
     def transform_to_analytic_ellipses(self):
         """Returns ObstacleContainer with n_gmm Ellipse obstacles with
         pose-axes description."""
+        if self.dimension != 2:
+            raise NotImplementedError("Not implemented for dimension > 2.")
+
+        if self._axes_lengths is None:
+            self.evaluate_axes_length_and_direction()
+
         obstacle_environment = ObstacleContainer()
-
-        for ii in range(len(self._gmm.covariances_)):
-            # Renamed: n => ii (in case of error) [remove this comment in the future]
-            if self._gmm.covariance_type == "full":
-                covariances = self._gmm.covariances_[ii][:2, :2]
-            elif self._gmm.covariance_type == "tied":
-                covariances = self._gmm.covariances_[:2, :2]
-            elif self._gmm.covariance_type == "diag":
-                covariances = np.diag(self._gmm.covariances_[ii][:2])
-            elif self._gmm.covariance_type == "spherical":
-                covariances = (
-                    np.eye(self._gmm.means_.shape[1]) * self._gmm.covariances_[ii]
-                )
-
-            eig_vals, eig_vecs = LA.eigh(covariances)
-
-            uu = eig_vecs[0] / LA.norm(eig_vecs[0])
+        for ii in range(self.n_gmms):
+            uu = self._axes_directions[:, :, ii][0] / LA.norm(
+                self._axes_directions[:, :, ii][0]
+            )
             angle = np.arctan2(uu[1], uu[0])
-            # angle_degrees = 180 * angle / np.pi  # convert to degrees
-            # eig_vals = 2.0 * np.sqrt(2.0) * np.sqrt(eig_vals)
-            eig_vals = 2.0 * np.sqrt(eig_vals) * self.variance_factor
 
             obstacle_environment.append(
                 Ellipse(
                     center_position=self._gmm.means_[ii, :2],
                     orientation=angle,
-                    axes_length=np.array([eig_vals[0], eig_vals[1]]),
+                    axes_length=self._axes_lengths[:, ii],
                 )
             )
-            # obstacle_environment[-1].set_reference_point(
-            #     self.reference_points[ii, :], in_global_frame=True)
 
         return obstacle_environment
 
@@ -383,10 +389,49 @@ class GmmObstacle:
         )
 
     def project_point_on_surface(self, position: Vector, index: int) -> Vector:
-        gamma = self.get_gamma(position, index)
+        gamma = self.get_gamma_proportional(position, index)
         return (position - self._gmm.means_[index, :]) / gamma + self._gmm.means_[
             index, :
         ]
+
+    def transform_position_to_unitcircle_frame(
+        self, position: Vector, index: int
+    ) -> Vector:
+        """Returns position-vector in the frame of the corresponding unit-(diamaeter)-circle
+        to the ellipse at index.
+
+        Inverse function of 'transform_position_from_unitcircle_frame'
+        """
+        return (
+            self._axes_directions[:, :, index].T
+            @ (position - self._gmm.means_[index, :])
+        ) / self._axes_lengths[:, index]
+
+    def transform_position_from_unitcircle_frame(
+        self, position: Vector, index: int
+    ) -> Vector:
+        """Returns position-vector in the original frame of
+        the corresponding unit-(diamaeter)-circle to the ellipse at index.
+
+        Inverse function of 'transform_position_to_unitcircle_frame'
+        """
+        return (
+            self._axes_directions[:, :, index]
+            @ (position * self._axes_lengths[:, index])
+            + self._gmm.means_[index, :]
+        )
+
+    def project_point_on_surface_with_offcenter_point(
+        self, position: Vector, offcenter_point: Vector, index: int
+    ) -> Vector:
+        rel_pos = self.transform_position_to_unitcircle_frame(position, index)
+        rel_offset = self.transform_position_to_unitcircle_frame(offcenter_point, index)
+        intersection = get_intersection_with_circle(
+            rel_offset,
+            direction=(rel_pos - rel_offset),
+            radius=0.5,
+        )
+        return self.transform_position_from_unitcircle_frame(intersection, index)
 
     def get_reference_direction(self, position: Vector, index: int) -> Vector:
         """Reference direction."""

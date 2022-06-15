@@ -13,6 +13,7 @@ import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt  # For debugging only (!)
 
+from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import (
@@ -29,46 +30,6 @@ from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 
 from dynamic_obstacle_avoidance.avoidance import BaseAvoider
-
-
-def get_intersection_with_circle(
-    start_position: np.ndarray,
-    direction: np.ndarray,
-    radius: float,
-    only_positive: bool = True,
-) -> np.ndarray:
-    """Returns intersection with circle with center at 0
-    of of radius 'radius' and the line defined as
-    'start_position + x * direction'
-    (!) Only intersection at furthest distance to start_point is returned."""
-    if not radius:  # Zero radius
-        return None
-
-    # Binomial Formula to solve for x in:
-    # || dir_reference + x * (delta_dir_conv) || = radius
-    AA = np.sum(direction**2)
-    BB = 2 * np.dot(direction, start_position)
-    CC = np.sum(start_position**2) - radius**2
-    DD = BB**2 - 4 * AA * CC
-
-    if DD < 0:
-        # No intersection with circle
-        return None
-
-    if only_positive:
-        # Only negative direction due to expected negative A (?!) [returns max-direciton]..
-        fac_direction = (-BB + np.sqrt(DD)) / (2 * AA)
-        point = start_position + fac_direction * direction
-        return point
-
-    else:
-        factors = (-BB + np.array([-1, 1]) * np.sqrt(DD)) / (2 * AA)
-        points = (
-            np.tile(start_position, (2, 1)).T
-            + np.tile(factors, (start_position.shape[0], 1))
-            * np.tile(direction, (2, 1)).T
-        )
-        return points
 
 
 class RotationalAvoider(BaseAvoider):
