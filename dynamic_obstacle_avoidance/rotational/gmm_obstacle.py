@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 # from vartools.states import ObjectPose
 from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
+from vartools.directional_space import UnitDirection
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
@@ -48,7 +49,7 @@ class GmmObstacle:
         self._gmm = None
         self.variance_factor = variance_factor
 
-        self.reference_points = None
+        self._reference_points = None
         self.gmm_index_graph = None
 
         self._axes_lengths = None
@@ -97,7 +98,21 @@ class GmmObstacle:
             )
             return 0
 
-    def center_position(self, index: int) -> Vector:
+    @property
+    def kernel_points(self) -> np.ndarray:
+        return self._reference_points
+
+    @kernel_points.setter
+    def kernel_points(self, value: npt.ArrayLike) -> None:
+        self._reference_points = value
+
+    def get_kernel_point(self, index: int) -> Vector:
+        return self._reference_points[:, index]
+
+    def set_kernel_point(self, value: Vector, index: int) -> None:
+        self._reference_points[:, index]
+
+    def get_center_position(self, index: int) -> Vector:
         return self._gmm.means_[index, :]
 
     def fit(self, datapoints: Vector) -> None:
@@ -109,7 +124,7 @@ class GmmObstacle:
         """This hirarchy checker is very simple and does not further investigate
         if objects are within a loop."""
         self.gmm_index_graph = GraphHandler()
-        self.reference_points = np.zeros(self._gmm.means_.shape).T
+        self._reference_points = np.zeros(self._gmm.means_.shape).T
 
         mean_center = np.mean(self._gmm.means_, axis=0)
 
@@ -117,7 +132,7 @@ class GmmObstacle:
             LA.norm(self._gmm.means_ - np.tile(mean_center, (self.n_gmms, 1)), axis=0)
         )
 
-        self.reference_points[:, ind_closest] = self._gmm.means_[ind_closest, :]
+        self._reference_points[:, ind_closest] = self._gmm.means_[ind_closest, :]
         self.gmm_index_graph.set_root(ind_closest)
         assigned_list = [ind_closest]
 
@@ -147,7 +162,7 @@ class GmmObstacle:
             proba_matrix = np.delete(proba_matrix, (ind[0]), axis=0)
 
             # Update reference point
-            self.reference_points[:, value] = self.get_intersection_of_ellipses(
+            self._reference_points[:, value] = self.get_intersection_of_ellipses(
                 indices=[value, parent_value]
             )
 
@@ -162,7 +177,7 @@ class GmmObstacle:
     #         ind_parent = np.argsort(proba_vals[0])[1]
 
     #         self.gmm_index_graph.add_element_with_parent(value=ii, parent_value=ind_parent)
-    #         self.reference_points[:, ii] = self.get_intersection_of_ellipses(
+    #         self._reference_points[:, ii] = self.get_intersection_of_ellipses(
     #             indices=[ii, ind_parent]
     #         )
 
@@ -174,9 +189,8 @@ class GmmObstacle:
     #             "The graph has multiple (or no) roots - Behavior is undefined."
     #         )
 
-    def avoid(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
+    def avoid(self, position: Vector, velocity: Vector) -> Vector:
         self.evaluate_gamma_weights(position)
-
         projected_tangents = np.zeros(())
 
         descending_index = self.get_nodes_hirarchy_descending()
@@ -194,12 +208,84 @@ class GmmObstacle:
                     modulation_basis[:, 1:] @ ref_frame_velocity[1:]
                 )
 
+    def get_root_rotation_direction(self, position: Vector, velocity: Vector) -> Vector:
+        ind_root = self.gmm_index_graph.get_root_indices()[0]
+        kernel_direction = position - self.get_kernel_point(ind_root)
+        kernal_norm = LA.norm(kernel_direction)
+        if not kernal_norm:
+            logging.warning("Evaluation at obstacle-center. Something has gone wrong.")
+            return velocity
+
+        kernel_direction = kernel_direction / kernal_norm
+        if np.dot(kernel_direction, velocity) < 1:
+            # Velocity is already pointing away - the main kernel does need to guide
+            return velocity
+
+        # Project to be orthogonal to the 'kernel_direction'
+        kernel_basis = get_orthogonal_basis(kernel_direction)
+        trafo_vector = kernel_basis.T @ velocity
+        trafo_vector[0] = 0
+        return kernel_basis @ trafo_vector
+
+    def get_relative_orientation_of_ellipses(self, position):
+        gmm_directions = []
+
+        for ii in range(self.n_gmms):
+            ind_parent = self.gmm_index_graph.get_parent(ii)
+            if ind_parent is None:
+                gmm_directions.append(None)
+
+            delta_dir_parent = self.get_kernel_position(ii) - self.get_center_position(
+                ind_parent
+            )
+            delta_dir = self.get_center_position(ii) - self.get_kernel_point(ii)
+
+            d_parent_norm = LA.norm(delta_dir_parent)
+            d_dir_norm = LA.norm(delta_dir)
+
+            if not (d_parent_norm and d_dir_norm):
+                # Directly overlapping parent and child
+                if d_dir_norm:
+                    delta_dir = delta_dir / d_dir_norm
+                    delta_dir_parent = delta_dir
+
+                elif d_parent_norm:
+                    delta_dir_parent = delta_dir_parent / d_parent_norm
+                    delta_dir = delta_dir_parent
+
+                else:
+                    gmm_directions.append(
+                        UnitDirection(
+                            np.ones(self.dimension) / self.dimension
+                        ).from_angle(np.zeros(self.dimension - 1))
+                    )
+
+                    continue
+            else:
+                delta_dir = delta_dir / d_dir_norm
+                delta_dir_parent = delta_dir_parent / d_parent_norm
+
+            gmm_directions.append(
+                UnitDirection(delta_dir_parent).from_vector(delta_dir)
+            )
+
+        return gmm_directions
+
+    def get_weighted_reference(self, position):
+        pass
+
+    def get_mean_normal(self, position):
+        pass
+    
+    def get_rotated_modulation(self, position):
+        pass
+
     def evaluate_gamma_weights(
         self,
-        position: np.ndarray,
+        position: Vector,
         gamma_min_factor: float = 0.9,
         gamma_min_summand: float = 0.1,
-    ) -> np.array:
+    ) -> np.ndarray:
         """Get the importance weight of the different sub-obstacles.
 
         Arguments
@@ -223,7 +309,7 @@ class GmmObstacle:
 
         # The weights are the inverse of the gammas
         self.relative_weights = 1 / self.relative_weights
-        self.relative_weights *= self.get_obstacle_oclusion_factor(position)
+        self.relative_weights *= self.get_obstacle_occlusion_factor(position)
 
         sum_weights = np.sum(self.relative_weights)
         if sum_weights:
@@ -231,7 +317,7 @@ class GmmObstacle:
 
         # self.gamma_weights = 1.0 / self.gamma_list
 
-    def get_obstacle_oclusion_factor(
+    def get_obstacle_occlusion_factor(
         self, position: Vector, gamma_relative_cutoff: float = 0.7
     ) -> np.array:
         """Check if the projected-surface-point is within the other obstacles
@@ -243,7 +329,7 @@ class GmmObstacle:
             # surface_point_gammas = np.ones((self.n_gmms))
 
             surface_point = self.project_point_on_surface_with_offcenter_point(
-                position, self.reference_points[:, index], index
+                position, self._reference_points[:, index], index
             )
             ind_parent = self.gmm_index_graph.get_parent(index)
 
@@ -256,9 +342,9 @@ class GmmObstacle:
             if surface_point_gamma >= 1:
                 continue
 
-            position_rel = position - self.reference_points[:, index]
+            position_rel = position - self._reference_points[:, index]
             center_rel = (
-                self._gmm.means_[ind_parent, :] - self.reference_points[:, index]
+                self._gmm.means_[ind_parent, :] - self._reference_points[:, index]
             )
             dot_prod = np.dot(position_rel, center_rel) / (
                 LA.norm(position_rel) * LA.norm(center_rel)
@@ -266,6 +352,7 @@ class GmmObstacle:
 
             if dot_prod <= 0:
                 continue
+
             elif dot_prod >= 1:
                 factors[index] = 0
                 continue
@@ -274,7 +361,7 @@ class GmmObstacle:
 
         return factors
 
-    def evaluate_axes_length_and_direction(self):
+    def evaluate_axes_length_and_direction(self) -> None:
         self._axes_lengths = np.zeros((self.dimension, self.n_gmms))
         self._axes_directions = np.zeros((self.dimension, self.dimension, self.n_gmms))
 
@@ -287,7 +374,7 @@ class GmmObstacle:
             )
             self._axes_lengths[:, ii] = 2.0 * np.sqrt(eig_vals) * self.variance_factor
 
-    def transform_to_analytic_ellipses(self):
+    def transform_to_analytic_ellipses(self) -> ObstacleContainer:
         """Returns ObstacleContainer with n_gmm Ellipse obstacles with
         pose-axes description."""
         if self.dimension != 2:
@@ -316,8 +403,8 @@ class GmmObstacle:
     def plot_obstacle(
         self,
         ax=None,
-        alpha_obstacle=0.8,
-    ):
+        alpha_obstacle: float = 0.8,
+    ) -> None:
         obstacles = self.transform_to_analytic_ellipses()
 
         if ax is None:
@@ -330,8 +417,8 @@ class GmmObstacle:
         )
         # draw_reference=True
 
-        if self.reference_points is not None:
-            ax.plot(self.reference_points[0, :], self.reference_points[1, :], "k+")
+        if self._reference_points is not None:
+            ax.plot(self._reference_points[0, :], self._reference_points[1, :], "k+")
 
             for ii in range(self.n_gmms):
                 ind_parent = self.gmm_index_graph.get_parent(ii)
@@ -339,12 +426,14 @@ class GmmObstacle:
                     continue
 
                 ax.plot(
-                    self.reference_points[0, [ii, ind_parent]],
-                    self.reference_points[1, [ii, ind_parent]],
+                    self._reference_points[0, [ii, ind_parent]],
+                    self._reference_points[1, [ii, ind_parent]],
                     "k--",
                 )
 
-    def _get_gauss_derivative(self, position, index, powerfactor=1):
+    def _get_gauss_derivative(
+        self, position: Vector, index: int, powerfactor: float = 1
+    ):
         """The additional powerfactor allows"""
         fraction_value = 1 / np.sqrt(
             (2 * np.pi) ** self.dimension * LA.det(self._gmm.covariances_[index, :, :])
@@ -360,12 +449,14 @@ class GmmObstacle:
         deriv_factor = (-0.5) * self._precisions_cholesky_[index, :, :] @ delta_dist
         return (powerfactor * deriv_factor) * fraction_value * exp_value
 
-    def get_gamma_proportional(self, position, index):
+    def get_gamma_proportional(self, position: Vector, index: int) -> float:
         delta_dist = position - self._gmm.means_[index, :]
         gamma = delta_dist.T @ self._gmm.precisions_cholesky_[index, :, :] @ delta_dist
         return np.sqrt(gamma) / self.variance_factor
 
-    def get_gamma_derivative(self, position, index, powerfactor: float = 1):
+    def get_gamma_derivative(
+        self, position: Vector, index: int, powerfactor: float = 1
+    ) -> float:
         """Returns the derivative of the proportional gamma."""
         delta_dist = position - self._gmm.means_[index, :]
 
@@ -467,12 +558,12 @@ class GmmObstacle:
 
     def get_intersection_of_ellipses(
         self,
-        indices,
+        indices: list,
         powerfactor: float = 5,
         it_max: int = 100,
         rtol: float = 1e-1,
         step_size: float = 0.05,
-    ) -> np.ndarray:
+    ) -> Vector:
         """Returns the intersection of ellipses using gradient descent of the GMM.
 
         Arguments
