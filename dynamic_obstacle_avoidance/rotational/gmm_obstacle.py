@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import UnitDirection
+from vartools.directional_space import get_directional_weighted_sum
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
@@ -166,6 +167,9 @@ class GmmObstacle:
                 indices=[value, parent_value]
             )
 
+            # By default also update axes length and direction
+            self.evaluate_axes_length_and_direction()
+
     #     for ii in range(self.n_gmms):
     #         if ii == ind_closest:
     #             continue
@@ -273,21 +277,57 @@ class GmmObstacle:
 
     def evalute_weighted_reference_and_normal_offset(self, position: Vector):
         """Assumption of all children-nodes being at an total angle of
-        (root -> node) < pi"""
-        # """ Summed reference with 0-reference similar to
-        # 'Fast Obstacle Avoidance Based on Real-Time Sensing' ."""
+        (root -> node) < pi
 
+        Summed normal with respect to reference similar to
+        # 'Fast Obstacle Avoidance Based on Real-Time Sensing' .
+        """
         delta_normal = np.zeros(self.dimension)
-        reference_directions = np.zeros((self.dimension))
+        reference_directions = np.zeros((self.dimension, self.n_gmms))
 
-        for ii in range(self.n_gmms):
-            if ind_parent is None:
-                pass
+        # Loop over all non-zeros-weights
+        for index in np.arange(self.n_gmms)[self.relative_weights.astype(bool)]:
+            reference_directions[:, index] = self.get_reference_direction(
+                position, index
+            )
 
-        print("Being done.")
-        pass
+            delta_normal += (
+                self.get_normal_direction(position, index)
+                - reference_directions[:, index]
+            )
 
-    def get_rotated_modulation(self, position):
+        # Get root
+        ind_root = self.gmm_index_graph.get_root_indices()[0]
+        if self.relative_weights[ind_root]:
+            base_vector = reference_directions[:, ind_root]
+        else:
+            base_vector = self.get_reference_direction(position, ind_root)
+
+        # Mean reference is normalized, hence this does not need to be checked in
+        # further calculations
+        self.mean_reference = get_directional_weighted_sum(
+            null_direction=base_vector,
+            weights=self.relative_weights,
+            directions=reference_directions,
+        )
+
+        if not LA.norm(delta_normal):
+            # Trivial case
+            self.mean_normal = self.mean_reference
+
+        dot_prod = (-1) * (
+            np.dot(delta_normal, self.mean_reference) / LA.norm(delta_normal)
+        )
+
+        if dot_prod < np.sqrt(2) / 2:
+            normal_scaling = 1
+        else:
+            normal_scaling = np.sqrt(2) * dot_prod
+
+        self.mean_normal = normal_scaling * self.mean_reference + delta_normal
+        self.mean_normal /= LA.norm(self.mean_normal)
+
+    def get_rotated_modulation(self, position, velocity):
         pass
 
     def evaluate_gamma_weights(

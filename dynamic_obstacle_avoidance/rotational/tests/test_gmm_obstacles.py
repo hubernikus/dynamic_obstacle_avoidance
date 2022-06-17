@@ -541,8 +541,8 @@ def test_relative_weights(visualize=False):
             gmm_ellipse.plot_obstacle(ax=axs[it_gmm], alpha_obstacle=0.0)
             delta_pos = [0.1, 0.1]
             axs[it_gmm].text(
-                gmm_ellipse.center_position(it_gmm)[0] + delta_pos[0],
-                gmm_ellipse.center_position(it_gmm)[1] + delta_pos[1],
+                gmm_ellipse.get_center_position(it_gmm)[0] + delta_pos[0],
+                gmm_ellipse.get_center_position(it_gmm)[1] + delta_pos[1],
                 s=(f"{it_gmm}"),
                 fontsize="large",
                 fontweight="bold",
@@ -557,6 +557,97 @@ def test_relative_weights(visualize=False):
             ax.grid()
 
         plt.colorbar(cs0, ax=axs)
+
+
+def test_reference_and_normal(visualize=False):
+    n_gmms = 2
+    dimension = 2
+
+    gmm_ellipse = GmmObstacle(n_gmms=n_gmms)
+    gmm_ellipse._gmm = GaussianMixture(n_components=n_gmms)
+    gmm_ellipse._gmm.means_ = np.zeros((n_gmms, dimension))
+    gmm_ellipse._gmm.means_[0, :] = [3.0, 0]
+    gmm_ellipse._gmm.means_[1, :] = [0, 3.0]
+
+    gmm_ellipse._gmm.covariances_ = np.zeros((n_gmms, dimension, dimension))
+    gmm_ellipse._gmm.covariances_[0, :, :] = [[1.0, 0], [0, 3.5]]
+    gmm_ellipse._gmm.covariances_[1, :, :] = [[3.5, 0], [0, 1.0]]
+
+    gmm_ellipse._gmm.precisions_cholesky_ = np.zeros((n_gmms, dimension, dimension))
+    for ii in range(n_gmms):
+        gmm_ellipse._gmm.precisions_cholesky_[ii, :, :] = LA.pinv(
+            gmm_ellipse._gmm.covariances_[ii, :, :]
+        )
+    gmm_ellipse._gmm.weights_ = 0.5 * np.ones(n_gmms)
+
+    gmm_ellipse.evaluate_hirarchy_and_reference_points()
+
+    if visualize:
+        n_resolution = 20
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        references = np.zeros(positions.shape)
+        normals = np.zeros(positions.shape)
+
+        print("Start loop")
+        for ii in range(positions.shape[1]):
+            gmm_ellipse.evaluate_gamma_weights(position=positions[:, ii])
+            gmm_ellipse.evalute_weighted_reference_and_normal_offset(
+                position=positions[:, ii]
+            )
+
+            normals[:, ii] = gmm_ellipse.mean_normal
+            references[:, ii] = gmm_ellipse.mean_reference
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            normals[0, :],
+            normals[1, :],
+            color="r",
+            label="Normals",
+        )
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            references[0, :],
+            references[1, :],
+            color="g",
+            label="References",
+        )
+
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(x_lim)
+        ax.grid()
+        ax.legend()
+
+        gmm_ellipse.plot_obstacle(ax=ax, alpha_obstacle=0.2)
+
+    def get_normal_and_reference(position):
+        gmm_ellipse.evaluate_gamma_weights(position=position)
+        gmm_ellipse.evalute_weighted_reference_and_normal_offset(position=position)
+        return gmm_ellipse.mean_normal, gmm_ellipse.mean_reference
+
+    normal, reference = get_normal_and_reference(np.array([-2, -2]))
+    assert np.allclose(normal, reference), "Reference evaluation not symmetric."
+
+    normal, reference = get_normal_and_reference(np.array([2, -6]))
+    assert np.cross(reference, normal) < 0, "Wrong direction of rotation."
+
+    normal, reference = get_normal_and_reference(np.array([0, 6]))
+    assert np.cross(reference, normal) > 0, "Wrong direction of rotation."
 
 
 if (__name__) == "__main__":
@@ -575,7 +666,9 @@ if (__name__) == "__main__":
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface_with_offset_center(visualize=True)
-    test_relative_weights(visualize=True)
+    # test_relative_weights(visualize=True)
+
+    test_reference_and_normal(visualize=True)
 
     print("Tests executed successfully.")
     pass
