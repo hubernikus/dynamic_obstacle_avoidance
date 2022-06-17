@@ -67,7 +67,7 @@ To run example file for a 'multiple-obstacle' environment:
 python scripts/examples/examples_multiple_obstaces.py
 ```
 
-More information about the behavior of the algorithm can be found:
+More information about the behavior of the algorithm can be found in the video below (click on the image to watch it):
 [![Alt text](https://img.youtube.com/vi/WKso-wu68v8/0.jpg)](https://youtu.be/WKso-wu68v8)
 
 ### For Developers
