@@ -3,9 +3,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
 ---
-This package contains a dynamic obstacle avoidance algorithm for concave and convex obstacles as developped in [1] and [2].
+This package contains a dynamic obstacle avoidance algorithm for concave and convex obstacles as developped in [1] and [2]. The Code is still in alpha version.
 ---
-Requirements: conda, jupyter notebook, python.
+Requirements: python
 
 ## Setup
 To setup got to your install/code directory, and type:
@@ -20,33 +20,34 @@ Go to file directory:
 cd dynamic_obstacle_avoidance
 ``` 
 
-## Custom Environment
+### Custom Environment
 Choose your favorite python-environment. I recommend to use [virtual environment venv](https://docs.python.org/3/library/venv.html).
-Setup virtual environment (use whatever compatible environment manager that you have with Python >3.7).
+Setup virtual environment (use whatever compatible environment manager that you have with Python >=3.9).
 
 ``` bash
 python3.10 -m venv .venv
 ```
-with python -V > 3.7
+with python -V >= 3.9
 
 Activate your environment
 ``` sh
 source .venv/bin/activate
 ```
 
-# Setup Dependencies
+
+### Setup Dependencies
 Install all requirements:
 ``` bash
 pip install -r requirements.txt && pip install -e .
 ```
 make sure you also install the submodules (mainly `vartools`)
 
-Install the submodules:
+Install the sub modules:
 ``` bash
 cd libraries/various_tools && pip install -r requirements.txt && pip install -e . && cd ../..
 ```
 
-## Installation Options
+### Installation Options
 If you want to be able to test/develop additionally install
 ``` sh
 pip install -r requirements_dev.txt
@@ -59,17 +60,22 @@ pip install -r requirements_notebook.txt
 ```
 
 ## Getting Started
-The `example` folder contains a jupyter notebook & general example for static & dynamic simulation in multi-obstacle environment.
+The `example` folder contains a jupyter notebook & general example for static & dynamic simulation in multi-obstacle environment.  
 
+To run example file for a 'multiple-obstacle' environment:
+```
+python scripts/examples/examples_multiple_obstaces.py
+```
 
-## For Developpers
+More information about the behavior of the algorithm can be found:
+[![Alt text](https://img.youtube.com/vi/WKso-wu68v8/0.jpg)](https://youtu.be/WKso-wu68v8)
+
+### For Developers
 We use pytest in this, to test the code run
 ``` sh
 pytest
 ```
-
-Download and setup pre-commit hook for automated formatting
-
+Code consistency is ensured by using black. Download and setup pre-commit hook for automated formatting
 ``` sh
 pip install pre-commit
 ```
@@ -83,17 +89,12 @@ pip install PyQt5
 ```
 
 
-# Debug
+## Debug
 You forgot to add the submodules, add them with:
 ``` sh
 git submodule update --init --recursive
 ```
 
-## Getting Started
-To run example file for a 'multiple-obstacle' environment:
-```
-python scripts/examples/examples_multiple_obstaces.py
-```
 
 
 **References**     

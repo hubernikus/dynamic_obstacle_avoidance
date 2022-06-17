@@ -271,12 +271,22 @@ class GmmObstacle:
 
         return gmm_directions
 
-    def get_weighted_reference(self, position):
+    def evalute_weighted_reference_and_normal_offset(self, position: Vector):
+        """Assumption of all children-nodes being at an total angle of
+        (root -> node) < pi"""
+        # """ Summed reference with 0-reference similar to
+        # 'Fast Obstacle Avoidance Based on Real-Time Sensing' ."""
+
+        delta_normal = np.zeros(self.dimension)
+        reference_directions = np.zeros((self.dimension))
+
+        for ii in range(self.n_gmms):
+            if ind_parent is None:
+                pass
+
+        print("Being done.")
         pass
 
-    def get_mean_normal(self, position):
-        pass
-    
     def get_rotated_modulation(self, position):
         pass
 
