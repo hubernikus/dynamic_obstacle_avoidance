@@ -14,16 +14,15 @@ class NewObstacle(Obstacle):
 
     def get_gamma(self, position):
         return 1
-    
+
     def get_normal_direction(self, position):
         return np.ones(self.dimension) / self.dimension
 
     def get_reference_direction(self, position, **kwargs):
         # If there is a reference point (mostly in task space)
         # the reference-direction and normal-direction can differ
-        
+
         if self.is_jointspace:
             return self.get_normal_direction(position)
         else:
             return super().get_reference_direction(position, **kwargs)
-    
