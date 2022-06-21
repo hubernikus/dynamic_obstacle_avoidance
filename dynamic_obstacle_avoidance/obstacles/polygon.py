@@ -631,7 +631,7 @@ class Polygon(Obstacle):
             )
 
         if my_shapely is None:
-            raise Exceptiont("No fitting shape for radius point found.")
+            raise Exception("No fitting shape for radius point found.")
 
         intersection = line_shapely.intersection(my_shapely)
 

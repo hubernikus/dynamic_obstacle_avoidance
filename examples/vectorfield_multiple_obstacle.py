@@ -11,13 +11,9 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 
-# from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
-# from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes, CuboidXd
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
-
-from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,

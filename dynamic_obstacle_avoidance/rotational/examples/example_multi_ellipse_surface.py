@@ -294,12 +294,20 @@ def plot_obstacle_classification(
     # )
 
 
-def gaussian_clustering(n_resolution=30, n_gmms=3, x_lim=[-10, 10], y_lim=[-10, 10]):
+def gaussian_clustering(
+    n_resolution=30, n_gmms=3, x_lim=[-10, 10], y_lim=[-10, 10], plot_datapoints=True):
     from matplotlib.colors import LogNorm
 
     my_learner = get_three_elipse_learner()
     ind_inside = my_learner.label < 0
     obstacle_points = my_learner.data_points[:, ind_inside]
+
+    if plot_datapoints:
+        fig, ax = plt.subplots()
+        ax.scatter(obstacle_points[0, :], obstacle_points[1, :], color='g')
+        outside_points = my_learner.data_points[:, np.logical_not(ind_inside)]
+        ax.scatter(outside_points[0, :], outside_points[1, :], color='b')
+        ax.set_aspect("equal", "datalim")
 
     gmm_obstacle = GmmObstacle(n_gmms=n_gmms, variance_factor=2.0)
     gmm_obstacle.fit(obstacle_points)
@@ -348,4 +356,5 @@ if (__name__) == "__main__":
     # my_learner = get_three_elipse_learner()
     # plot_obstacle_classification(my_learner.my_classifier)
 
+    # plot_obstacle_classification()
     gaussian_clustering()

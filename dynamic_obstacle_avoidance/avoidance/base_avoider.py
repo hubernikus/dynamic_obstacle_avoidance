@@ -24,7 +24,7 @@ class BaseAvoider(ABC):
             raise NotImplementedError("You have to define 'initial_dynamics' first.")
 
         velocity = self.initial_dynamics.evaluate(position)
-        return self.avoid(position, velocity, self.obstacle_list)
+        return self.avoid(position, velocity)
 
     @abstractmethod
     def avoid(self, position, velocity):

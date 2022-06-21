@@ -170,6 +170,7 @@ class ObstacleHullsStorer:
         """points: np.ndarry of dimension (self.dimension, n_points)
         with the number of points dependent on the shape"""
         shapely_ = self.get_global_without_margin()
+        breakpoint()
         return np.array(shapely_.exterior.coords.xy)
 
     def get_global_with_everything(self) -> object:
@@ -338,8 +339,8 @@ class ObstacleHullsStorer:
             )
 
         if shapely_.geom_type == "Polygon":
-            xy_data = np.array(shapely_.exterior).T
+            xy_data = np.array(shapely_.exterior.coords).T
         else:
-            xy_data = np.array(shapely_).T
+            xy_data = np.array(shapely_.coords).T
 
         return xy_data

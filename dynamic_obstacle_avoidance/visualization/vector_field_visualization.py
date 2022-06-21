@@ -439,7 +439,7 @@ def Simulation_vectorFields(
     x_range=[0, 10],
     y_range=[0, 10],
     point_grid=10,
-    obstacle_list=[],
+    obstacle_list=None,
     x_lim=None,  # For future replacement
     y_lim=None,  # For future replacement
     n_resolution=-1,  # For future replacement
@@ -473,6 +473,7 @@ def Simulation_vectorFields(
     gamma_distance=None,
     vector_field_only_outside=True,
     print_info=False,
+    obs=None,
     **kwargs
 ):
     """
@@ -480,7 +481,11 @@ def Simulation_vectorFields(
     allow easy customization of plot.
     """
     # TODO: gamma ditance does not fit as paramtere here (since not visual)...
-    obs = obstacle_list
+    if obs is not None:
+        warnings.warn("'obs' argument is depreciated.")
+        obstacle_list = obs
+    else: 
+        obs = obstacle_list
 
     if x_lim is not None:
         x_range = x_lim
@@ -513,17 +518,17 @@ def Simulation_vectorFields(
         warnings.warn("x_label & ticks not implemented")
 
     plot_obstacles(
-        ax,
-        obs,
-        x_range,
-        y_range,
-        pos_attractor,
-        obstacle_color,
-        show_obstacle_number,
-        reference_point_number,
-        drawVelArrow,
-        noTicks,
-        showLabel,
+        obstacle_container=obs,
+        x_lim=x_range,
+        y_lim=y_range,
+        pos_attractor=pos_attractor,
+        obstacle_color=obstacle_color,
+        show_obstacle_number=show_obstacle_number,
+        reference_point_number=reference_point_number,
+        drawVelArrow=drawVelArrow,
+        noTicks=noTicks,
+        showLabel=showLabel,
+        ax=ax,
         draw_wall_reference=draw_wall_reference,
         **kwargs
     )

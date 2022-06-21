@@ -666,9 +666,9 @@ if (__name__) == "__main__":
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface_with_offset_center(visualize=True)
-    # test_relative_weights(visualize=True)
+    test_relative_weights(visualize=True)
 
-    test_reference_and_normal(visualize=True)
+    # test_reference_and_normal(visualize=True)
 
     print("Tests executed successfully.")
     pass

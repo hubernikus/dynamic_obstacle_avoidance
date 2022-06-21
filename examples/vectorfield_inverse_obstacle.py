@@ -14,8 +14,6 @@ import matplotlib.pyplot as plt
 from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
-from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
-
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,
 )
@@ -45,10 +43,10 @@ def simple_vectorfield_inside():
     y_lim = [-4.1, 4.1]
 
     Simulation_vectorFields(
-        x_lim,
-        y_lim,
-        point_grid=50,
-        obs=obstacle_environment,
+        x_range=x_lim,
+        y_range=y_lim,
+        point_grid=100,
+        obstacle_list=obstacle_environment,
         pos_attractor=initial_dynamics.attractor_position,
         dynamical_system=initial_dynamics.evaluate,
         noTicks=True,
