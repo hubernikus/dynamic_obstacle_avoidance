@@ -17,3 +17,5 @@ venv/*
 # scripts/*.png
 # scripts/*.pdf
 # scripts/*.gif
+
+**/.ipynb_checkpoints/*
