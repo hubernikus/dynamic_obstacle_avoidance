@@ -62,7 +62,7 @@ class DynamicalSystemAnimation(Animator):
 
         # Here come the main calculation part
         velocity = self.dynamic_avoider.evaluate(self.position_list[:, ii - 1])
-            
+
         self.position_list[:, ii] = (
             velocity * self.dt_simulation + self.position_list[:, ii - 1]
         )
@@ -92,7 +92,7 @@ class DynamicalSystemAnimation(Animator):
             obstacle_container=self.obstacle_environment,
             x_lim=self.x_lim,
             y_lim=self.y_lim,
-            showLabel=False
+            showLabel=False,
         )
 
         self.ax.plot(

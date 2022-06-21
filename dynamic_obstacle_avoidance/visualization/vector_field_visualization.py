@@ -484,7 +484,7 @@ def Simulation_vectorFields(
     if obs is not None:
         warnings.warn("'obs' argument is depreciated.")
         obstacle_list = obs
-    else: 
+    else:
         obs = obstacle_list
 
     if x_lim is not None:
