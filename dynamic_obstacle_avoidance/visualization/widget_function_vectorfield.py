@@ -1,30 +1,34 @@
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
+"""
+Multiple widget-utils to simplify the make the usage of Jupyter-Notebooks more user friendly. 
+"""
+# Author: LukasHuber
+# Github: hubernikus
+# Created:  2019-06-01
+import time
 
-# from dynamic_obstacle_avoidance.visualization.animated_simulation import *
-from dynamic_obstacle_avoidance.visualization.animated_simulation_ipython import *
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *
-
-
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
 
 from ipywidgets import interact, interactive, fixed, interact_manual
 from ipywidgets import FloatSlider, IntSlider
 import ipywidgets as widgets
 
 
+from dynamic_obstacle_avoidance.obstacles import Ellipse
+from dynamic_obstacle_avoidance.containers import GradientContainer
+
+from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
+
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
+# from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
+
+# from dynamic_obstacle_avoidance.visualization.animated_simulation import *
+from dynamic_obstacle_avoidance.visualization.animated_simulation_ipython import *
+from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *
+
+
 # Command to automatically reload libraries -- in ipython before exectureion
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-
-import time
-
-
 saveFigures = False
 
 
@@ -35,7 +39,7 @@ def widget_ellipses_vectorfield(
     a2=1,
     p1=1,
     p2=1,
-    th_r=0,
+    orientation=0,
     sf=1,
     point_posX=4,
     point_posY=4,
@@ -48,18 +52,27 @@ def widget_ellipses_vectorfield(
 
     xlim = [x_low, x_high]
     ylim = [y_low, y_high]
-    xAttractor = [0, 0]
+    pos_attractor = np.array([0, 0])
 
-    obs = []
-    x0 = [x1, x2]
-    a = [a1, a2]
-    p = [p1, p2]
-    th_r = th_r / 180 * pi
+    obs = GradientContainer()
+    center_position = [x1, x2]
+    axes_length = [a1, a2]
+    curvature = [p1, p2]
+    orientation = orientation / 180 * pi
     vel = [0, 0]
-    obs.append(Obstacle(a=a, p=p, x0=x0, th_r=th_r, sf=sf, xd=vel))
+    obs.append(
+        Ellipse(
+            axes_length=axes_length,
+            curvature=curvature,
+            center_position=center_position,
+            orientation=orientation,
+            sf=sf,
+            xd=vel,
+        )
+    )
 
     point_pos = np.array([point_posX, point_posY])
-    ds_init = point_pos - xAttractor
+    ds_init = point_pos - pos_attractor
 
     ds_mod = obs_avoidance_interpolation_moving(point_pos, ds_init, obs)
 
@@ -68,7 +81,7 @@ def widget_ellipses_vectorfield(
         ylim,
         point_grid=10,
         obs=obs,
-        xAttractor=xAttractor,
+        pos_attractor=pos_attractor,
         figName="linearSystem_avoidanceCircle",
         noTicks=False,
         figureSize=(13.0, 10),
@@ -85,7 +98,7 @@ def widget_ellipses_vectorfield(
 def widgetFunction_referencePoint(
     x1=2,
     x2=2,
-    th_r=0,
+    orientation=0,
     refPoint_dir=0,
     refPoint_rat=0,
     x_low=0.8,
@@ -98,50 +111,62 @@ def widgetFunction_referencePoint(
     x_lim = [x_low, x_high]
     y_lim = [y_low, y_high]
 
-    xAttractor = [-12, 7.5]
+    pos_attractor = np.array([-12, 7.5])
 
     sf = 1.3
     a1, a2 = 6, 1.2
     p1, p2 = 1, 1
 
-    obs = []
-    x0 = [x1, x2]
-    a = [a1, a2]
-    p = [p1, p2]
-    th_r = th_r / 180 * pi
+    obs = GradientContainer()
+    center_position = [x1, x2]
+    axes_length = [a1, a2]
+    curvature = [p1, p2]
+    orientation = orientation / 180 * pi
     vel = [0, 0]
 
-    obs.append(Obstacle(a=a, p=p, x0=x0, th_r=th_r, sf=sf, xd=vel))
+    obs.append(
+        Ellipse(
+            axes_length=axes_length,
+            curvature=curvature,
+            center_position=center_position,
+            orientation=orientation,
+            sf=sf,
+            xd=vel,
+        )
+    )
 
     refPoint_dir *= pi / 180.0
-    obs[0].center_dyn = np.array(
+    obs[0].local_reference_point = np.array(
         [
-            obs[0].a[0] * np.sqrt(refPoint_rat) * np.cos(refPoint_dir),
-            obs[0].a[1] * np.sqrt(refPoint_rat) * np.sin(refPoint_dir),
+            obs[0].axes_length[0] * np.sqrt(refPoint_rat) * np.cos(refPoint_dir),
+            obs[0].axes_length[1] * np.sqrt(refPoint_rat) * np.sin(refPoint_dir),
         ]
     )
-    rotationMatrix = np.array(
-        [[np.cos(th_r), np.sin(th_r)], [-np.sin(th_r), np.cos(th_r)]]
-    )
-    obs[0].center_dyn = rotationMatrix.T @ obs[0].center_dyn * obs[0].sf + obs[0].x0
+
+    # rotationMatrix = np.array([[np.cos(orientation), np.sin(orientation)],
+    # [-np.sin(orientation), np.cos(orientation)]])
+
+    # obs[0].center_dyn = (rotationMatrix.T
+    # @ obs[0].center_dyn*obs[0].sf + obs[0].center_position)
 
     if draw_style == "Simulated streamline":
         n_points = 6
         points_init = np.vstack(
-            (
-                np.ones(n_points) * x_lim[1],
-                np.linspace(y_lim[0], y_lim[1], n_points),
-            )
+            (np.ones(n_points) * x_lim[1], np.linspace(y_lim[0], y_lim[1], n_points))
         )
+
         points_init = points_init[:, 1:-1]
+
+        print(obs[0].global_reference_point)
         Simulation_vectorFields(
             x_lim,
             y_lim,
             point_grid=70,
             obs=obs,
-            xAttractor=xAttractor,
+            pos_attractor=pos_attractor,
             figName="linearSystem_avoidanceCircle",
             noTicks=False,
+            automatic_reference_point=False,
             figureSize=(13.0, 10),
             draw_vectorField=False,
             points_init=points_init,
@@ -153,19 +178,22 @@ def widgetFunction_referencePoint(
             y_lim,
             point_grid=70,
             obs=obs,
-            xAttractor=xAttractor,
+            pos_attractor=pos_attractor,
+            automatic_reference_point=False,
             figName="linearSystem_avoidanceCircle",
             noTicks=False,
             figureSize=(13.0, 10),
             draw_vectorField=True,
         )
+
     else:
         Simulation_vectorFields(
             x_lim,
             y_lim,
             point_grid=70,
             obs=obs,
-            xAttractor=xAttractor,
+            pos_attractor=pos_attractor,
+            automatic_reference_point=False,
             figName="linearSystem_avoidanceCircle",
             noTicks=False,
             figureSize=(13.0, 10),
@@ -174,53 +202,84 @@ def widgetFunction_referencePoint(
 
 
 class WidgetClass_intersection:
-    def __init__(self, x_lim, y_lim, xAttractor=[12, 0]):
-        self.obs = []
+    def __init__(self, x_lim, y_lim, pos_attractor=[12, 0]):
+        self.obs = GradientContainer()
         self.obs.append(
-            Obstacle(a=[3, 1], p=[1, 1], x0=[-14, 4], th_r=45 / 180 * pi, sf=2.0)
+            Ellipse(
+                axes_length=[3, 1],
+                curvature=[1, 1],
+                center_position=[-14, 4],
+                orientation=45 / 180 * pi,
+                sf=2.0,
+            )
         )
         self.obs.append(
-            Obstacle(a=[3, 1], p=[1, 1], x0=[-3, 10], th_r=0 / 180 * pi, sf=1.3)
+            Ellipse(
+                axes_length=[3, 1],
+                curvature=[1, 1],
+                center_position=[-3, 10],
+                orientation=0 / 180 * pi,
+                sf=1.3,
+            )
         )
         self.obs.append(
-            Obstacle(a=[2.4, 2.4], p=[4, 4], x0=[-6, 4], th_r=-80 / 180 * pi, sf=1.1)
+            Ellipse(
+                axes_length=[2.4, 2.4],
+                curvature=[4, 4],
+                center_position=[-6, 4],
+                orientation=-80 / 180 * pi,
+                sf=1.1,
+            )
         )
         self.obs.append(
-            Obstacle(a=[3, 2], p=[1, 2], x0=[10, 14], th_r=-110 / 180 * pi, sf=1.5)
+            Ellipse(
+                axes_length=[3, 2],
+                curvature=[1, 2],
+                center_position=[10, 14],
+                orientation=-110 / 180 * pi,
+                sf=1.5,
+            )
         )
 
         self.x_lim = x_lim
         self.y_lim = y_lim
-        self.xAttractor = xAttractor
+        self.pos_attractor = np.array(pos_attractor)
 
     def set_obstacle_number(self, n_obstacles=2):
         self.n_obstacles = n_obstacles
 
-    def set_obstacle_values(self, it_obs, x0_1, x0_2, th_r):
+    def set_obstacle_values(
+        self, it_obs, center_position_1, center_position_2, orientation
+    ):
+
         it_obs -= 1
         # print('it obs', it_obs)
-        x0 = np.copy([x0_1, x0_2]) * 1
-        th_r = np.copy(th_r)
-        self.obs[it_obs] = Obstacle(
-            x0=[x0_1, x0_2],
-            th_r=th_r,
-            a=self.obs[it_obs].a,
-            p=self.obs[it_obs].p,
+        center_position = np.copy([center_position_1, center_position_2]) * 1
+        orientation = np.copy(orientation)
+
+        self.obs[it_obs] = Ellipse(
+            center_position=[center_position_1, center_position_2],
+            orientation=orientation,
+            axes_length=self.obs[it_obs].axes_length,
+            curvature=self.obs[it_obs].curvature,
             sf=self.obs[it_obs].sf,
         )
+
         # for ii in range(len(self.obs)):
         # print('obs ', ii)
-        # print('obs x0 ', self.obs[ii].x0)
-        # print('obs thr ', self.obs[ii].th_r)
+        # print('obs center_position ', self.obs[ii].center_position)
+        # print('obs thr ', self.obs[ii].orientation)
 
     def update(self, check_vectorfield=True):
         obs_cp = self.obs[: self.n_obstacles]
+        obs_cp = GradientContainer(obs_list=obs_cp)
+
         Simulation_vectorFields(
             self.x_lim,
             self.y_lim,
             point_grid=70,
             obs=obs_cp,
-            xAttractor=self.xAttractor,
+            pos_attractor=self.pos_attractor,
             figName="linearSystem_avoidanceCircle",
             noTicks=False,
             figureSize=(13.0, 10),
@@ -235,18 +294,10 @@ def run_obstacle_description():
     y_lim = [-2, 18]
 
     x1_widget = FloatSlider(
-        description="Position \( x_1\)",
-        min=x_lim[0],
-        max=x_lim[1],
-        step=0.1,
-        value=6,
+        description="Position \( x_1\)", min=x_lim[0], max=x_lim[1], step=0.1, value=6
     )
     x2_widget = FloatSlider(
-        description="Position \( x_2\)",
-        min=y_lim[0],
-        max=y_lim[1],
-        step=0.1,
-        value=8,
+        description="Position \( x_2\)", min=y_lim[0], max=y_lim[1], step=0.1, value=8
     )
 
     axis_widget1 = FloatSlider(
@@ -268,18 +319,10 @@ def run_obstacle_description():
     )
 
     pointX_widget = FloatSlider(
-        description="Point position x",
-        min=x_lim[0],
-        max=x_lim[1],
-        step=0.1,
-        value=-3,
+        description="Point position x", min=x_lim[0], max=x_lim[1], step=0.1, value=-3
     )
     pointY_widget = FloatSlider(
-        description="Point position y",
-        min=y_lim[0],
-        max=y_lim[1],
-        step=0.1,
-        value=15,
+        description="Point position y", min=y_lim[0], max=y_lim[1], step=0.1, value=15
     )
 
     print("Change parameters and press <<Run Interact>> to apply.")
@@ -288,7 +331,7 @@ def run_obstacle_description():
         widget_ellipses_vectorfield,
         x1=x1_widget,
         x2=x2_widget,
-        th_r=angle_widget,
+        orientation=angle_widget,
         a1=axis_widget1,
         a2=axis_widget2,
         p1=curvature_widget1,
@@ -304,21 +347,22 @@ def run_obstacle_description():
     )
 
 
-def exercise_referencePoint():
+def example_reference_point():
     x_lim, y_lim = [-16, 16], [-2, 18]
 
     style = {"description_width": "initial"}
     # Interactive Widgets
     x1_widget = FloatSlider(
-        description="Obstacle center \( x_1\)",
+        description="Ellipse center \( x_1\)",
         min=x_lim[0],
         max=x_lim[1],
         step=0.1,
         value=6,
         style=style,
     )
+
     x2_widget = FloatSlider(
-        description="Obstacle center \( x_2\)",
+        description="Ellipse center \( x_2\)",
         min=y_lim[0],
         max=y_lim[1],
         step=0.1,
@@ -326,7 +370,7 @@ def exercise_referencePoint():
         style=style,
     )
     angle_widget = FloatSlider(
-        description="Obstacle orientation \( \Theta \)",
+        description="Ellipse orientation \( \Theta \)",
         min=-180,
         max=180,
         step=1,
@@ -362,7 +406,7 @@ def exercise_referencePoint():
         widgetFunction_referencePoint,
         x1=x1_widget,
         x2=x2_widget,
-        th_r=angle_widget,
+        orientation=angle_widget,
         draw_style=draw_style,
         refPoint_dir=referencePoint_direction,
         refPoint_rat=referencePoint_excentricity,
@@ -416,13 +460,13 @@ def choose_obstacles_number(n_obstacles, WidgetClass, x_lim, y_lim):
     interact(
         WidgetClass.set_obstacle_values,
         it_obs=it_obs,
-        x0_1=center1_widget1,
-        x0_2=center2_widget1,
-        th_r=angle_widget1,
+        center_position_1=center1_widget1,
+        center_position_2=center2_widget1,
+        orientation=angle_widget1,
     )
 
 
-def exercise_intersectingObstacles():
+def example_intersecting_obstacles():
     x_lim, y_lim = [-16, 16], [-2, 18]
 
     # Interactive Widgets
@@ -451,7 +495,7 @@ def exercise_intersectingObstacles():
     interact_manual(WidgetClass.update, check_vectorfield=check_vectorfield)
 
 
-def exercise_dynamicModulation():
+def example_dynamic_modulation():
     x_range, y_range = [-16, 16], [-2, 18]
     x_init = samplePointsAtBorder_ipython(
         number_of_points=10, x_range=x_range, y_range=y_range
@@ -459,20 +503,36 @@ def exercise_dynamicModulation():
 
     x_init = np.zeros((2, 1))
     x_init[:, 0] = [8, 1]
-    obs = []
-    x0 = [-3, 8]
-    a = [2, 5]
-    p = [1, 1]
-    th_r = 0 / 180 * pi
+    obs = GradientContainer()
+    center_position = [-3, 8]
+    axes_length = [2, 5]
+    curvature = [1, 1]
+    orientation = 0 / 180 * pi
     vel = [0, 0]
-    obs.append(Obstacle(a=a, p=p, x0=x0, th_r=th_r, sf=1))
+    obs.append(
+        Ellipse(
+            axes_length=axes_length,
+            curvature=curvature,
+            center_position=center_position,
+            orientation=orientation,
+            sf=1,
+        )
+    )
 
-    x0 = [3, 4]
-    a = [3, 4]
-    p = [1, 1]
-    th_r = 0 / 180 * pi
+    center_position = [3, 4]
+    axes_length = [3, 4]
+    curvature = [1, 1]
+    orientation = 0 / 180 * pi
     vel = [0, 0]
-    obs.append(Obstacle(a=a, p=p, x0=x0, th_r=th_r, sf=1))
+    obs.append(
+        Ellipse(
+            axes_length=axes_length,
+            curvature=curvature,
+            center_position=center_position,
+            orientation=orientation,
+            sf=1,
+        )
+    )
 
     ani = run_animation_ipython(
         x_init,
@@ -493,6 +553,7 @@ def exercise_dynamicModulation():
     ani.show()
 
     style = {"description_width": "initial"}
+
     velx_widget = FloatSlider(
         description="Linear velocity \( \dot  x_1\)",
         min=-5.0,
@@ -501,6 +562,7 @@ def exercise_dynamicModulation():
         value=0,
         style=style,
     )
+
     vely_widget = FloatSlider(
         description="Linear velocity \( \dot  x_2\)",
         min=-5.0,
@@ -509,6 +571,7 @@ def exercise_dynamicModulation():
         value=0,
         style=style,
     )
+
     velAng_widget = FloatSlider(
         description="Angular velocity \( \omega\)",
         min=-5.0,
