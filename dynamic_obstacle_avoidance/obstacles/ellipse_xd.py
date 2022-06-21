@@ -68,7 +68,15 @@ class EllipseWithAxes(obstacles.Obstacle):
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
 
-        if self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame) >= 1:
+        if (
+            not self.is_boundary
+            and self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame)
+            > 1
+        ) or (
+            self.is_boundary
+            and self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame)
+            < 1
+        ):
             raise NotImplementedError(
                 "Automatic reference point extension is not implemented."
             )
@@ -203,8 +211,13 @@ class EllipseWithAxes(obstacles.Obstacle):
         position: np.ndarray,
         in_obstacle_frame: bool = True,
         margin_absolut: float = None,
+        in_global_frame: float = None,
     ):
         """Returns the point on the surface from the center with respect to position."""
+        if in_global_frame is not None:
+            # Legacy value
+            in_obstacle_frame = not (in_global_frame)
+
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 
@@ -275,9 +288,12 @@ class HyperSphere(obstacles.Obstacle):
         return normal
 
     def get_point_on_surface(
-        self, position: np.ndarray, in_obstacle_frame: bool = True
+        self,
+        position: np.ndarray,
+        in_obstacle_frame: bool = True,
     ):
         """Returns the point on the surface from the center with respect to position."""
+
         if not in_obstacle_frame:
             position = self.pose.transform_position_from_reference_to_local(position)
 

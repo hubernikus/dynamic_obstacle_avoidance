@@ -182,7 +182,8 @@ class MultiBoundaryContainer(RotationContainer):
                     boundary_point, in_global_frame=True, relative_gamma=False
                 )
 
-                # Only obstacles are considered which intersect at the (projected) boundary point
+                # Only obstacles are considered which intersect at the
+                # (projected) boundary point
                 if gamma_boundary_point < 1:
                     continue
 

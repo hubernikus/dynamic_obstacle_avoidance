@@ -304,6 +304,7 @@ def plot_obstacles(
             x_obs_sf[:, 1],
             color="k",
             linestyle=border_linestyle,
+            zorder=3,
         )
 
         if obs.is_boundary:
@@ -366,13 +367,15 @@ def plot_obstacles(
                 linewidth=12,
                 markeredgewidth=2.4,
                 markersize=8,
+                zorder=3,
             )
 
-        elif not obs.is_boundary or draw_wall_reference:
+        if not obs.is_boundary or draw_wall_reference:
             ax.plot(
                 obs.center_position[0],
                 obs.center_position[1],
                 "k.",
+                zorder=3,
             )
 
         if reference_point_number:
@@ -424,13 +427,8 @@ def plot_obstacles(
         )
 
     if showLabel:
-        # ax.set_xlabel(r"$\xi_1$", fontsize=16)
-        # ax.set_ylabel(r"$\xi_2$", fontsize=16)
         ax.set_xlabel(r"$\xi_1$")
         ax.set_ylabel(r"$\xi_2$")
-
-    # ax.tick_params(axis="both", which="major", labelsize=14)
-    # ax.tick_params(axis="both", which="minor", labelsize=12)
 
     return ax
 

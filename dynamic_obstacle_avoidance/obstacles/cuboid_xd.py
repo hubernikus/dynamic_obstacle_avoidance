@@ -225,7 +225,16 @@ class CuboidXd(obstacles.Obstacle):
 
         return gamma
 
-    def get_point_on_surface(self, position, in_obstacle_frame: bool = True):
+    def get_point_on_surface(
+        self,
+        position,
+        in_obstacle_frame: bool = True,
+        in_global_frame: bool = None,
+    ):
+        if in_global_frame is not None:
+            # Legacy value
+            in_obstacle_frame = not (in_global_frame)
+
         if not in_obstacle_frame:
             cube_position = self.pose.transform_position_from_reference_to_local(
                 position
