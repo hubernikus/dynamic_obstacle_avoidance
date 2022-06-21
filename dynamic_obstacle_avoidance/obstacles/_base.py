@@ -585,7 +585,7 @@ class Obstacle(ABC):
     def get_gamma(self, position, with_reference_point_expansion=True):
         pass
 
-    def get_baoundary_normal_direction(self, *args, **kwargs):
+    def get_baundary_normal_direction(self, *args, **kwargs):
         return (-1) * self.get_normal_direction(*args, **kwargs)
 
     def draw_obstacle(self, n_resolution=20):
