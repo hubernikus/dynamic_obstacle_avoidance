@@ -151,8 +151,10 @@ class GmmObstacle:
 
         # Top down adding of new values to the graph
         while len(remaining_list):
-            temp_matrix = proba_matrix[:, assigned_list]
-            ind = np.unravel_index(np.argmax(temp_matrix, axis=None), temp_matrix.shape)
+            reduced_propa = proba_matrix[:, assigned_list]
+            ind = np.unravel_index(
+                np.argmax(reduced_propa, axis=None), reduced_propa.shape
+            )
 
             value = remaining_list[ind[0]]
             parent_value = assigned_list[ind[1]]
@@ -186,14 +188,6 @@ class GmmObstacle:
     #         self.gmm_index_graph.add_element_with_parent(value=ii, parent_value=ind_parent)
     #         self._reference_points[:, ii] = self.get_intersection_of_ellipses(
     #             indices=[ii, ind_parent]
-    #         )
-
-    #     # Sanity check -> did it work at least partially?
-    #     # TODO: in the future => graph creation under constraints
-    #     if len(self.gmm_index_graph.roots) != 1:
-    #         breakpoint()
-    #         raise NotImplementedError(
-    #             "The graph has multiple (or no) roots - Behavior is undefined."
     #         )
 
     def avoid(self, position: Vector, velocity: Vector) -> Vector:
