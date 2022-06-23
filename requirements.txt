@@ -6,3 +6,5 @@ shapely
 matplotlib
 pyqt5 # Allow animation and visualization
 
+# Graphs
+networkx

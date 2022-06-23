@@ -17,6 +17,9 @@ from sklearn.mixture import GaussianMixture
 
 import matplotlib.pyplot as plt
 
+# TODO: use networkx instead of the built-in library
+# import networkx as nx
+
 # from vartools.states import ObjectPose
 from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
