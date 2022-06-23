@@ -155,8 +155,11 @@ class CuboidXd(obstacles.Obstacle):
             self.semiaxes[ind_relevant], position[ind_relevant]
         )
 
-        if not LA.norm(normal):
-            breakpoint()
+        normal_norm = LA.norm(normal)
+        if not normal_norm:
+            normal[0] = 1
+            normal_norm = 1
+
         # No normalization chack needed, since at least one axes was relevatn
         normal = normal / LA.norm(normal)
 
