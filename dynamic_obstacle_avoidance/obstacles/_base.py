@@ -1071,5 +1071,10 @@ class Obstacle(ABC):
     ):
         raise NotImplementedError()
 
+    def is_inside(self, position, in_global_frame=True):
+        """Checks if a global point is within the obstacle (or hull) boundary.
+        If local point should be considered it is advised to use the gamma-function instead."""
+        return self.get_gamma(position, in_global_frame=in_global_frame) < 1
+
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         raise NotImplementedError()

@@ -8,6 +8,8 @@ This could be bag in task-space, or a complex-learned obstacle.
 # Github: hubernikus
 # Created: 2022-06-21
 
+import networkx as nx
+
 import copy
 
 import numpy as np
@@ -21,6 +23,7 @@ from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 
 from dynamic_obstacle_avoidance.rotational.multi_hull_and_obstacle import (
     MultiHullAndObstacle,
+    _gamma_normal_gradient_descent,
 )
 
 
@@ -50,10 +53,10 @@ def test_boundary_obstacle_weight(visualize=False):
         x_lim = [-1.5, 1.5]
         y_lim = [-1.5, 1.5]
 
-        nx = ny = n_resolution
+        n_x = n_y = n_resolution
         x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], nx),
-            np.linspace(y_lim[0], y_lim[1], ny),
+            np.linspace(x_lim[0], x_lim[1], n_x),
+            np.linspace(y_lim[0], y_lim[1], n_y),
         )
 
         fig, axs = plt.subplots(1, my_hullobstacle.n_elements, figsize=(15, 6))
@@ -64,7 +67,6 @@ def test_boundary_obstacle_weight(visualize=False):
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         weights = np.zeros((my_hullobstacle.n_elements, positions.shape[1]))
 
-        print("Start loop")
         for ii in range(positions.shape[1]):
             my_hullobstacle._evaluate_weights(position=positions[:, ii])
             weights[:, ii] = my_hullobstacle.weights
@@ -119,8 +121,7 @@ def test_boundary_obstacle_weight(visualize=False):
     assert np.isclose(weights[my_hullobstacle._indices_outer], 1)
 
 
-def test_modulated_dynamics(visualize=False):
-    obstacle = []
+def test_mixed_boundary_obstacle_reference(visualize=False):
     outer_obstacle = Cuboid(
         center_position=np.array([0, 0]),
         axes_length=np.array([2, 2]),
@@ -135,17 +136,30 @@ def test_modulated_dynamics(visualize=False):
             is_boundary=True,
         )
     )
-    subhull[-1].set_reference_point(np.array([1.1, 0]), in_global_frame=True)
+
+    subhull.append(
+        Ellipse(
+            center_position=np.array([-0.2, 0.1]),
+            axes_length=np.array([1.0, 1.2]),
+            is_boundary=True,
+        )
+    )
 
     my_hullobstacle = MultiHullAndObstacle(
         outer_obstacle=outer_obstacle, inner_obstacles=subhull
     )
 
     # my_hullobstacle.inner_obstacles[-1].is_boundary = False
-    center_position = my_hullobstacle._gamma_normal_gradient_descent(
-        [outer_obstacle, subhull[-1]],
+    entrance_position = _gamma_normal_gradient_descent(
+        [outer_obstacle, subhull[0]],
         powers=[-2, -2],  # -> both in free space, i.e. > 0
-        factors=[1, -1], 
+        factors=[1, -1],
+    )
+
+    connection_position = _gamma_normal_gradient_descent(
+        [subhull[0], subhull[1]],
+        powers=[-2, -2],  # -> both in free space, i.e. > 0
+        factors=[-1, -1],
     )
 
     if visualize:
@@ -153,32 +167,119 @@ def test_modulated_dynamics(visualize=False):
         x_lim = [-1.5, 1.5]
         y_lim = [-1.5, 1.5]
 
-        nx = ny = n_resolution
+        n_x = n_y = n_resolution
         x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], nx),
-            np.linspace(y_lim[0], y_lim[1], ny),
+            np.linspace(x_lim[0], x_lim[1], n_x),
+            np.linspace(y_lim[0], y_lim[1], n_y),
         )
-
-        # Find common center
-        # my_hullobstacle._
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
-        ax.plot(center_position[0], center_position[1], "r+")
 
-        # positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-        # vectorfield = np.zeros((my_hullobstacle.n_elements, positions.shape[1]))
+        ax.plot(entrance_position[0], entrance_position[1], "r+")
+        ax.plot(connection_position[0], connection_position[1], "g+")
 
-        # print("Start loop")
-        # for ii in range(positions.shape[1]):
-        # my_hullobstacle._evaluate_weights(position=positions[:, ii])
-        # vectorfield = my_hullobstacle.weights
+    assert (
+        my_hullobstacle.outer_obstacle.get_gamma(
+            entrance_position, in_global_frame=True
+        )
+        > 1
+    )
+    assert (
+        my_hullobstacle.inner_obstacles[0].get_gamma(
+            entrance_position, in_global_frame=True
+        )
+        > 1
+    )
 
-    assert my_hullobstacle.outer_obstacle.get_gamma(center_position, in_global_frame=True)
-    assert my_hullobstacle.inner_obstacles[0].get_gamma(center_position, in_global_frame=True)
+    assert (
+        my_hullobstacle.inner_obstacles[0].get_gamma(
+            connection_position, in_global_frame=True
+        )
+        > 1
+    )
+    assert (
+        my_hullobstacle.inner_obstacles[1].get_gamma(
+            connection_position, in_global_frame=True
+        )
+        > 1
+    )
+
+    # Automatically generate hirarchy and descent -> check that it is the same
+    my_hullobstacle.evaluate_hirarchy_and_reference_points()
+
+    assert len(my_hullobstacle._graph.nodes) == 3
+    assert len(my_hullobstacle._graph.edges) == 2
+    automated_connection = my_hullobstacle._graph[my_hullobstacle.inner_obstacles[0]][
+        my_hullobstacle.inner_obstacles[1]
+    ]["intersection"]
+    assert np.allclose(automated_connection, connection_position)
+
+    # assert len(my_hullobstacle._entrance_positions) == 1
+    # assert my_hullobstacle._entrance_obstacles[0] == my_hullobstacle.inner_obstacles[0]
+    # assert np.allclose(my_hullobstacle._entrance_positions[0], entrance_position)
+    automated_entrance = my_hullobstacle._graph[my_hullobstacle.inner_obstacles[0]][0][
+        "intersection"
+    ]
+    assert np.allclose(automated_entrance, entrance_position)
+
+
+def test_shortes_path(visualize=False):
+    outer_obstacle = Cuboid(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([2, 2]),
+        is_boundary=False,
+    )
+
+    subhull = []
+    subhull.append(
+        Ellipse(
+            center_position=np.array([0.8, 0]),
+            axes_length=np.array([1.5, 1.0]),
+            is_boundary=True,
+        )
+    )
+
+    subhull.append(
+        Ellipse(
+            center_position=np.array([-0.2, 0.1]),
+            axes_length=np.array([1.0, 1.2]),
+            is_boundary=True,
+        )
+    )
+
+    my_hullobstacle = MultiHullAndObstacle(
+        outer_obstacle=outer_obstacle, inner_obstacles=subhull
+    )
+
+    my_hullobstacle.evaluate_hirarchy_and_reference_points()
+    my_hullobstacle.set_attractor(np.array([0, 0]))
+
+    if visualize:
+        n_resolution = 100
+
+        x_lim = [-1.5, 1.5]
+        y_lim = [-1.5, 1.5]
+
+        n_x = n_y = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_x),
+            np.linspace(y_lim[0], y_lim[1], n_y),
+        )
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        velocities = np.vstack((positions.shape))
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        for ii in range(positions.shape[1]):
+            velocities[:, ii] = my_hullobstacle.evaluate(position=positions[:, ii])
 
 
 if (__name__) == "__main__":
     plt.close("all")
     # test_boundary_obstacle_weight(visualize=True)
-    test_modulated_dynamics(visualize=True)
+    # test_mixed_boundary_obstacle_reference(visualize=True)
+
+    test_shortes_path(visualize=True)
