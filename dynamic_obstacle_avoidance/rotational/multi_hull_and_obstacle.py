@@ -122,12 +122,13 @@ class MultiHullAndObstacle(Obstacle):
         # This obstacle is duality of boundary - obstacle (depending on position)
         self.is_boundary = None
 
-        self.outer_obstacle = outer_obstacle
-        self.inner_obstacles = inner_obstacles
-
         # Graph to the inner obstacle
         self._graph = None
+        self.inner_obstacles = inner_obstacles
 
+        self.outer_obstacle = outer_obstacle
+        self._local_outside_attractor = None
+        self._attractor_is_outside = None
         # Store the entrances and the position seperately
         # self._entrance_positions = []
         # self._entrance_obstacles = []
@@ -169,12 +170,12 @@ class MultiHullAndObstacle(Obstacle):
         if self.outer_obstacle.is_inside(position, in_global_frame=True):
             # Just to it for the first 'outside'-node
             # => since the behavior outside should be consistent
-            self._graph.nodes[0]["local_attractor"] = None
-            self._graph.nodes[0]["contains_attractor"] = False
+            self._local_outside_attractor = None
+            self._attractor_is_outside = False
 
         else:
-            self._graph.nodes[0]["local_attractor"] = position
-            self._graph.nodes[0]["contains_attractor"] = True
+            self._local_outside_attractor = position
+            self._attractor_is_outside = True
 
             in_free_space = True
 
@@ -249,13 +250,13 @@ class MultiHullAndObstacle(Obstacle):
         if self.weights[self._indices_outer]:
             weights_.append(self.weights[self._indices_outer])
 
-            if self._graph.nodes[0]["local_attractor"] is None:
+            if self._local_outside_attractor is None:
                 self.update_shortest_attractor_path_starting_from_outside(position)
 
             velocities_.append(
                 self._get_local_dynamics(
                     position,
-                    obs_hash=0,
+                    obs_hash=None,
                     weight=weights_[-1],
                 )
             )
@@ -281,15 +282,15 @@ class MultiHullAndObstacle(Obstacle):
     def _get_local_dynamics(
         self,
         position: Vector,
-        obs_hash: Obstacle,
         weight: float,
+        obs_hash: Obstacle = None,
         scaling: float = 1,
         max_velocity: float = 1,
     ) -> Vector:
 
         # Compute and stretch the linear dynamics
-        if isinstance(obs_hash, int):
-            linear_velocity = self._graph.nodes[0]["local_attractor"] - position
+        if obs_hash is None:
+            linear_velocity = self._local_outside_attractor - position
             obs = self.outer_obstacle
 
         else:
