@@ -187,7 +187,12 @@ class MultiHullAndObstacle(Obstacle):
 
         if not in_free_space:
             # Attractor is not in free space
+            # Find the closest one instead
             warnings.warn("Attractor is in obstacle-wall.")
+
+            raise NotImplementedError(
+                "TODO: Gamma weight to get the 'closest' object. "
+            )
 
     def is_inside(self, position, in_global_frame=True):
         """Checks if the obstacle is colliding."""
@@ -219,25 +224,27 @@ class MultiHullAndObstacle(Obstacle):
 
             weights_.append(self.weights[ii])
 
-            if self._graph[obs]["local_attractor"] is None:
+            if self._graph.nodes[obs]["local_attractor"] is None:
                 self.update_shortest_attractor_path(obs)
 
             velocities_.append(
-                self.get_local_dynamics(position),
-                obs=self._graph[obs],
-                weight=weights_[-1],
+                self._get_local_dynamics(
+                    position,
+                    obs_hash=obs,
+                    weight=weights_[-1],
+                )
             )
 
         if self.weights[self._indices_outer]:
             weights_.append(self.weights[self._indices_outer])
 
             if self._graph.nodes[0]["local_attractor"] is None:
-                self.update_shortest_attractor_path_from_outside(position)
+                self.update_shortest_attractor_path_starting_from_outside(position)
 
             velocities_.append(
-                self.get_local_dynamics(
+                self._get_local_dynamics(
                     position,
-                    obs=0,
+                    obs_hash=0,
                     weight=weights_[-1],
                 )
             )
@@ -247,18 +254,22 @@ class MultiHullAndObstacle(Obstacle):
             self.weights[self._indices_outer]
             and not self._graph.nodes[0]["contains_attractor"]
         ):
+            weights_.append(self.weights[self._indices_outer])
+
             velocities_.append(
-                self.get_local_dynamics(
+                self._get_local_dynamics(
                     position,
-                    obs=0,
-                    weights=weights_[self._indices_outer],
+                    obs_hash=0,
+                    weight=weights_[-1],
                 )
             )
+
+        velocities_ = np.array(velocities_).T
 
         mean_direction = np.sum(
             np.array(velocities_).T * np.tile(weights_, (self.dimension, 1)), axis=0
         )
-        breakpoint()
+
         mean_magnitude = LA.norm(np.array(velocities_).T, axis=0)
         mean_magnitude = np.sum(mean_magnitude * np.array(weights_))
 
@@ -269,17 +280,24 @@ class MultiHullAndObstacle(Obstacle):
         mean_direction = mean_direction / dir_norm * mean_magnitude
         return mean_direction
 
-    def get_local_dynamics(
+    def _get_local_dynamics(
         self,
         position: Vector,
-        obs: Obstacle,
+        obs_hash: Obstacle,
         weight: float,
         scaling: float = 1,
         max_velocity: float = 1,
     ) -> Vector:
-        # Compute linear dynamics
-        breakpoint()
-        linear_velocity = self._graph.nodes[obs]["local_attractor"] - position
+
+        # Compute and stretch the linear dynamics
+        if isinstance(obs_hash, int):
+            linear_velocity = self._graph.nodes[0]["local_attractor"] - position
+            obs = self.outer_obstacle
+
+        else:
+            linear_velocity = self._graph.nodes[obs_hash]["local_attractor"] - position
+            obs = obs_hash
+
         linear_velocity = linear_velocity * scaling
 
         vel_norm = LA.norm(linear_velocity)
@@ -287,7 +305,7 @@ class MultiHullAndObstacle(Obstacle):
             linear_velocity = linear_velocity / vel_norm * max_velocity
 
         # Rotational Modulation
-        normal = self.obs.get_normal_direction(position, in_global_frame=True)
+        normal = obs.get_normal_direction(position, in_global_frame=True)
         tangent_base = get_orthogonal_basis(normal)
 
         tangent_velocity = tangent_base.T @ linear_velocity
@@ -296,32 +314,73 @@ class MultiHullAndObstacle(Obstacle):
 
         mean_direction = get_directional_weighted_sum(
             null_direction=obs.get_reference_direction(position, in_global_frame=True),
-            weights=[1 - weight, weight],
-            directions=[linear_velocity, tangent_velocity],
+            weights=np.array([1 - weight, weight]),
+            directions=np.vstack((linear_velocity, tangent_velocity)).T,
         )
 
         return mean_direction
 
-    def update_shortest_attractor_path_from_outside(self, position: Vector) -> None:
-        closest_dist = None
-
-        closest_dist = []
-        closest_elems = []
+    def update_shortest_attractor_path_starting_from_outside(
+        self, position: Vector
+    ) -> None:
+        distances = []
+        entrances = []
+        targets = []
 
         for ii in range(self._entrance_counter):
-            dist_entrance = LA.norm(
+            dist_to_entrance = LA.norm(
                 position - get_property_of_node_edge(self._graph, ii, "intersection")
             )
 
-            path_dist = shortest_path_length(self._graph, source=ii)
-            for ii in range(self._entrance_counter):
-                closest_dist.append(path_dist[ii])
-                closest_elems.append(ii)
-            pass
+            path_dist = shortest_path_length(self._graph, source=ii, weight="distance")
+            for obs in self.inner_obstacles:
+                distances.append(path_dist[ii] + dist_to_entrance)
+                entrances.append(ii)
+                targets.append(obs)
 
-    def update_shortest_attractor_path(self, obs_source) -> None:
+        ind_min = np.argmin(distances)
+
+        path = shortest_path(
+            self._graph,
+            source=entrances[ind_min],
+            target=targets[ind_min],
+            weight="distance",
+        )
+
+        self._assign_local_attractors_along_path(path)
+
+    def _assign_local_attractors_along_path(self, path):
+        for ii in range(0, len(path) - 1):
+            # Treat 'int' obstacles differently, since they represent the entrance
+            # coming from the same obstacle
+            if isinstance(path[ii], int):
+                ind0 = 0
+                obs = self.outer_obstacle
+            else:
+                ind0 = ii
+                obs = self._graph.nodes[ind0]
+
+            if self._graph.nodes[ind0]["local_attractor"] is not None:
+                # If the first assigned one is found, it implies that the shortest path
+                # subsequent shortest path is already assigned
+                break
+
+            # Set projected connection element
+            ind1 = 0 if isinstance(path[ii + 1], int) else path[ii + 1]
+
+            local_attractor = self._graph.edges[ind0, ind1]["intersection"]
+
+            local_attractor = obs.get_point_on_surface(
+                local_attractor, in_global_frame=True
+            )
+
+            self._graph.nodes[ind0]["local_attractor"] = local_attractor
+
+    def update_shortest_attractor_path(self, obs_hash_source) -> None:
         closest_dist = None
-        path_dist = shortest_path_length(self._graph, source=obs_source)
+        path_dist = shortest_path_length(
+            self._graph, source=obs_hash_source, weight="distance"
+        )
         closest_dist = []
         closest_elems = []
 
@@ -351,23 +410,13 @@ class MultiHullAndObstacle(Obstacle):
         ind_min = np.argmin(closest_dist)
 
         path = shortest_path(
-            self._graph, soure=obs_source, target=closest_elems[ind_min]
+            self._graph,
+            soure=obs_hash_source,
+            target=closest_elems[ind_min],
+            weight="distance",
         )
 
-        breakpoint()
-        for ii in range(len(path) - 1):
-            if self._graph[obs]["local_attractor"] is not None:
-                continue
-            breakpoint()
-
-            # Set projected connection element
-            local_attractor = self._graph.edges[path[ii], path[ii] + 1]["intersection"]
-
-            border_attractor = path[ii].get_point_on_surface(
-                local_attractor, in_global_frame=True
-            )
-
-            self._graph.nodes[paht[ii]]["border_attractor"]
+        self._assign_local_attractors_along_path(path)
 
     def _evaluate_weights(
         self,
@@ -488,7 +537,7 @@ class MultiHullAndObstacle(Obstacle):
             self._graph.add_edge(
                 self._entrance_counter,
                 obs_ii,
-                weight=LA.norm(position - obs_ii.center_position),
+                distance=LA.norm(position - obs_ii.center_position),
                 intersection=position,
             )
             self._entrance_counter += 1
@@ -533,7 +582,7 @@ class MultiHullAndObstacle(Obstacle):
                 self._graph.add_edge(
                     obs_ii,
                     obs_jj,
-                    weight=distance,
+                    distance=distance,
                     intersection=close_position,
                 )
 

@@ -268,13 +268,21 @@ def test_shortes_path(visualize=False):
         )
 
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
-        velocities = np.vstack((positions.shape))
+        velocities = np.zeros(positions.shape)
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
 
         for ii in range(positions.shape[1]):
             velocities[:, ii] = my_hullobstacle.evaluate(position=positions[:, ii])
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            velocities[0, :],
+            velocities[1, :],
+            color="k",
+        )
 
 
 if (__name__) == "__main__":
