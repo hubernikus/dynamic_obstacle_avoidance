@@ -81,17 +81,6 @@ def test_boundary_obstacle_weight(visualize=False):
             )
             axs[oo].set_title(f"Gamma Obstacle {oo}")
 
-            # delta_pos = [0.1, 0.1]
-            # axs[oo].text(
-            #     gmm_ellipse.get_center_position(it_gmm)[0] + delta_pos[0],
-            #     gmm_ellipse.get_center_position(it_gmm)[1] + delta_pos[1],
-            #     s=(f"{it_gmm}"),
-            #     fontsize="large",
-            #     fontweight="bold",
-            # )
-
-        # print(f"roots = {gmm_ellipse.gmm_index_graph.get_root_indices()}")
-
         for ax in axs:
             ax.set_aspect("equal", adjustable="box")
             ax.set_xlim(x_lim)
@@ -270,11 +259,19 @@ def test_shortes_path(visualize=False):
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         velocities = np.zeros(positions.shape)
 
-        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-        my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
+        # Weight container for all obstacles
+        n_obs = 3
+        weights = np.zeros((n_obs, positions.shape[1]))
 
         for ii in range(positions.shape[1]):
             velocities[:, ii] = my_hullobstacle.evaluate(position=positions[:, ii])
+            # weights[:, ii] = my_hullobstacle.gamma_list
+            weights[:, ii] = my_hullobstacle.weights
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        my_hullobstacle.plot_obstacle(
+            x_lim=x_lim, y_lim=y_lim, ax=ax, plot_attractors=True
+        )
 
         ax.quiver(
             positions[0, :],
@@ -282,7 +279,49 @@ def test_shortes_path(visualize=False):
             velocities[0, :],
             velocities[1, :],
             color="k",
+            zorder=4,
         )
+
+        # Weights
+        # fig, axs = plt.subplots(1, my_hullobstacle.n_elements, figsize=(15, 3.5))
+        # for oo in range(my_hullobstacle.n_elements):
+        #     levels = np.linspace(0, 1, 21)
+        #     # levels = np.linspace(1, 10, 10)
+        #     cs0 = axs[oo].contourf(
+        #         x_vals,
+        #         y_vals,
+        #         weights[oo, :].reshape(x_vals.shape),
+        #         levels=levels,
+        #         alpha=0.7,
+        #         zorder=5,
+        #         # cmap=cmap,
+        #     )
+        #     axs[oo].set_title(f"obstacle #{oo}")
+
+        #     my_hullobstacle.plot_obstacle(
+        #         x_lim=x_lim,
+        #         y_lim=y_lim,
+        #         ax=axs[oo],
+        #     )
+
+        plt.colorbar(cs0, ax=axs)
+
+
+def test_obstacle_without_interior(visualize=False):
+    outer_obstacle = Cuboid(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([2, 2]),
+        is_boundary=False,
+    )
+
+    subhull = []
+
+    my_hullobstacle = MultiHullAndObstacle(
+        outer_obstacle=outer_obstacle, inner_obstacles=subhull
+    )
+
+    my_hullobstacle.evaluate_hirarchy_and_reference_points()
+    my_hullobstacle.set_attractor(np.array([2.5, 0]))
 
 
 if (__name__) == "__main__":
@@ -290,4 +329,6 @@ if (__name__) == "__main__":
     # test_boundary_obstacle_weight(visualize=True)
     # test_mixed_boundary_obstacle_reference(visualize=True)
 
-    test_shortes_path(visualize=True)
+    # test_shortes_path(visualize=True)
+
+    test_obstacle_without_interior(visualize=True)

@@ -151,6 +151,10 @@ class MultiHullAndObstacle(Obstacle):
     def _indices_inner(self) -> np.array:
         return np.arange(self.n_elements - 1)
 
+    @property
+    def all_hash_list(self) -> list:
+        return self.inner_obstacles + [ii for ii in range(self._entrance_counter)]
+
     def set_attractor(self, position: Vector) -> None:
         """Set attractor in the global frame.
         for the moment we assume linear dynamics.
@@ -175,6 +179,7 @@ class MultiHullAndObstacle(Obstacle):
             in_free_space = True
 
         for ii, obs in enumerate(self.inner_obstacles):
+
             if obs.is_inside(position, in_global_frame=True):
                 self._graph.nodes[obs]["local_attractor"] = None
                 self._graph.nodes[obs]["contains_attractor"] = False
@@ -190,9 +195,12 @@ class MultiHullAndObstacle(Obstacle):
             # Find the closest one instead
             warnings.warn("Attractor is in obstacle-wall.")
 
+            breakpoint()
             raise NotImplementedError(
                 "TODO: Gamma weight to get the 'closest' object. "
             )
+
+        breakpoint()
 
     def is_inside(self, position, in_global_frame=True):
         """Checks if the obstacle is colliding."""
@@ -209,15 +217,17 @@ class MultiHullAndObstacle(Obstacle):
 
     def evaluate(self, position: Vector) -> Vector:
         """Avoids the boundary-hull obstacle."""
-        if self.is_inside(position):
-            return np.zeros(self.dimension)
-
         # Assumption that graph is already constructed
         self._evaluate_weights(position)
+
+        if not np.sum(self.weights):
+            # All weights are zero
+            return np.zeros(self.dimension)
 
         weights_ = []
         velocities_ = []
 
+        # print("weight", self.weights)
         for ii, obs in enumerate(self.inner_obstacles):
             if not self.weights[ii]:
                 continue
@@ -225,6 +235,7 @@ class MultiHullAndObstacle(Obstacle):
             weights_.append(self.weights[ii])
 
             if self._graph.nodes[obs]["local_attractor"] is None:
+                print("obs:", obs)
                 self.update_shortest_attractor_path(obs)
 
             velocities_.append(
@@ -249,32 +260,19 @@ class MultiHullAndObstacle(Obstacle):
                 )
             )
 
-        # TODO: can this be obtained using the 'directional'-sum
-        if (
-            self.weights[self._indices_outer]
-            and not self._graph.nodes[0]["contains_attractor"]
-        ):
-            weights_.append(self.weights[self._indices_outer])
-
-            velocities_.append(
-                self._get_local_dynamics(
-                    position,
-                    obs_hash=0,
-                    weight=weights_[-1],
-                )
-            )
-
         velocities_ = np.array(velocities_).T
 
         mean_direction = np.sum(
-            np.array(velocities_).T * np.tile(weights_, (self.dimension, 1)), axis=0
+            velocities_ * np.tile(weights_, (self.dimension, 1)), axis=1
         )
 
-        mean_magnitude = LA.norm(np.array(velocities_).T, axis=0)
+        mean_magnitude = LA.norm(velocities_, axis=0)
         mean_magnitude = np.sum(mean_magnitude * np.array(weights_))
 
         dir_norm = LA.norm(mean_direction)
-        if not dir_norm:
+        if not dir_norm and np.min(mean_magnitude):
+            # Direction is zero, but not initial one
+            breakpoint()
             raise ValueError("Zero direction value obtained.")
 
         mean_direction = mean_direction / dir_norm * mean_magnitude
@@ -349,33 +347,6 @@ class MultiHullAndObstacle(Obstacle):
 
         self._assign_local_attractors_along_path(path)
 
-    def _assign_local_attractors_along_path(self, path):
-        for ii in range(0, len(path) - 1):
-            # Treat 'int' obstacles differently, since they represent the entrance
-            # coming from the same obstacle
-            if isinstance(path[ii], int):
-                ind0 = 0
-                obs = self.outer_obstacle
-            else:
-                ind0 = ii
-                obs = self._graph.nodes[ind0]
-
-            if self._graph.nodes[ind0]["local_attractor"] is not None:
-                # If the first assigned one is found, it implies that the shortest path
-                # subsequent shortest path is already assigned
-                break
-
-            # Set projected connection element
-            ind1 = 0 if isinstance(path[ii + 1], int) else path[ii + 1]
-
-            local_attractor = self._graph.edges[ind0, ind1]["intersection"]
-
-            local_attractor = obs.get_point_on_surface(
-                local_attractor, in_global_frame=True
-            )
-
-            self._graph.nodes[ind0]["local_attractor"] = local_attractor
-
     def update_shortest_attractor_path(self, obs_hash_source) -> None:
         closest_dist = None
         path_dist = shortest_path_length(
@@ -390,17 +361,18 @@ class MultiHullAndObstacle(Obstacle):
         for obs in self.inner_obstacles:
             # Self check (i.e. obs == obs_source) is not needed, since
             # obs_source has "contains_attractor" == False
-            if not self._graph[obs]["contains_attractor"]:
+
+            if not self._graph.nodes[obs]["contains_attractor"]:
                 continue
 
             closest_dist.append(path_dist)
             closest_elems.append(obs)
 
-        if self._graph[0]["contains_attractor"]:
+        if self._graph.nodes[0]["contains_attractor"]:
             for ii in range(self._entrance_counter):
                 dist_attractor = LA.norm(
                     get_property_of_node_edge(self._graph, ii, "intersection")
-                    - self._graph.node[0]["local_attractor"]
+                    - self._graph.nodes[0]["local_attractor"]
                 )
 
                 closest_dist.append(path_dist[ii] + dist_attractor)
@@ -411,12 +383,39 @@ class MultiHullAndObstacle(Obstacle):
 
         path = shortest_path(
             self._graph,
-            soure=obs_hash_source,
+            source=obs_hash_source,
             target=closest_elems[ind_min],
             weight="distance",
         )
 
         self._assign_local_attractors_along_path(path)
+
+    def _assign_local_attractors_along_path(self, path: list):
+        """Input is a NetworXd-paht (list of the node-id's)."""
+        for ii in range(0, len(path) - 1):
+            # Treat 'int' obstacles differently, since they represent the entrance
+            # coming from the same obstacle
+            if isinstance(path[ii], int):
+                ind0 = 0
+                obs = self.outer_obstacle
+
+            else:
+                ind0 = obs = path[ii]
+
+            if self._graph.nodes[ind0]["local_attractor"] is not None:
+                # If the first assigned one is found, it implies that the shortest path
+                # subsequent shortest path is already assigned
+                break
+
+            # Set projected connection element
+            ind1 = 0 if isinstance(path[ii + 1], int) else path[ii + 1]
+
+            local_attractor = self._graph.edges[ind0, ind1]["intersection"]
+            local_attractor = obs.get_point_on_surface(
+                local_attractor, in_global_frame=True
+            )
+
+            self._graph.nodes[ind0]["local_attractor"] = local_attractor
 
     def _evaluate_weights(
         self,
@@ -472,8 +471,8 @@ class MultiHullAndObstacle(Obstacle):
         )
 
         if plot_attractors:
-            for node in self._graph.nodes:
-                if node[0]["contains_attractor"]:
+            for ind_hash in self.all_hash_list:
+                if self._graph.nodes[ind_hash]["contains_attractor"]:
                     color = "black"
                     linewidth = 18
                     markersize = 18
@@ -482,15 +481,17 @@ class MultiHullAndObstacle(Obstacle):
                     linewidth = 13
                     markersize = 13
 
-                self._graph.nodes[0]["local_attractor"] = None
-                self._graph.nodes[0]["contains_attractor"] = False
+                # self._graph.nodes[0]["local_attractor"] = None
+                # self._graph.nodes[0]["contains_attractor"] = False
+
                 ax.plot(
-                    self._graph.nodes[0]["local_attractor"][0],
-                    self._graph.nodes[0]["local_attractor"][1],
+                    self._graph.nodes[ind_hash]["local_attractor"][0],
+                    self._graph.nodes[ind_hash]["local_attractor"][1],
                     "*",
                     color=color,
                     linewidth=linewidth,
                     markersize=markersize,
+                    zorder=4,
                 )
 
     def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
