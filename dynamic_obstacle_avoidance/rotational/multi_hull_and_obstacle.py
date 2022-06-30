@@ -97,7 +97,7 @@ def _gamma_normal_gradient_descent(
     return position
 
 
-class MultiHullAndObstacle(Obstacle):
+class MultiHullAndObstacle:
     """This is similar to an 'basic' obstacle but requires some different structure / treatment.
 
     Attributes
@@ -117,7 +117,7 @@ class MultiHullAndObstacle(Obstacle):
         if center_position is None:
             center_position = np.zeros(outer_obstacle.center_position.shape)
 
-        super().__init__(center_position=center_position, **kwargs)
+        # super().__init__(center_position=center_position, **kwargs)
 
         # This obstacle is duality of boundary - obstacle (depending on position)
         self.is_boundary = None
@@ -134,6 +134,10 @@ class MultiHullAndObstacle(Obstacle):
         # self._entrance_obstacles = []
 
         self._entrance_counter = 0
+
+    @property
+    def dimension(self) -> int:
+        return self.outer_obstacle.dimension
 
     @property
     def all_obstacles(self) -> list:
@@ -163,7 +167,7 @@ class MultiHullAndObstacle(Obstacle):
 
         Additionally reset the 'local_attractor', since the attractor position
         has changed."""
-        position = self.transform_global2relative(position)
+        # position = self.transform_global2relative(position)
 
         in_free_space = False  # Track if the attractor is in free space!
 
@@ -196,12 +200,16 @@ class MultiHullAndObstacle(Obstacle):
             # Find the closest one instead
             warnings.warn("Attractor is in obstacle-wall.")
 
-            breakpoint()
-            raise NotImplementedError(
-                "TODO: Gamma weight to get the 'closest' object. "
-            )
+            self._evaluate_weights(position)
+            ind_max = np.min(self.weights)
+            if ind_max == self._indices_outer:
+                self._local_outside_attractor = position
+                self._attractor_is_outside = True
 
-        breakpoint()
+            else:
+                obs = self.inner_obstacles[ind_max]
+                self._graph.nodes[obs]["local_attractor"] = position
+                self._graph.nodes[obs]["contains_attractor"] = True
 
     def is_inside(self, position, in_global_frame=True):
         """Checks if the obstacle is colliding."""
@@ -220,6 +228,9 @@ class MultiHullAndObstacle(Obstacle):
         """Avoids the boundary-hull obstacle."""
         # Assumption that graph is already constructed
         self._evaluate_weights(position)
+
+        # self.weights = np.minimum(np.array([0, 0, 1]), self.weights)
+        # warnings.warn("Debug mode - remove the line")
 
         if not np.sum(self.weights):
             # All weights are zero
@@ -243,7 +254,7 @@ class MultiHullAndObstacle(Obstacle):
                 self._get_local_dynamics(
                     position,
                     obs_hash=obs,
-                    weight=weights_[-1],
+                    gamma=self.gamma_list[ii],
                 )
             )
 
@@ -257,7 +268,8 @@ class MultiHullAndObstacle(Obstacle):
                 self._get_local_dynamics(
                     position,
                     obs_hash=None,
-                    weight=weights_[-1],
+                    # weight=weights_[-1],
+                    gamma=self.gamma_list[-1],
                 )
             )
 
@@ -282,7 +294,7 @@ class MultiHullAndObstacle(Obstacle):
     def _get_local_dynamics(
         self,
         position: Vector,
-        weight: float,
+        gamma: float,
         obs_hash: Obstacle = None,
         scaling: float = 1,
         max_velocity: float = 1,
@@ -300,22 +312,29 @@ class MultiHullAndObstacle(Obstacle):
         linear_velocity = linear_velocity * scaling
 
         vel_norm = LA.norm(linear_velocity)
-        if vel_norm > max_velocity:
-            linear_velocity = linear_velocity / vel_norm * max_velocity
 
         # Rotational Modulation
         normal = obs.get_normal_direction(position, in_global_frame=True)
         tangent_base = get_orthogonal_basis(normal)
+        tangent_base[:, 0] = obs.get_reference_direction(position, in_global_frame=True)
 
-        tangent_velocity = tangent_base.T @ linear_velocity
+        tangent_velocity = LA.pinv(tangent_base) @ linear_velocity
         tangent_velocity[0] = 0
-        tangent_velocity = tangent_velocity @ tangent_base
+        tangent_velocity = tangent_base @ tangent_velocity
+
+        # Get 'lambda' or the weight of correction
+        weight = 1 / gamma
 
         mean_direction = get_directional_weighted_sum(
             null_direction=obs.get_reference_direction(position, in_global_frame=True),
             weights=np.array([1 - weight, weight]),
             directions=np.vstack((linear_velocity, tangent_velocity)).T,
         )
+
+        if vel_norm > max_velocity:
+            linear_velocity = mean_direction / LA.norm(mean_direction) * max_velocity
+        else:
+            linear_velocity = mean_direction / LA.norm(mean_direction) * vel_norm
 
         return mean_direction
 
@@ -369,11 +388,12 @@ class MultiHullAndObstacle(Obstacle):
             closest_dist.append(path_dist)
             closest_elems.append(obs)
 
-        if self._graph.nodes[0]["contains_attractor"]:
+        # if self._graph.nodes[0]["contains_attractor"]:
+        if self._attractor_is_outside:
             for ii in range(self._entrance_counter):
                 dist_attractor = LA.norm(
                     get_property_of_node_edge(self._graph, ii, "intersection")
-                    - self._graph.nodes[0]["local_attractor"]
+                    - self._local_outside_attractor
                 )
 
                 closest_dist.append(path_dist[ii] + dist_attractor)
@@ -399,11 +419,13 @@ class MultiHullAndObstacle(Obstacle):
             if isinstance(path[ii], int):
                 ind0 = 0
                 obs = self.outer_obstacle
+                attractor = self._local_outside_attractor
 
             else:
                 ind0 = obs = path[ii]
+                attractor = self._graph.nodes[ind0]["local_attractor"]
 
-            if self._graph.nodes[ind0]["local_attractor"] is not None:
+            if attractor is not None:
                 # If the first assigned one is found, it implies that the shortest path
                 # subsequent shortest path is already assigned
                 break
@@ -416,7 +438,10 @@ class MultiHullAndObstacle(Obstacle):
                 local_attractor, in_global_frame=True
             )
 
-            self._graph.nodes[ind0]["local_attractor"] = local_attractor
+            if isinstance(path[ii], int):
+                self._local_outside_attractor = local_attractor
+            else:
+                self._graph.nodes[ind0]["local_attractor"] = local_attractor
 
     def _evaluate_weights(
         self,
@@ -431,6 +456,8 @@ class MultiHullAndObstacle(Obstacle):
         for ii, obs_ii in enumerate(self.all_obstacles):
             self.gamma_list[ii] = obs_ii.get_gamma(position, in_global_frame=True)
         self.weights = np.maximum(self.gamma_list - 1, 0)
+
+        # self.gamma_weight = 1 - 1 / self.gamma_list
 
         weight_sum = np.sum(self.weights)
         if weight_sum > 0:
@@ -472,34 +499,54 @@ class MultiHullAndObstacle(Obstacle):
         )
 
         if plot_attractors:
-            for ind_hash in self.all_hash_list:
-                if self._graph.nodes[ind_hash]["contains_attractor"]:
-                    color = "black"
-                    linewidth = 18
-                    markersize = 18
-                else:
-                    color = "blue"
-                    linewidth = 13
-                    markersize = 13
-
+            # for obs in self.inner_obstacles:
+            for local_attractor in self.local_attractor_iterator():
+                if local_attractor is None:
+                    continue
                 # self._graph.nodes[0]["local_attractor"] = None
                 # self._graph.nodes[0]["contains_attractor"] = False
 
                 ax.plot(
-                    self._graph.nodes[ind_hash]["local_attractor"][0],
-                    self._graph.nodes[ind_hash]["local_attractor"][1],
+                    local_attractor[0],
+                    local_attractor[1],
                     "*",
-                    color=color,
-                    linewidth=linewidth,
-                    markersize=markersize,
+                    color="black",
+                    linewidth=11,
+                    markersize=11,
                     zorder=4,
                 )
 
+            attractor_ = self.get_attractor()
+            ax.plot(
+                attractor_[0],
+                attractor_[1],
+                "o",
+                color="green",
+                linewidth=14,
+                markersize=14,
+                zorder=3,
+            )
+
+    def get_attractor(self):
+        """Find the attractor and return it."""
+        if self._attractor_is_outside:
+            return self._local_outside_attractor
+
+        for obs in self.inner_obstacles:
+            if self._graph.nodes[obs]["contains_attractor"]:
+                return self._graph.nodes[obs]["local_attractor"]
+
+    def local_attractor_iterator(self):
+        for obs in self.inner_obstacles:
+            yield self._graph.nodes[obs]["local_attractor"]
+
+        yield self._local_outside_attractor
+
     def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
         """Get distance value with respect to the obstacle."""
-        if in_global_frame:
-            position = self.transform_global2relative(position)
-        breakpoint()
+        # if in_global_frame:
+        #     position = self.transform_global2relative(position)
+        raise NotImplementedError()
 
     def get_normal_direction(
         self, position: Vector, in_global_frame: bool = False
@@ -528,10 +575,6 @@ class MultiHullAndObstacle(Obstacle):
 
             if obs_ii.is_inside(position) or obs_ii.is_inside(position):
                 continue
-
-            # Store intersections
-            # self._entrance_obstacles.append(obs_ii)
-            # self._entrance_positions.append(position)
 
             self._graph.add_node(
                 self._entrance_counter,

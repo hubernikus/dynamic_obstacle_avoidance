@@ -213,6 +213,61 @@ def test_mixed_boundary_obstacle_reference(visualize=False):
     assert np.allclose(automated_entrance, entrance_position)
 
 
+def test_obstacle_without_interior(visualize=False):
+    outer_obstacle = Cuboid(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([2, 2]),
+        is_boundary=False,
+    )
+
+    subhull = []
+
+    my_hullobstacle = MultiHullAndObstacle(
+        outer_obstacle=outer_obstacle, inner_obstacles=subhull
+    )
+
+    my_hullobstacle.evaluate_hirarchy_and_reference_points()
+    my_hullobstacle.set_attractor(np.array([1.3, 0.2]))
+
+    if visualize:
+        n_resolution = 30
+
+        x_lim = [-3.0, 3.0]
+        y_lim = [-3.0, 3.0]
+
+        n_x = n_y = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_x),
+            np.linspace(y_lim[0], y_lim[1], n_y),
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        my_hullobstacle.plot_obstacle(
+            x_lim=x_lim, y_lim=y_lim, ax=ax, plot_attractors=True
+        )
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        velocities = np.zeros(positions.shape)
+
+        for ii in range(positions.shape[1]):
+            velocities[:, ii] = my_hullobstacle.evaluate(position=positions[:, ii])
+
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            velocities[0, :],
+            velocities[1, :],
+            color="k",
+            zorder=4,
+        )
+
+        # Going around int the correct direction
+        velocity = my_hullobstacle.evaluate(position=np.array([-1.01, 0.3]))
+        assert np.allclose(
+            velocity, [0, 1], atol=1e-1
+        ), "Vector not pointing in the correct direction."
+
+
 def test_shortes_path(visualize=False):
     outer_obstacle = Cuboid(
         center_position=np.array([0, 0]),
@@ -245,7 +300,7 @@ def test_shortes_path(visualize=False):
     my_hullobstacle.set_attractor(np.array([0, 0]))
 
     if visualize:
-        n_resolution = 100
+        n_resolution = 50
 
         x_lim = [-1.5, 1.5]
         y_lim = [-1.5, 1.5]
@@ -256,6 +311,9 @@ def test_shortes_path(visualize=False):
             np.linspace(y_lim[0], y_lim[1], n_y),
         )
 
+        position = np.array([0.6, -0.4])
+        velocity = my_hullobstacle.evaluate(position=position)
+
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         velocities = np.zeros(positions.shape)
 
@@ -265,7 +323,6 @@ def test_shortes_path(visualize=False):
 
         for ii in range(positions.shape[1]):
             velocities[:, ii] = my_hullobstacle.evaluate(position=positions[:, ii])
-            # weights[:, ii] = my_hullobstacle.gamma_list
             weights[:, ii] = my_hullobstacle.weights
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -297,31 +354,13 @@ def test_shortes_path(visualize=False):
         #         # cmap=cmap,
         #     )
         #     axs[oo].set_title(f"obstacle #{oo}")
-
         #     my_hullobstacle.plot_obstacle(
         #         x_lim=x_lim,
         #         y_lim=y_lim,
         #         ax=axs[oo],
         #     )
 
-        plt.colorbar(cs0, ax=axs)
-
-
-def test_obstacle_without_interior(visualize=False):
-    outer_obstacle = Cuboid(
-        center_position=np.array([0, 0]),
-        axes_length=np.array([2, 2]),
-        is_boundary=False,
-    )
-
-    subhull = []
-
-    my_hullobstacle = MultiHullAndObstacle(
-        outer_obstacle=outer_obstacle, inner_obstacles=subhull
-    )
-
-    my_hullobstacle.evaluate_hirarchy_and_reference_points()
-    my_hullobstacle.set_attractor(np.array([2.5, 0]))
+        # plt.colorbar(cs0, ax=axs)
 
 
 if (__name__) == "__main__":
@@ -329,6 +368,6 @@ if (__name__) == "__main__":
     # test_boundary_obstacle_weight(visualize=True)
     # test_mixed_boundary_obstacle_reference(visualize=True)
 
-    # test_shortes_path(visualize=True)
+    test_shortes_path(visualize=True)
 
-    test_obstacle_without_interior(visualize=True)
+    # test_obstacle_without_interior(visualize=True)

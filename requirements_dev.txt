@@ -3,8 +3,7 @@ black
 flake8
 
 # =======
-
-ipython
+ipython==7.34  # 8-series of ipython has gives random error when reloading
 # pytest>=6.0
 # pytest-cov>=2.0
 # mypy>=0.910
