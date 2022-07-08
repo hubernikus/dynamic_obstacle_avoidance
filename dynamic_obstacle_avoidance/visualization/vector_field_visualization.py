@@ -121,7 +121,7 @@ def plt_speed_line_and_qolo(
             lc.set_array(magnitude)
             lc.set_linewidth(2)
             line = ax.add_collection(lc)
-            # ax.axis('equal')
+
             ax.axis("equal")
 
             if False:
