@@ -201,7 +201,7 @@ class MultiHullAndObstacle:
             warnings.warn("Attractor is in obstacle-wall.")
 
             self._evaluate_weights(position)
-            ind_max = np.min(self.weights)
+            ind_max = np.argmin(self.weights)
             if ind_max == self._indices_outer:
                 self._local_outside_attractor = position
                 self._attractor_is_outside = True
@@ -228,9 +228,6 @@ class MultiHullAndObstacle:
         """Avoids the boundary-hull obstacle."""
         # Assumption that graph is already constructed
         self._evaluate_weights(position)
-
-        # self.weights = np.minimum(np.array([0, 0, 1]), self.weights)
-        # warnings.warn("Debug mode - remove the line")
 
         if not np.sum(self.weights):
             # All weights are zero
@@ -356,7 +353,10 @@ class MultiHullAndObstacle:
                 entrances.append(ii)
                 targets.append(obs)
 
-        ind_min = np.argmin(distances)
+        try:
+            ind_min = np.argmin(distances)
+        except:
+            breakpoint()
 
         path = shortest_path(
             self._graph,
@@ -510,7 +510,7 @@ class MultiHullAndObstacle:
                     local_attractor[0],
                     local_attractor[1],
                     "*",
-                    color="black",
+                    color="#808080",  # gray
                     linewidth=11,
                     markersize=11,
                     zorder=4,
@@ -520,11 +520,11 @@ class MultiHullAndObstacle:
             ax.plot(
                 attractor_[0],
                 attractor_[1],
-                "o",
-                color="green",
-                linewidth=14,
-                markersize=14,
-                zorder=3,
+                "*",
+                color="black",
+                linewidth=12,
+                markersize=12,
+                zorder=4,
             )
 
     def get_attractor(self):
@@ -558,10 +558,9 @@ class MultiHullAndObstacle:
 
         # Reset the counter
         self._entrance_counter = 0
-        # self._entrance_obstacles = []
-        # self._entrance_positions = []
 
         for ii, obs_ii in enumerate(self.inner_obstacles):
+            # breakpoint()
             if LA.norm(obs_ii.center_position - self.outer_obstacle.center_position) < (
                 np.min(self.outer_obstacle.axes_length) - np.max(obs_ii.axes_length)
             ):
