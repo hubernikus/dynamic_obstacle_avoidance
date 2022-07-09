@@ -27,7 +27,7 @@ from dynamic_obstacle_avoidance.rotational.multi_hull_and_obstacle import (
 )
 
 
-def test_boundary_obstacle_weight(visualize=False):
+def test_boundary_obstacle_weight(visualize=False, savefig=False):
     outer_obstacle = Cuboid(
         center_position=np.array([0, 0]),
         axes_length=np.array([2, 2]),
@@ -79,7 +79,7 @@ def test_boundary_obstacle_weight(visualize=False):
                 levels=levels,
                 cmap=cmap,
             )
-            axs[oo].set_title(f"Gamma Obstacle {oo}")
+            axs[oo].set_title(f"Weight obstacle {oo}")
 
         for ax in axs:
             ax.set_aspect("equal", adjustable="box")
@@ -89,7 +89,16 @@ def test_boundary_obstacle_weight(visualize=False):
 
         plt.colorbar(cs0, ax=axs)
 
+        if savefig:
+            figname = "simple_hull_obstacle_weights"
+            plt.savefig("figures/" + figname + ".pdf", bbox_inches="tight")
+
         my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim)
+
+        if savefig:
+            figname = "simple_hull_obstacle"
+            plt.savefig("figures/" + figname + ".pdf", bbox_inches="tight")
+
 
     # Inside the ellipse
     position = np.array([0.5, -0.1])
@@ -547,10 +556,10 @@ def _test_multiholes_obstacle(visualize=False, savefig=False):
 
 if (__name__) == "__main__":
     plt.close("all")
-    # test_boundary_obstacle_weight(visualize=True)
+    # test_boundary_obstacle_weight(visualize=True, savefig=True)
     # test_mixed_boundary_obstacle_reference(visualize=True)
     # test_shortes_path(visualize=True, savefig=False)
 
-    _test_multiholes_obstacle(visualize=True, savefig=True)
+    # _test_multiholes_obstacle(visualize=True, savefig=True)
 
     # test_obstacle_without_interior(visualize=True)

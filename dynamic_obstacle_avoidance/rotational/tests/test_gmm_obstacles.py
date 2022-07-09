@@ -140,7 +140,7 @@ def test_obstacle_with_radius_3_from_gmm(visualize=False):
         plot_gammas_multigamma(gmm_ellipse, simple_ellipse)
 
 
-def test_obstacle_gradient_descent(visualize=False):
+def test_obstacle_gradient_descent(visualize=False, savefig=False):
     n_gmms = 2
     dimension = 2
 
@@ -208,15 +208,25 @@ def test_obstacle_gradient_descent(visualize=False):
             levels=levels,
             # cmap=cmap
         )
+
+        grad_scale = LA.norm(gradient_field, axis=0)
+        ind_nonzero = grad_scale > 0
+
+        gradient_field[:, ind_nonzero] = (
+            gradient_field[:, ind_nonzero]
+            * np.tile((grad_scale[ind_nonzero] ** 0.1 / grad_scale[ind_nonzero]), (2, 1))
+        )
+        
         ax.quiver(
             positions[0, :],
             positions[1, :],
             gradient_field[0, :],
             gradient_field[1, :],
+            # scale=grad_scale,
             color="k",
         )
 
-        gmm_ellipse.plot_obstacle(ax=ax)
+        # gmm_ellipse.plot_obstacle(ax=ax)
 
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim(x_lim)
@@ -234,7 +244,14 @@ def test_obstacle_gradient_descent(visualize=False):
                 it_max=it_max,
             )
 
-            ax.plot(pos_intersection[0], pos_intersection[1], "ko")
+            ax.plot(pos_intersection[0], pos_intersection[1], "o", color="#FF6062")
+
+        # Plot last one special
+        ax.plot(pos_intersection[0], pos_intersection[1], "ro")
+
+        if savefig:
+            figname = "gradient_descent_direction"
+            plt.savefig("figures/" + figname + ".pdf", bbox_inches="tight")
 
 
 def test_normal_direction(visualize=False):
@@ -661,12 +678,12 @@ if (__name__) == "__main__":
 
     # test_uniradius_obstacle_from_gmm(visualize=True)
     # test_obstacle_with_radius_3_from_gmm(visualize=True)
-    # test_obstacle_gradient_descent(visualize=True)
+    test_obstacle_gradient_descent(visualize=True, savefig=True)
     # test_normal_direction(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface_with_offset_center(visualize=True)
-    test_relative_weights(visualize=True)
+    # test_relative_weights(visualize=True)
 
     # test_reference_and_normal(visualize=True)
 
