@@ -212,11 +212,10 @@ def test_obstacle_gradient_descent(visualize=False, savefig=False):
         grad_scale = LA.norm(gradient_field, axis=0)
         ind_nonzero = grad_scale > 0
 
-        gradient_field[:, ind_nonzero] = (
-            gradient_field[:, ind_nonzero]
-            * np.tile((grad_scale[ind_nonzero] ** 0.1 / grad_scale[ind_nonzero]), (2, 1))
+        gradient_field[:, ind_nonzero] = gradient_field[:, ind_nonzero] * np.tile(
+            (grad_scale[ind_nonzero] ** 0.1 / grad_scale[ind_nonzero]), (2, 1)
         )
-        
+
         ax.quiver(
             positions[0, :],
             positions[1, :],

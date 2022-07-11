@@ -99,7 +99,6 @@ def test_boundary_obstacle_weight(visualize=False, savefig=False):
             figname = "simple_hull_obstacle"
             plt.savefig("figures/" + figname + ".pdf", bbox_inches="tight")
 
-
     # Inside the ellipse
     position = np.array([0.5, -0.1])
     my_hullobstacle._evaluate_weights(position=position)
