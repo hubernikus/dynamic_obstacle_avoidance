@@ -25,8 +25,7 @@ def rotate_direction(direction: Vector, base: VectorArray, rotation_angle: float
     direction = direction / LA.norm(direction)
 
     dot_prods = np.dot(base.T, direction)
-    angle = math.atan2(dot_prods[1], dot_prods[0])
-    angle += rotation_angle
+    angle = math.atan2(dot_prods[1], dot_prods[0]) + rotation_angle
 
     # Convert angle to the two bases-axis
     out_direction = math.cos(angle) * base[:, 0] + math.sin(angle) * base[:, 1]
@@ -38,26 +37,29 @@ def rotate_direction(direction: Vector, base: VectorArray, rotation_angle: float
 
 
 def rotate_array(
-    self, directions: VectorArray, level: int, rotation_weight: float = 1
+    directions: VectorArray,
+    base: VectorArray,
+    rotation_angle: float,
 ) -> VectorArray:
     """Rotate upper level base with respect to total."""
-    # TEMP: does it ever occur that we have to rotate-partially a full array (?)
-    breakpoint()
-    dot_prods = np.dot(self.bases_array[:, :, level].T, directions)
-    angles = math.atan2(dot_prods[1, :], dot_prods[0, :])
+    dimension = directions.shape[0]
+    n_dirs = directions.shape[1]
 
-    angles += self.rotation__angle * rotation_weight
+    directions = directions / LA.norm(directions, axis=0)
+
+    # Matrix dimensions: [2 x n_dirs ] <- [dimension x 2 ].T @ [dimension x n_dirs]
+    dot_prods = np.dot(base.T, directions)
+    angles = np.arctan2(dot_prods[1, :], dot_prods[0, :]) + rotation_angle
 
     # Compute output from rotation
-    out_vectors = (
-        np.cos(angles) * self.base[:, 0, level]
-        + np.sin(angles) * self.base[:, 1, level]
-    )
-    # Scale with dot_prods
-    out_vectors *= np.sqrt(sum(dot_prods**2, axis=0))
+    out_vectors = np.tile(base[:, 0], (n_dirs, 1)).T * np.tile(
+        np.cos(angles), (dimension, 1)
+    ) + np.tile(base[:, 1], (n_dirs, 1)).T * np.tile(np.sin(angles), (dimension, 1))
+    out_vectors *= np.tile(np.sqrt(np.sum(dot_prods**2, axis=0)), (dimension, 1))
 
     # Finally, add the orthogonal part (no effect in 2D, but important for higher dimensions)
-    out_vectors += directions - np.sum(dot_prods * self.base[:, :, level], axis=1)
+    out_vectors += directions - (base @ dot_prods)
+
     return out_vectors
 
 
@@ -137,23 +139,24 @@ class VectorRotationSequence:
             temp_angle = self.rotation_angles
 
         else:
-            # Update the basis of rotation weights from
-            for ii in reversed(range(self.n_rotations - 1)):
-                # Shape and reshape into pair structure
-                temp_base[:, (ii + 1) :, :] = self._rotate_array_around_one_base(
-                    directions=temp_base[:, (ii + 1) :, :].reshape(self.dimension, -1),
-                    level=ii,
-                    rotation_weight=(1 - cumulated_weights[ii]),
-                ).reshape(self.dimension, -1, 2)
-
             temp_angle = self.rotation_angles * cumulated_weights
+
+            # Update the basis of rotation weights from top-to-bottom
+            # by rotating upper level base with respect to total
+            for ii in reversed(range(self.n_rotations - 1)):
+                temp_base[:, (ii + 1) :, :] = rotate_array(
+                    directions=temp_base[:, (ii + 1) :, :].reshape(self.dimension, -1),
+                    base=temp_base[:, ii, :],
+                    rotation_angle=self.rotation_angles[ii]
+                    * (1 - cumulated_weights[ii]),
+                ).reshape(self.dimension, -1, 2)
 
         # Finally: rotate from bottom-to-top
         for ii in range(self.n_rotations):
             direction = rotate_direction(
                 direction=direction,
                 rotation_angle=temp_angle[ii],
-                base=temp_base[:, ii : (ii + 2), :],
+                base=temp_base[:, ii, :],
             )
         return direction
 
@@ -331,23 +334,33 @@ def test_cross_rotation_3d():
 
 def test_multi_rotation_array():
     # Rotation from 1 to final
-    vec1 = np.array([1, 0, 0])
-    vec2 = np.array([0, 1, 0])
-    vec3 = np.array([0, 0, 1])
-    # vec4 = np.array([-1, 0, 0])
-
-    vector_seq = np.vstack((vec1, vec2, vec3)).T
-    rotation_seq = VectorRotationSequence(vector_seq)
-    rotation_seq.rotate_weighted(
-        direction=np.array([1, 0, 0]), weights=np.array([0, 0, 1])
+    vector_seq = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            # [-1, 0, 0],
+        ]
     )
+
+    rotation_seq = VectorRotationSequence(vector_seq)
+    rotated_vec = rotation_seq.rotate_weighted(
+        direction=np.array([1, 0, 0]), weights=np.array([0, 1])
+    )
+    assert np.allclose(rotated_vec, [0, 0, 1]), "Unexpected rotation."
+
+    rotation_seq = VectorRotationSequence(vector_seq)
+    rotated_vec = rotation_seq.rotate_weighted(
+        direction=np.array([1, 0, 0]), weights=np.array([0.5, 0.5])
+    )
+    out_vec = np.array([0, 1, 1]) / np.sqrt(2)
+    assert np.allclose(rotated_vec, out_vec), "Not rotated into second plane."
 
 
 if (__name__) == "__main__":
     plt.close("all")
     # test_cross_rotation_2d(visualize=True, savefig=1)
     # test_cross_rotation_3d()
-
-    test_multi_rotation_array()
+    # test_multi_rotation_array()
 
     print("\nDone with tests.")
