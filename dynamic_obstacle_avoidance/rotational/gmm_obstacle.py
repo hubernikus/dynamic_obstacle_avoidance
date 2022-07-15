@@ -1,5 +1,4 @@
-#!/USSR/bin/python3
-""" Sample the space and decide if points are collision-full or free. """
+""" (Single) Obstacle created from multiple ellipses (as a GMM description). """
 # Author: Lukas Huber
 # Github: hubernikus
 # Created: 2022-06-08
