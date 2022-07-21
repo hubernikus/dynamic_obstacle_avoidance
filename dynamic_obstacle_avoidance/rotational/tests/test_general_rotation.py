@@ -555,18 +555,18 @@ def test_cross_rotation_3d():
     assert np.isclose(LA.norm(vec_rotated), 1), "Unit norm expected."
 
 
-def test_null_rotation():
-    vec0 = np.array([0, 0])
-    vec1 = np.array([1, 0])
-    vector_rotation = VectorRotationXd.from_directions(vec0, vec1)
+# def test_null_rotation():
+#     vec0 = np.array([0, 0])
+#     vec1 = np.array([1, 0])
+#     vector_rotation = VectorRotationXd.from_directions(vec0, vec1)
 
-    vector_out = vector_rotation.rotate(np.array([0, 1]))
+#     vector_out = vector_rotation.rotate(np.array([0, 1]))
 
-    vector_out = vector_rotation.rotate(np.array([0, 0]))
-    # vector_out = vector_rotation.rotate(np.array([1, 0]))
+#     vector_out = vector_rotation.rotate(np.array([0, 0]))
+#     # vector_out = vector_rotation.rotate(np.array([1, 0]))
 
-    breakpoint()
-    pass
+#     # breakpoint()
+#     pass
 
 
 def test_multi_rotation_array():
@@ -594,7 +594,7 @@ def test_multi_rotation_array():
 
 
 def test_rotation_tree():
-    new_tree = VectorRotationTree(root=0, dimension=3)
+    new_tree = VectorRotationTree(root=0, direction=np.array([1, 0]))
     new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
 
 
