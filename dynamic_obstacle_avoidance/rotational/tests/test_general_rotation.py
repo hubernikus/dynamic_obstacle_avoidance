@@ -86,29 +86,58 @@ class VectorRotationTree:
     # TODO: what happens if an obstacle is at angle 'pi'?
     # as it might happend at  zero-level
 
-    def __init__(self, root_id, dimension) -> None:
+    def __init__(self, root_id: int, root_direction: Vector) -> None:
         self._graph = nx.DiGraph()
-        self._graph.add_node(root_id, level=0, direction=np.zeros(dimension))
+        self._graph.add_node(root_id, level=0, direction=root_direction)
+
+    # def set_root(self, root_id: int, direction: Vector) -> None:
+    #     self._graph.add_node(node_id, level=0, direction=direction)
 
     def add_node(
         self,
         node_id: NodeType,
         direction: Vector,
         parent_id: NodeType,
+        rotation_limit: float = math.pi * 0.75,
     ) -> None:
+
+        new_rotation = VectorRotationXd.from_directions(
+            self._graph.nodes[parent_id]["direction"],
+            direction,
+        )
+
+        if rotation_limit and abs(new_rotation.rotation_angle) > rotation_limit:
+            rot_factor = (
+                2 * math.pi - abs(new_rotation.rotation_angle)
+            ) / rotation_limit
+
+            direction = new_rotation.rotate(
+                new_rotation.bases[:, 0], rot_factor=rot_factor
+            )
+
+            new_rotation.angle = new_rotation.rotation_angle * rot_factor
+
+            warnings.warn(
+                f"Rotation is the limit={rotation_limit}. "
+                + "Adaptation weight is used. "
+            )
+
         self._graph.add_node(
             node_id,
             level=self._graph.nodes[parent_id]["level"] + 1,
             direction=direction,
-            orientation=VectorRotationXd.from_directions(
-                direction,
-            ),
+            orientation=new_rotation,
         )
-        self.add_edge(
+
+        self._graph.add_edge(
             parent_id,
             node_id,
         )
         # TODO: what happens when you overwrite a node (?)
+
+    def set_node(self, node_id, parent_id, direction):
+        # TODO: implement such that it updates lower and higher nodes (!)
+        raise NotImplementedError()
 
     @property
     def dimension(self):
@@ -127,8 +156,14 @@ class VectorRotationTree:
         # sorted_list = sorted_list[np.argsort(level_list)]
 
         # Ascending sorted node-list
-        level_list = [self._graph.nodes[node]["level"] for node in self.graph]
-        return self._graph[np.argsort(level_list)]
+        level_list = [self._graph.nodes[node]["level"] for node in self._graph.nodes]
+
+        # node_list = list(self._graph.nodes) #  => somewow this does not work as documented...
+        # node_list = [node for node in self._graph.nodes]
+        aa = [self._graph.nodes[ind] for ind in np.argsort(level_list)]
+        breakpoint()
+
+        return
 
     def get_all_succsessor_nodes(self, node: NodeType) -> list(NodeType):
         """Returns list of nodes which are in the directional line of the argument node."""
@@ -142,11 +177,11 @@ class VectorRotationTree:
 
         return successor_list
 
-    def weighted_mean(self, node_id_list: list(int), weights: list(float)) -> Vector:
+    def weighted_mean(self, node_list: list(int), weights: list(float)) -> Vector:
         """Evaluate the weighted mean of the graph."""
 
         # Weights are stored in the predecessing nodes of the corresponding edge
-        for ii, node in enumerate(node_id_list):
+        for ii, node in enumerate(node_list):
             self._graph.nodes[node]["weight"] = weights[ii]
         # self._graph.successors(node)
         # self._graph.predecessors(node)
@@ -559,17 +594,6 @@ def test_cross_rotation_3d():
     assert np.isclose(LA.norm(vec_rotated), 1), "Unit norm expected."
 
 
-def test_null_rotation():
-    vec0 = np.array([1, 0])
-    vec1 = np.array([0, 1])
-    vector_rotation = VectorRotationXd.from_directions(vec0, vec1)
-
-#     vector_out = vector_rotation.rotate(np.array([0, 1]))
-
-#     # breakpoint()
-#     pass
-
-
 def test_multi_rotation_array():
     # Rotation from 1 to final
     vector_seq = np.array(
@@ -595,8 +619,15 @@ def test_multi_rotation_array():
 
 
 def test_rotation_tree():
-    new_tree = VectorRotationTree(root=0, direction=np.array([1, 0]))
+    new_tree = VectorRotationTree(root_id=0, root_direction=np.array([0, 1]))
+
     new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
+    new_tree.add_node(node_id=2, direction=np.array([1, 0]), parent_id=1)
+
+    new_tree.add_node(node_id=3, direction=np.array([-1, 0]), parent_id=0)
+    new_tree.add_node(node_id=4, direction=np.array([-1, 0]), parent_id=3)
+
+    new_tree.weighted_mean(node_list=[0, 2, 4], weights=[0.3, 0.3, 0.3])
 
 
 if (__name__) == "__main__":
@@ -605,8 +636,7 @@ if (__name__) == "__main__":
     # test_cross_rotation_3d()
     # test_multi_rotation_array()
 
-    test_null_rotation()
-
     # test_rotation_tree()
+    test_rotation_tree()
 
     print("\nDone with tests.")
