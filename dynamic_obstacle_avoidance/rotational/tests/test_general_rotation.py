@@ -287,7 +287,11 @@ class VectorRotationTree:
         # Return is done outside of the loop for readability
         return new_base2
 
+    def get_rotation_weights(self, parent_id: int, direction: Vector) -> float:
+        pass
+
     def rotate_weighted(self, node_id_list: list(int), weights: list(float)):
+        # For safe rotation at the back
         raise NotImplementedError()
 
 
@@ -556,13 +560,12 @@ def test_cross_rotation_3d():
 
 
 def test_null_rotation():
-    vec0 = np.array([0, 0])
-    vec1 = np.array([1, 0])
+    vec0 = np.array([1, 0])
+    vec1 = np.array([0, 1])
     vector_rotation = VectorRotationXd.from_directions(vec0, vec1)
 
     vector_out = vector_rotation.rotate(np.array([0, 1]))
 
-    vector_out = vector_rotation.rotate(np.array([0, 0]))
     # vector_out = vector_rotation.rotate(np.array([1, 0]))
 
     breakpoint()
