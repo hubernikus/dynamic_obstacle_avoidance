@@ -32,10 +32,33 @@ VectorArray = npt.ArrayLike
 NodeType = int
 
 
+def get_orthonormal_spanning_basis(vector1, vector2, /):
+    """Returns a orthonormal basis from to orthonormal input vectors."""
+    dot_prod = np.dot(vector1, vector2)
+
+    if abs(dot_prod) < 1:
+        vec_perp = vector2 - vector1 * dot_prod
+        vec_perp = vec_perp / LA.norm(vec_perp)
+    else:
+        # (Anti-)parallel vectors => take random perpendicular vector
+        vec_perp = np.zeros(vector1.shape)
+        if not LA.norm(vector1[:2]):
+            vec_perp[0] = 1
+        else:
+            vec_perp[0] = vector1[1]
+            vec_perp[1] = vector1[0] * (-1)
+            vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
+
+    return np.vstack((vector1, vec_perp)).T
+
+
 def rotate_direction(direction: Vector, base: VectorArray, rotation_angle: float):
     """Returns the rotated of the input vector with respect to the base and rotation angle."""
     # Normalize just to make sure.
-    direction = direction / LA.norm(direction)
+    if not (dir_norm := LA.norm(direction)):
+        raise ZeroDivisionError()
+
+    direction = direction / dir_norm
 
     dot_prods = np.dot(base.T, direction)
     angle = math.atan2(dot_prods[1], dot_prods[0]) + rotation_angle
@@ -73,17 +96,6 @@ def rotate_array(
     out_vectors += directions - (base @ dot_prods)
 
     return out_vectors
-
-
-# Factories
-def create_zero_rotation(dimension=3):
-    VectorRotationXd(
-        base=self._graph.nodes[node_id]["orientation"].base,
-        rotation_angle=(
-            self._graph.nodes[node_id]["orientation"].rotation_angle
-            * self._graph.nodes[node_id]["weight"]
-        ),
-    )
 
 
 class VectorRotationTree:
@@ -171,17 +183,7 @@ class VectorRotationTree:
             warnings.warn("base or property has not been defined")
             return None
 
-    def get_sorted_nodes(self) -> list(NodeType):
-        # level_list = np.zeros(len(self._graph))
-        # sorted_list = np.zeros(len(self._graph))
-        # for ii, node in enumerate(self._graph):
-        # level_list[ii] = self._graph[node]["level"]
-        # sorted_list[ii] = node
-        # sorted_list = sorted_list[np.argsort(level_list)]
-
-        # node_list = list(self._graph.nodes) #  => somewow this does not work as documented...
-        # node_list = [node for node in self._graph.nodes]
-
+    def get_nodes_ascending(self) -> list(NodeType):
         # Ascending sorted node-list
         level_list = [self._graph.nodes[node]["level"] for node in self._graph.nodes]
         node_unsorted = [node for node in self._graph.nodes]
@@ -201,6 +203,10 @@ class VectorRotationTree:
 
     def get_weighted_mean(self, node_list: list(int), weights: list(float)) -> Vector:
         """Evaluate the weighted mean of the graph."""
+
+        if (weight_sum := np.sum(weights)) != 1:
+            warnings.warn(f"Sum of weights {weight_sum} is not equal to one.")
+
         self.reset_node_weights()
 
         # Weights are stored in the predecessing nodes of the corresponding edge
@@ -208,11 +214,13 @@ class VectorRotationTree:
             self._graph.nodes[node]["weight"] = weights[ii]
 
         # Update cumulated weights
-        sorted_list = self.get_sorted_nodes()
-        for node_id in sorted_list:
-            for succ_id in self._graph.successors(node_id):
+        sorted_list = self.get_nodes_ascending()
+        for node_id in sorted_list[::-1]:
+            # only one predecessor
+            for pred_id in self._graph.predecessors(node_id):
+                # for succ_id in self._graph.predecessors(node_id):
                 # Where are the weights stored / where are the rotations stored (?)
-                self._graph.nodes[succ_id]["weight"] += self._graph.nodes[node_id][
+                self._graph.nodes[pred_id]["weight"] += self._graph.nodes[node_id][
                     "weight"
                 ]
 
@@ -240,10 +248,6 @@ class VectorRotationTree:
                 continue
 
             successors = self.get_all_childs_children(node_id)
-            # angles = np.zeros(len(successors))
-            # for ii, successor in enumerate(successors):
-            #     angles[ii] = successor['orientation'].rotation_angle
-            #     basis[:, ii, :] = successor['orientation'].basis
 
             _succ_basis = [
                 self._graph.nodes[succ]["part_orientation"].base for succ in successors
@@ -254,12 +258,13 @@ class VectorRotationTree:
             # Make sure dimension is the first axes for future array restructuring
             succ_basis = np.swapaxes(_succ_basis, 0, 1)
 
+            # backwards rotate such that it's aligned with the new angle
             succ_basis = rotate_array(
                 directions=succ_basis.reshape(self.dimension, -1),
                 base=self._graph.nodes[node_id]["orientation"].base,
                 rotation_angle=(
-                    self._graph.nodes[node_id]["orientation"].rotation_angle
-                    * (1 - self._graph.nodes[node_id]["weight"])
+                    self._graph.nodes[node_id]["part_orientation"].rotation_angle
+                    - self._graph.nodes[node_id]["orientation"].rotation_angle
                 ),
             ).reshape(self.dimension, -1, 2)
 
@@ -269,48 +274,55 @@ class VectorRotationTree:
         return self.evaluate_graph_summing(sorted_list)
 
     def evaluate_graph_summing(self, sorted_list) -> Vector:
-        """Graph summing
-        -> this requires $2x (n_{childrend} of node) \forall node \in nodes $
+        """Graph summing under assumption of shared-basis at each level.
+
+        -> the number of calculations is $2x (n_{childrend} of node) \forall node \in nodes $
         i.e. does currently not scale well
         But calculations are simple, i.e., this could be sped upt with cython / C++ / Rust
         """
         level_list = [self._graph.nodes[node_id]["level"] for node_id in sorted_list]
 
+        # Bottom up calculation - from lowest level to highest level
+        # at each level, take the weighted average of all rotations
         for level in set(level_list):
-            # Assumption of shared-basis at each level
+            nodelevel_ids = [
+                sorted_list[jj] for jj, lev in enumerate(level_list) if lev == level
+            ]
 
-            # level_nodes = sorted_list[level_list == level]
-            nodelevel_ids = [jj for jj, lev in enumerate(level_list) if lev == level]
-
+            # Each round higher levels are un-rotated to share the same basis
             shared_basis = get_orthogonal_basis(
                 self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0]
             )
 
-            basis2_array = np.array(
+            # Get the rotation of each of the same-level vectors in the same frame
+            basis_array = np.array(
                 [
                     self._graph.nodes[ii]["part_orientation"].base[:, 1]
                     for ii in nodelevel_ids
                 ]
             ).T
+            local_basis = shared_basis.T @ basis_array
 
-            local_basis2 = shared_basis.T @ basis2_array
-            local_basis2 *= np.array(
+            # Add the rotation angles up
+            local_basis *= np.array(
                 [
                     self._graph.nodes[jj]["part_orientation"].rotation_angle
                     for jj in nodelevel_ids
                 ]
             )
-            local_mean_base2 = np.sum(local_basis2, axis=1)
-
-            new_angle = LA.norm(local_mean_base2)
+            local_mean_basis = np.sum(local_basis, axis=1)
+            new_angle = LA.norm(local_mean_basis)
             if new_angle:  # Nonzero
-                breakpoint()
-                local_mean_base2[0] = 0  # Really (?)
-                new_base2 = shared_basis @ (local_mean_base2 / new_angle)
+                local_mean_basis[0] = 0  # Really (?)
+                averaged_direction = shared_basis @ (local_mean_basis / new_angle)
             else:
-                # Take random other dimension, i.e., first one
-                new_base2 = shared_basis[:, 1]
+                # No rotation, hence it's the first vector
+                averaged_direction = shared_basis[:, 0]
 
+                # Take random other dimension, i.e., first one [REALLY?! -> I don't think so!]
+                # averaged_direction = shared_basis[:, 1]
+
+            # Rotate all following rotation-levels back
             all_successors = []
             all_basis = np.zeros((self.dimension, 0))
             for node_id in nodelevel_ids:
@@ -321,14 +333,14 @@ class VectorRotationTree:
                     # No successors
                     continue
 
-                # Make sure dimension is the first axes for future array restructuring
                 _succ_basis = [
                     self._graph.nodes[succ]["part_orientation"].base
                     for succ in successors
                 ]
+                # Make sure dimension is the first axes for future array restructuring
                 succ_basis = np.swapaxes(_succ_basis, 0, 1)
 
-                basis = rotate_array(
+                succ_basis = rotate_array(
                     directions=succ_basis.reshape(self.dimension, -1),
                     base=self._graph.nodes[node_id]["part_orientation"].base,
                     rotation_angle=(-1)
@@ -336,33 +348,36 @@ class VectorRotationTree:
                 )
 
                 all_successors += successors
-                all_basis = np.hstack((all_basis, basis))
+                all_basis = np.hstack((all_basis, succ_basis))
 
-            if all_successors:
+            # breakpoint()
+            if not all_successors:
                 # Reached the end of the graph - there are no successors anymore
-                break
+                return averaged_direction
 
-            if not new_angle:
-                # Transform to the new base2-direction
-                new_base = np.hstack(
-                    (level_nodes[0]["part_orientation"].basis[:, 0], new_base2)
-                ).T
+            if new_angle:
+                # Transform to the new basis-direction
+                new_base = get_orthonormal_spanning_basis(
+                    self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0],
+                    averaged_direction,
+                )
 
-                succ_basis = rotate_array(
-                    directions=succ_basis.reshape(self.dimension, -1),
+                all_basis = rotate_array(
+                    # directions=all_basis.reshape(self.dimension, -1),
+                    directions=all_basis,
                     base=new_base,
                     rotation_angle=new_angle,
                 ).reshape(self.dimension, -1, 2)
 
             else:
-                # Zero transformation to the new angle
-                succ_basis = succ_basis.reshape(self.dimension, -1, 2)
+                # Zero transformation angle, hence just reshape
+                all_basis = all_basis.reshape(self.dimension, -1, 2)
 
             for ii, node in enumerate(all_successors):
-                node["part_orientation"].base = basis[:, ii, :]
+                self._graph.nodes[node]["part_orientation"].base = all_basis[:, ii, :]
 
-        # Return is done outside of the loop for readability
-        return new_base2
+        # Convergence and return should happen within the loop
+        raise Exception("No weighted mean found.")
 
     def get_rotation_weights(self, parent_id: int, direction: Vector) -> float:
         pass
@@ -485,8 +500,8 @@ class VectorRotationXd:
         initialization."""
 
         # # Normalize both vectors
-        # vec_init = vec_init / LA.norm(vec_init)
-        # vec_rot = vec_rot / LA.norm(vec_rot)
+        vec_init = vec_init / LA.norm(vec_init)
+        vec_rot = vec_rot / LA.norm(vec_rot)
 
         dot_prod = np.dot(vec_init, vec_rot)
         if dot_prod == (-1):
@@ -540,9 +555,10 @@ def test_cross_rotation_2d(visualize=False, savefig=False):
 
     vec0 /= LA.norm(vec0)
     vec1 /= LA.norm(vec1)
-    cross_prod_base = np.cross(vec0, vec1)
 
-    arrow_props = {"head_length": 0.1, "head_width": 0.05}
+    # Reconstruct vector1
+    vec_rot = vector_rotation.rotate(vec0)
+    assert np.allclose(vec1, vec_rot), "Rotation was not reconstructed."
 
     vecs_test = [
         [1, -1.2],
@@ -556,14 +572,20 @@ def test_cross_rotation_2d(visualize=False, savefig=False):
         vec_test /= LA.norm(vec_test)
         vec_rot = vector_rotation.rotate(vec_test)
 
+        # assert np.isclose(
+        #     cross_prod_base, np.cross(vec_test, vec_rot)
+        # ), "Vectors are not close"
+
         assert np.isclose(
-            cross_prod_base, np.cross(vec_test, vec_rot)
-        ), "Vectors are not close"
+            vector_rotation.rotation_angle, np.arccos(np.dot(vec_test, vec_rot))
+        ), "Not the correct rotation."
 
         # For visualization purposes
         vecs_rot_list.append(vec_rot)
 
     if visualize:
+        arrow_props = {"head_length": 0.1, "head_width": 0.05}
+
         fig, axs = plt.subplots(2, 2, figsize=(8, 8))
 
         ax = axs[0, 0]
@@ -686,27 +708,67 @@ def test_multi_rotation_array():
 def test_rotation_tree():
     new_tree = VectorRotationTree(root_id=0, root_direction=np.array([0, 1]))
 
-    new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
-    new_tree.add_node(node_id=2, direction=np.array([1, 0]), parent_id=1)
+    new_tree.add_node(node_id=10, direction=np.array([1, 0]), parent_id=0)
+    new_tree.add_node(node_id=20, direction=np.array([1, 0]), parent_id=10)
 
-    new_tree.add_node(node_id=3, direction=np.array([-1, 0]), parent_id=0)
-    new_tree.add_node(node_id=4, direction=np.array([-1, 0]), parent_id=3)
+    new_tree.add_node(node_id=30, direction=np.array([-1, 0]), parent_id=0)
+    new_tree.add_node(node_id=40, direction=np.array([-1, 0]), parent_id=30)
 
+    # Full rotation in one direction
     weighted_mean = new_tree.get_weighted_mean(
-        node_list=[0, 2, 4], weights=[0.3, 0.3, 0.3]
+        node_list=[0, 20, 40],
+        weights=[0, 0, 1],
     )
-    breakpoint()
-    weighted_mean
+
+    assert np.isclose(new_tree._graph.nodes[0]["weight"], 1)
+    assert np.isclose(new_tree._graph.nodes[10]["weight"], 0)
+    assert np.isclose(new_tree._graph.nodes[30]["weight"], 1)
+    assert np.isclose(new_tree._graph.nodes[40]["weight"], 1)
+
+    assert np.allclose(new_tree._graph.nodes[40]["direction"], weighted_mean)
+
+    # Equal rotation
+    weighted_mean = new_tree.get_weighted_mean(
+        node_list=[0, 20, 40],
+        weights=np.ones(3) / 3,
+    )
+    assert np.isclose(new_tree._graph.nodes[0]["weight"], 1)
+    assert np.isclose(new_tree._graph.nodes[10]["weight"], 1.0 / 3)
+    assert np.isclose(new_tree._graph.nodes[30]["weight"], 1.0 / 3)
+
+    assert np.allclose(new_tree._graph.nodes[0]["direction"], weighted_mean)
+
+    # Left / right rotation
+    weighted_mean = new_tree.get_weighted_mean(
+        node_list=[0, 20, 40],
+        weights=[0.0, 0.5, 0.5],
+    )
+    assert np.isclose(new_tree._graph.nodes[0]["weight"], 1)
+
+    assert np.allclose(new_tree._graph.nodes[0]["direction"], weighted_mean)
+
+    # Left shift (half)
+    weighted_mean = new_tree.get_weighted_mean(
+        node_list=[0, 20, 40],
+        weights=[0.5, 0.0, 0.5],
+    )
+    final_dir = (
+        new_tree._graph.nodes[0]["direction"] + new_tree._graph.nodes[40]["direction"]
+    )
+    final_dir = final_dir / LA.norm(final_dir)
+
+    assert np.allclose(final_dir, weighted_mean)
 
 
 if (__name__) == "__main__":
     plt.close("all")
-    # test_cross_rotation_2d(visualize=True, savefig=0)
+    plt.ion()
+    test_cross_rotation_2d(visualize=False, savefig=0)
     # test_zero_rotation()
     # test_cross_rotation_3d()
     # test_multi_rotation_array()
 
     # test_rotation_tree()
-    test_rotation_tree()
+    # test_rotation_tree()
 
     print("\nDone with tests.")
