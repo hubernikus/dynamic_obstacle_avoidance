@@ -760,15 +760,30 @@ def test_rotation_tree():
     assert np.allclose(final_dir, weighted_mean)
 
 
+def test_multi_normal_tree():
+    new_tree = VectorRotationTree(root_id=0, root_direction=np.array([0, 1]))
+    new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
+    new_tree.add_node(node_id=2, direction=np.array([1, 0.2]), parent_id=1)
+    new_tree.add_node(node_id=3, direction=np.array([0, 1.0]), parent_id=2)
+
+    weighted_mean = new_tree.get_weighted_mean(
+        node_list=[0, 3],
+        weights=[0.5, 0.5],
+    )
+
+    breakpoint()
+
+
 if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
-    test_cross_rotation_2d(visualize=False, savefig=0)
+    # test_cross_rotation_2d(visualize=False, savefig=0)
     # test_zero_rotation()
     # test_cross_rotation_3d()
     # test_multi_rotation_array()
 
     # test_rotation_tree()
     # test_rotation_tree()
+    test_multi_normal_tree()
 
     print("\nDone with tests.")
