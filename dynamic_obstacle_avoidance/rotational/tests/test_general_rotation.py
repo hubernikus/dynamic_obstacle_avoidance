@@ -253,9 +253,7 @@ def test_two_ellipse_with_normal_obstacle():
     new_tree = VectorRotationTree(root_id=0, root_direction=np.array([0, 1]))
     new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
     new_tree.add_node(node_id=2, direction=np.array([-0.2, 1]), parent_id=1)
-    new_tree.add_node(
-        node_id=3, direction=np.array([-1, 0]), parent_id=2, rotation_limit=False
-    )
+    new_tree.add_node(node_id=3, direction=np.array([-1, 0]), parent_id=2)
 
 
 def test_multi_normal_tree():

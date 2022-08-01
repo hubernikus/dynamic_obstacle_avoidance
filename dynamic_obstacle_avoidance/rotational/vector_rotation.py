@@ -48,7 +48,9 @@ def get_orthonormal_spanning_basis(vector1, vector2, /):
     return np.vstack((vector1, vec_perp)).T
 
 
-def rotate_direction(direction: Vector, base: VectorArray, rotation_angle: float):
+def rotate_direction(
+    direction: Vector, base: VectorArray, rotation_angle: float
+) -> Vector:
     """Returns the rotated of the input vector with respect to the base and rotation angle."""
     # Normalize just to make sure.
     if not (dir_norm := LA.norm(direction)):
@@ -94,6 +96,169 @@ def rotate_array(
     return out_vectors
 
 
+@dataclass
+class VectorRotationXd:
+    """This approach allows successive modulation which can be added up.
+
+    Attributes
+    ----------
+    base array of size [dimension x 2]: The (orthonormal) base constructed from the to
+        input directions
+    rotation_angle (float): The rotation angle resulting from the two input directions
+    """
+
+    base: VectorArray
+    rotation_angle: float
+
+    @classmethod
+    def from_directions(cls, vec_init: Vector, vec_rot: Vector) -> VectorRotationXd:
+        """Alternative constructor base on two input vectors which define the
+        initialization."""
+
+        # # Normalize both vectors
+        vec_init = vec_init / LA.norm(vec_init)
+        vec_rot = vec_rot / LA.norm(vec_rot)
+
+        dot_prod = np.dot(vec_init, vec_rot)
+        if dot_prod == (-1):
+            warnings.warn("Antiparallel vectors")
+
+        if abs(dot_prod) < 1:
+            vec_perp = vec_rot - vec_init * dot_prod
+            vec_perp = vec_perp / LA.norm(vec_perp)
+
+        else:
+            # (Anti-)parallel vectors => calculate random perpendicular vector
+            vec_perp = np.zeros(vec_init.shape)
+            if not LA.norm(vec_init[:2]):
+                vec_perp[0] = 1
+            else:
+                vec_perp[0] = vec_init[1]
+                vec_perp[1] = vec_init[0] * (-1)
+                vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
+
+        return cls(
+            base=np.array([vec_init, vec_perp]).T, rotation_angle=np.arccos(dot_prod)
+        )
+
+    @property
+    def dimension(self):
+        try:
+            return self.base.shape[0]
+        except AttributeError:
+            warnings.warn("base has not been defined")
+            return None
+
+    def rotate(self, direction, rot_factor: float = 1):
+        """Returns the rotated of the input vector with respect to the base and rotation angle
+        rot_factor: factor gives information about extension of rotation"""
+        return rotate_direction(
+            direction=direction,
+            rotation_angle=rot_factor * self.rotation_angle,
+            base=self.base,
+        )
+
+    def inverse_rotate(self, direction):
+        return rotate_direction(
+            direction=direction,
+            rotation_angle=(-1) * self.rotation_angle,
+            base=self.base,
+        )
+
+
+class VectorRotationSequence:
+    """
+    Vector-Rotation environment based on multiple vectors
+
+    Attributes
+    ----------
+    vectors_array (np.array of shape [dimension x n_rotations + 1]):
+        (storing) the inital array of vectors
+    basis_array (numpy array of  shape [dimension x n_rotations x 2]):
+        contains the basis of all rotations
+    rotation_angles: The rotation between going from one to the next basis
+    """
+
+    def __init__(self, vectors_array: np.array) -> None:
+        # Normalize
+        self.vectors_array = vectors_array / LA.norm(vectors_array, axis=0)
+
+        dot_prod = np.sum(
+            self.vectors_array[:, 1:] * self.vectors_array[:, :-1], axis=0
+        )
+
+        if np.sum(dot_prod == (-1)):  # Any of the values
+            raise ValueError("Antiparallel vectors.")
+
+        # Evaluate basis and angles
+        vec_perp = self.vectors_array[:, 1:] - self.vectors_array[:, :-1] * dot_prod
+        vec_perp = vec_perp / LA.norm(vec_perp, axis=0)
+
+        self.basis_array = np.stack((self.vectors_array[:, :-1], vec_perp), axis=2)
+        self.rotation_angles = np.arccos(dot_prod)
+
+    @property
+    def n_rotations(self):
+        return self.basis_array.shape[1]
+
+    @property
+    def dimension(self):
+        return self.basis_array.shape[0]
+
+    def base(self) -> Vector:
+        return self.basis_array[:, [0, -1]]
+
+    def append(self, direction: Vector) -> None:
+        self.basis_array = np.hstack((self.basis_array, direction.reshape(-1, 1)))
+
+        raise NotImplementedError("Finish updating basis and rotation angles.")
+
+    def rotate(self, direction: Vector, rot_factor: float = 1) -> Vector:
+        """Rotate over the whole length of the vector."""
+        weights = np.zeros(self.n_rotations)
+        weights[-1] = rot_factor
+        return self.rotate_weighted(direction, weights=weights)
+
+    def rotate_weighted(self, direction: Vector, weights: list[float] = None) -> Vector:
+        """
+        Returns the rotated direction vector with repsect to the (rotation-)weights
+
+        weights (list of floats (>=0) with length [self.n_rotations]): indicates fraction
+        of each rotation which is applied.
+        """
+        # Starting at the root
+        cumulated_weights = np.cumsum(weights[::-1])[::-1]
+
+        if not math.isclose(cumulated_weights[0], 1):
+            warnings.warn("Weights are summing up to more than 1.")
+
+        temp_base = np.copy(self.basis_array)
+        if weights is None:
+            temp_angle = self.rotation_angles
+
+        else:
+            temp_angle = self.rotation_angles * cumulated_weights
+
+            # Update the basis of rotation weights from top-to-bottom
+            # by rotating upper level base with respect to total
+            for ii in reversed(range(self.n_rotations - 1)):
+                temp_base[:, (ii + 1) :, :] = rotate_array(
+                    directions=temp_base[:, (ii + 1) :, :].reshape(self.dimension, -1),
+                    base=temp_base[:, ii, :],
+                    rotation_angle=self.rotation_angles[ii]
+                    * (1 - cumulated_weights[ii]),
+                ).reshape(self.dimension, -1, 2)
+
+        # Finally: rotate from bottom-to-top
+        for ii in range(self.n_rotations):
+            direction = rotate_direction(
+                direction=direction,
+                rotation_angle=temp_angle[ii],
+                base=temp_base[:, ii, :],
+            )
+        return direction
+
+
 class VectorRotationTree:
     """
     VectorRotation but originating structured in a tree
@@ -107,6 +272,12 @@ class VectorRotationTree:
 
     def __init__(self, root_id: int, root_direction: Vector) -> None:
         self._graph = nx.DiGraph()
+
+        if root_id is not None:
+            self.set_root(root_id, root_direction)
+
+    def set_root(self, root_id, root_direction):
+        # To easier find the root again (!)
         self._graph.add_node(
             root_id,
             level=0,
@@ -117,37 +288,41 @@ class VectorRotationTree:
             ),
         )
 
-    # def set_root(self, root_id: int, direction: Vector) -> None:
-    #     self._graph.add_node(node_id, level=0, direction=direction)
+        # To easier find the root again (!)
+        self._root_id = root_id
+
+    @property
+    def root(self, root_id: int, direction: Vector) -> NodeType:
+        return self._graph.nodes(self._root_id)
 
     def add_node(
         self,
         node_id: NodeType,
-        direction: Vector,
-        parent_id: NodeType,
-        rotation_limit: float = math.pi * 0.75,
+        direction: Vector = None,
+        parent_id: NodeType = None,
+        child_id: NodeType = None,
+        # rotation_limit: float = math.pi * 0.75,
     ) -> None:
 
+        # if rotation_limit and abs(new_rotation.rotation_angle) > rotation_limit:
+        #     rot_factor = (
+        #         2 * math.pi - abs(new_rotation.rotation_angle)
+        #     ) / rotation_limit
+
+        #     direction = new_rotation.rotate(
+        #         new_rotation.base[:, 0], rot_factor=rot_factor
+        #     )
+
+        #     new_rotation.angle = new_rotation.rotation_angle * rot_factor
+
+        #     warnings.warn(
+        #         f"Rotation is the limit={rotation_limit}. "
+        #         + "Adaptation weight is used. "
+        #     )
         new_rotation = VectorRotationXd.from_directions(
             self._graph.nodes[parent_id]["direction"],
             direction,
         )
-
-        if rotation_limit and abs(new_rotation.rotation_angle) > rotation_limit:
-            rot_factor = (
-                2 * math.pi - abs(new_rotation.rotation_angle)
-            ) / rotation_limit
-
-            direction = new_rotation.rotate(
-                new_rotation.base[:, 0], rot_factor=rot_factor
-            )
-
-            new_rotation.angle = new_rotation.rotation_angle * rot_factor
-
-            warnings.warn(
-                f"Rotation is the limit={rotation_limit}. "
-                + "Adaptation weight is used. "
-            )
 
         self._graph.add_node(
             node_id,
@@ -157,11 +332,16 @@ class VectorRotationTree:
             orientation=new_rotation,
         )
 
-        self._graph.add_edge(
-            parent_id,
-            node_id,
-        )
+        if parent_id is not None:
+            self._graph.add_edge(
+                parent_id,
+                node_id,
+            )
+
         # TODO: what happens when you overwrite a node (?)
+
+    def update_orientation(self, direction: Vector, node_id: int) -> None:
+        self._graph.nodes[node_id]["direction"] = direction
 
     def reset_node_weights(self):
         for node_id in self._graph.nodes:
@@ -220,7 +400,7 @@ class VectorRotationTree:
                     "weight"
                 ]
 
-        # Create 'partial' orientations
+        # Update orientation and create 'partial' orientations
         for node_id in reversed(sorted_list):
             if "orientation" not in self._graph.nodes[node_id]:
                 self._graph.nodes[node_id]["part_orientation"] = create_zero_rotation(
@@ -272,7 +452,7 @@ class VectorRotationTree:
     def evaluate_graph_summing(self, sorted_list) -> Vector:
         """Graph summing under assumption of shared-basis at each level.
 
-        -> the number of calculations is $2x (n_{childrend} of node) \forall node \in nodes $
+        => the number of calculations is $2x (n_{childrend} of node) \forall node \in nodes $
         i.e. does currently not scale well
         But calculations are simple, i.e., this could be sped upt with cython / C++ / Rust
         """
@@ -374,172 +554,43 @@ class VectorRotationTree:
         # an error must have occurred in the loop logic / input data
         raise Exception("No weighted mean found.")
 
+    def rotate(
+        self, initial_vector: Vector, node_list: list(int), weights: list(float)
+    ) -> Vector:
+        """Returns the rotated vector based on the mean-direction.
+
+        Assumption that the initial"""
+        rotated_dir = self.get_weighted_mean()
+        temp_rotation = VectorRotationXd.from_directions(
+            self.root["orientation"].base[:, 0], rotated_dir
+        )
+
+        return rotate_direction(
+            direction=initial_vector,
+            base=temp_rotation.base,
+            rotation_angle=temp_rotation.rotation_angle,
+        )
+
+    def inverse_rotateself(
+        self, initial_vector: Vector, node_list: list(int), weights: list(float)
+    ) -> Vector:
+        """Returns the rotated vector based on the mean-direction.
+
+        Assumption that the initial"""
+        rotated_dir = self.get_weighted_mean()
+        temp_rotation = VectorRotationXd.from_directions(
+            rotated_dir, self.root["orientation"].base[:, 0]
+        )
+
+        return rotate_direction(
+            direction=initial_vector,
+            base=temp_rotation.base,
+            rotation_angle=temp_rotation.rotation_angle,
+        )
+
     def get_rotation_weights(self, parent_id: int, direction: Vector) -> float:
         pass
 
     def rotate_weighted(self, node_id_list: list(int), weights: list(float)):
         # For safe rotation at the back
         raise NotImplementedError()
-
-
-class VectorRotationSequence:
-    """
-    Vector-Rotation environment based on multiple vectors
-
-    Attributes
-    ----------
-    vectors_array (np.array of shape [dimension x n_rotations + 1]):
-        (storing) the inital array of vectors
-    basis_array (numpy array of  shape [dimension x n_rotations x 2]):
-        contains the basis of all rotations
-    rotation_angles: The rotation between going from one to the next basis
-    """
-
-    def __init__(self, vectors_array: np.array) -> None:
-        # Normalize
-        self.vectors_array = vectors_array / LA.norm(vectors_array, axis=0)
-
-        dot_prod = np.sum(
-            self.vectors_array[:, 1:] * self.vectors_array[:, :-1], axis=0
-        )
-
-        if np.sum(dot_prod == (-1)):  # Any of the values
-            raise ValueError("Antiparallel vectors.")
-
-        # Evaluate basis and angles
-        vec_perp = self.vectors_array[:, 1:] - self.vectors_array[:, :-1] * dot_prod
-        vec_perp = vec_perp / LA.norm(vec_perp, axis=0)
-
-        self.basis_array = np.stack((self.vectors_array[:, :-1], vec_perp), axis=2)
-        self.rotation_angles = np.arccos(dot_prod)
-
-    @property
-    def n_rotations(self):
-        return self.basis_array.shape[1]
-
-    @property
-    def dimension(self):
-        return self.basis_array.shape[0]
-
-    def base(self) -> Vector:
-        return self.basis_array[:, [0, -1]]
-
-    def append(self, direction: Vector) -> None:
-        self.basis_array = np.hstack((self.basis_array, direction.reshape(-1, 1)))
-
-        raise NotImplementedError("Finish updating basis and rotation angles.")
-
-    def rotate(self, direction: Vector, rot_factor: float = 1) -> Vector:
-        """Rotate over the whole length of the vector."""
-        weights = np.zeros(self.n_rotations)
-        weights[-1] = rot_factor
-        return self.rotate_weighted(direction, weights=weights)
-
-    def rotate_weighted(self, direction: Vector, weights: list[float] = None) -> Vector:
-        """
-        Returns the rotated direction vector with repsect to the (rotation-)weights
-
-        weights (list of floats (>=0) with length [self.n_rotations]): indicates fraction
-        of each rotation which is applied.
-        """
-        # Starting at the root
-        cumulated_weights = np.cumsum(weights[::-1])[::-1]
-
-        if not math.isclose(cumulated_weights[0], 1):
-            warnings.warn("Weights are summing up to more than 1.")
-
-        temp_base = np.copy(self.basis_array)
-        if weights is None:
-            temp_angle = self.rotation_angles
-
-        else:
-            temp_angle = self.rotation_angles * cumulated_weights
-
-            # Update the basis of rotation weights from top-to-bottom
-            # by rotating upper level base with respect to total
-            for ii in reversed(range(self.n_rotations - 1)):
-                temp_base[:, (ii + 1) :, :] = rotate_array(
-                    directions=temp_base[:, (ii + 1) :, :].reshape(self.dimension, -1),
-                    base=temp_base[:, ii, :],
-                    rotation_angle=self.rotation_angles[ii]
-                    * (1 - cumulated_weights[ii]),
-                ).reshape(self.dimension, -1, 2)
-
-        # Finally: rotate from bottom-to-top
-        for ii in range(self.n_rotations):
-            direction = rotate_direction(
-                direction=direction,
-                rotation_angle=temp_angle[ii],
-                base=temp_base[:, ii, :],
-            )
-        return direction
-
-
-@dataclass
-class VectorRotationXd:
-    """This approach allows successive modulation which can be added up.
-
-    Attributes
-    ----------
-    base array of size [dimension x 2]: The (orthonormal) base constructed from the to
-        input directions
-    rotation_angle (float): The rotation angle resulting from the two input directions
-    """
-
-    base: VectorArray
-    rotation_angle: float
-
-    @classmethod
-    def from_directions(cls, vec_init: Vector, vec_rot: Vector) -> VectorRotationXd:
-        """Alternative constructor base on two input vectors which define the
-        initialization."""
-
-        # # Normalize both vectors
-        vec_init = vec_init / LA.norm(vec_init)
-        vec_rot = vec_rot / LA.norm(vec_rot)
-
-        dot_prod = np.dot(vec_init, vec_rot)
-        if dot_prod == (-1):
-            warnings.warn("Antiparallel vectors")
-
-        if abs(dot_prod) < 1:
-            vec_perp = vec_rot - vec_init * dot_prod
-            vec_perp = vec_perp / LA.norm(vec_perp)
-
-        else:
-            # (Anti-)parallel vectors => calculate random perpendicular vector
-            vec_perp = np.zeros(vec_init.shape)
-            if not LA.norm(vec_init[:2]):
-                vec_perp[0] = 1
-            else:
-                vec_perp[0] = vec_init[1]
-                vec_perp[1] = vec_init[0] * (-1)
-                vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
-
-        return cls(
-            base=np.array([vec_init, vec_perp]).T, rotation_angle=np.arccos(dot_prod)
-        )
-
-    @property
-    def dimension(self):
-        try:
-            return self.base.shape[0]
-        except AttributeError:
-            warnings.warn("base has not been defined")
-            return None
-
-    def rotate(self, direction, rot_factor: float = 1):
-        """Returns the rotated of the input vector with respect to the base and rotation angle
-        rot_factor: factor gives information about extension of rotation"""
-        return rotate_direction(
-            direction=direction,
-            rotation_angle=rot_factor * self.rotation_angle,
-            base=self.base,
-        )
-
-    def inverse_rotate(self, direction):
-        return rotate_direction(
-            direction=direction,
-            rotation_angle=(-1) * self.rotation_angle,
-            base=self.base,
-        )
