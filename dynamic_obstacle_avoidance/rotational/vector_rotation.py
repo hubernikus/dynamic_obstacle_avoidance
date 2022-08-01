@@ -319,10 +319,25 @@ class VectorRotationTree:
         #         f"Rotation is the limit={rotation_limit}. "
         #         + "Adaptation weight is used. "
         #     )
-        new_rotation = VectorRotationXd.from_directions(
-            self._graph.nodes[parent_id]["direction"],
-            direction,
-        )
+        if parent_id is not None:
+            self._graph.add_edge(
+                parent_id,
+                node_id,
+            )
+            if (
+                direction is not None
+                and self._graph.nodes[parent_id]["direction"] is not None
+            ):
+                new_rotation = VectorRotationXd.from_directions(
+                    self._graph.nodes[parent_id]["direction"],
+                    direction,
+                )
+            else:
+                new_rotation = None
+
+        if child_id is not None:
+            self._graph.add_edge(node_id, child_id)
+            self.set_direction(direction, node_id)
 
         self._graph.add_node(
             node_id,
@@ -332,16 +347,18 @@ class VectorRotationTree:
             orientation=new_rotation,
         )
 
-        if parent_id is not None:
-            self._graph.add_edge(
-                parent_id,
-                node_id,
-            )
-
         # TODO: what happens when you overwrite a node (?)
 
-    def update_orientation(self, direction: Vector, node_id: int) -> None:
+    def set_direction(self, direction: Vector, node_id: int) -> None:
         self._graph.nodes[node_id]["direction"] = direction
+
+        if direction is None and self._graph.nodes[parent_id]["direction"] is None:
+            return
+
+        new_rotation = VectorRotationXd.from_directions(
+            self._graph.nodes[parent_id]["direction"],
+            direction,
+        )
 
     def reset_node_weights(self):
         for node_id in self._graph.nodes:
@@ -402,7 +419,9 @@ class VectorRotationTree:
 
         # Update orientation and create 'partial' orientations
         for node_id in reversed(sorted_list):
-            if "orientation" not in self._graph.nodes[node_id]:
+            if "orientation" not in self._graph.nodes[node_id] or "orientation" is None:
+                breakpoint()
+
                 self._graph.nodes[node_id]["part_orientation"] = create_zero_rotation(
                     dimension=3
                 )
