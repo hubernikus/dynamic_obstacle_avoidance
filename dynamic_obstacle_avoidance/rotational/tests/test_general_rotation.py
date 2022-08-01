@@ -226,7 +226,7 @@ class VectorRotationTree:
 
         # Create 'partial' orientations
         for node_id in reversed(sorted_list):
-            if not "orientation" in self._graph.nodes[node_id]:
+            if "orientation" not in self._graph.nodes[node_id]:
                 self._graph.nodes[node_id]["part_orientation"] = create_zero_rotation(
                     dimension=3
                 )
@@ -290,11 +290,11 @@ class VectorRotationTree:
             ]
 
             # Each round higher levels are un-rotated to share the same basis
-            shared_basis = get_orthogonal_basis(
-                self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0]
-            )
+            shared_first_basis = self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0]
+            shared_basis = get_orthogonal_basis(shared_first_basis)
 
-            # Get the rotation of each of the same-level vectors in the same frame
+            # Get the rotation-vector (second -base vector) of all of the
+            # same-level rotation-structs in the local_basis
             basis_array = np.array(
                 [
                     self._graph.nodes[ii]["part_orientation"].base[:, 1]
@@ -313,14 +313,11 @@ class VectorRotationTree:
             local_mean_basis = np.sum(local_basis, axis=1)
             new_angle = LA.norm(local_mean_basis)
             if new_angle:  # Nonzero
-                local_mean_basis[0] = 0  # Really (?)
+                # local_mean_basis[0] = 0  # Really (?)
                 averaged_direction = shared_basis @ (local_mean_basis / new_angle)
             else:
                 # No rotation, hence it's the first vector
                 averaged_direction = shared_basis[:, 0]
-
-                # Take random other dimension, i.e., first one [REALLY?! -> I don't think so!]
-                # averaged_direction = shared_basis[:, 1]
 
             # Rotate all following rotation-levels back
             all_successors = []
@@ -350,17 +347,25 @@ class VectorRotationTree:
                 all_successors += successors
                 all_basis = np.hstack((all_basis, succ_basis))
 
-            # breakpoint()
+            breakpoint()
             if not all_successors:
+                final_rotation = VectorRotationXd(
+                    base=np.vstacke(shared_first_basis, averaged_direction).T,
+                    rotation_angle=new_angle,
+                )
+                    
                 # Reached the end of the graph - there are no successors anymore
-                return averaged_direction
+                return final_rotation.rotate(shared_first_basis)
 
             if new_angle:
                 # Transform to the new basis-direction
-                new_base = get_orthonormal_spanning_basis(
-                    self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0],
-                    averaged_direction,
-                )
+                if np.dot(shared_first_basis, averaged_direction):
+                    # TODO: remove
+                    breakpoint() 
+                # new_base = get_orthonormal_spanning_basis(
+                #     self._graph.nodes[nodelevel_ids[0]]["part_orientation"].base[:, 0],
+                #     averaged_direction,
+                # )
 
                 all_basis = rotate_array(
                     # directions=all_basis.reshape(self.dimension, -1),
@@ -505,14 +510,22 @@ class VectorRotationXd:
 
         dot_prod = np.dot(vec_init, vec_rot)
         if dot_prod == (-1):
-            raise ValueError("Antiparallel vectors")
+            # raise ValueError("Antiparallel vectors")
+            warnings.warn("Antiparallel vectors")
 
-        if dot_prod < 1:
+        if abs(dot_prod) < 1:
             vec_perp = vec_rot - vec_init * dot_prod
             vec_perp = vec_perp / LA.norm(vec_perp)
+            
         else:
-            # Zero vector, since rotation never happens
-            vec_perp = vec_rot
+            # (Anti-)parallel vectors => calculate random perpendicular vector
+            vec_perp = np.zeros(vec_init.shape)
+            if not LA.norm(vec_init[:2]):
+                vec_perp[0] = 1
+            else:
+                vec_perp[0] = vec_init[1]
+                vec_perp[1] = vec_init[0] * (-1)
+                vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
 
         return cls(
             base=np.array([vec_init, vec_perp]).T, rotation_angle=np.arccos(dot_prod)
@@ -566,19 +579,21 @@ def test_cross_rotation_2d(visualize=False, savefig=False):
         [-1.2, 1.3],
     ]
 
+    cross_prod_base = np.cross(vec0, vec1)
+
     vecs_rot_list = []
     for ii, vec in enumerate(vecs_test):
         vec_test = np.array(vecs_test[ii])
         vec_test /= LA.norm(vec_test)
         vec_rot = vector_rotation.rotate(vec_test)
 
-        # assert np.isclose(
-        #     cross_prod_base, np.cross(vec_test, vec_rot)
-        # ), "Vectors are not close"
-
         assert np.isclose(
-            vector_rotation.rotation_angle, np.arccos(np.dot(vec_test, vec_rot))
-        ), "Not the correct rotation."
+            cross_prod_base, np.cross(vec_test, vec_rot)
+        ), "Vectors are not close"
+
+        # assert np.isclose(
+        #     vector_rotation.rotation_angle, np.arccos(np.dot(vec_test, vec_rot))
+        # ), "Not the correct rotation."
 
         # For visualization purposes
         vecs_rot_list.append(vec_rot)
@@ -660,6 +675,21 @@ def test_zero_rotation():
     vec_rotated = vector_rotation.rotate(vec_test)
     assert np.allclose(vec_test, vec_rotated)
 
+    
+def test_mirror_rotation():
+    vec1 = np.array([0, 1])
+    vec2 = np.array([1, 0])
+
+    vector_rotation1 = VectorRotationXd.from_directions(vec1, vec2)
+    vector_rotation2 = VectorRotationXd.from_directions(vec2, vec1)
+
+    vec_rand = np.ones(2) / np.sqrt(2)
+
+    # Back and forward rotation
+    vec_rot = vector_rotation2.rotate(vector_rotation1.rotate(vec_rand))
+
+    assert np.allclose(vec_rand, vec_rot)
+    
 
 def test_cross_rotation_3d():
     vec_init = np.array([1, 0, 0])
@@ -757,18 +787,37 @@ def test_rotation_tree():
     )
     final_dir = final_dir / LA.norm(final_dir)
 
+    # Check direction
     assert np.allclose(final_dir, weighted_mean)
 
+    
+def test_two_ellipse_with_normal_obstacle():
+    # Simple obstacle which looks something like this:
+    # ^   <-o
+    # |     |
+    # o  -  o
+    new_tree = VectorRotationTree(root_id=0, root_direction=np.array([0, 1]))
+    new_tree.add_node(node_id=1, direction=np.array([1, 0]), parent_id=0)
+    new_tree.add_node(node_id=2, direction=np.array([-.2, 1]), parent_id=1)
+    new_tree.add_node(node_id=3, direction=np.array([-1, 0]), parent_id=2, rotation_limit=False)
 
+    weighted_mean = new_tree.get_weighted_mean(
+        node_list=[0, 3],
+        weights=[0.5, 0.5],
+    )
+    
+    breakpoint()
+
+    
 if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
-    test_cross_rotation_2d(visualize=False, savefig=0)
+    # test_cross_rotation_2d(visualize=False, savefig=0)
     # test_zero_rotation()
     # test_cross_rotation_3d()
     # test_multi_rotation_array()
 
     # test_rotation_tree()
-    # test_rotation_tree()
+    test_two_ellipse_with_normal_obstacle()
 
     print("\nDone with tests.")
