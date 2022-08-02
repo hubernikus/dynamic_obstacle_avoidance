@@ -149,6 +149,14 @@ class VectorRotationXd:
             warnings.warn("base has not been defined")
             return None
 
+    def get_second_vector(self) -> Vector:
+        """Returns the second vector responsible for the rotation"""
+        return rotate_direction(
+            direction=self.base[:, 0],
+            rotation_angle=self.rotation_angle,
+            base=self.base,
+        )
+
     def rotate(self, direction, rot_factor: float = 1):
         """Returns the rotated of the input vector with respect to the base and rotation angle
         rot_factor: factor gives information about extension of rotation"""
@@ -295,6 +303,11 @@ class VectorRotationTree:
     def root(self, root_id: int, direction: Vector) -> NodeType:
         return self._graph.nodes(self._root_id)
 
+    @property
+    def Graph(self):
+        # rename to _G (?)
+        return self._graph
+
     def add_node(
         self,
         node_id: NodeType,
@@ -304,36 +317,11 @@ class VectorRotationTree:
         # rotation_limit: float = math.pi * 0.75,
     ) -> None:
 
-        # if rotation_limit and abs(new_rotation.rotation_angle) > rotation_limit:
-        #     rot_factor = (
-        #         2 * math.pi - abs(new_rotation.rotation_angle)
-        #     ) / rotation_limit
-
-        #     direction = new_rotation.rotate(
-        #         new_rotation.base[:, 0], rot_factor=rot_factor
-        #     )
-
-        #     new_rotation.angle = new_rotation.rotation_angle * rot_factor
-
-        #     warnings.warn(
-        #         f"Rotation is the limit={rotation_limit}. "
-        #         + "Adaptation weight is used. "
-        #     )
         if parent_id is not None:
             self._graph.add_edge(
                 parent_id,
                 node_id,
             )
-            if (
-                direction is not None
-                and self._graph.nodes[parent_id]["direction"] is not None
-            ):
-                new_rotation = VectorRotationXd.from_directions(
-                    self._graph.nodes[parent_id]["direction"],
-                    direction,
-                )
-            else:
-                new_rotation = None
 
         if child_id is not None:
             self._graph.add_edge(node_id, child_id)
@@ -342,34 +330,88 @@ class VectorRotationTree:
         self._graph.add_node(
             node_id,
             level=self._graph.nodes[parent_id]["level"] + 1,
-            direction=direction,
+            direction=None,
             weight=0,
-            orientation=new_rotation,
+            orientation=None,
         )
+
+        if direction is not None:
+            self.set_direction(node_id, direction)
 
         # TODO: what happens when you overwrite a node (?)
 
-    def set_direction(self, direction: Vector, node_id: int) -> None:
+    def set_direction(self, node_id: int, direction: Vector) -> None:
         self._graph.nodes[node_id]["direction"] = direction
 
-        if direction is None and self._graph.nodes[parent_id]["direction"] is None:
-            return
+        # TODO: Not all rotation would have to be reset (only when higher weight is changed..)
+        # Do better checks to accelerate
+        successors = self.get_all_childs_children(node_id)
+        for succ in successors:
+            succ["orientation"] = None
 
-        new_rotation = VectorRotationXd.from_directions(
-            self._graph.nodes[parent_id]["direction"],
-            direction,
+    def evaluate_all_orientations(
+        self, sorted_list: list(NodeType) = None, pi_margin: float = np.pi * 0.75
+    ) -> None:
+        """Updates all orientations of the '_graph' class.
+        -> store the new direction in the graph as 'part_direction'
+        """
+        # TODO: only store partial_direction here (!)
+        if sorted_list is None:
+            sorted_list = self.get_nodes_ascending()
+
+        # Special values for root-node
+        self._graph.nodes[sorted_list[0]]["part_direction"] = self._graph.nodes[
+            sorted_list[0]
+        ]["direction"]
+
+        self._graph.nodes[sorted_list[0]][
+            "orientation"
+        ] = VectorRotationXd.from_directions(
+            self._graph.nodes[sorted_list[0]]["direction"],
+            self._graph.nodes[sorted_list[0]]["direction"],
         )
 
-    def reset_node_weights(self):
+        for n_id in self._graph.nodes:
+            for c_id in self._graph.successors(n_id):
+                self._graph.nodes[c_id][
+                    "orientation"
+                ] = VectorRotationXd.from_directions(
+                    self._graph.nodes[n_id]["part_direction"],
+                    self._graph.nodes[c_id]["direction"],
+                )
+
+                # At which angle the rotation should be reduced to obtain a continuous behavior
+                if (
+                    pi_margin
+                    and self._graph.nodes[c_id]["orientation"].rotation_angle
+                    > pi_margin
+                ):
+                    breakpoint()
+                    weight = self._graph.nodes[c_id]["orientation"].rotation_angle
+                    weight = (math.pi - abs(weight)) / (math.pi - pi_margin)
+                    self._graph.nodes[c_id]["orientation"].rotation_angle *= weight
+
+                    self._graph.nodes[c_id]["part_direction"] = self._graph.nodes[c_id][
+                        "orientation"
+                    ].get_second_vector()
+
+                else:
+                    self._graph.nodes[c_id]["part_direction"] = self._graph.nodes[c_id][
+                        "direction"
+                    ]
+
+    def reset_node_weights(self) -> None:
         for node_id in self._graph.nodes:
             self._graph.nodes[node_id]["weight"] = 0
 
-    def set_node(self, node_id, parent_id, direction):
+    def set_node(
+        self, node_id: NodeType, parent_id: NodeType, direction: Vector
+    ) -> None:
         # TODO: implement such that it updates lower and higher nodes (!)
         raise NotImplementedError()
 
     @property
-    def dimension(self):
+    def dimension(self) -> int:
         try:
             return self._graph.nodes[0]["direction"].shape[0]
         except AttributeError:
@@ -408,6 +450,10 @@ class VectorRotationTree:
 
         # Update cumulated weights
         sorted_list = self.get_nodes_ascending()
+
+        self.evaluate_all_orientations(sorted_list)
+
+        # Reverse update the weights
         for node_id in sorted_list[::-1]:
             # Only one predecessor
             for pred_id in self._graph.predecessors(node_id):
@@ -419,14 +465,6 @@ class VectorRotationTree:
 
         # Update orientation and create 'partial' orientations
         for node_id in reversed(sorted_list):
-            if "orientation" not in self._graph.nodes[node_id] or "orientation" is None:
-                breakpoint()
-
-                self._graph.nodes[node_id]["part_orientation"] = create_zero_rotation(
-                    dimension=3
-                )
-                continue
-
             self._graph.nodes[node_id]["part_orientation"] = VectorRotationXd(
                 base=self._graph.nodes[node_id]["orientation"].base,
                 rotation_angle=(

@@ -298,7 +298,6 @@ if (__name__) == "__main__":
     # test_multi_rotation_array()
 
     # test_rotation_tree()
-    # test_rotation_tree()
-    # test_multi_normal_tree()
+    test_multi_normal_tree()
 
     print("\nDone with tests.")
