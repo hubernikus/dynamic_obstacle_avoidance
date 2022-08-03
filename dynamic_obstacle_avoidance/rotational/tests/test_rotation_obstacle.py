@@ -11,6 +11,8 @@ import numpy.typing as npt
 
 import matplotlib.pyplot as plt
 
+from vartools.dynamical_systems import LinearSystem
+
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
@@ -18,52 +20,70 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationSequence
 
-from vartools.dynamical_systems import LinearSystem
+from dynamic_obstacle_avoidance.rotational.utils import gamma_normal_gradient_descent
 
 Vector = npt.ArrayLike
 
 
-class GraphRotationObstacle:
+class SingleLevelObtacle:
+    """Assuming obstacle graph with single level, i.e., one root + many branches."""
+
     def __init__(self) -> None:
         self._reference_tree = None
 
-        self._rotation_tree = VectorRotationTree()
         self._obstacles = []
+        self._rotation_tree = []
 
-    def append_obstacle_part(self, obstacle: Obstacle, is_root=False) -> None:
+        self._root_obs = None
+
+    # def ind(self, ii):
+    #     return ii + 1
+
+    def append_obstacle_part(self, obstacle: Obstacle, is_root: bool = False) -> None:
         self._obstacles.append(obstacle)
         # values >= 1 are used for obstacle-id's, to allow for negative values
-        graph_id = len(self._obstacles) + 1
+        graph_id = self.ind(len(self._obstacles))
 
         if is_root:
-            self._rotation_tree.set_root(
-                graph_id,
-            )
-            pass
+            direction = np.zeros(obstacle.dimension)
+            self._root_obs = self._obstacles
+
         else:
-            pass
+            # Assuming parent is the root (!)
+            intersection = gamma_normal_gradient_descent(self._root_obs, obstacle)
+            obstacle.set_reference_point(intersection, in_global_frame=True)
+
+            direction = intersection - self._root_obs.center_position
+
+        self._rotation_tree.add_node(graph_id, direction=direction)
 
     def rotate_with_average(self, initial_direction, node_list, weights):
         pass
 
-    def avoid(self, position: Vector, initial_velocity: Vector):
-        # Rotate initial direction
-        #  -> obtain initial velocity for each obstacle
+    def avoid(self, position: Vector, initial_velocity: Vector) -> Vector:
+        # Get 'projected rotation' at each reference point
+        # -> project by observing added rotation w.r.t. initial orientation
+        # Weighted rotated sum
         # Rotation modulation (in local frame)
         # Average over all rotated-velocities
+
+        # Check two conditions:
+        # 1) is the surface point intersecting
+        # 2) is
         pass
 
 
 def _test_simple_multiobstacle():
     # Base-normal
-    my_obstacle = GraphRotationObstacle()
-    my_obstacle.append_obstacle_core(
-        Ellipse(position=np.array(0, 1), axes_length=np.array([2, 1]), orientation=0)
+    obstacle0 = Ellipse(
+        center_position=np.array([0, 1]), axes_length=np.array([2, 1]), orientation=0
     )
+
+    my_obstacle = GraphRotationObstacle(obstacle0)
 
     my_obstacle.append_obstacle_part(
         Ellipse(
-            position=np.array(1, 0.5),
+            center_position=np.array(1, 0.5),
             axes_length=np.array([2, 1]),
             orientation=math.pi / 2,
         )

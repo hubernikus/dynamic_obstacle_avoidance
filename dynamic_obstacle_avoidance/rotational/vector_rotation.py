@@ -278,7 +278,7 @@ class VectorRotationTree:
     # TODO: what happens if an obstacle is at angle 'pi'?
     # as it might happend at  zero-level
 
-    def __init__(self, root_id: int, root_direction: Vector) -> None:
+    def __init__(self, root_id: int = None, root_direction: Vector = None) -> None:
         self._graph = nx.DiGraph()
 
         if root_id is not None:
@@ -628,7 +628,7 @@ class VectorRotationTree:
             rotation_angle=temp_rotation.rotation_angle,
         )
 
-    def inverse_rotateself(
+    def inverse_rotate(
         self, initial_vector: Vector, node_list: list(int), weights: list(float)
     ) -> Vector:
         """Returns the rotated vector based on the mean-direction.

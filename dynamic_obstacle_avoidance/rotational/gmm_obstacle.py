@@ -32,7 +32,7 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from dynamic_obstacle_avoidance.rotational.graph_handler import GraphHandler
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
-Vector = npt.ArrayLike
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
 class GmmObstacle:
