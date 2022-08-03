@@ -8,13 +8,14 @@ This could be bag in task-space, or a complex-learned obstacle.
 # Github: hubernikus
 # Created: 2022-06-21
 
+import logging
+
 import numpy as np
 import numpy.linalg as LA
 import numpy.typing as npt
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-
-Vector = npt.ArrayLike
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
 def gamma_normal_gradient_descent(

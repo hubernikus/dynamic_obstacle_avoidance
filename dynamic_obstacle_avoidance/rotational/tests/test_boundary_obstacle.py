@@ -21,9 +21,9 @@ from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 
+from dynamic_obstacle_avoidance.rotational.utils import gamma_normal_gradient_descent
 from dynamic_obstacle_avoidance.rotational.multi_hull_and_obstacle import (
     MultiHullAndObstacle,
-    _gamma_normal_gradient_descent,
 )
 
 
@@ -147,13 +147,13 @@ def test_mixed_boundary_obstacle_reference(visualize=False):
     )
 
     # my_hullobstacle.inner_obstacles[-1].is_boundary = False
-    entrance_position = _gamma_normal_gradient_descent(
+    entrance_position = gamma_normal_gradient_descent(
         [outer_obstacle, subhull[0]],
         powers=[-2, -2],  # -> both in free space, i.e. > 0
         factors=[1, -1],
     )
 
-    connection_position = _gamma_normal_gradient_descent(
+    connection_position = gamma_normal_gradient_descent(
         [subhull[0], subhull[1]],
         powers=[-2, -2],  # -> both in free space, i.e. > 0
         factors=[-1, -1],
