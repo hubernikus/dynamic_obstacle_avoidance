@@ -27,6 +27,8 @@ from vartools.directional_space import get_directional_weighted_sum
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
+from dynamic_obstacle_avoidance.rotational.utils import gamma_normal_gradient_descent
+
 Vector = npt.ArrayLike
 
 
@@ -37,64 +39,6 @@ def get_property_of_node_edge(graph, node, key) -> Vector:
     # temp_list is needed (otherwise an error is thrown)
     temp_list = list(graph.edges([node], data=True))
     return temp_list[0][2][key]
-
-
-def _gamma_normal_gradient_descent(
-    obstacles: Obstacle,
-    factors: npt.ArrayLike = None,
-    powers: npt.ArrayLike = None,
-    it_max: int = 50,
-    step_factor: float = 0.1,
-    convergence_error: float = 1e-1,
-) -> np.ndarray:
-    """Returns the intersection-position (or a point if it does not exists),
-    for two convex input obstacles.
-
-    Arguments
-    ---------
-    factors: The factor of the direction;
-        > 0 if outside obstacle OR inside boundary
-        < 0 otherwise
-    powers: Power of the weights, chose |powers| > 1 for better convergence; good
-        choice for the values is |powers[ii]|=2. Furthermore:
-        > 0 if inside obstacle OR inside boundary
-        < 0 otherwise
-    """
-    position = 0.5 * (obstacles[0].center_position + obstacles[1].center_position)
-
-    if powers is None:
-        powers = (2 for _ in range(len(obstacles)))
-
-    if factors is None:
-        factors = (1 for _ in range(len(obstacles)))
-
-    dimension = obstacles[0].dimension
-
-    for ii in range(it_max):
-        step = np.zeros(dimension)
-
-        # Gamma Gradient and Normal direction (?)
-        for ii, obs_ii in enumerate(obstacles):
-            stepsize = obs_ii.get_gamma(position, in_global_frame=True) ** powers[ii]
-            step += (
-                stepsize
-                * factors[ii]
-                * obs_ii.get_normal_direction(position, in_global_frame=True)
-            )
-
-        if LA.norm(step) < convergence_error:
-            logging.info(f"Gamma gradient converged at it={ii}")
-            break
-
-        position += step_factor * step
-
-    # if (obs_ii.get_gamma(position, in_global_frame=True) < 1
-    #     or obs_jj.get_gamma(position, in_global_frame=True)
-    # ):
-    #     # The points are not actually intersecting
-
-    # else:
-    return position
 
 
 class MultiHullAndObstacle:
@@ -566,7 +510,7 @@ class MultiHullAndObstacle:
             ):
                 continue
 
-            position = _gamma_normal_gradient_descent(
+            position = gamma_normal_gradient_descent(
                 [obs_ii, self.outer_obstacle],
                 powers=[-2, -2],  # -> both in free space, i.e. < 0
                 factors=[-1, 1],
@@ -606,7 +550,7 @@ class MultiHullAndObstacle:
                 ):
                     continue
 
-                close_position = _gamma_normal_gradient_descent(
+                close_position = gamma_normal_gradient_descent(
                     [obs_ii, obs_jj],
                     powers=[-2, -2],  # -> both in free space, i.e. > 0
                     factors=[-1, -1],
