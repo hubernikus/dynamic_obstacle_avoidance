@@ -323,14 +323,6 @@ class GmmObstacle:
         self.mean_normal = normal_scaling * self.mean_reference + delta_normal
         self.mean_normal /= LA.norm(self.mean_normal)
 
-    def get_rotated_modulation(self, position: Vector, velocity: Vector):
-        """Get the rotated modulation."""
-
-        ind_root = self.gmm_index_graph.get_root_indices()[0]
-
-        for ii in range(self):
-            ind_root = 0
-
     def evaluate_gamma_weights(
         self,
         position: Vector,

@@ -29,33 +29,37 @@ class SingleLevelObtacle:
     """Assuming obstacle graph with single level, i.e., one root + many branches."""
 
     def __init__(self) -> None:
-        self._reference_tree = None
+        # self._obstacles: list[Obstacle] = []
+        self._rotation_tree = VectorRotationTree()
 
+        self._root_obs: Obstacle = None
         self._obstacles = []
-        self._rotation_tree = []
 
-        self._root_obs = None
-
-    # def ind(self, ii):
-    #     return ii + 1
+        self._id_counter = 0
 
     def append_obstacle_part(self, obstacle: Obstacle, is_root: bool = False) -> None:
-        self._obstacles.append(obstacle)
         # values >= 1 are used for obstacle-id's, to allow for negative values
-        graph_id = self.ind(len(self._obstacles))
+        self._obstacles.append(obstacle)
+        graph_id = len(self._obstacles) + 1
+
+        self._id_counter += 1
 
         if is_root:
             direction = np.zeros(obstacle.dimension)
-            self._root_obs = self._obstacles
+            self._root_obs = obstacle
+            self._root_id = graph_id
+            self._rotation_tree.set_root(graph_id, direction=direction)
+            return
 
-        else:
-            # Assuming parent is the root (!)
-            intersection = gamma_normal_gradient_descent(self._root_obs, obstacle)
-            obstacle.set_reference_point(intersection, in_global_frame=True)
+        # Assuming parent is the root (!)
+        intersection = gamma_normal_gradient_descent([self._root_obs, obstacle])
+        obstacle.set_reference_point(intersection, in_global_frame=True)
 
-            direction = intersection - self._root_obs.center_position
-
-        self._rotation_tree.add_node(graph_id, direction=direction)
+        direction = intersection - self._root_obs.center_position
+        self._rotation_tree.add_node(
+            graph_id, parent_id=self._root_id, direction=direction
+        )
+        breakpoint()
 
     def rotate_with_average(self, initial_direction, node_list, weights):
         pass
@@ -69,21 +73,36 @@ class SingleLevelObtacle:
 
         # Check two conditions:
         # 1) is the surface point intersecting
-        # 2) is
+        # 2) (hello)
+        for obstacle in self._obstacles:
+            if obstacle is self._root_obs:  # Reference check
+                pass
+
         pass
 
 
 def _test_simple_multiobstacle():
     # Base-normal
-    obstacle0 = Ellipse(
-        center_position=np.array([0, 1]), axes_length=np.array([2, 1]), orientation=0
-    )
 
-    my_obstacle = GraphRotationObstacle(obstacle0)
+    aa_list = [-100, 20]
+
+    for ii, aa in enumerate(aa_list):
+        print(ii, aa)
+
+    my_obstacle = SingleLevelObtacle()
 
     my_obstacle.append_obstacle_part(
         Ellipse(
-            center_position=np.array(1, 0.5),
+            center_position=np.array([0, 1]),
+            axes_length=np.array([2, 1]),
+            orientation=0,
+        ),
+        is_root=True,
+    )
+
+    my_obstacle.append_obstacle_part(
+        Ellipse(
+            center_position=np.array([1, 0.5]),
             axes_length=np.array([2, 1]),
             orientation=math.pi / 2,
         )

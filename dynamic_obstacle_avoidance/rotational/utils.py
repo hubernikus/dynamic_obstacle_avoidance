@@ -42,16 +42,15 @@ def gamma_normal_gradient_descent(
     position = 0.5 * (obstacles[0].center_position + obstacles[1].center_position)
 
     if powers is None:
-        powers = (2 for _ in range(len(obstacles)))
+        powers = [2 for _ in range(len(obstacles))]
 
     if factors is None:
-        factors = (1 for _ in range(len(obstacles)))
+        factors = [1 for _ in range(len(obstacles))]
 
     dimension = obstacles[0].dimension
 
-    for ii in range(it_max):
+    for _ in range(it_max):
         step = np.zeros(dimension)
-        # breakpoint()
         # Gamma Gradient and Normal direction (?)
         for ii, obs_ii in enumerate(obstacles):
             stepsize = obs_ii.get_gamma(position, in_global_frame=True) ** powers[ii]
