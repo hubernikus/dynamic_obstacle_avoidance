@@ -21,31 +21,10 @@ import networkx as nx
 
 from vartools.linalg import get_orthogonal_basis
 
-
-Vector = npt.ArrayLike
-VectorArray = npt.ArrayLike
+from dynamic_obstacle_avoidance.rotational.utils import get_orthonormal_spanning_basis
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
 NodeType = int
-
-
-def get_orthonormal_spanning_basis(vector1, vector2, /):
-    """Returns a orthonormal basis from to orthonormal input vectors."""
-    dot_prod = np.dot(vector1, vector2)
-
-    if abs(dot_prod) < 1:
-        vec_perp = vector2 - vector1 * dot_prod
-        vec_perp = vec_perp / LA.norm(vec_perp)
-    else:
-        # (Anti-)parallel vectors => take random perpendicular vector
-        vec_perp = np.zeros(vector1.shape)
-        if not LA.norm(vector1[:2]):
-            vec_perp[0] = 1
-        else:
-            vec_perp[0] = vector1[1]
-            vec_perp[1] = vector1[0] * (-1)
-            vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
-
-    return np.vstack((vector1, vec_perp)).T
 
 
 def rotate_direction(
@@ -284,16 +263,14 @@ class VectorRotationTree:
         if root_id is not None:
             self.set_root(root_id, root_direction)
 
-    def set_root(self, root_id, root_direction):
+    def set_root(self, root_id, direction):
         # To easier find the root again (!)
         self._graph.add_node(
             root_id,
             level=0,
-            direction=root_direction,
+            direction=direction,
             weight=0,
-            orientation=VectorRotationXd(
-                base=np.tile(root_direction, (2, 1)).T, rotation_angle=0
-            ),
+            orientation=VectorRotationXd.from_directions(direction, direction),
         )
 
         # To easier find the root again (!)
@@ -350,7 +327,7 @@ class VectorRotationTree:
             succ["orientation"] = None
 
     def evaluate_all_orientations(
-        self, sorted_list: list(NodeType) = None, pi_margin: float = np.pi * 0.75
+        self, sorted_list: list[NodeType] = None, pi_margin: float = np.pi * 0.75
     ) -> None:
         """Updates all orientations of the '_graph' class.
         -> store the new direction in the graph as 'part_direction'
@@ -418,13 +395,13 @@ class VectorRotationTree:
             warnings.warn("base or property has not been defined")
             return None
 
-    def get_nodes_ascending(self) -> list(NodeType):
+    def get_nodes_ascending(self) -> list[NodeType]:
         # Ascending sorted node-list
         level_list = [self._graph.nodes[node]["level"] for node in self._graph.nodes]
         node_unsorted = [node for node in self._graph.nodes]
         return [node_unsorted[ii] for ii in np.argsort(level_list)]
 
-    def get_all_childs_children(self, node: NodeType) -> list(NodeType):
+    def get_all_childs_children(self, node: NodeType) -> list[NodeType]:
         """Returns list of nodes which are in the directional line of the argument node."""
         successor_list = [ii for ii in self._graph.successors(node)]
 
@@ -436,7 +413,7 @@ class VectorRotationTree:
 
         return successor_list
 
-    def get_weighted_mean(self, node_list: list(int), weights: list(float)) -> Vector:
+    def get_weighted_mean(self, node_list: list[int], weights: list[float]) -> Vector:
         """Evaluate the weighted mean of the graph."""
 
         if (weight_sum := np.sum(weights)) != 1:
@@ -612,7 +589,7 @@ class VectorRotationTree:
         raise Exception("No weighted mean found.")
 
     def rotate(
-        self, initial_vector: Vector, node_list: list(int), weights: list(float)
+        self, initial_vector: Vector, node_list: list[int], weights: list[float]
     ) -> Vector:
         """Returns the rotated vector based on the mean-direction.
 
@@ -629,7 +606,7 @@ class VectorRotationTree:
         )
 
     def inverse_rotate(
-        self, initial_vector: Vector, node_list: list(int), weights: list(float)
+        self, initial_vector: Vector, node_list: list[int], weights: list[float]
     ) -> Vector:
         """Returns the rotated vector based on the mean-direction.
 
@@ -648,6 +625,6 @@ class VectorRotationTree:
     def get_rotation_weights(self, parent_id: int, direction: Vector) -> float:
         pass
 
-    def rotate_weighted(self, node_id_list: list(int), weights: list(float)):
+    def rotate_weighted(self, node_id_list: list[int], weights: list[float]):
         # For safe rotation at the back
         raise NotImplementedError()

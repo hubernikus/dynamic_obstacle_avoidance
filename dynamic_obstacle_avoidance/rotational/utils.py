@@ -19,7 +19,7 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
 def gamma_normal_gradient_descent(
-    obstacles: Obstacle,
+    obstacles: list[Obstacle],
     factors: npt.ArrayLike = None,
     powers: npt.ArrayLike = None,
     it_max: int = 50,
@@ -51,7 +51,7 @@ def gamma_normal_gradient_descent(
 
     for ii in range(it_max):
         step = np.zeros(dimension)
-
+        # breakpoint()
         # Gamma Gradient and Normal direction (?)
         for ii, obs_ii in enumerate(obstacles):
             stepsize = obs_ii.get_gamma(position, in_global_frame=True) ** powers[ii]
@@ -68,3 +68,23 @@ def gamma_normal_gradient_descent(
         position += step_factor * step
 
     return position
+
+
+def get_orthonormal_spanning_basis(vector1, vector2, /):
+    """Returns a orthonormal basis from to orthonormal input vectors."""
+    dot_prod = np.dot(vector1, vector2)
+
+    if abs(dot_prod) < 1:
+        vec_perp = vector2 - vector1 * dot_prod
+        vec_perp = vec_perp / LA.norm(vec_perp)
+    else:
+        # (Anti-)parallel vectors => take random perpendicular vector
+        vec_perp = np.zeros(vector1.shape)
+        if not LA.norm(vector1[:2]):
+            vec_perp[0] = 1
+        else:
+            vec_perp[0] = vector1[1]
+            vec_perp[1] = vector1[0] * (-1)
+            vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
+
+    return np.vstack((vector1, vec_perp)).T
