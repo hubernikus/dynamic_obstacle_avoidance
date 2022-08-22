@@ -13,8 +13,6 @@ from numpy import pi
 from vartools.angle_math import *
 from vartools.linalg import get_orthogonal_basis
 
-# from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
-
 
 def avoid_moving_obstacle_with_maximum(
     velocity: np.ndarray, max_velocity
