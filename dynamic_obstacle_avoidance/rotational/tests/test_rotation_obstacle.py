@@ -83,6 +83,7 @@ class SingleLevelObstacle:
         # Unsolved problems:
         # How to define the direction of sub-rotation (?)
         # Where is the initial direction for each subsequent obstacle ?
+        # TODO: could we try to 'push'-out the underlying obstacle (?)
         pass
 
 

@@ -557,7 +557,7 @@ if (__name__) == "__main__":
     plt.close("all")
     # test_boundary_obstacle_weight(visualize=True, savefig=True)
     # test_mixed_boundary_obstacle_reference(visualize=True)
-    # test_shortes_path(visualize=True, savefig=False)
+    test_shortes_path(visualize=True, savefig=False)
 
     # _test_multiholes_obstacle(visualize=True, savefig=True)
 

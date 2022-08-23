@@ -242,8 +242,11 @@ def plot_obstacles(
     noTicks=False,
     showLabel=False,
     draw_reference=False,
+    draw_center=True,
     draw_wall_reference=False,
     border_linestyle="--",
+    linecolor="black",
+    linealpha=1,
     alpha_obstacle=0.8,
     velocity_arrow_factor=0.2,
     x_range=None,
@@ -302,8 +305,9 @@ def plot_obstacles(
         ax.plot(
             x_obs_sf[:, 0],
             x_obs_sf[:, 1],
-            color="k",
+            color=linecolor,
             linestyle=border_linestyle,
+            alpha=linealpha,
             zorder=3,
         )
 
@@ -370,7 +374,7 @@ def plot_obstacles(
                 zorder=3,
             )
 
-        if not obs.is_boundary or draw_wall_reference:
+        if (not obs.is_boundary or draw_wall_reference) and draw_center:
             ax.plot(
                 obs.center_position[0],
                 obs.center_position[1],
