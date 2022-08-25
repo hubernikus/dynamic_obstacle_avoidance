@@ -11,6 +11,7 @@ from numpy import linalg as LA
 import shapely
 
 from vartools import linalg
+from vartools.math import get_intersection_with_circle
 
 from dynamic_obstacle_avoidance import obstacles
 
@@ -205,6 +206,27 @@ class EllipseWithAxes(obstacles.Obstacle):
             normal = self.pose.transform_direction_from_local_to_reference(normal)
 
         return normal
+
+    def get_surface_intersection_with_line(
+        self, point0: np.ndarray, point1: np.ndarray, in_global_frame: bool = False
+    ):
+        if in_global_frame:
+            point0 = self.pose.transform_position_from_reference_to_local(point0)
+            point1 = self.pose.transform_position_from_reference_to_local(point1)
+
+        point0 = point0 / self.semiaxes_with_magin
+        point1 = point1 / self.semiaxes_with_magin
+
+        surface_point = get_intersection_with_circle(
+            point0, direction=(point1 - point0), radius=1, only_positive=True
+        )
+
+        if in_global_frame:
+            surface_point = self.pose.transform_position_from_local_to_reference(
+                surface_point
+            )
+
+        return surface_point
 
     def get_point_on_surface(
         self,

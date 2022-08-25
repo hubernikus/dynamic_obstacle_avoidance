@@ -11,10 +11,12 @@ This could be bag in task-space, or a complex-learned obstacle.
 import copy
 import logging
 import warnings
+import math
 
 import numpy as np
 import numpy.linalg as LA
-import numpy.typing as npt
+
+import matplotlib.pyplot as plt
 
 import networkx as nx
 from networkx import shortest_path, shortest_path_length
@@ -23,13 +25,19 @@ from networkx import shortest_path, shortest_path_length
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.dynamical_systems import plot_dynamical_system, LinearSystem
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
+
+from dynamic_obstacle_avoidance.containers import BaseContainer
+
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from dynamic_obstacle_avoidance.rotational.utils import gamma_normal_gradient_descent
 
-Vector = npt.ArrayLike
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector, Orientation
 
 
 def get_property_of_node_edge(graph, node, key) -> Vector:
@@ -41,8 +49,10 @@ def get_property_of_node_edge(graph, node, key) -> Vector:
     return temp_list[0][2][key]
 
 
-class MultiHullAndObstacle:
+class MultiHullAndObstacle(Obstacle):
     """This is similar to an 'basic' obstacle but requires some different structure / treatment.
+
+    Note that this is an obstacle made out of (sub-)obstacles!
 
     Attributes
     ----------
@@ -54,14 +64,15 @@ class MultiHullAndObstacle:
     def __init__(
         self,
         inner_obstacles: list,
-        outer_obstacle: list,
-        center_position: np.ndarray = None,
+        outer_obstacle: Obstacle,
+        center_position: Vector = None,
+        orientation: Orientation = None,
         **kwargs,
     ):
         if center_position is None:
             center_position = np.zeros(outer_obstacle.center_position.shape)
 
-        # super().__init__(center_position=center_position, **kwargs)
+        super().__init__(center_position=center_position, orientation=orientation)
 
         # This obstacle is duality of boundary - obstacle (depending on position)
         self.is_boundary = None
@@ -104,7 +115,7 @@ class MultiHullAndObstacle:
     def all_hash_list(self) -> list:
         return self.inner_obstacles + [ii for ii in range(self._entrance_counter)]
 
-    def set_attractor(self, position: Vector) -> None:
+    def set_attractor(self, position: Vector, in_global_frame=False) -> None:
         """Set attractor in the global frame.
         for the moment we assume linear dynamics.
         The option to add local dynamics is possible.
@@ -112,6 +123,9 @@ class MultiHullAndObstacle:
         Additionally reset the 'local_attractor', since the attractor position
         has changed."""
         # position = self.transform_global2relative(position)
+
+        if in_global_frame:
+            position = self.transform_global2relative(position)
 
         in_free_space = False  # Track if the attractor is in free space!
 
@@ -168,9 +182,12 @@ class MultiHullAndObstacle:
 
         return not in_free_space
 
-    def evaluate(self, position: Vector) -> Vector:
+    def evaluate(self, position: Vector, in_global_frame: bool = True) -> Vector:
         """Avoids the boundary-hull obstacle."""
         # Assumption that graph is already constructed
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+
         self._evaluate_weights(position)
 
         if not np.sum(self.weights):
@@ -188,7 +205,7 @@ class MultiHullAndObstacle:
             weights_.append(self.weights[ii])
 
             if self._graph.nodes[obs]["local_attractor"] is None:
-                print("obs:", obs)
+                # print("obs:", obs)
                 self.update_shortest_attractor_path(obs)
 
             velocities_.append(
@@ -230,6 +247,10 @@ class MultiHullAndObstacle:
             raise ValueError("Zero direction value obtained.")
 
         mean_direction = mean_direction / dir_norm * mean_magnitude
+
+        if in_global_frame:
+            mean_direction = self.transform_global2relative_dir(mean_direction)
+
         return mean_direction
 
     def _get_local_dynamics(
@@ -319,8 +340,6 @@ class MultiHullAndObstacle:
         closest_dist = []
         closest_elems = []
 
-        # path_dists = shortest_path(self._graph, source=obs_source)
-
         # Check the outsiders
         for obs in self.inner_obstacles:
             # Self check (i.e. obs == obs_source) is not needed, since
@@ -332,7 +351,6 @@ class MultiHullAndObstacle:
             closest_dist.append(path_dist)
             closest_elems.append(obs)
 
-        # if self._graph.nodes[0]["contains_attractor"]:
         if self._attractor_is_outside:
             for ii in range(self._entrance_counter):
                 dist_attractor = LA.norm(
@@ -420,17 +438,22 @@ class MultiHullAndObstacle:
 
             _, ax = plt.subplots()
 
+        temp_obs = copy.deepcopy(self.outer_obstacle)
+        temp_obs.pose = self.pose.transform_pose_to_relative(temp_obs.pose)
+
         plot_obstacles(
-            obstacle_container=[self.outer_obstacle],
+            obstacle_container=[temp_obs],
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            linealpha=0,
             # alpha_obstacle=1.0,
         )
 
         temp_list = copy.deepcopy(self.inner_obstacles)
         for obs in temp_list:
             obs.is_boundary = False
+            obs.pose = self.pose.transform_pose_to_relative(obs.pose)
 
         plot_obstacles(
             obstacle_container=temp_list,
@@ -439,7 +462,10 @@ class MultiHullAndObstacle:
             ax=ax,
             alpha_obstacle=1.0,
             obstacle_color="white",
-            draw_reference=True,
+            # draw_reference=True,
+            linecolor="#808080",
+            linealpha=0,
+            draw_center=False,
         )
 
         if plot_attractors:
@@ -504,7 +530,6 @@ class MultiHullAndObstacle:
         self._entrance_counter = 0
 
         for ii, obs_ii in enumerate(self.inner_obstacles):
-            # breakpoint()
             if LA.norm(obs_ii.center_position - self.outer_obstacle.center_position) < (
                 np.min(self.outer_obstacle.axes_length) - np.max(obs_ii.axes_length)
             ):
@@ -579,3 +604,190 @@ class MultiHullAndObstacle:
         #     # 1) add new ellipses
         #     # 2) extend existing ellipses
         #     raise NotImplementedError()
+
+
+def get_boundary_intersection_weight(
+    position: Vector,
+    inner_obstacle: Obstacle,
+    outer_obstacle: Obstacle,
+    power_factor: float = 1.5,
+) -> float:
+    """Returns the weight of a corresponding intersection obstacle.
+
+    The center / reference point of the inner obstacle has to lie within the outer."""
+    gamma_outer = outer_obstacle.get_gamma(position, in_global_frame=True)
+    gamma_inner = inner_obstacle.get_gamma(position, in_global_frame=True)
+
+    if gamma_inner <= 1 or gamma_outer >= 1:
+        return 0
+
+    projected_position = outer_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+
+    gamma_projected = inner_obstacle.get_gamma(projected_position, in_global_frame=True)
+
+    if gamma_projected <= 1:
+        return 1
+
+    # w_i = 1 / gamma_projected
+    # p_i = gamma_outer
+    # return w_i ** (p_i * 2)
+
+    return (1 / gamma_projected) ** (gamma_outer * power_factor)
+
+
+class MultiRotationalContainer(BaseContainer):
+    def __init__(self, *args, **kwargs):
+        self._initial_dynamics = None
+        self._attractor_position = None
+
+        super().__init__(*args, **kwargs)
+
+    def append(self, *args, **kwargs):
+        super().append(*args, **kwargs)
+
+        if self._initial_dynamics is not None:
+            warnings.warn(
+                "Initial dynamics set before setting the obstacles."
+                + "Make sure to update after."
+            )
+
+    def set_dynamics(self, dynamics):
+        self._initial_dynamics = dynamics
+
+        if dynamics is not None:
+            self.set_attractor(dynamics.attractor_position)
+
+    def set_attractor(self, attractor_position: Vector) -> None:
+        # Make sure attractor is updated
+        if self._attractor_position is None or not np.allclose(
+            self._attractor_position, attractor_position
+        ):
+            self._attractor_position = attractor_position
+
+            for obs in self._obstacle_list:
+                obs.evaluate_hirarchy_and_reference_points()
+                obs.set_attractor(attractor_position, in_global_frame=True)
+                # obs.update_shortest_attractor_path()
+
+    def evaluate(self, position: Vector) -> Vector:
+        vectors = np.zeros((position.shape[0], len(self._obstacle_list)))
+
+        for ii, obs in enumerate(self._obstacle_list):
+            vectors[:, ii] = obs.evaluate(position, in_global_frame=True)
+
+        return np.mean(vectors, axis=1)
+
+
+def create_u_shape_obstacle(
+    length: float, height: float, wallwidth: float
+) -> MultiHullAndObstacle:
+    """Returns a U-shaped Multi-Obstacle in two dimensions (object-factory)."""
+    # TODO: add position (?)
+    outer_obstacle = Cuboid(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([length, height]),
+        is_boundary=False,
+    )
+
+    subhull = [
+        Cuboid(
+            center_position=np.array([0.0, wallwidth]),
+            axes_length=np.array([length - 2 * wallwidth, height]),
+            is_boundary=True,
+        )
+    ]
+
+    return MultiHullAndObstacle(outer_obstacle=outer_obstacle, inner_obstacles=subhull)
+
+
+def test_intersection_weight(visualize=False):
+    my_hullobstacle = create_u_shape_obstacle(4, 2, 0.5)
+
+    position_test = np.array([0, 0.2])
+    weight = get_boundary_intersection_weight(
+        position_test,
+        inner_obstacle=my_hullobstacle.inner_obstacles[0],
+        outer_obstacle=my_hullobstacle.outer_obstacle,
+    )
+
+    position_test = np.array([0, 0.5])
+    weight = get_boundary_intersection_weight(
+        position_test,
+        inner_obstacle=my_hullobstacle.inner_obstacles[0],
+        outer_obstacle=my_hullobstacle.outer_obstacle,
+    )
+
+    if visualize:
+        x_lim = [-4, 4]
+        y_lim = [-3, 3]
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        n_resolution = 50
+        levels = np.linspace(1e-5, 1.0 + 1e-5, 10 + 1)
+        cmap = "YlGn"
+
+        nx = n_resolution
+        ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+        )
+
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        weights = np.zeros(positions.shape[1])
+
+        for it in range(positions.shape[1]):
+            weights[it] = get_boundary_intersection_weight(
+                positions[:, it],
+                inner_obstacle=my_hullobstacle.inner_obstacles[0],
+                outer_obstacle=my_hullobstacle.outer_obstacle,
+            )
+
+        # cs0 = axs[oo].contourf(
+        cs0 = ax.contourf(
+            x_vals,
+            y_vals,
+            # weights[oo, :].reshape(x_vals.shape),
+            weights.reshape(x_vals.shape),
+            levels=levels,
+            cmap=cmap,
+            zorder=1,
+            alpha=0.5,
+        )
+
+        plt.colorbar(cs0, ax=ax)
+
+
+def test_single_u_shape(visualize=False):
+    my_hullobstacle1 = create_u_shape_obstacle(4, 2, 0.5)
+    # my_hullobstacle1.orientation = 0 / 180 * math.pi
+    # my_hullobstacle1.position = np.array([1, -1.25])
+
+    # my_hullobstacle2 = create_u_shape_obstacle(4, 2, 0.5)
+    # my_hullobstacle2.orientation = 180 / 180 * math.pi
+    # my_hullobstacle2.position = np.array([-1, 1.25])
+    environment = MultiRotationalContainer()
+    environment.append(my_hullobstacle1)
+
+    environment.set_dynamics(LinearSystem(attractor_position=np.array([3, -2.5])))
+
+    if visualize:
+        x_lim = [-4, 4]
+        y_lim = [-3, 3]
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        environment[0].plot_obstacle(
+            x_lim=x_lim, y_lim=y_lim, ax=ax, plot_attractors=True
+        )
+
+        # my_hullobstacle2.plot_obstacle(x_lim=[-6, 6], y_lim=[-5, 5], ax=ax)
+        plot_dynamical_system(
+            environment, x_lim=x_lim, y_lim=y_lim, n_resolution=10, ax=ax
+        )
+
+
+if (__name__) == "__main__":
+    plt.close("all")
+    # test_single_u_shape(visualize=True)
+    test_intersection_weight(visualize=True)

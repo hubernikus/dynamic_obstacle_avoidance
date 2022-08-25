@@ -291,6 +291,7 @@ class VectorRotationTree:
         direction: Vector = None,
         parent_id: NodeType = None,
         child_id: NodeType = None,
+        level: int = None
         # rotation_limit: float = math.pi * 0.75,
     ) -> None:
 
@@ -300,13 +301,20 @@ class VectorRotationTree:
                 node_id,
             )
 
-        if child_id is not None:
+            level = self._graph.nodes[parent_id]["level"] + 1
+
+        elif child_id is not None:
             self._graph.add_edge(node_id, child_id)
             self.set_direction(direction, node_id)
 
+        elif level is None:
+            raise ValueError(
+                "Argument 'level' is needed, if no parent or child is provided"
+            )
+
         self._graph.add_node(
             node_id,
-            level=self._graph.nodes[parent_id]["level"] + 1,
+            level=level,
             direction=None,
             weight=0,
             orientation=None,

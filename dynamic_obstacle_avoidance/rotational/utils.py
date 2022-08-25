@@ -9,13 +9,14 @@ This could be bag in task-space, or a complex-learned obstacle.
 # Created: 2022-06-21
 
 import logging
+import warnings
 
 import numpy as np
 import numpy.linalg as LA
 import numpy.typing as npt
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
-from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
 
 def gamma_normal_gradient_descent(
@@ -87,3 +88,22 @@ def get_orthonormal_spanning_basis(vector1, vector2, /):
             vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
 
     return np.vstack((vector1, vec_perp)).T
+
+
+def project_point_onto_ray(point: Vector, ray: VectorArray) -> Vector:
+    """Project the point onto the ray (given by two points, starting at the first point)
+    and returns the given projected point as a vector."""
+    ray_direction = ray[:, 1] - ray[:, 0]
+
+    if not (ray_norm := LA.norm(ray_direction)):
+        logging.warning("Points of ray are identical.")
+        return ray[:, 0]
+
+    ray_direction = ray_direction / ray_norm
+
+    proj_point = np.dot(ray_direction, (point - ray[:, 0]))
+    if proj_point <= 0:
+        # The point lies 'behind' the ray-start
+        return ray[:, 0]
+
+    return proj_point * ray_direction + ray[:, 0]

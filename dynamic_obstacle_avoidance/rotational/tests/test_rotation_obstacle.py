@@ -7,7 +7,6 @@ import math
 
 import numpy as np
 from numpy import linalg as LA
-import numpy.typing as npt
 
 import matplotlib.pyplot as plt
 
@@ -22,44 +21,50 @@ from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotation
 
 from dynamic_obstacle_avoidance.rotational.utils import gamma_normal_gradient_descent
 
-Vector = npt.ArrayLike
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
-class SingleLevelObtacle:
+class SingleLevelObstacle:
     """Assuming obstacle graph with single level, i.e., one root + many branches."""
 
-    def __init__(self) -> None:
-        # self._obstacles: list[Obstacle] = []
+    def __init__(self, root_obstacle) -> None:
+        self._reference_tree = None
+        self._root_obstacle = None
+
         self._rotation_tree = VectorRotationTree()
 
         self._root_obs: Obstacle = None
         self._obstacles = []
+        self.append_obstacle_part(obstacle=root_obstacle, is_root=True)
 
-        self._id_counter = 0
+    # def ind(self, ii):
+    #     return ii + 1
 
     def append_obstacle_part(self, obstacle: Obstacle, is_root: bool = False) -> None:
         # values >= 1 are used for obstacle-id's, to allow for negative values
-        self._obstacles.append(obstacle)
-        graph_id = len(self._obstacles) + 1
-
-        self._id_counter += 1
+        graph_id = len(self._obstacles)
 
         if is_root:
             direction = np.zeros(obstacle.dimension)
-            self._root_obs = obstacle
+            self._root_obstacle = obstacle
+
+            # Assumption of root being at level=0 -> level=-1 is the normal to the root
+            self._rotation_tree.add_node(graph_id, direction=direction, level=0)
+
             self._root_id = graph_id
-            self._rotation_tree.set_root(graph_id, direction=direction)
-            return
 
-        # Assuming parent is the root (!)
-        intersection = gamma_normal_gradient_descent([self._root_obs, obstacle])
-        obstacle.set_reference_point(intersection, in_global_frame=True)
+        else:
+            # Assuming parent is the root (!)
+            intersection = gamma_normal_gradient_descent(
+                [self._root_obstacle, obstacle]
+            )
+            obstacle.set_reference_point(intersection, in_global_frame=True)
 
-        direction = intersection - self._root_obs.center_position
-        self._rotation_tree.add_node(
-            graph_id, parent_id=self._root_id, direction=direction
-        )
-        breakpoint()
+            direction = intersection - self._root_obstacle.center_position
+
+            self._rotation_tree.add_node(
+                graph_id, direction=direction, parent_id=self._root_id
+            )
 
     def rotate_with_average(self, initial_direction, node_list, weights):
         pass
@@ -73,32 +78,19 @@ class SingleLevelObtacle:
 
         # Check two conditions:
         # 1) is the surface point intersecting
-        # 2) (hello)
-        for obstacle in self._obstacles:
-            if obstacle is self._root_obs:  # Reference check
-                pass
+        # 2) is the
 
+        # Unsolved problems:
+        # How to define the direction of sub-rotation (?)
+        # Where is the initial direction for each subsequent obstacle ?
+        # TODO: could we try to 'push'-out the underlying obstacle (?)
         pass
 
 
 def _test_simple_multiobstacle():
     # Base-normal
 
-    aa_list = [-100, 20]
-
-    for ii, aa in enumerate(aa_list):
-        print(ii, aa)
-
-    my_obstacle = SingleLevelObtacle()
-
-    my_obstacle.append_obstacle_part(
-        Ellipse(
-            center_position=np.array([0, 1]),
-            axes_length=np.array([2, 1]),
-            orientation=0,
-        ),
-        is_root=True,
-    )
+    my_obstacle = SingleLevelObstacle(obstacle0)
 
     my_obstacle.append_obstacle_part(
         Ellipse(
@@ -111,11 +103,9 @@ def _test_simple_multiobstacle():
     position = np.array([0, 1])
     initial_dynamics = LinearSystem(attractor_position=np.array([0, 0]))
 
-    # modulated_velocity = my_obstacle.avoid(
-    #     position, initial_dynamics.evaluate(position)
-    # )
-
-    breakpoint()
+    modulated_velocity = my_obstacle.avoid(
+        position, initial_dynamics.evaluate(position)
+    )
 
 
 if (__name__) == "__main__":
