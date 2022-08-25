@@ -339,7 +339,7 @@ def plot_obstacles(
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=2))
+            obs_polygon.append(plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=0))
 
             # if obstacle_color is None:
             # obs_polygon[n].set_color(np.array([176,124,124])/255)
