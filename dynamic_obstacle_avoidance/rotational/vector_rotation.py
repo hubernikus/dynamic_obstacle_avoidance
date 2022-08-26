@@ -438,18 +438,17 @@ class VectorRotationTree:
 
         self.evaluate_all_orientations(sorted_list)
 
-        # Reverse update the weights
-        for node_id in sorted_list[::-1]:
-            # Only one predecessor
+        # for node_id in sorted_list[::-1]:
+        for node_id in reversed(sorted_list):
+            # Reverse update the weights
             for pred_id in self._graph.predecessors(node_id):
-                # For succ_id in self._graph.predecessors(node_id):
+                # There is only one predecessor,
                 # Where are the weights stored / where are the rotations stored (?)
                 self._graph.nodes[pred_id]["weight"] += self._graph.nodes[node_id][
                     "weight"
                 ]
 
-        # Update orientation and create 'partial' orientations
-        for node_id in reversed(sorted_list):
+            # Update orientation and create 'partial' orientations
             self._graph.nodes[node_id]["part_orientation"] = VectorRotationXd(
                 base=self._graph.nodes[node_id]["orientation"].base,
                 rotation_angle=(
@@ -460,9 +459,12 @@ class VectorRotationTree:
 
             if (
                 not self._graph.successors(node_id)
-                or self._graph.nodes[node_id]["weight"] == 1
+                or self._graph.nodes[node_id]["weight"] <= 0
+                or self._graph.nodes[node_id]["weight"] >= 1
             ):
-                # No sucessor nodes or full rotation is being kept
+                # No successor nodes (or successors with only zero weight !? )
+                # or full rotation is being kept
+                # TODO: why is the second condition not working ?!
                 continue
 
             successors = self.get_all_childs_children(node_id)
@@ -476,7 +478,7 @@ class VectorRotationTree:
             # Make sure dimension is the first axes for future array restructuring
             succ_basis = np.swapaxes(_succ_basis, 0, 1)
 
-            # backwards rotate such that it's aligned with the new angle
+            # Backwards rotate such that it's aligned with the new angle
             succ_basis = rotate_array(
                 directions=succ_basis.reshape(self.dimension, -1),
                 base=self._graph.nodes[node_id]["orientation"].base,
@@ -503,9 +505,14 @@ class VectorRotationTree:
         # Bottom up calculation - from lowest level to highest level
         # at each level, take the weighted average of all rotations
         for level in set(level_list):
-            nodelevel_ids = [
-                sorted_list[jj] for jj, lev in enumerate(level_list) if lev == level
-            ]
+
+            nodelevel_ids = []
+            for node_id, lev in zip(sorted_list, level_list):
+                if lev == level and self._graph.nodes[node_id]["weight"]:
+                    nodelevel_ids.append(node_id)
+
+            if not nodelevel_ids:
+                continue
 
             # Each round higher levels are un-rotated to share the same basis
             shared_first_basis = self._graph.nodes[nodelevel_ids[0]][
@@ -517,8 +524,8 @@ class VectorRotationTree:
             # same-level rotation-structs in the local_basis
             basis_array = np.array(
                 [
-                    self._graph.nodes[ii]["part_orientation"].base[:, 1]
-                    for ii in nodelevel_ids
+                    self._graph.nodes[jj]["part_orientation"].base[:, 1]
+                    for jj in nodelevel_ids
                 ]
             ).T
             local_basis = shared_basis.T @ basis_array
@@ -568,13 +575,8 @@ class VectorRotationTree:
                 all_basis = np.hstack((all_basis, succ_basis))
 
             if not all_successors:
-                final_rotation = VectorRotationXd(
-                    base=np.vstack((shared_first_basis, averaged_direction)).T,
-                    rotation_angle=new_angle,
-                )
-
-                # Reached the end of the graph - there are no successors anymore
-                return final_rotation.rotate(shared_first_basis)
+                # Zero list -> check the next level
+                continue
 
             if new_angle:
                 # Transform to the new basis-direction
@@ -592,9 +594,12 @@ class VectorRotationTree:
             for ii, node in enumerate(all_successors):
                 self._graph.nodes[node]["part_orientation"].base = all_basis[:, ii, :]
 
-        # Convergence and return should happen within the loop, if this exception is reached
-        # an error must have occurred in the loop logic / input data
-        raise Exception("No weighted mean found.")
+        final_rotation = VectorRotationXd(
+            base=np.vstack((shared_first_basis, averaged_direction)).T,
+            rotation_angle=new_angle,
+        )
+
+        return final_rotation.rotate(shared_first_basis)
 
     def rotate(
         self, initial_vector: Vector, node_list: list[int], weights: list[float]
