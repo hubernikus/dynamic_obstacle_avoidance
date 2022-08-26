@@ -522,13 +522,13 @@ class VectorRotationTree:
 
             # Get the rotation-vector (second -base vector) of all of the
             # same-level rotation-structs in the local_basis
-            basis_array = np.array(
+            local_basis = np.array(
                 [
                     self._graph.nodes[jj]["part_orientation"].base[:, 1]
                     for jj in nodelevel_ids
                 ]
             ).T
-            local_basis = shared_basis.T @ basis_array
+            # local_basis = shared_basis.T @ local_basis
 
             # Add the rotation angles up
             local_basis *= np.array(
@@ -541,7 +541,8 @@ class VectorRotationTree:
             new_angle = LA.norm(local_mean_basis)
             if new_angle:  # Nonzero
                 # local_mean_basis[0] = 0  # Really (?)
-                averaged_direction = shared_basis @ (local_mean_basis / new_angle)
+                # averaged_direction = shared_basis @ (local_mean_basis / new_angle)
+                averaged_direction = local_mean_basis / new_angle
             else:
                 # No rotation, hence it's the first vector
                 averaged_direction = shared_basis[:, 0]

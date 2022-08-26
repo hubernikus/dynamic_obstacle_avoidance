@@ -197,7 +197,6 @@ class MultiHullAndObstacle(Obstacle):
         weights_ = []
         velocities_ = []
 
-        # print("weight", self.weights)
         for ii, obs in enumerate(self.inner_obstacles):
             if not self.weights[ii]:
                 continue
@@ -205,7 +204,6 @@ class MultiHullAndObstacle(Obstacle):
             weights_.append(self.weights[ii])
 
             if self._graph.nodes[obs]["local_attractor"] is None:
-                # print("obs:", obs)
                 self.update_shortest_attractor_path(obs)
 
             velocities_.append(
@@ -432,6 +430,8 @@ class MultiHullAndObstacle(Obstacle):
         x_lim: list = None,
         y_lim: list = None,
         plot_attractors: bool = False,
+        outder_linealpha: float = 0.9,
+        inner_linealpha: float = 0.9,
     ) -> None:
         if ax is None:
             import matplotlib.pyplot as plt
@@ -446,7 +446,7 @@ class MultiHullAndObstacle(Obstacle):
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
-            linealpha=0,
+            linealpha=outder_linealpha,
             # alpha_obstacle=1.0,
         )
 
@@ -464,7 +464,7 @@ class MultiHullAndObstacle(Obstacle):
             obstacle_color="white",
             # draw_reference=True,
             linecolor="#808080",
-            linealpha=0,
+            linealpha=inner_linealpha,
             draw_center=False,
         )
 
@@ -702,7 +702,7 @@ def create_u_shape_obstacle(
     return MultiHullAndObstacle(outer_obstacle=outer_obstacle, inner_obstacles=subhull)
 
 
-def test_intersection_weight(visualize=False):
+def test_intersection_weight(visualize=False, save_figure=False):
     my_hullobstacle = create_u_shape_obstacle(4, 2, 0.5)
 
     position_test = np.array([0, 0.2])
@@ -724,6 +724,20 @@ def test_intersection_weight(visualize=False):
         y_lim = [-3, 3]
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         my_hullobstacle.plot_obstacle(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        ax.tick_params(
+            axis="both",
+            which="major",
+            labelbottom=False,
+            labelleft=False,
+            bottom=False,
+            top=False,
+            left=False,
+            right=False,
+        )
+
+        if True:
+            return
 
         n_resolution = 50
         levels = np.linspace(1e-5, 1.0 + 1e-5, 10 + 1)
@@ -790,4 +804,4 @@ def test_single_u_shape(visualize=False):
 if (__name__) == "__main__":
     plt.close("all")
     # test_single_u_shape(visualize=True)
-    test_intersection_weight(visualize=True)
+    test_intersection_weight(visualize=True, save_figure=False)
