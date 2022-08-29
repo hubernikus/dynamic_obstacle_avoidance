@@ -27,12 +27,15 @@ import scipy
 
 import networkx as nx
 
+from sklearn.cluster import KMeans
+
 from vartools.dynamical_systems import LinearSystem
 from vartools.directional_space import get_angle_space_of_array
 
-from sklearn.cluster import KMeans
+from dynamic_obstacle_avoidance.obstacle import Obstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+
 
 NodeType = int
 
@@ -186,13 +189,19 @@ class MotionLearnerThrougKMeans:
         # Finally
         self.evaluate_local_sets()
 
-    def get_feature_labels(self):
+    def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
 
-    def get_n_features(self):
+    def get_n_features(self) -> int:
+        """Returns number of features."""
+        # TODO: depreciated
         return self.kmeans.cluster_centers_.shape[0]
 
-    def evaluate_local_sets(self):
+    def get_number_of_features(self) -> int:
+        """Returns number of features."""
+        return self.kmeans.cluster_centers_.shape[0]
+
+    def evaluate_local_sets(self) -> None:
         self.full_kmeans = KMeans(
             init="k-means++", n_clusters=self.n_clusters, n_init=4
         )
@@ -392,6 +401,81 @@ class MotionLearnerThrougKMeans:
             s=200,
             color="white",
             zorder=10,
+        )
+
+
+class KmeansObstacle(Obstacle):
+    def __init__(self, radius: float, kmeans: KMeans, index: int, **kwargs):
+        super().__init__(**kwargs)
+
+        self._kmeans = kmeans
+        self._index = index
+
+        self.radius = radius
+
+    def get_gamma(self, position: Vector, in_globacl_frame: bool = False) -> float:
+        if not in_global_frame:
+            position = self.pose.transform_from_rlative(position)
+
+        self._get_plane_weights(position, in_globacl_frame=True)
+        
+        pass
+
+    def get_normal_direction(
+        self, position, in_global_frame: bool = False
+    ) -> normal:
+        if not in_global_frame:
+            position = self.pose.transform_from_rlative(position)
+
+        if self.is_boundary:
+            pass
+
+        # Find all indexes with neighbours
+        center_dists = np.zeros(self._kmeans.get_n_features())
+
+        for ind in self._kmeans.get_feature_labels():
+            if ind == self.index:
+                continue
+
+            center_position = 0.5 * (
+                self._kmeans.cluster_centers_[ind, :]
+                + self._kmeans.cluster_centers_[self._index, :]
+            )
+
+            label = self._kmeans.predict(center_position)
+
+            if not (label == ind or label == self._index):
+                continue
+
+            normal_directions[:, ind] = (
+                self._kmeans.cluster_centers_[ind, :]
+                + self._kmeans.cluster_centers_[self._index, :]
+            )
+
+            if not (normal_norm := LA.norm(normal_directions[:, ind])):
+                # Zero distance
+                continue
+
+            normal_direction[:, ind] = normal_direction[:, ind] / normal_norm
+            center_dists[ind] = max(
+                0, np.dot(normal_direction, position - center_position)
+            )
+
+        # Store the distance to the radius in the original hull
+        center_dists[ind] = LA.norm(position) - self.radius
+        normal_directions[:, ind] = position / LA.norm(position)
+
+        if not (dist_sum := np.sum(center_dists)):
+            normal = np.zeros(self.dimension)
+            normal[0] = 1
+            return normal
+        
+        weights = center_dists / dists_sum
+
+        return get_directional_weighted_sum(
+            normal_directions[:, ind],
+            weigths=weights
+            normal_directions
         )
 
 

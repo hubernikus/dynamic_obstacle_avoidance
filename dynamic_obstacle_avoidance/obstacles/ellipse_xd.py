@@ -181,7 +181,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         position: np.ndarray,
         in_obstacle_frame: bool = True,
         in_global_frame: bool = None,
-    ):
+    ) -> np.ndarray:
         if in_global_frame is not None:
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
