@@ -38,144 +38,15 @@ from vartools.dynamical_systems import LinearSystem, ConstantValue
 from vartools.directional_space import get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
 
+from vartools.handwritting_handler import HandwrittingHandler
+from vartools.math import get_intersection_between_line_and_plane
+
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
 
 NodeType = int
-
-
-class HandwrittingHandler:
-    def __init__(self, file_name, directory_name: str = None, dimension: int = 2):
-        if directory_name is None:
-            # self.directory_name = "default/directory"
-            self.directory_name = os.path.join(
-                "/home", "lukas", "Code", "motion_learning_direction_space", "dataset"
-            )
-        else:
-            self.directory_name = directory_name
-        self.file_name = file_name
-
-        self.dimension = dimension
-
-        self.load_data_from_mat()
-
-    def load_data_from_mat(self, feat_in=None, attractor=None):
-        """Load data from file mat-file & evaluate specific parameters"""
-
-        self.dataset = scipy.io.loadmat(
-            os.path.join(self.directory_name, self.file_name)
-        )
-
-        if feat_in is None:
-            self.feat_in = [0, 1]
-
-        ii = 0  # Only take the first fold.
-        self.position = self.dataset["data"][0, ii][: self.dimension, :].T
-        self.velocity = self.dataset["data"][0, ii][
-            self.dimension : self.dimension * 2, :
-        ].T
-
-        self.sequence_value = np.linspace(0, 1, self.dataset["data"][0, ii].shape[1])
-
-        for it_set in range(1, self.dataset["data"].shape[1]):
-            self.position = np.vstack(
-                (self.position, self.dataset["data"][0, it_set][:2, :].T)
-            )
-            self.velocity = np.vstack(
-                (self.velocity, self.dataset["data"][0, it_set][2:4, :].T)
-            )
-
-            # TODO include velocity - rectify
-            self.sequence_value = np.hstack(
-                (
-                    self.sequence_value,
-                    np.linspace(0, 1, self.dataset["data"][0, it_set].shape[1]),
-                )
-            )
-
-        direction = get_angle_space_of_array(
-            directions=self.velocity.T,
-            positions=self.position.T,
-            func_vel_default=LinearSystem(dimension=self.dimension).evaluate,
-        )
-
-        self.X = np.hstack((self.position, self.velocity, direction.T))
-
-        # self.X = self.normalize_velocity(self.X)
-
-        self.num_samples = self.X.shape[0]
-        self.dim_gmm = self.X.shape[1]
-
-        weightDir = 4
-
-        if attractor is None:
-            self.attractor = np.zeros((self.dimension))
-
-            for it_set in range(0, self.dataset["data"].shape[1]):
-                self.attractor = (
-                    self.attractor
-                    + self.dataset["data"][0, it_set][:2, -1].T
-                    / self.dataset["data"].shape[1]
-                )
-                # print("pos_attractor", self.dataset["data"][0, it_set][:2, -1].T)
-
-            print(f"Obstained attractor position [x, y] = {self.attractor}.")
-
-            self.null_ds = LinearSystem(attractor_position=self.attractor)
-
-        elif attractor is False:
-            # Does not have attractor
-            self.attractor = False
-            self.null_ds = attracting_circle
-        else:
-            self.position_attractor = np.array(attractor)
-
-            self.null_ds = LinearSystem(attractor_position=self.attractor)
-
-        # Normalize dataset
-        normalize_dataset = False
-        if normalize_dataset:
-            self.meanX = np.mean(self.X, axis=0)
-
-            self.meanX = np.zeros(4)
-            # X = X - np.tile(meanX , (X.shape[0],1))
-            self.varX = np.var(self.X, axis=0)
-
-            # All distances should have same variance
-            self.varX[: self.dim] = np.mean(self.varX[: self.dim])
-
-            # All directions should have same variance
-            self.varX[self.dim : 2 * self.dim - 1] = np.mean(
-                self.varX[self.dim : 2 * self.dim - 1]
-            )
-
-            # Stronger weight on directions!
-            self.varX[self.dim : 2 * self.dim - 1] = (
-                self.varX[self.dim : 2 * self.dim - 1] * 1 / weightDir
-            )
-
-            self.X = self.X / np.tile(self.varX, (self.X.shape[0], 1))
-
-        else:
-            self.meanX = None
-            self.varX = None
-
-
-def find_intersection_between_line_and_plane(
-    line_position: Vector,
-    line_direction: Vector,
-    plane_position: Vector,
-    plane_normal: Vector,
-) -> Vector:
-    """Returns the intersection position of a plane and a point."""
-    basis = get_orthogonal_basis(plane_normal)
-    basis[:, 0] = (-1) * line_direction
-
-    factors = LA.pinv(basis) @ (line_position - plane_position)
-
-    return line_position + line_direction * factors[0]
 
 
 class MotionLearnerThrougKMeans:
@@ -270,7 +141,7 @@ class MotionLearnerThrougKMeans:
             + self.kmeans.cluster_centers_[ind_parent, :]
         )
 
-        intersection_position = find_intersection_between_line_and_plane(
+        intersection_position = get_intersection_between_line_and_plane(
             self.kmeans.cluster_centers_[ind_node, :],
             direction,
             mean_position,
@@ -868,6 +739,8 @@ def _test_gamma_values(save_figure=False):
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
+        ff = 1.2
+        
         # Test normal
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
@@ -877,8 +750,12 @@ def _test_gamma_values(save_figure=False):
             n_points=10,
         )
 
-        for ii in range(positions.shape[1]):
+        velocities = np.zeros_like(positions)
 
+        for ii in range(positions.shape[1]):
+            velocities =  
+            pass
+        
         # fig, axs = plt.subplots(2, 2, figsize=(14, 9))
         # for ii in range(main_learner.kmeans.n_clusters):
         # ax = axs[ii % 2, ii // 2]
