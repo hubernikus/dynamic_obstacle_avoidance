@@ -16,7 +16,10 @@ TODO / method:
 """
 
 import os
+import sys
 import copy
+import random
+import warnings
 
 import numpy as np
 from numpy import linalg as LA
@@ -31,17 +34,18 @@ from sklearn.cluster import KMeans
 
 from vartools.dynamical_systems import LinearSystem
 from vartools.directional_space import get_angle_space_of_array
+from vartools.directional_space import get_directional_weighted_sum
 
-from dynamic_obstacle_avoidance.obstacle import Obstacle
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 
-from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
 
 NodeType = int
 
 
 class HandwrittingHandler:
-    def __init__(self, file_name, directory_name: str = None, dimension: float = 2):
+    def __init__(self, file_name, directory_name: str = None, dimension: int = 2):
         if directory_name is None:
             # self.directory_name = "default/directory"
             self.directory_name = os.path.join(
@@ -54,9 +58,6 @@ class HandwrittingHandler:
         self.dimension = dimension
 
         self.load_data_from_mat()
-
-    def get_gamma(self, ind):
-        pass
 
     def load_data_from_mat(self, feat_in=None, attractor=None):
         """Load data from file mat-file & evaluate specific parameters"""
@@ -182,6 +183,7 @@ class MotionLearnerThrougKMeans:
 
         self._graph = nx.DiGraph()
 
+        self.radius_factor = 0.7
         # self.region_radius_ = 1
 
         # self._graph = None
@@ -203,7 +205,7 @@ class MotionLearnerThrougKMeans:
 
     def evaluate_local_sets(self) -> None:
         self.full_kmeans = KMeans(
-            init="k-means++", n_clusters=self.n_clusters, n_init=4
+            init="k-means++", n_clusters=self.n_clusters, n_init=5
         )
 
         self.full_kmeans.fit(self.data.X)
@@ -226,7 +228,7 @@ class MotionLearnerThrougKMeans:
 
         # Radius of
         self._evaluate_cluster_hierarchy()
-        self.region_radius_ = 0.6 * np.max(self.distances_parent)
+        self.region_radius_ = self.radius_factor * np.max(self.distances_parent)
 
     def _evaluate_mean_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
@@ -240,7 +242,7 @@ class MotionLearnerThrougKMeans:
                     LinearSystem(attractor_position=self.data.attractor)
                 )
 
-            ind = np.arange(self.get_n_features)[self.kmeans.labels_ == label]
+            ind = np.arange(self.get_number_of_features)[self.kmeans.labels_ == label]
             direction = np.mean(self.data.position[:, ind], axis=0)
 
             if norm_dir := LA.norm(direction):
@@ -281,8 +283,8 @@ class MotionLearnerThrougKMeans:
         """Evaluates the sequence of each cluster along the trajectory.
         -> this can only be used for demonstration which always take the same path."""
         # TODO generalize for multiple (inconsistent sequences) learning
-        average_sequence = np.zeros(self.get_n_features())
-        self.distances_parent = average_sequence
+        average_sequence = np.zeros(self.get_number_of_features())
+        self.distances_parent = np.zeros_like(average_sequence)
 
         for ii, label in enumerate(self.get_feature_labels()):
             average_sequence[ii] = np.mean(
@@ -295,21 +297,26 @@ class MotionLearnerThrougKMeans:
         direction = (
             self.kmeans.cluster_centers_[sorted_list[0], :] - self.data.attractor
         )
+
         if dir_norm := LA.norm(direction):
             direction = direction / dir_norm
+
         else:
             # What should be done in this case ?! -> go to one level higher?
             raise NotImplementedError()
 
         # Distance to attractor has to be multiplied by two, to ensure that it's within
+        # breakpoint()
         self.distances_parent[0] = dir_norm * 2.0
 
         self._graph.add_node(sorted_list[0], level=0, direction=direction)
 
         for jj, ind_node in enumerate(sorted_list[1:], 1):
+            ind_parent = sorted_list[jj - 1]
+
             direction = (
-                self.kmeans.cluster_centers_[sorted_list[ind_node], :]
-                - self.kmeans.cluster_centers_[sorted_list[ind_node - 1], :]
+                self.kmeans.cluster_centers_[ind_node, :]
+                - self.kmeans.cluster_centers_[ind_parent, :]
             )
 
             if dir_norm := LA.norm(direction):
@@ -319,7 +326,6 @@ class MotionLearnerThrougKMeans:
 
             self.distances_parent[jj] = dir_norm
 
-            ind_parent = sorted_list[jj - 1]
             self._graph.add_node(
                 ind_node,
                 level=self._graph.nodes[ind_parent]["level"] + 1,
@@ -328,7 +334,7 @@ class MotionLearnerThrougKMeans:
 
             self._graph.add_edge(ind_node, ind_parent)
 
-    def plot_kmeans(self, mesh_distance: float = 0.01, limit_to_radius=True):
+    def plot_kmeans(self, mesh_distance: float = 0.01, limit_to_radius=True, ax=None):
         reduced_data = self.data.X[:, : self.data.dimension]
 
         # Plot the decision boundary. For that, we will assign a color to each
@@ -369,9 +375,11 @@ class MotionLearnerThrougKMeans:
 
         # Put the result into a color plot
         Z = Z.reshape(xx.shape)
-        plt.figure(1)
-        plt.clf()
-        plt.imshow(
+        if ax is None:
+            _, ax = plt.subplots()
+
+        # ax.clf()
+        ax.imshow(
             Z,
             interpolation="nearest",
             extent=(xx.min(), xx.max(), yy.min(), yy.max()),
@@ -380,10 +388,10 @@ class MotionLearnerThrougKMeans:
             origin="lower",
         )
 
-        plt.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+        ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
         # Plot the centroids as a white X
         centroids = self.kmeans.cluster_centers_
-        plt.scatter(
+        ax.scatter(
             centroids[:, 0],
             centroids[:, 1],
             marker="x",
@@ -393,8 +401,18 @@ class MotionLearnerThrougKMeans:
             zorder=10,
         )
 
+        for ii in range(self.get_number_of_features()):
+            d_txt = 0.15
+            ax.text(
+                self.kmeans.cluster_centers_[ii, 0] + d_txt,
+                self.kmeans.cluster_centers_[ii, 1] + d_txt,
+                self._graph.nodes[ii]["level"],
+                fontsize=20,
+                color="white",
+            )
+
         # Plot attractor
-        plt.scatter(
+        ax.scatter(
             self.data.attractor[0],
             self.data.attractor[1],
             marker="*",
@@ -405,94 +423,311 @@ class MotionLearnerThrougKMeans:
 
 
 class KmeansObstacle(Obstacle):
-    def __init__(self, radius: float, kmeans: KMeans, index: int, **kwargs):
-        super().__init__(**kwargs)
+    """Pseudo obstacle based on a learned kmeans clustering."""
 
+    def __init__(
+        self,
+        radius: float,
+        kmeans: KMeans,
+        index: int,
+        is_boundary: bool = True,
+        **kwargs,
+    ):
         self._kmeans = kmeans
         self._index = index
-
         self.radius = radius
 
-    def get_gamma(self, position: Vector, in_globacl_frame: bool = False) -> float:
-        if not in_global_frame:
-            position = self.pose.transform_from_rlative(position)
+        # Only calculate the normal direction between obstacles once (!)
+        self.ind_withoutself = np.arange(self.num_clusters)
+        self.ind_withoutself = np.delete(self.ind_withoutself, self._index)
 
-        self._get_plane_weights(position, in_globacl_frame=True)
-        
-        pass
+        self.normal_directions = self._kmeans.cluster_centers_ - np.tile(
+            self._kmeans.cluster_centers_[self._index, :], (self.num_clusters, 1)
+        )
+        self.normal_directions[self.ind_withoutself, :] = self.normal_directions[
+            self.ind_withoutself, :
+        ] / LA.norm(self.normal_directions[self.ind_withoutself, :], axis=1)
 
-    def get_normal_direction(
-        self, position, in_global_frame: bool = False
-    ) -> normal:
+        super().__init__(is_boundary=is_boundary, **kwargs)
+
+    @property
+    def center_position(self) -> Vector:
+        """Returns global center point."""
+        return self._kmeans.cluster_centers_[self._index, :]
+
+    @center_position.setter
+    def center_position(self, value) -> None:
+        """Returns global center point."""
+        warnings.warn("Position is not being set.")
+
+    @property
+    def reference_point(self) -> Vector:
+        """Returns global reference point."""
+        return self._kmeans.cluster_centers_[self._index, :]
+
+    @reference_point.setter
+    def reference_point(self, value) -> None:
+        """Returns global reference point."""
+        if LA.norm(value):  # Nonzero value
+            raise NotImplementedError(
+                "Reference point is not reset for KMeans-Obstacle."
+            )
+
+    @property
+    def dimension(self) -> int:
+        return self._kmeans.cluster_centers_.shape[1]
+
+    @property
+    def num_clusters(self) -> int:
+        return self._kmeans.cluster_centers_.shape[0]
+
+    def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
         if not in_global_frame:
-            position = self.pose.transform_from_rlative(position)
+            position = self.pose.transform_position_from_relative(position)
+
+        distance_position = LA.norm(position - self.center_position)
+        if not distance_position:
+            if self.is_boundary:
+                return sys.float_info.max
+            else:
+                return 0.0
+
+        surface_position = self.get_point_on_surface(position, in_global_frame=True)
+        distance_surface = LA.norm(surface_position - self.center_position)
 
         if self.is_boundary:
-            pass
+            return distance_surface / distance_position
 
-        # Find all indexes with neighbours
-        center_dists = np.zeros(self._kmeans.get_n_features())
+        else:
+            if distance_position > distance_surface:
+                return distance_position - distance_surface
+            else:
+                return distance_surface / distance_position
+            return distance_surface / distance_position
 
-        for ind in self._kmeans.get_feature_labels():
-            if ind == self.index:
-                continue
+    def get_normal_direction(self, position, in_global_frame: bool = False) -> Vector:
+        """Returns smooth-weighted normal direction around the obstacles."""
+        if not in_global_frame:
+            position = self.pose.transform_position_from_relative(position)
 
-            center_position = 0.5 * (
-                self._kmeans.cluster_centers_[ind, :]
-                + self._kmeans.cluster_centers_[self._index, :]
+        relative_position = position - self.center_position
+
+        if not (position_norm := LA.norm(relative_position)):
+            # Some direction (normed).
+            position[0] = 1
+            return position
+
+        self.normal_directions[self._index, :] = relative_position / position_norm
+
+        distances_surface = self._get_normal_distances(
+            relative_position, is_boundary=False
+        )
+        distances_surface[self._index] = position_norm - self.radius
+
+        if not LA.norm(distances_surface):
+            # Directly on the boundary
+            if not in_global_frame:
+                self.pose.transform_position_from_relative(
+                    self.normal_directions[self._index, :]
+                )
+            return self.normal_directions[self._index, :]
+
+        if (max_dist := np.max(distances_surface)) < 0:
+            # Position is inside
+            position = (
+                self.center_position
+                + (position_norm - max_dist) ** 2 / position_norm * relative_position
             )
 
-            label = self._kmeans.predict(center_position)
+            distances_surface = self._get_normal_distances(position, is_boundary=False)
 
-            if not (label == ind or label == self._index):
-                continue
+        # Only consider positive ones for the weight
+        weights = np.maximum(distances_surface, 0)
+        weights = weights / np.sum(weights)
 
-            normal_directions[:, ind] = (
-                self._kmeans.cluster_centers_[ind, :]
-                + self._kmeans.cluster_centers_[self._index, :]
-            )
-
-            if not (normal_norm := LA.norm(normal_directions[:, ind])):
-                # Zero distance
-                continue
-
-            normal_direction[:, ind] = normal_direction[:, ind] / normal_norm
-            center_dists[ind] = max(
-                0, np.dot(normal_direction, position - center_position)
-            )
-
-        # Store the distance to the radius in the original hull
-        center_dists[ind] = LA.norm(position) - self.radius
-        normal_directions[:, ind] = position / LA.norm(position)
-
-        if not (dist_sum := np.sum(center_dists)):
-            normal = np.zeros(self.dimension)
-            normal[0] = 1
-            return normal
-        
-        weights = center_dists / dists_sum
-
-        return get_directional_weighted_sum(
-            reference_direction=normal_directions[:, ind],
-            directions=normal_directions
-            weigths=weights,
+        weighted_direction = get_directional_weighted_sum(
+            null_direction=self.normal_directions[:, self._index],
+            directions=self.normal_directions.T,
+            weights=weights,
         )
 
+        if in_global_frame:
+            return weighted_direction
+        else:
+            return self.pose.transform_direction_to_relative(weighted_direction)
 
-class GMR():
-    pass
+    def get_point_on_surface(
+        self, position: Vector, in_global_frame: bool = False
+    ) -> Vector:
+        if not in_global_frame:
+            position = self.pose.transform_position_from_relative(position)
 
+        direction = position - self.center_position
+
+        if dir_norm := LA.norm(direction):
+            direction = direction / dir_norm
+        else:
+            # Random value
+            direction[0] = 1
+
+        # Default guess: point is on the circle-surface
+        boundary_position = self.center_position + direction * self.radius
+
+        # Find closest boundary
+        dists = self._get_normal_distances(boundary_position, is_boundary=False)
+
+        # Only change the default if there is an intersection
+        if any(dists > 0):
+            max_ind = np.argmax(dists)
+            boundary_position = self.center_position + direction * (
+                self.radius
+                - dists[max_ind] / np.dot(self.normal_directions[max_ind, :], direction)
+            )
+
+        if not in_global_frame:
+            position = self.pose.transform_position_to_relative(position)
+
+        return boundary_position
+
+    def _get_normal_distances(
+        self, position: Vector, is_boundary: bool = None
+    ) -> VectorArray:
+        """Returns a tuple with all normal directions and tangent directions with respect to the
+        surrounding."""
+        if is_boundary or (is_boundary is None and self.is_boundary):
+            raise NotImplementedError()
+
+        center_positions = 0.5 * (
+            np.tile(
+                self._kmeans.cluster_centers_[self._index, :],
+                (self.num_clusters - 1, 1),
+            )
+            + self._kmeans.cluster_centers_[self.ind_withoutself, :]
+        )
+
+        labels = self._kmeans.predict(center_positions)
+
+        ind_close = np.logical_or(labels == self.ind_withoutself, labels == self._index)
+        ind_close_wihtoutme = self.ind_withoutself[ind_close]
+
+        center_dists = np.zeros(self._kmeans.cluster_centers_.shape[0])
+        center_dists[ind_close_wihtoutme] = np.sum(
+            self.normal_directions[ind_close_wihtoutme, :]
+            * np.tile(position, (ind_close_wihtoutme.shape[0], 1))
+            - center_positions[ind_close, :],
+            axis=1,
+        )
+
+        return center_dists
 
 
 def test_a_matrix_loader():
-    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
 
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
     main_learner = MotionLearnerThrougKMeans(data)
 
     plt.ion()
     plt.close("all")
-    main_learner.plot_kmeans()
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax)
+
+    # Find obstacle most to the left
+    ind_left = np.argmin(main_learner.kmeans.cluster_centers_[0, :])
+
+    # Plot a specific obstacle
+    region_obstacle = KmeansObstacle(
+        radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ind_left
+    )
+
+    # Test normal
+    n_points = 10
+    # x_min, x_max = [-5, 0]
+    # y_min, y_max = [-1, 2.5]
+    x_min, x_max = [-5, -3]
+    y_min, y_max = [-1, 1.0]
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, n_points),
+        np.linspace(y_min, y_max, n_points),
+    )
+
+    position = np.array([-0.5, -4])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    breakpoint()
+
+    positions = np.array([xx.flatten(), yy.flatten()])
+    normals = np.zeros_like(positions)
+
+    for ii in range(positions.shape[1]):
+        if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
+            continue
+
+        normals[:, ii] = region_obstacle.get_normal_direction(
+            positions[:, ii], in_global_frame=True
+        )
+
+    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :])
+
+
+def test_two_cluster_kmean():
+    """Test the intersection and surface points"""
+    data = np.array([[-1, 0], [1, 0]])
+
+    dimension = 2
+    kmeans = KMeans(init="k-means++", n_clusters=2, n_init=2)
+    kmeans.fit(data)
+
+    kmeans.n_features_in_ = dimension
+    kmeans.cluster_centers_ = (
+        np.array([[-1, 0], [1, 0]]).copy(order="C").astype(np.double)
+    )
+
+    region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=0)
+
+    # Test 1
+    position = np.array([2, 1])
+    surface_position = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    assert np.isclose(surface_position[0], 0)
+
+    normal_direction = region_obstacle.get_normal_direction(
+        position, in_global_frame=True
+    )
+    # Is in between the two vectors
+    assert np.cross([1, 0], normal_direction) > 0
+    assert np.cross([0, 1], normal_direction) < 0
+
+    # Test 2
+    position = np.array([0.25, 0])
+    surface_position = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    assert np.allclose(surface_position, [0, 0])
+
+    normal_direction = region_obstacle.get_normal_direction(
+        position, in_global_frame=True
+    )
+    assert np.allclose(normal_direction, [1, 0])
+
+    # Test 3
+    position = np.array([-1, 2])
+    surface_position = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    assert np.allclose(surface_position, [-1, 1.5])
+
+    normal_direction = region_obstacle.get_normal_direction(
+        position, in_global_frame=True
+    )
+    assert np.allclose(normal_direction, [0, 1])
 
 
 if (__name__) == "__main__":
-    test_a_matrix_loader()
+    # test_a_matrix_loader()
+    test_two_cluster_kmean()
+
+    print("Tests finished.")
