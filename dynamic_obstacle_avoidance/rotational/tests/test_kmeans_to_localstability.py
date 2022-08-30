@@ -437,18 +437,57 @@ class KmeansObstacle(Obstacle):
         self._index = index
         self.radius = radius
 
-        # Only calculate the normal direction between obstacles once (!)
-        self.ind_withoutself = np.arange(self.num_clusters)
-        self.ind_withoutself = np.delete(self.ind_withoutself, self._index)
-
-        self.normal_directions = self._kmeans.cluster_centers_ - np.tile(
-            self._kmeans.cluster_centers_[self._index, :], (self.num_clusters, 1)
-        )
-        self.normal_directions[self.ind_withoutself, :] = self.normal_directions[
-            self.ind_withoutself, :
-        ] / LA.norm(self.normal_directions[self.ind_withoutself, :], axis=1)
-
         super().__init__(is_boundary=is_boundary, **kwargs)
+
+        # Only calculate the normal direction between obstacles once (!)
+        # and the ones which are interesting
+        self.ind_relevant = np.arange(self.num_clusters)
+        self.ind_relevant = np.delete(self.ind_relevant, self._index)
+
+        self._center_positions = 0.5 * (
+            np.tile(
+                self._kmeans.cluster_centers_[self._index, :],
+                (self.ind_relevant.shape[0], 1),
+            )
+            + self._kmeans.cluster_centers_[self.ind_relevant, :]
+        )
+
+        # Since obstacle are convex -> intersection needs to be part of one or the other
+        labels = self._kmeans.predict(self._center_positions)
+        ind_close = np.logical_or(labels == self.ind_relevant, labels == self._index)
+        self.ind_relevant = self.ind_relevant[ind_close]
+        self._center_positions = self._center_positions[ind_close, :]
+
+        normal_directions = np.zeros((self.num_clusters, self.dimension))
+        normal_directions[self.ind_relevant, :] = self._kmeans.cluster_centers_[
+            self.ind_relevant, :
+        ] - np.tile(
+            self._kmeans.cluster_centers_[self._index, :],
+            (self.ind_relevant.shape[0], 1),
+        )
+        # Only look at points which are even possible to interesect
+        # ind_good_distances = distances < 2 * self.radius
+        # self.ind_relevant = self.ind_relevant[ind_good_distances]
+
+        self._normal_directions = (
+            normal_directions[self.ind_relevant, :]
+            / np.tile(
+                LA.norm(normal_directions[self.ind_relevant, :], axis=1),
+                (self.dimension, 1),
+            ).T
+        )
+
+    @property
+    def normal_directions(self) -> VectorArray:
+        """Returns the full array of normal directions."""
+        # TODO: this seems a redundant step -> check if it can be avoided
+        normal_directions = np.zeros((self.num_clusters, self.dimension))
+        normal_directions[self.ind_relevant, :] = self._normal_directions
+        return normal_directions
+
+    @property
+    def num_relevant(self) -> int:
+        return self.ind_relevant.shape[0]
 
     @property
     def center_position(self) -> Vector:
@@ -546,7 +585,7 @@ class KmeansObstacle(Obstacle):
         weights = weights / np.sum(weights)
 
         weighted_direction = get_directional_weighted_sum(
-            null_direction=self.normal_directions[:, self._index],
+            null_direction=self.normal_directions[self._index, :],
             directions=self.normal_directions.T,
             weights=weights,
         )
@@ -597,93 +636,29 @@ class KmeansObstacle(Obstacle):
         if is_boundary or (is_boundary is None and self.is_boundary):
             raise NotImplementedError()
 
-        center_positions = 0.5 * (
-            np.tile(
-                self._kmeans.cluster_centers_[self._index, :],
-                (self.num_clusters - 1, 1),
-            )
-            + self._kmeans.cluster_centers_[self.ind_withoutself, :]
-        )
-
-        labels = self._kmeans.predict(center_positions)
-
-        ind_close = np.logical_or(labels == self.ind_withoutself, labels == self._index)
-        ind_close_wihtoutme = self.ind_withoutself[ind_close]
-
         center_dists = np.zeros(self._kmeans.cluster_centers_.shape[0])
-        center_dists[ind_close_wihtoutme] = np.sum(
-            self.normal_directions[ind_close_wihtoutme, :]
-            * np.tile(position, (ind_close_wihtoutme.shape[0], 1))
-            - center_positions[ind_close, :],
+        center_dists[self.ind_relevant] = np.sum(
+            self._normal_directions
+            * (
+                np.tile(position, (self.ind_relevant.shape[0], 1))
+                - self._center_positions
+            ),
             axis=1,
         )
 
         return center_dists
 
 
-def test_a_matrix_loader():
-    RANDOM_SEED = 1
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-
-    data = HandwrittingHandler(file_name="2D_Ashape.mat")
-    main_learner = MotionLearnerThrougKMeans(data)
-
-    plt.ion()
-    plt.close("all")
-
-    fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax)
-
-    # Find obstacle most to the left
-    ind_left = np.argmin(main_learner.kmeans.cluster_centers_[0, :])
-
-    # Plot a specific obstacle
-    region_obstacle = KmeansObstacle(
-        radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ind_left
-    )
-
-    # Test normal
-    n_points = 10
-    # x_min, x_max = [-5, 0]
-    # y_min, y_max = [-1, 2.5]
-    x_min, x_max = [-5, -3]
-    y_min, y_max = [-1, 1.0]
-    xx, yy = np.meshgrid(
-        np.linspace(x_min, x_max, n_points),
-        np.linspace(y_min, y_max, n_points),
-    )
-
-    position = np.array([-0.5, -4])
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    breakpoint()
-
-    positions = np.array([xx.flatten(), yy.flatten()])
-    normals = np.zeros_like(positions)
-
-    for ii in range(positions.shape[1]):
-        if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
-            continue
-
-        normals[:, ii] = region_obstacle.get_normal_direction(
-            positions[:, ii], in_global_frame=True
-        )
-
-    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :])
-
-
-def test_two_cluster_kmean():
+def test_four_cluster_kmean():
     """Test the intersection and surface points"""
-    data = np.array([[-1, 0], [1, 0]])
+    data = np.array([[-1, 0], [1, 0], [3, 0], [3, 2]])
 
     dimension = 2
-    kmeans = KMeans(init="k-means++", n_clusters=2, n_init=2)
+    kmeans = KMeans(init="k-means++", n_clusters=4, n_init=2)
     kmeans.fit(data)
 
     kmeans.n_features_in_ = dimension
-    kmeans.cluster_centers_ = (
-        np.array([[-1, 0], [1, 0]]).copy(order="C").astype(np.double)
-    )
+    kmeans.cluster_centers_ = np.array(data).copy(order="C").astype(np.double)
 
     region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=0)
 
@@ -725,9 +700,75 @@ def test_two_cluster_kmean():
     )
     assert np.allclose(normal_direction, [0, 1])
 
+    # Test gammas
+    position = np.array([-0.4, 0.1])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1
+
+    position = np.array([-3.0, 1.6])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma < 1
+
+    position = np.array([0.2, 0.1])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma < 1
+
+
+def test_a_matrix_loader():
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    main_learner = MotionLearnerThrougKMeans(data)
+
+    plt.ion()
+    plt.close("all")
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax)
+
+    # Find obstacle most to the left
+    ind_left = np.argmin(main_learner.kmeans.cluster_centers_[0, :])
+
+    # Plot a specific obstacle
+    region_obstacle = KmeansObstacle(
+        radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ind_left
+    )
+
+    # Test normal
+    n_points = 10
+    # x_min, x_max = [-5, 0]
+    # y_min, y_max = [-1, 2.5]
+    x_min, x_max = [-5, -3]
+    y_min, y_max = [-1, 1.0]
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, n_points),
+        np.linspace(y_min, y_max, n_points),
+    )
+
+    position = np.array([-4.5, 0.75])
+    position_surface = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+
+    positions = np.array([xx.flatten(), yy.flatten()])
+    normals = np.zeros_like(positions)
+
+    for ii in range(positions.shape[1]):
+        if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
+            continue
+
+        normals[:, ii] = region_obstacle.get_normal_direction(
+            positions[:, ii], in_global_frame=True
+        )
+
+    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :])
+
 
 if (__name__) == "__main__":
-    # test_a_matrix_loader()
-    test_two_cluster_kmean()
+    # test_four_cluster_kmean()
+    test_a_matrix_loader()
 
     print("Tests finished.")
