@@ -20,6 +20,7 @@ import sys
 import copy
 import random
 import warnings
+import math
 
 import numpy as np
 from numpy import linalg as LA
@@ -673,8 +674,11 @@ class KmeansObstacle(Obstacle):
             )
         # self.surface_points = np.zeros((self.dimension, w))
 
-        angle = np.linspace(0, 2 * pi, n_points)
-        self.surface_points = np.vstack(np.cos(angle), np.sin(angle))
+        angle = np.linspace(0, 2 * math.pi, n_points)
+        self.surface_points = (
+            np.vstack((np.cos(angle), np.sin(angle)))
+            + np.tile(self._kmeans.cluster_centers_[self._index, :], (n_points, 1)).T
+        )
 
         for ii in range(n_points):
             self.surface_points[:, ii] = self.get_point_on_surface(
@@ -786,32 +790,14 @@ def _test_a_matrix_loader(save_figure=False):
             radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
         )
         # Test normal
-        n_points = 10
-
-        ff = 1.2
-        x_min = (
-            main_learner.kmeans.cluster_centers_[ii, 0]
-            - main_learner.region_radius_ * ff
-        )
-        x_max = (
-            main_learner.kmeans.cluster_centers_[ii, 0]
-            + main_learner.region_radius_ * ff
-        )
-        y_min = (
-            main_learner.kmeans.cluster_centers_[ii, 1]
-            - main_learner.region_radius_ * ff
-        )
-        y_max = (
-            main_learner.kmeans.cluster_centers_[ii, 1]
-            + main_learner.region_radius_ * ff
+        positions = get_grid_points(
+            main_learner.kmeans.cluster_centers_[ii, 0],
+            main_learner.region_radius_ * ff,
+            main_learner.kmeans.cluster_centers_[ii, 1],
+            main_learner.region_radius_ * ff,
+            n_points=10,
         )
 
-        xx, yy = np.meshgrid(
-            np.linspace(x_min, x_max, n_points),
-            np.linspace(y_min, y_max, n_points),
-        )
-
-        positions = np.array([xx.flatten(), yy.flatten()])
         normals = np.zeros_like(positions)
 
         for ii in range(positions.shape[1]):
@@ -834,8 +820,74 @@ def _test_a_matrix_loader(save_figure=False):
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
+def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
+    x_min = mean_x - delta_x
+    x_max = mean_x + delta_x
+
+    y_min = mean_y - delta_y
+    y_max = mean_y + delta_y
+
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, n_points),
+        np.linspace(y_min, y_max, n_points),
+    )
+
+    return np.array([xx.flatten(), yy.flatten()])
+
+
+def _test_gamma_values(save_figure=False):
+    plt.ion()
+    plt.close("all")
+
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    main_learner = MotionLearnerThrougKMeans(data)
+
+    fig, ax_kmeans = plt.subplots()
+    main_learner.plot_kmeans(ax=ax_kmeans)
+
+    x_lim = ax_kmeans.get_xlim()
+    y_lim = ax_kmeans.get_ylim()
+
+    ii = 2
+    fig, ax = plt.subplots()
+
+    for ii in range(main_learner.kmeans.n_clusters):
+        # Plot a specific obstacle
+        region_obstacle = KmeansObstacle(
+            radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
+        )
+
+        positions = region_obstacle.evaluate_surface_points()
+
+        ax.plot(positions[0, :], positions[1, :], color="black")
+        ax.axis("equal")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        # Test normal
+        positions = get_grid_points(
+            main_learner.kmeans.cluster_centers_[ii, 0],
+            main_learner.region_radius_ * ff,
+            main_learner.kmeans.cluster_centers_[ii, 1],
+            main_learner.region_radius_ * ff,
+            n_points=10,
+        )
+
+        for ii in range(positions.shape[1]):
+
+        # fig, axs = plt.subplots(2, 2, figsize=(14, 9))
+        # for ii in range(main_learner.kmeans.n_clusters):
+        # ax = axs[ii % 2, ii // 2]
+
+
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    _test_a_matrix_loader(save_figure=True)
+    # _test_a_matrix_loader(save_figure=False)
+
+    _test_gamma_values(save_figure=False)
 
     print("Tests finished.")
