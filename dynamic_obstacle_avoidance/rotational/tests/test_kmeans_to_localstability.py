@@ -32,7 +32,8 @@ import networkx as nx
 
 from sklearn.cluster import KMeans
 
-from vartools.dynamical_systems import LinearSystem
+from vartools.dynamical_systems import LinearSystem, ConstantValue
+
 from vartools.directional_space import get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
 
@@ -161,7 +162,7 @@ class HandwrittingHandler:
             self.varX = None
 
 
-def find_intersection_line_and_plane(
+def find_intersection_between_line_and_plane(
     line_position: Vector,
     line_direction: Vector,
     plane_position: Vector,
@@ -230,24 +231,29 @@ class MotionLearnerThrougKMeans:
         self._evaluate_cluster_hierarchy()
         self.region_radius_ = self.radius_factor * np.max(self.distances_parent)
 
+        self._evaluate_mean_dynamics()
+
     def _evaluate_mean_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
 
         self._dynamics = []
 
         for ii, label in enumerate(self.get_feature_labels()):
-            if self._graph.nodes[label]["parent"] < 0:
-                # Parent is root
+            # if self._graph.nodes[label].pre < 0:
+            # pred = next(self._graph.predecessors(label))[0]
+            if self._graph.nodes[label]["level"] == 0:
+                # Zero level => Parent is root
                 self._dynamics.append(
                     LinearSystem(attractor_position=self.data.attractor)
                 )
 
-            ind = np.arange(self.get_number_of_features)[self.kmeans.labels_ == label]
-            direction = np.mean(self.data.position[:, ind], axis=0)
+            ind = np.arange(self.kmeans.labels_.shape[0])[self.kmeans.labels_ == label]
+            direction = np.mean(self.data.velocity[ind, :], axis=0)
 
             if norm_dir := LA.norm(direction):
                 direction = direction / LA.norm(direction)
             else:
+                # Use the K-Means dynamics as default
                 direction = self._graph.nodes[label]["direction"]
 
             self._dynamics.append(ConstantValue(direction))
@@ -263,7 +269,7 @@ class MotionLearnerThrougKMeans:
             + self.kmeans.cluster_centers_[ind_parent, :]
         )
 
-        intersection_position = find_intersection_line_and_plane(
+        intersection_position = find_intersection_between_line_and_plane(
             self.kmeans.cluster_centers_[ind_node, :],
             direction,
             mean_position,
@@ -277,7 +283,7 @@ class MotionLearnerThrougKMeans:
             return
 
         for ii in range(it_max):
-            raise NotImplementedError("Automatically update the label.")
+            raise NotImplementedError("TODO: Automatically update the label.")
 
     def _evaluate_cluster_hierarchy(self):
         """Evaluates the sequence of each cluster along the trajectory.
@@ -306,7 +312,6 @@ class MotionLearnerThrougKMeans:
             raise NotImplementedError()
 
         # Distance to attractor has to be multiplied by two, to ensure that it's within
-        # breakpoint()
         self.distances_parent[0] = dir_norm * 2.0
 
         self._graph.add_node(sorted_list[0], level=0, direction=direction)
@@ -490,6 +495,10 @@ class KmeansObstacle(Obstacle):
         return self.ind_relevant.shape[0]
 
     @property
+    def ind_relevant_and_self(self) -> np.ndarray:
+        return np.hstack((self.ind_relevant, self._index))
+
+    @property
     def center_position(self) -> Vector:
         """Returns global center point."""
         return self._kmeans.cluster_centers_[self._index, :]
@@ -556,37 +565,47 @@ class KmeansObstacle(Obstacle):
             position[0] = 1
             return position
 
-        self.normal_directions[self._index, :] = relative_position / position_norm
+        normal_directions = self.normal_directions
+        normal_directions[self._index, :] = relative_position / position_norm
 
-        distances_surface = self._get_normal_distances(
-            relative_position, is_boundary=False
-        )
+        distances_surface = self._get_normal_distances(position, is_boundary=False)
         distances_surface[self._index] = position_norm - self.radius
 
         if not LA.norm(distances_surface):
             # Directly on the boundary
             if not in_global_frame:
                 self.pose.transform_position_from_relative(
-                    self.normal_directions[self._index, :]
+                    normal_directions[self._index, :]
                 )
-            return self.normal_directions[self._index, :]
+            return normal_directions[self._index, :]
 
-        if (max_dist := np.max(distances_surface)) < 0:
-            # Position is inside
+        max_dist = np.max(distances_surface[self.ind_relevant_and_self])
+        if max_dist < 0:
+            # Position is inside -> project it to the outside
             position = (
                 self.center_position
-                + (position_norm - max_dist) ** 2 / position_norm * relative_position
+                + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
             )
 
             distances_surface = self._get_normal_distances(position, is_boundary=False)
+            distances_surface[self._index] = (
+                LA.norm(position - self.center_position) - self.radius
+            )
+
+        elif max_dist == 0:
+            # Point is exactly on the surface -> return normal
+            if in_global_frame:
+                return relative_position
+            else:
+                return self.pose.transform_direction_to_relative(relative_position)
 
         # Only consider positive ones for the weight
         weights = np.maximum(distances_surface, 0)
         weights = weights / np.sum(weights)
 
         weighted_direction = get_directional_weighted_sum(
-            null_direction=self.normal_directions[self._index, :],
-            directions=self.normal_directions.T,
+            null_direction=normal_directions[self._index, :],
+            directions=normal_directions.T,
             weights=weights,
         )
 
@@ -645,8 +664,24 @@ class KmeansObstacle(Obstacle):
             ),
             axis=1,
         )
-
         return center_dists
+
+    def evaluate_surface_points(self, n_points: int = 100) -> VectorArray:
+        if self.dimension != 2:
+            raise NotImplementedError(
+                "This is only implemented and defined for 2-dimensions."
+            )
+        # self.surface_points = np.zeros((self.dimension, w))
+
+        angle = np.linspace(0, 2 * pi, n_points)
+        self.surface_points = np.vstack(np.cos(angle), np.sin(angle))
+
+        for ii in range(n_points):
+            self.surface_points[:, ii] = self.get_point_on_surface(
+                self.surface_points[:, ii], in_global_frame=True
+            )
+
+        return self.surface_points
 
 
 def test_four_cluster_kmean():
@@ -714,7 +749,10 @@ def test_four_cluster_kmean():
     assert gamma < 1
 
 
-def test_a_matrix_loader():
+def _test_a_matrix_loader(save_figure=False):
+    plt.ion()
+    plt.close("all")
+
     RANDOM_SEED = 1
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -722,53 +760,82 @@ def test_a_matrix_loader():
     data = HandwrittingHandler(file_name="2D_Ashape.mat")
     main_learner = MotionLearnerThrougKMeans(data)
 
-    plt.ion()
-    plt.close("all")
+    fig, ax_kmeans = plt.subplots()
+    main_learner.plot_kmeans(ax=ax_kmeans)
+    if save_figure:
+        fig_name = "kmeans_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax)
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    ax.set_xlim(ax_kmeans.get_xlim())
+    ax.set_ylim(ax_kmeans.get_ylim())
+    if save_figure:
+        fig_name = "raw_data_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-    # Find obstacle most to the left
-    ind_left = np.argmin(main_learner.kmeans.cluster_centers_[0, :])
+    fig, axs = plt.subplots(2, 2, figsize=(14, 9))
+    for ii in range(main_learner.kmeans.n_clusters):
+        ax = axs[ii % 2, ii // 2]
 
-    # Plot a specific obstacle
-    region_obstacle = KmeansObstacle(
-        radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ind_left
-    )
+        main_learner.plot_kmeans(ax=ax)
 
-    # Test normal
-    n_points = 10
-    # x_min, x_max = [-5, 0]
-    # y_min, y_max = [-1, 2.5]
-    x_min, x_max = [-5, -3]
-    y_min, y_max = [-1, 1.0]
-    xx, yy = np.meshgrid(
-        np.linspace(x_min, x_max, n_points),
-        np.linspace(y_min, y_max, n_points),
-    )
+        # Plot a specific obstacle
+        region_obstacle = KmeansObstacle(
+            radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
+        )
+        # Test normal
+        n_points = 10
 
-    position = np.array([-4.5, 0.75])
-    position_surface = region_obstacle.get_point_on_surface(
-        position, in_global_frame=True
-    )
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-
-    positions = np.array([xx.flatten(), yy.flatten()])
-    normals = np.zeros_like(positions)
-
-    for ii in range(positions.shape[1]):
-        if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
-            continue
-
-        normals[:, ii] = region_obstacle.get_normal_direction(
-            positions[:, ii], in_global_frame=True
+        ff = 1.2
+        x_min = (
+            main_learner.kmeans.cluster_centers_[ii, 0]
+            - main_learner.region_radius_ * ff
+        )
+        x_max = (
+            main_learner.kmeans.cluster_centers_[ii, 0]
+            + main_learner.region_radius_ * ff
+        )
+        y_min = (
+            main_learner.kmeans.cluster_centers_[ii, 1]
+            - main_learner.region_radius_ * ff
+        )
+        y_max = (
+            main_learner.kmeans.cluster_centers_[ii, 1]
+            + main_learner.region_radius_ * ff
         )
 
-    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :])
+        xx, yy = np.meshgrid(
+            np.linspace(x_min, x_max, n_points),
+            np.linspace(y_min, y_max, n_points),
+        )
+
+        positions = np.array([xx.flatten(), yy.flatten()])
+        normals = np.zeros_like(positions)
+
+        for ii in range(positions.shape[1]):
+            if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
+                continue
+
+            normals[:, ii] = region_obstacle.get_normal_direction(
+                positions[:, ii], in_global_frame=True
+            )
+
+            if any(np.isnan(normals[:, ii])):
+                breakpoint()
+
+        ax.quiver(
+            positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=15
+        )
+
+    if save_figure:
+        fig_name = "kmeans_obstacles_multiplot_normal"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    test_a_matrix_loader()
+    _test_a_matrix_loader(save_figure=True)
 
     print("Tests finished.")
