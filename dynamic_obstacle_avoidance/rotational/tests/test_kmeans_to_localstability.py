@@ -473,10 +473,15 @@ class KmeansObstacle(Obstacle):
         weights = center_dists / dists_sum
 
         return get_directional_weighted_sum(
-            normal_directions[:, ind],
-            weigths=weights
-            normal_directions
+            reference_direction=normal_directions[:, ind],
+            directions=normal_directions
+            weigths=weights,
         )
+
+
+class GMR():
+    pass
+
 
 
 def test_a_matrix_loader():
