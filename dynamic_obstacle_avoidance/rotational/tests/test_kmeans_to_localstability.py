@@ -21,11 +21,12 @@ import random
 import warnings
 import math
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
-
 
 import networkx as nx
 
@@ -42,8 +43,41 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
-
 NodeType = int
+
+
+@dataclass
+class MotionDataHandler:
+    """Stores (and imports) data for evaluation with the various learners.
+    
+    Attributes
+    ----------
+    positions: numpy-VectorArray of shape [n_datapoints x dimension]
+    velocities: numpy-VectorArray of shape [n_datapoints x dimension]
+    directions: numpy-VectorArray of shape [n_datapoints - 1 x dimension]
+    time: numpy-Array of shape[n_datapoints]
+    """
+    position: VectorArray = None
+    velocity: VectorArray = None
+    sequence_value: VectorArray = None
+    
+    direction: VectorArray = None
+
+    attractor: Vector = None
+
+    @property
+    def dimension(self) -> int:
+        return self.position.shape[1]
+
+    # def normalize(self):
+    #     self.mean_positions = np.mean(self.positions)
+    #     self.var_positions = np.variance(self.positions)
+    #     self.positions = (seplf.positions - self.mean_positions) / self.var_positions
+
+    @property
+    def X(self) -> VectorArray:
+        # return np.hstack((self.positions, self.velocities, self.directions, self.time))
+        return np.hstack((self.position, self.velocity, self.sequence_value.reshape(-1, 1)))
 
 
 class MotionLearnerThrougKMeans:
@@ -63,11 +97,6 @@ class MotionLearnerThrougKMeans:
 
     def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
-
-    def get_n_features(self) -> int:
-        """Returns number of features."""
-        # TODO: depreciated
-        return self.kmeans.cluster_centers_.shape[0]
 
     def get_number_of_features(self) -> int:
         """Returns number of features."""
@@ -100,14 +129,16 @@ class MotionLearnerThrougKMeans:
         self._evaluate_cluster_hierarchy()
         self.region_radius_ = self.radius_factor * np.max(self.distances_parent)
 
-        self._evaluate_mean_dynamics()
+        self._evaluate_local_dynamics()
+        # breakpoint()
 
-    def _evaluate_mean_dynamics(self):
+    def _evaluate_local_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
 
+        # self._dynamics = [None for _ in self.get_number_of_features()]
         self._dynamics = []
 
-        for ii, label in enumerate(self.get_feature_labels()):
+        for label in self.get_feature_labels():
             # if self._graph.nodes[label].pre < 0:
             # pred = next(self._graph.predecessors(label))[0]
             if self._graph.nodes[label]["level"] == 0:
@@ -115,17 +146,20 @@ class MotionLearnerThrougKMeans:
                 self._dynamics.append(
                     LinearSystem(attractor_position=self.data.attractor)
                 )
+                continue
 
             ind = np.arange(self.kmeans.labels_.shape[0])[self.kmeans.labels_ == label]
+            
             direction = np.mean(self.data.velocity[ind, :], axis=0)
 
-            if norm_dir := LA.norm(direction):
-                direction = direction / LA.norm(direction)
+            if (norm_dir := LA.norm(direction)):
+                direction = direction / norm_dir
             else:
                 # Use the K-Means dynamics as default
                 direction = self._graph.nodes[label]["direction"]
 
             self._dynamics.append(ConstantValue(direction))
+            # breakpoint()
 
     def _check_that_main_direction_is_towards_parent(
         self, ind_node: NodeType, direction: Vector, it_max: int = 100
@@ -208,12 +242,19 @@ class MotionLearnerThrougKMeans:
 
             self._graph.add_edge(ind_node, ind_parent)
 
-    def plot_kmeans(self, mesh_distance: float = 0.01, limit_to_radius=True, ax=None):
+    def plot_kmeans(self, mesh_distance: float = 0.01, limit_to_radius=True, ax=None, x_lim=None, y_lim=None):
         reduced_data = self.data.X[:, : self.data.dimension]
 
-        # Plot the decision boundary. For that, we will assign a color to each
-        x_min, x_max = reduced_data[:, 0].min() - 1, reduced_data[:, 0].max() + 1
-        y_min, y_max = reduced_data[:, 1].min() - 1, reduced_data[:, 1].max() + 1
+        if x_lim is None:
+            # Plot the decision boundary. For that, we will assign a color to each
+            x_min, x_max = reduced_data[:, 0].min() - 1, reduced_data[:, 0].max() + 1
+        else:
+            x_min, x_max = x_lim
+        if y_lim is None:
+            y_min, y_max = reduced_data[:, 1].min() - 1, reduced_data[:, 1].max() + 1
+        else:
+            y_min, y_max = y_lim
+            
         xx, yy = np.meshgrid(
             np.arange(x_min, x_max, mesh_distance),
             np.arange(y_min, y_max, mesh_distance),
@@ -311,13 +352,15 @@ class KmeansObstacle(Obstacle):
         self._index = index
         self.radius = radius
 
+        self.successor_index = None
+
         super().__init__(is_boundary=is_boundary, **kwargs)
 
         # Only calculate the normal direction between obstacles once (!)
         # and the ones which are interesting
         self.ind_relevant = np.arange(self.num_clusters)
         self.ind_relevant = np.delete(self.ind_relevant, self._index)
-
+        
         self._center_positions = 0.5 * (
             np.tile(
                 self._kmeans.cluster_centers_[self._index, :],
@@ -558,7 +601,7 @@ class KmeansObstacle(Obstacle):
 
 def test_four_cluster_kmean():
     """Test the intersection and surface points"""
-    data = np.array([[-1, 0], [1, 0], [3, 0], [3, 2]])
+    data = np.array([[-1, 0], [1, 0], [1, 2], [2, -1]])
 
     dimension = 2
     kmeans = KMeans(init="k-means++", n_clusters=4, n_init=2)
@@ -570,7 +613,7 @@ def test_four_cluster_kmean():
     region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=0)
 
     # Test 1
-    position = np.array([2, 1])
+    position = np.array([2, -1])
     surface_position = region_obstacle.get_point_on_surface(
         position, in_global_frame=True
     )
@@ -580,9 +623,9 @@ def test_four_cluster_kmean():
         position, in_global_frame=True
     )
     # Is in between the two vectors
-    assert np.cross([1, 0], normal_direction) > 0
+    assert np.cross([-1, 0], normal_direction) > 0
     assert np.cross([0, 1], normal_direction) < 0
-
+    
     # Test 2
     position = np.array([0.25, 0])
     surface_position = region_obstacle.get_point_on_surface(
@@ -596,29 +639,31 @@ def test_four_cluster_kmean():
     assert np.allclose(normal_direction, [1, 0])
 
     # Test 3
-    position = np.array([-1, 2])
+    position = np.array([-1, -2])
     surface_position = region_obstacle.get_point_on_surface(
         position, in_global_frame=True
     )
-    assert np.allclose(surface_position, [-1, 1.5])
+    assert np.allclose(surface_position, [-1, -1.5])
 
     normal_direction = region_obstacle.get_normal_direction(
         position, in_global_frame=True
     )
-    assert np.allclose(normal_direction, [0, 1])
+    assert np.allclose(normal_direction, [0, -1])
 
     # Test gammas
-    position = np.array([-0.4, 0.1])
+    position = np.array([-0.4, -0.1])
     gamma = region_obstacle.get_gamma(position, in_global_frame=True)
     assert gamma > 1
 
-    position = np.array([-3.0, 1.6])
+    position = np.array([-3.0, -1.6])
     gamma = region_obstacle.get_gamma(position, in_global_frame=True)
     assert gamma < 1
 
-    position = np.array([0.2, 0.1])
+    position = np.array([0.2, -0.1])
     gamma = region_obstacle.get_gamma(position, in_global_frame=True)
     assert gamma < 1
+
+
 
 
 def _test_a_matrix_loader(save_figure=False):
@@ -691,6 +736,7 @@ def _test_a_matrix_loader(save_figure=False):
 
 
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
+    """ Returns grid based on input x and y values."""
     x_min = mean_x - delta_x
     x_max = mean_x + delta_x
 
@@ -705,9 +751,9 @@ def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
     return np.array([xx.flatten(), yy.flatten()])
 
 
-def _test_gamma_values(save_figure=False):
+def _test_modulation_values(save_figure=False):
     plt.ion()
-    plt.close("all")
+    # plt.close("all")
 
     RANDOM_SEED = 1
     random.seed(RANDOM_SEED)
@@ -732,7 +778,6 @@ def _test_gamma_values(save_figure=False):
         )
 
         positions = region_obstacle.evaluate_surface_points()
-
         ax.plot(positions[0, :], positions[1, :], color="black")
         ax.axis("equal")
         ax.set_xlim(x_lim)
@@ -751,19 +796,99 @@ def _test_gamma_values(save_figure=False):
 
         velocities = np.zeros_like(positions)
 
-        for ii in range(positions.shape[1]):
-            velocities = 0
-            pass
+        for jj in range(positions.shape[1]):
+            if region_obstacle.get_gamma(positions[:, jj], in_global_frame=True) < 1:
+                continue
+            
+            velocities[:, jj] = main_learner._dynamics[ii].evaluate(positions[:, jj])
 
+        ax.quiver(
+            positions[0, :], positions[1, :], velocities[0, :], velocities[1, :], scale=15
+        )
+
+        plt.show()
+
+    if save_figure:
+        fig_name = "consecutive_linear_dynamics"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
         # fig, axs = plt.subplots(2, 2, figsize=(14, 9))
         # for ii in range(main_learner.kmeans.n_clusters):
         # ax = axs[ii % 2, ii // 2]
 
+        
+def test_gamma_and_modulation(visualize=False, save_figure=False):
+    """Test the intersection and surface points"""
+    # Generate very simple dataset
+    datahandler = MotionDataHandler(position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]]))
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
+    datahandler.attractor = np.array([0.5, 2])
+    datahandler.sequence_value = np.linspace(0, 1, 4)
+
+    x_lim = [-3, 5]
+    y_lim = [-2.0, 4.0]
+
+    # Learn KMeans from DataSet
+    main_learner = MotionLearnerThrougKMeans(datahandler)
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+    ax.axis("equal")
+
+    fig, ax = plt.subplots()
+    
+    for ii in range(main_learner.kmeans.n_clusters):
+        # Plot a specific obstacle
+        region_obstacle = KmeansObstacle(
+            radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
+        )
+
+        positions = region_obstacle.evaluate_surface_points()
+        ax.plot(positions[0, :], positions[1, :], color="black")
+
+
+        positions = get_grid_points(
+            main_learner.kmeans.cluster_centers_[ii, 0],
+            main_learner.region_radius_ * ff,
+            main_learner.kmeans.cluster_centers_[ii, 1],
+            main_learner.region_radius_ * ff,
+            n_points=10,
+        )
+
+        gammas = np.zeros(positions.shape[0])
+        
+        for jj in range(positions.shape[1]):
+            if region_obstacle.get_gamma(positions[:, jj], in_global_frame=True) < 1:
+                continue
+            
+            velocities[:, jj] = main_learner._dynamics[ii].evaluate(positions[:, jj])
+
+        
+        # region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=ind)
+
+        # positions = region_obstacle.evaluate_surface_points(n_points=201)
+        # ax.plot(positions[0, :], positions[1, :], color="black")
+        # ax.scatter(region_obstacle.center_position[0],
+        #            region_obstacle.center_position[1],
+        #            marker="+",
+        #            s=150, color="black"
+        # )
+        
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+
+        # positions = get_grid_points(
+        #     0, 3, 0.5, 3
+        # )
+
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    _test_a_matrix_loader(save_figure=False)
-
-    # _test_gamma_values(save_figure=False)
+    test_gamma_and_modulation()
+    # _test_a_matrix_loader(save_figure=False)
+    
+    # _test_gamma_values(save_figure=True)
 
     print("Tests finished.")
