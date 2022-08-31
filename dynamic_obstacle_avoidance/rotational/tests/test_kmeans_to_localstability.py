@@ -49,7 +49,7 @@ NodeType = int
 @dataclass
 class MotionDataHandler:
     """Stores (and imports) data for evaluation with the various learners.
-    
+
     Attributes
     ----------
     positions: numpy-VectorArray of shape [n_datapoints x dimension]
@@ -57,10 +57,11 @@ class MotionDataHandler:
     directions: numpy-VectorArray of shape [n_datapoints - 1 x dimension]
     time: numpy-Array of shape[n_datapoints]
     """
+
     position: VectorArray = None
     velocity: VectorArray = None
     sequence_value: VectorArray = None
-    
+
     direction: VectorArray = None
 
     attractor: Vector = None
@@ -77,7 +78,9 @@ class MotionDataHandler:
     @property
     def X(self) -> VectorArray:
         # return np.hstack((self.positions, self.velocities, self.directions, self.time))
-        return np.hstack((self.position, self.velocity, self.sequence_value.reshape(-1, 1)))
+        return np.hstack(
+            (self.position, self.velocity, self.sequence_value.reshape(-1, 1))
+        )
 
 
 class MotionLearnerThrougKMeans:
@@ -149,10 +152,10 @@ class MotionLearnerThrougKMeans:
                 continue
 
             ind = np.arange(self.kmeans.labels_.shape[0])[self.kmeans.labels_ == label]
-            
+
             direction = np.mean(self.data.velocity[ind, :], axis=0)
 
-            if (norm_dir := LA.norm(direction)):
+            if norm_dir := LA.norm(direction):
                 direction = direction / norm_dir
             else:
                 # Use the K-Means dynamics as default
@@ -242,7 +245,14 @@ class MotionLearnerThrougKMeans:
 
             self._graph.add_edge(ind_node, ind_parent)
 
-    def plot_kmeans(self, mesh_distance: float = 0.01, limit_to_radius=True, ax=None, x_lim=None, y_lim=None):
+    def plot_kmeans(
+        self,
+        mesh_distance: float = 0.01,
+        limit_to_radius=True,
+        ax=None,
+        x_lim=None,
+        y_lim=None,
+    ):
         reduced_data = self.data.X[:, : self.data.dimension]
 
         if x_lim is None:
@@ -254,7 +264,7 @@ class MotionLearnerThrougKMeans:
             y_min, y_max = reduced_data[:, 1].min() - 1, reduced_data[:, 1].max() + 1
         else:
             y_min, y_max = y_lim
-            
+
         xx, yy = np.meshgrid(
             np.arange(x_min, x_max, mesh_distance),
             np.arange(y_min, y_max, mesh_distance),
@@ -360,7 +370,7 @@ class KmeansObstacle(Obstacle):
         # and the ones which are interesting
         self.ind_relevant = np.arange(self.num_clusters)
         self.ind_relevant = np.delete(self.ind_relevant, self._index)
-        
+
         self._center_positions = 0.5 * (
             np.tile(
                 self._kmeans.cluster_centers_[self._index, :],
@@ -441,7 +451,9 @@ class KmeansObstacle(Obstacle):
     def num_clusters(self) -> int:
         return self._kmeans.cluster_centers_.shape[0]
 
-    def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
+    def get_gamma_from_point(
+        self, position: Vector, in_global_frame: bool = False
+    ) -> float:
         if not in_global_frame:
             position = self.pose.transform_position_from_relative(position)
 
@@ -465,31 +477,78 @@ class KmeansObstacle(Obstacle):
                 return distance_surface / distance_position
             return distance_surface / distance_position
 
+    def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
+        if not in_global_frame:
+            position = self.pose.transform_position_from_relative(position)
+
+        relative_position = position - self.center_position
+        if not (position_norm := LA.norm(relative_position)):
+            if self.is_boundary:
+                return sys.float_info.max
+            else:
+                0
+
+        # weights = self._get_surface_weights(position)
+        distances_surface = self._get_normal_distances(position, is_boundary=False)
+        distances_surface[self._index] = position_norm - self.radius
+
+        max_dist = np.max(distances_surface[self.ind_relevant_and_self])
+        if max_dist < 0:
+            # Position is inside -> project it to the outside
+            position = (
+                self.center_position
+                + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
+            )
+
+            weights = self._get_normal_distances(position, is_boundary=False)
+            weights[self._index] = (
+                LA.norm(position - self.center_position) - self.radius
+            )
+
+        elif max_dist == 0:
+            # Point is exactly on the surface -> return relative position
+            direction = relative_position / position_norm
+            if in_global_frame:
+                return direction
+            else:
+                return self.pose.transform_direction_to_relative(direction)
+
+        else:
+            weights = distances_surface
+
+        # Only consider positive ones for the weight
+        weights = np.maximum(weights, 0)
+        weights = weights / np.sum(weights)
+
+        mean_dist = np.sum(weights * distances_surface)
+
+        if self.is_boundary:
+            return (position_norm - mean_dist) / position_norm
+
+        else:
+            # Normal obstacle
+            if mean_dist > 0:
+                mean_dist / self.radius + 1
+
+            else:
+                # Proportional inside
+                return position_norm / (position_norm - mean_dist)
+
     def get_normal_direction(self, position, in_global_frame: bool = False) -> Vector:
         """Returns smooth-weighted normal direction around the obstacles."""
         if not in_global_frame:
             position = self.pose.transform_position_from_relative(position)
 
-        relative_position = position - self.center_position
-
-        if not (position_norm := LA.norm(relative_position)):
+        direction = position - self.center_position
+        if not (position_norm := LA.norm(direction)):
             # Some direction (normed).
             position[0] = 1
             return position
+        direction = direction / position_norm
 
-        normal_directions = self.normal_directions
-        normal_directions[self._index, :] = relative_position / position_norm
-
+        # weights = self._get_surface_weights(position)
         distances_surface = self._get_normal_distances(position, is_boundary=False)
         distances_surface[self._index] = position_norm - self.radius
-
-        if not LA.norm(distances_surface):
-            # Directly on the boundary
-            if not in_global_frame:
-                self.pose.transform_position_from_relative(
-                    normal_directions[self._index, :]
-                )
-            return normal_directions[self._index, :]
 
         max_dist = np.max(distances_surface[self.ind_relevant_and_self])
         if max_dist < 0:
@@ -505,19 +564,23 @@ class KmeansObstacle(Obstacle):
             )
 
         elif max_dist == 0:
-            # Point is exactly on the surface -> return normal
+            # Point is exactly on the surface -> return relative position
             if in_global_frame:
-                return relative_position
+                return direction
             else:
-                return self.pose.transform_direction_to_relative(relative_position)
+                return self.pose.transform_direction_to_relative(direction)
 
         # Only consider positive ones for the weight
         weights = np.maximum(distances_surface, 0)
         weights = weights / np.sum(weights)
 
+        # The deviation at index is zero -> do the summing without it
+        # instead of adding it to the normal_directions
+        weights[self._index] = 0
+
         weighted_direction = get_directional_weighted_sum(
-            null_direction=normal_directions[self._index, :],
-            directions=normal_directions.T,
+            null_direction=direction,
+            directions=self.normal_directions.T,
             weights=weights,
         )
 
@@ -525,6 +588,32 @@ class KmeansObstacle(Obstacle):
             return weighted_direction
         else:
             return self.pose.transform_direction_to_relative(weighted_direction)
+
+    def _get_surface_weights(self, position: Vector) -> np.ndarray:
+        """Get the surface weights in the global frame."""
+        relative_position = position - self.center_position
+        position_norm = LA.norm(relative_position)
+
+        distances_surface = self._get_normal_distances(position, is_boundary=False)
+        distances_surface[self._index] = position_norm - self.radius
+
+        max_dist = np.max(distances_surface[self.ind_relevant_and_self])
+        if max_dist < 0:
+            # Position is inside -> project it to the outside
+            position = (
+                self.center_position
+                + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
+            )
+
+            distances_surface = self._get_normal_distances(position, is_boundary=False)
+            distances_surface[self._index] = (
+                LA.norm(position - self.center_position) - self.radius
+            )
+
+        elif max_dist == 0:
+            return np.zeros_like(distances_surface)
+
+        return distances_surface
 
     def get_point_on_surface(
         self, position: Vector, in_global_frame: bool = False
@@ -625,7 +714,7 @@ def test_four_cluster_kmean():
     # Is in between the two vectors
     assert np.cross([-1, 0], normal_direction) > 0
     assert np.cross([0, 1], normal_direction) < 0
-    
+
     # Test 2
     position = np.array([0.25, 0])
     surface_position = region_obstacle.get_point_on_surface(
@@ -662,8 +751,6 @@ def test_four_cluster_kmean():
     position = np.array([0.2, -0.1])
     gamma = region_obstacle.get_gamma(position, in_global_frame=True)
     assert gamma < 1
-
-
 
 
 def _test_a_matrix_loader(save_figure=False):
@@ -736,7 +823,7 @@ def _test_a_matrix_loader(save_figure=False):
 
 
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
-    """ Returns grid based on input x and y values."""
+    """Returns grid based on input x and y values."""
     x_min = mean_x - delta_x
     x_max = mean_x + delta_x
 
@@ -799,11 +886,15 @@ def _test_modulation_values(save_figure=False):
         for jj in range(positions.shape[1]):
             if region_obstacle.get_gamma(positions[:, jj], in_global_frame=True) < 1:
                 continue
-            
+
             velocities[:, jj] = main_learner._dynamics[ii].evaluate(positions[:, jj])
 
         ax.quiver(
-            positions[0, :], positions[1, :], velocities[0, :], velocities[1, :], scale=15
+            positions[0, :],
+            positions[1, :],
+            velocities[0, :],
+            velocities[1, :],
+            scale=15,
         )
 
         plt.show()
@@ -815,11 +906,19 @@ def _test_modulation_values(save_figure=False):
         # for ii in range(main_learner.kmeans.n_clusters):
         # ax = axs[ii % 2, ii // 2]
 
-        
+
 def test_gamma_and_modulation(visualize=False, save_figure=False):
     """Test the intersection and surface points"""
+    plt.ion()
+
     # Generate very simple dataset
-    datahandler = MotionDataHandler(position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]]))
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    datahandler = MotionDataHandler(
+        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
+    )
     datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
     datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
     datahandler.attractor = np.array([0.5, 2])
@@ -836,34 +935,42 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
     ax.axis("equal")
 
     fig, ax = plt.subplots()
-    
+
     for ii in range(main_learner.kmeans.n_clusters):
         # Plot a specific obstacle
         region_obstacle = KmeansObstacle(
             radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
         )
 
+        aa = [ii for ii in main_learner._graph.predecessors(ii)]
+        breakpoint()
+        region_obstacle.successor_index = []
+
         positions = region_obstacle.evaluate_surface_points()
         ax.plot(positions[0, :], positions[1, :], color="black")
 
-
+        ff = 1.2
+        n_grid = 20
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
             main_learner.region_radius_ * ff,
             main_learner.kmeans.cluster_centers_[ii, 1],
             main_learner.region_radius_ * ff,
-            n_points=10,
+            n_points=n_grid,
         )
 
-        gammas = np.zeros(positions.shape[0])
-        
-        for jj in range(positions.shape[1]):
-            if region_obstacle.get_gamma(positions[:, jj], in_global_frame=True) < 1:
-                continue
-            
-            velocities[:, jj] = main_learner._dynamics[ii].evaluate(positions[:, jj])
+        gammas = np.zeros(positions.shape[1])
 
-        
+        position = np.array([0.91, -0.16])
+        gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+        # breakpoint()
+
+        for jj in range(positions.shape[1]):
+            # gammas[jj] = region_obstacle.get_gamma_from_point(
+            gammas[jj] = region_obstacle.get_gamma(
+                positions[:, jj], in_global_frame=True
+            )
+
         # region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=ind)
 
         # positions = region_obstacle.evaluate_surface_points(n_points=201)
@@ -873,22 +980,40 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
         #            marker="+",
         #            s=150, color="black"
         # )
-        
+
+        levels = np.linspace(1, 11, 51)
+
+        cntr = ax.contourf(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            gammas.reshape(n_grid, n_grid),
+            levels=levels,
+            # cmap="Blues_r",
+            # cmap="magma",
+            cmap="pink",
+            # alpha=0.7,
+        )
+
+    cbar = fig.colorbar(cntr)
+
     ax.axis("equal")
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
 
+    if save_figure:
+        fig_name = "gamma_values_without_tranition"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-        # positions = get_grid_points(
-        #     0, 3, 0.5, 3
-        # )
+    # positions = get_grid_points(
+    #     0, 3, 0.5, 3
+    # )
 
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    test_gamma_and_modulation()
+    test_gamma_and_modulation(save_figure=False)
     # _test_a_matrix_loader(save_figure=False)
-    
+
     # _test_gamma_values(save_figure=True)
 
     print("Tests finished.")
