@@ -15,7 +15,6 @@ TODO / method:
 >> (Maybe) additionally ensure that the flow stays within the 
 """
 
-import os
 import sys
 import copy
 import random
@@ -27,7 +26,6 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-import scipy
 
 import networkx as nx
 
@@ -35,7 +33,6 @@ from sklearn.cluster import KMeans
 
 from vartools.dynamical_systems import LinearSystem, ConstantValue
 
-from vartools.directional_space import get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
 
 from vartools.handwritting_handler import HandwrittingHandler
@@ -660,6 +657,8 @@ def _test_a_matrix_loader(save_figure=False):
         region_obstacle = KmeansObstacle(
             radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
         )
+
+        ff = 1.2
         # Test normal
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
@@ -740,7 +739,7 @@ def _test_gamma_values(save_figure=False):
         ax.set_ylim(y_lim)
 
         ff = 1.2
-        
+
         # Test normal
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
@@ -753,9 +752,9 @@ def _test_gamma_values(save_figure=False):
         velocities = np.zeros_like(positions)
 
         for ii in range(positions.shape[1]):
-            velocities =  
+            velocities = 0
             pass
-        
+
         # fig, axs = plt.subplots(2, 2, figsize=(14, 9))
         # for ii in range(main_learner.kmeans.n_clusters):
         # ax = axs[ii % 2, ii // 2]
@@ -763,8 +762,8 @@ def _test_gamma_values(save_figure=False):
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    # _test_a_matrix_loader(save_figure=False)
+    _test_a_matrix_loader(save_figure=False)
 
-    _test_gamma_values(save_figure=False)
+    # _test_gamma_values(save_figure=False)
 
     print("Tests finished.")
