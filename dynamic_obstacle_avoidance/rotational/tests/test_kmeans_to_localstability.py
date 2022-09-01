@@ -458,7 +458,7 @@ class KmeansObstacle(Obstacle):
     def num_clusters(self) -> int:
         return self._kmeans.cluster_centers_.shape[0]
 
-    def get_gamma_from_point(
+    def _get_gamma_from_point(
         self, position: Vector, in_global_frame: bool = False
     ) -> float:
         if not in_global_frame:
@@ -485,6 +485,8 @@ class KmeansObstacle(Obstacle):
             return distance_surface / distance_position
 
     def get_gamma(self, position: Vector, in_global_frame: bool = False) -> float:
+        """Returns the gamma value based on the input position."""
+        # TODO: maybe check if it's really smooth with respect to the transparent border
         if not in_global_frame:
             position = self.pose.transform_position_from_relative(position)
 
@@ -998,8 +1000,6 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
     assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
 
     if visualize:
-        levels = np.linspace(1, 21, 51)  # For gamma visualization
-
         fig, ax = plt.subplots()
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
         ax.axis("equal")
@@ -1008,85 +1008,49 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
             fig_name = "artificial_four_regions_kmeans"
             fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-        fig, ax = plt.subplots()
-        for ii in range(main_learner.kmeans.n_clusters):
+        fig, ax = plot_gamma_of_learner(
+            main_learner, x_lim, y_lim, hierarchy_passing_gamma=False
+        )
+
+        if save_figure:
+            fig_name = "gamma_values_without_transition"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        fig, ax = plot_gamma_of_learner(
+            main_learner, x_lim, y_lim, hierarchy_passing_gamma=True
+        )
+
+        if save_figure:
+            fig_name = "gamma_values_with_transition"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=True):
+
+    fig, ax = plt.subplots()
+
+    levels = np.linspace(1, 21, 51)  # For gamma visualization
+
+    for ii in range(main_learner.kmeans.n_clusters):
+        if hierarchy_passing_gamma:
             region_obstacle = KmeansObstacle(
                 radius=main_learner.region_radius_,
                 kmeans=main_learner.kmeans,
                 index=ii,
-                main_learner=True,
+                main_learner=main_learner,
             )
-
-            positions = region_obstacle.evaluate_surface_points()
-            ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
-
-            ff = 1.2
-            n_grid = 50
-            positions = get_grid_points(
-                main_learner.kmeans.cluster_centers_[ii, 0],
-                main_learner.region_radius_ * ff,
-                main_learner.kmeans.cluster_centers_[ii, 1],
-                main_learner.region_radius_ * ff,
-                n_points=n_grid,
+        else:
+            region_obstacle = KmeansObstacle(
+                radius=main_learner.region_radius_,
+                kmeans=main_learner.kmeans,
+                index=ii,
             )
-
-            gammas = np.zeros(positions.shape[1])
-            for jj in range(positions.shape[1]):
-
-                if (
-                    LA.norm(positions[:, jj] - region_obstacle.center_position)
-                    > region_obstacle.radius
-                ):
-                    # For nicer visualization, only internally
-                    continue
-
-                gammas[jj] = region_obstacle.get_gamma(
-                    positions[:, jj], in_global_frame=True
-                )
-
-            cntr = ax.contourf(
-                positions[0, :].reshape(n_grid, n_grid),
-                positions[1, :].reshape(n_grid, n_grid),
-                gammas.reshape(n_grid, n_grid),
-                levels=levels,
-                # cmap="Blues_r",
-                # cmap="magma",
-                cmap="pink",
-                # alpha=0.7,
-            )
-
-        cbar = fig.colorbar(cntr)
-
-        ax.axis("equal")
-        ax.set_xlim(x_lim)
-        ax.set_ylim(y_lim)
-
-        if save_figure:
-            fig_name = "gamma_values_without_tranition"
-            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-        plot_gamma_of_learner(main_learner, x_lim, y_lim, know_parent=False)
-
-        if save_figure:
-            fig_name = "gamma_values_with_tranition"
-            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-
-def plot_gamma_of_learner(main_learner, x_lim, y_lim):
-    fig, ax = plt.subplots()
-    for ii in range(main_learner.kmeans.n_clusters):
-        region_obstacle = KmeansObstacle(
-            radius=main_learner.region_radius_,
-            kmeans=main_learner.kmeans,
-            index=ii,
-            main_learner=main_learner,
-        )
 
         positions = region_obstacle.evaluate_surface_points()
         ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
 
         ff = 1.2
-        n_grid = 50
+        n_grid = 60
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
             main_learner.region_radius_ * ff,
@@ -1126,10 +1090,12 @@ def plot_gamma_of_learner(main_learner, x_lim, y_lim):
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
 
+    return fig, ax
+
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    test_gamma_and_modulation(visualize=True, save_figure=False)
+    test_gamma_and_modulation(visualize=True, save_figure=True)
     # _test_a_matrix_loader(save_figure=False)
 
     # _test_gamma_values(save_figure=True)
