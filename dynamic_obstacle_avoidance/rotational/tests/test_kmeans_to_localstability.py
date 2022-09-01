@@ -356,13 +356,12 @@ class KmeansObstacle(Obstacle):
         kmeans: KMeans,
         index: int,
         is_boundary: bool = True,
+        main_learner=None,
         **kwargs,
     ):
         self._kmeans = kmeans
         self._index = index
         self.radius = radius
-
-        self.successor_index = None
 
         super().__init__(is_boundary=is_boundary, **kwargs)
 
@@ -403,6 +402,14 @@ class KmeansObstacle(Obstacle):
                 (self.dimension, 1),
             ).T
         )
+
+        if main_learner is None:
+            self.successor_index = []
+        else:
+            # Assumption of only one predecessor (!)
+            self.successor_index = [
+                ii for ii in main_learner._graph.successors(self._index)
+            ]
 
     @property
     def normal_directions(self) -> VectorArray:
@@ -506,12 +513,12 @@ class KmeansObstacle(Obstacle):
             )
 
         elif max_dist == 0:
-            # Point is exactly on the surface -> return relative position
-            direction = relative_position / position_norm
-            if in_global_frame:
-                return direction
+            if not len(self.successor_index) or position_norm == self.radius:
+                # Point is exactly on the surface -> return relative position
+                return 1
             else:
-                return self.pose.transform_direction_to_relative(direction)
+                # Point is exactly in gap
+                return sys.float_info.max
 
         else:
             weights = distances_surface
@@ -520,12 +527,30 @@ class KmeansObstacle(Obstacle):
         weights = np.maximum(weights, 0)
         weights = weights / np.sum(weights)
 
-        mean_dist = np.sum(weights * distances_surface)
-
         if self.is_boundary:
-            return (position_norm - mean_dist) / position_norm
+            local_radius = position_norm - distances_surface
+            if len(self.successor_index) > 1:
+                breakpoint()
+                raise NotImplementedError()
+
+            for ii in self.successor_index:
+                # Note, gamma < 1 is not clearly when there is a boundary
+
+                if weights[ii] > 0:
+                    weights = np.maximum(weights - weights[ii], 0)
+                    weights[ii] = 1 - np.sum(weights)
+
+                    if weights[ii] < 1:
+                        local_radius[ii] = local_radius[ii] / (1 - weights[ii])
+                    else:
+                        return sys.float_info.max
+            return np.sum(weights * local_radius) / position_norm
 
         else:
+            for ii in self.successor_index:
+                raise NotImplementedError()
+
+            mean_dist = np.sum(weights * distances_surface)
             # Normal obstacle
             if mean_dist > 0:
                 mean_dist / self.radius + 1
@@ -910,6 +935,7 @@ def _test_modulation_values(save_figure=False):
 def test_gamma_and_modulation(visualize=False, save_figure=False):
     """Test the intersection and surface points"""
     plt.ion()
+    plt.close("all")
 
     # Generate very simple dataset
     RANDOM_SEED = 1
@@ -930,27 +956,137 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
     # Learn KMeans from DataSet
     main_learner = MotionLearnerThrougKMeans(datahandler)
 
-    fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
-    ax.axis("equal")
+    # Find most left obstacle
+    n_clusters = main_learner.kmeans.cluster_centers_.shape[0]
+    index = np.arange(n_clusters)[
+        LA.norm(
+            main_learner.kmeans.cluster_centers_ - np.tile([-1, 0], (n_clusters, 1)),
+            axis=1,
+        )
+        == 0
+    ][0]
 
-    fig, ax = plt.subplots()
+    region_obstacle = KmeansObstacle(
+        radius=main_learner.region_radius_,
+        kmeans=main_learner.kmeans,
+        index=index,
+        main_learner=main_learner,
+    )
 
+    # Check gamma at the boundary
+    position = region_obstacle.center_position.copy()
+    position[0] = position[0] - region_obstacle.radius
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert np.isclose(gamma, 1), "Gamma is expected to be close to 1."
+
+    # Check gamma towards the successor
+    position = 0.5 * (
+        region_obstacle.center_position
+        + main_learner.kmeans.cluster_centers_[region_obstacle.successor_index[0], :]
+    )
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1e9, "Gamma is expected to be very large."
+
+    position[0] = position[0] - region_obstacle.radius * 0.1
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1e9, "Gamma is expected to be very large."
+
+    # Check inside the obstacle
+    position = region_obstacle.center_position.copy()
+    position[1] = position[1] + 0.5 * region_obstacle.radius
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
+
+    if visualize:
+        levels = np.linspace(1, 21, 51)  # For gamma visualization
+
+        fig, ax = plt.subplots()
+        main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+        ax.axis("equal")
+
+        if save_figure:
+            fig_name = "artificial_four_regions_kmeans"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        fig, ax = plt.subplots()
+        for ii in range(main_learner.kmeans.n_clusters):
+            region_obstacle = KmeansObstacle(
+                radius=main_learner.region_radius_,
+                kmeans=main_learner.kmeans,
+                index=ii,
+                main_learner=True,
+            )
+
+            positions = region_obstacle.evaluate_surface_points()
+            ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
+
+            ff = 1.2
+            n_grid = 50
+            positions = get_grid_points(
+                main_learner.kmeans.cluster_centers_[ii, 0],
+                main_learner.region_radius_ * ff,
+                main_learner.kmeans.cluster_centers_[ii, 1],
+                main_learner.region_radius_ * ff,
+                n_points=n_grid,
+            )
+
+            gammas = np.zeros(positions.shape[1])
+            for jj in range(positions.shape[1]):
+
+                if (
+                    LA.norm(positions[:, jj] - region_obstacle.center_position)
+                    > region_obstacle.radius
+                ):
+                    # For nicer visualization, only internally
+                    continue
+
+                gammas[jj] = region_obstacle.get_gamma(
+                    positions[:, jj], in_global_frame=True
+                )
+
+            cntr = ax.contourf(
+                positions[0, :].reshape(n_grid, n_grid),
+                positions[1, :].reshape(n_grid, n_grid),
+                gammas.reshape(n_grid, n_grid),
+                levels=levels,
+                # cmap="Blues_r",
+                # cmap="magma",
+                cmap="pink",
+                # alpha=0.7,
+            )
+
+        cbar = fig.colorbar(cntr)
+
+        ax.axis("equal")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        if save_figure:
+            fig_name = "gamma_values_without_tranition"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        plot_gamma_of_learner(main_learner, x_lim, y_lim, know_parent=False)
+
+        if save_figure:
+            fig_name = "gamma_values_with_tranition"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_gamma_of_learner(main_learner, x_lim, y_lim):
+    fig, ax = plt.subplots()
     for ii in range(main_learner.kmeans.n_clusters):
-        # Plot a specific obstacle
         region_obstacle = KmeansObstacle(
-            radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
+            radius=main_learner.region_radius_,
+            kmeans=main_learner.kmeans,
+            index=ii,
+            main_learner=main_learner,
         )
 
-        aa = [ii for ii in main_learner._graph.predecessors(ii)]
-        breakpoint()
-        region_obstacle.successor_index = []
-
         positions = region_obstacle.evaluate_surface_points()
-        ax.plot(positions[0, :], positions[1, :], color="black")
+        ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
 
         ff = 1.2
-        n_grid = 20
+        n_grid = 50
         positions = get_grid_points(
             main_learner.kmeans.cluster_centers_[ii, 0],
             main_learner.region_radius_ * ff,
@@ -960,28 +1096,18 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
         )
 
         gammas = np.zeros(positions.shape[1])
-
-        position = np.array([0.91, -0.16])
-        gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-        # breakpoint()
-
         for jj in range(positions.shape[1]):
-            # gammas[jj] = region_obstacle.get_gamma_from_point(
+
+            if (
+                LA.norm(positions[:, jj] - region_obstacle.center_position)
+                > region_obstacle.radius
+            ):
+                # For nicer visualization, only internally
+                continue
+
             gammas[jj] = region_obstacle.get_gamma(
                 positions[:, jj], in_global_frame=True
             )
-
-        # region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=ind)
-
-        # positions = region_obstacle.evaluate_surface_points(n_points=201)
-        # ax.plot(positions[0, :], positions[1, :], color="black")
-        # ax.scatter(region_obstacle.center_position[0],
-        #            region_obstacle.center_position[1],
-        #            marker="+",
-        #            s=150, color="black"
-        # )
-
-        levels = np.linspace(1, 11, 51)
 
         cntr = ax.contourf(
             positions[0, :].reshape(n_grid, n_grid),
@@ -1000,18 +1126,10 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
 
-    if save_figure:
-        fig_name = "gamma_values_without_tranition"
-        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-    # positions = get_grid_points(
-    #     0, 3, 0.5, 3
-    # )
-
 
 if (__name__) == "__main__":
     # test_four_cluster_kmean()
-    test_gamma_and_modulation(save_figure=False)
+    test_gamma_and_modulation(visualize=True, save_figure=False)
     # _test_a_matrix_loader(save_figure=False)
 
     # _test_gamma_values(save_figure=True)
