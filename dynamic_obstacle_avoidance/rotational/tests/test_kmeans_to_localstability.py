@@ -43,6 +43,10 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
+from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+    obstacle_avoidance_rotational,
+)
+
 NodeType = int
 
 
@@ -142,9 +146,8 @@ class MotionLearnerThrougKMeans:
         self.region_obstacles = []
         for ii in range(self.n_clusters):
             self.region_obstacles.append(
-                KmeansObstacle(
-                    radius=self.region_radius_,
-                    kmeans=self.kmeans,
+                KmeansObstacle.from_kmeanslearner(
+                    kmeans_learner=self,
                     index=ii,
                 )
             )
@@ -159,18 +162,43 @@ class MotionLearnerThrougKMeans:
 
     def predict(self, position: Vector) -> Vector:
         # Get k-means-weights
-        breakpoint()
+        position = np.array(position)
 
-        cluster_label = self.kmeans.predict(position.reshapse(1, -1))[0]
+        cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
         weights = self._get_sequence_weights(position, cluster_label)
 
-        ind_relevant = np.arange(self.num_cluster)[weights > 0]
+        ind_relevant = np.arange(self.n_clusters)[weights > 0]
 
-        weights = weights[ind_relevant]
-        dynamics = np.zeros((self.dimension, ind_relevant.shape[0]))
+        weights = weights
+        velocities = np.zeros((self.data.dimension, self.n_clusters))
 
-        for ii, index in ind_relevant:
-            dynamics[ii] = self._dynamics.evaluate(ii, position)
+        for index in ind_relevant:
+            # TODO: there is an issue if the 'linear attractor'
+            velocities[:, index] = self._dynamics[index].evaluate(position)
+
+        # Modulate only the one which we are currently in
+        velocities[cluster_label, :] = obstacle_avoidance_rotational(
+            position,
+            velocities[cluster_label, :],
+            [self.region_obstacles[cluster_label]],
+        )
+
+        if np.sum(weights) < 1:
+            # TODO: allow for 'partial' weight, for e.g.,:
+            # - in between two non-neighboring ellipses
+            # - to transition from the outside to the inside (!)
+            # => create a 'transition margin' to allow for this!
+            # (make sure invariance of the region)
+            raise NotImplementedError()
+
+        # TODO: use partial vector_rotation (instead)
+        weighted_direction = get_directional_weighted_sum(
+            null_direction=velocities[cluster_label, :],
+            directions=velocities,
+            weights=weights,
+        )
+
+        return weighted_direction
 
     def _get_sequence_weights(
         self,
@@ -206,7 +234,7 @@ class MotionLearnerThrougKMeans:
             tmp_weight *= 1 - 1 / (gamma - gamma_cutoff)
 
         weights = np.zeros((self.n_clusters))
-        weights[parents[0]] = weights
+        weights[parents[0]] = tmp_weight
         weights[cluster_label] = 1 - np.sum(weights[cluster_label])
         return weights
 
@@ -427,16 +455,15 @@ class KmeansObstacle(Obstacle):
 
     def __init__(
         self,
+        kmeans,
         radius: float,
-        kmeans: KMeans,
         index: int,
         is_boundary: bool = True,
-        main_learner=None,
         **kwargs,
     ):
         self.kmeans = kmeans
-        self._index = index
         self.radius = radius
+        self._index = index
 
         super().__init__(is_boundary=is_boundary, **kwargs)
 
@@ -478,13 +505,22 @@ class KmeansObstacle(Obstacle):
             ).T
         )
 
-        if main_learner is None:
-            self.successor_index = []
-        else:
-            # Assumption of only one predecessor (!)
-            self.successor_index = [
-                ii for ii in main_learner._graph.successors(self._index)
-            ]
+        self.successor_index = []
+
+    @classmethod
+    def from_kmeanslearner(cls, kmeans_learner: MotionLearnerThrougKMeans, index: int):
+        """Alternative constructor by using kmeans-leraner only."""
+        instance = cls(
+            kmeans=kmeans_learner.kmeans,
+            radius=kmeans_learner.region_radius_,
+            index=index,
+        )
+
+        instance.successor_index = [
+            ii for ii in kmeans_learner._graph.successors(index)
+        ]
+
+        return instance
 
     @property
     def normal_directions(self) -> VectorArray:
@@ -493,6 +529,15 @@ class KmeansObstacle(Obstacle):
         normal_directions = np.zeros((self.n_clusters, self.dimension))
         normal_directions[self.ind_relevant, :] = self._normal_directions
         return normal_directions
+
+    @property
+    def inbetween_points(self) -> VectorArray:
+        inbetween_points = np.zeros((self.n_clusters, self.dimension))
+        inbetween_points[self.ind_relevant, :] = self._center_positions
+        return inbetween_points
+
+    def get_inbetween_position(self, index) -> Vector:
+        return self._center_positions[self.ind_relevant, :]
 
     @property
     def num_relevant(self) -> int:
@@ -757,13 +802,27 @@ class KmeansObstacle(Obstacle):
         # Find closest boundary
         dists = self._get_normal_distances(boundary_position, is_boundary=False)
 
+        surface_distance = self.radius
         # Only change the default if there is an intersection
-        if any(dists > 0):
-            max_ind = np.argmax(dists)
-            boundary_position = self.center_position + direction * (
-                self.radius
-                - dists[max_ind] / np.dot(self.normal_directions[max_ind, :], direction)
+        for ii in np.arange(dists.shape[0])[dists > 0]:
+            intersection = get_intersection_between_line_and_plane(
+                self.center_position,
+                direction,
+                self.inbetween_points[ii, :],
+                self.normal_directions[ii, :],
             )
+
+            if LA.norm(self.center_position - intersection) < surface_distance:
+                surface_distance = LA.norm(self.center_position - intersection)
+                boundary_position = intersection
+
+        # Somehow working with the normal leads to wrong estimation in corners..
+        # if any(dists > 0):
+        #     max_ind = np.argmax(dists)
+        #     boundary_position = self.center_position + direction * (
+        #         self.radius
+        #         - dists[max_ind] / np.dot(self.normal_directions[max_ind, :], direction)
+        #     )
 
         if not in_global_frame:
             position = self.pose.transform_position_to_relative(position)
@@ -810,25 +869,54 @@ class KmeansObstacle(Obstacle):
         return self.surface_points
 
 
-def test_four_cluster_kmean(visualize=True):
+def test_surface_position_and_normal(visualize=True):
     """Test the intersection and surface points"""
-    data = np.array([[-1, 0], [1, 0], [1, 2], [-1, 2]])
+    datahandler = MotionDataHandler(
+        # position=np.array([[-1, 0], [1, 0], [1, 2], [-1, 2]])
+        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
+    )
+
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
+    datahandler.attractor = np.array([0.5, 2])
+    datahandler.sequence_value = np.linspace(0, 1, 4)
 
     dimension = 2
     kmeans = KMeans(init="k-means++", n_clusters=4, n_init=2)
-    kmeans.fit(data)
+    kmeans.fit(datahandler.position)
 
     kmeans.n_features_in_ = dimension
-    kmeans.cluster_centers_ = np.array(data).copy(order="C").astype(np.double)
+    kmeans.cluster_centers_ = (
+        np.array(datahandler.position).copy(order="C").astype(np.double)
+    )
 
-    region_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=0)
+    radius = 1.5
+
+    # Test - somewhere in the middle
+    position = np.array([0.8, 0.8])
+    index = kmeans.predict(position.reshape(1, -1))[0]
+    region_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=index)
+
+    surface_position = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    assert np.allclose(surface_position[0], 1.0)
 
     if visualize:
         plt.close("all")
+        x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+
         fig, ax = plt.subplots(figsize=(14, 9))
+        main_learner = MotionLearnerThrougKMeans(datahandler)
+        main_learner.kmeans = kmeans
+        main_learner.region_radius_ = radius
+        main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        ax.axis("equal")
 
         for ii in range(kmeans.n_clusters):
-            tmp_obstacle = KmeansObstacle(radius=1.5, kmeans=kmeans, index=ii)
+            # for ii in [1]:
+            tmp_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=ii)
             positions = tmp_obstacle.evaluate_surface_points()
             ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
 
@@ -861,6 +949,7 @@ def test_four_cluster_kmean(visualize=True):
 
         ax.axis("equal")
 
+    region_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=0)
     # Test - somewhere in the middle
     position = np.array([2, -1])
     surface_position = region_obstacle.get_point_on_surface(
@@ -1068,7 +1157,7 @@ def _test_modulation_values(save_figure=False):
         # ax = axs[ii % 2, ii // 2]
 
 
-def test_gamma_and_modulation(visualize=False, save_figure=False):
+def test_gamma_kmeans(visualize=False, save_figure=False):
     """Test the intersection and surface points"""
     plt.ion()
     plt.close("all")
@@ -1092,15 +1181,7 @@ def test_gamma_and_modulation(visualize=False, save_figure=False):
     # Learn KMeans from DataSet
     main_learner = MotionLearnerThrougKMeans(datahandler)
 
-    # Find most left obstacle
-    n_clusters = main_learner.kmeans.cluster_centers_.shape[0]
-    index = np.arange(n_clusters)[
-        LA.norm(
-            main_learner.kmeans.cluster_centers_ - np.tile([-1, 0], (n_clusters, 1)),
-            axis=1,
-        )
-        == 0
-    ][0]
+    index = main_learner.kmeans.predict([[-1, 0]])[0]
 
     region_obstacle = KmeansObstacle(
         radius=main_learner.region_radius_,
@@ -1227,9 +1308,59 @@ def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=T
     return fig, ax
 
 
+def test_cluster_connection_and_invariance_set(visualize=False):
+    plt.ion()
+    plt.close("all")
+
+    # Generate very simple dataset
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    datahandler = MotionDataHandler(
+        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
+    )
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
+    datahandler.attractor = np.array([0.5, 2])
+    datahandler.sequence_value = np.linspace(0, 1, 4)
+
+    x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+
+    # Learn KMeans from DataSet
+    main_learner = MotionLearnerThrougKMeans(datahandler)
+
+    # Get bottom left obstacle
+    index = main_learner.kmeans.predict([[1, 0]])
+
+    if visualize:
+        plt.close("all")
+        fig, ax = plt.subplots(figsize=(14, 9))
+        main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        # ax.set_xlim(x_lim)
+        # ax.set_ylim(y_lim)
+        ax.axis("equal")
+
+        for ii in range(main_learner.kmeans.n_clusters):
+            tmp_obstacle = KmeansObstacle.from_kmeanslearner(main_learner, ii)
+
+            positions = tmp_obstacle.evaluate_surface_points(200)
+            ax.plot(
+                positions[0, :],
+                positions[1, :],
+                marker="x",
+                color="black",
+                linewidth=3.5,
+                zorder=20,
+            )
+            plt.show()
+
+
 if (__name__) == "__main__":
-    # test_four_cluster_kmean(visualize=False)
-    # test_gamma_and_modulation(visualize=False, save_figure=False)
+    test_surface_position_and_normal(visualize=True)
+    # test_gamma_kmeans(visualize=True, save_figure=False)
+    # test_cluster_connection_and_invariance_set(visualize=True)
 
     # _test_a_matrix_loader(save_figure=False)
     # _test_gamma_values(save_figure=True)
