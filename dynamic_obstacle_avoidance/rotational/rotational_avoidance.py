@@ -12,7 +12,5 @@ from .rotational_avoider import RotationalAvoider
 
 
 def obstacle_avoidance_rotational(*args, **kwargs):
-    warnings.warn("Depreciated - switch to 'Avoider'.")
-
-    _avoider = RotationalAvoider()
-    return _avoider.avoid(*args, **kwargs)
+    # warnings.warn("Depreciated - switch to 'Avoider'.")
+    return RotationalAvoider().avoid(*args, **kwargs)

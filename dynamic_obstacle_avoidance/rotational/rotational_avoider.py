@@ -37,7 +37,10 @@ class RotationalAvoider(BaseAvoider):
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
     """
 
-    # TODO: don't use UnitDirection (as it has a large overhead) (!!!)
+    # TODO:
+    #   - don't use UnitDirection (as it has a large overhead)
+    #   - put back into function for simplified changing of avoidance
+
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
