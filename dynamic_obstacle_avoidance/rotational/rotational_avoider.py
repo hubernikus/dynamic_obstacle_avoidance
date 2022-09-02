@@ -213,8 +213,9 @@ class RotationalAvoider(BaseAvoider):
         # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
         return rotated_velocity
 
+    @staticmethod
     def _limit_magnitude(
-        self, modulated_velocity, initial_magintude, gammas, normals, weights
+        modulated_velocity, initial_magintude, gammas, normals, weights
     ):
         """Returns scaled velocity such that zero on the surface of an obstacle."""
         # magnitude = np.dot(inv_gamma_weight, weights) * np.linalg.norm(initial_velocity)
@@ -240,8 +241,8 @@ class RotationalAvoider(BaseAvoider):
 
         return modulated_velocity
 
+    @staticmethod
     def _get_directional_deviation_weight(
-        self,
         weight: float,
         weight_deviation: float,
         power_factor: float = 3.0,
@@ -255,8 +256,8 @@ class RotationalAvoider(BaseAvoider):
         else:
             return weight ** (1.0 / (weight_deviation * power_factor))
 
+    @staticmethod
     def _get_nonlinear_inverted_weight(
-        self,
         inverted_conv_rotated_norm: float,
         inverted_nonlinear_norm: float,
         inv_convergence_radius: float,
@@ -442,14 +443,6 @@ class RotationalAvoider(BaseAvoider):
     ) -> UnitDirection:
         """Invert the directional-circle-space and project the nonlinear velocity to approach
         the linear counterpart.
-
-        Parameters
-        ----------
-        ...
-
-        Returns
-        -------
-        ...
         """
         if convergence_radius != dir_convergence_tangent.norm():
             dir_convergence_tangent = copy.deepcopy(
@@ -489,7 +482,6 @@ class RotationalAvoider(BaseAvoider):
         self,
         dir_convergence: UnitDirection,
         dir_reference: UnitDirection,
-        # base: DirectionBase,
         convergence_radius: float = np.pi / 2,
     ) -> UnitDirection:
         """Projects the reference direction onto the surface"""
@@ -521,7 +513,6 @@ class RotationalAvoider(BaseAvoider):
         convergence_radius: float,
         convergence_vector: np.ndarray,
         reference_vector: np.ndarray,
-        # base: DirectionBase,
         base: np.ndarray,
     ) -> UnitDirection:
         """Rotates the convergence vector according to given input and basis"""
@@ -533,8 +524,7 @@ class RotationalAvoider(BaseAvoider):
             # Initial velocity 'dir_convergecne' already pointing away from obstacle
             return dir_convergence
 
-        # Find intersection a with radius of pi/2
-        # Inside the tangent radius,
+        # Find intersection a with radius of pi/2 inside the tangent radius,
         # i.e. vectorfield towards obstacle [no-tail-effect]
         # Do the math in the angle space
         delta_dir_conv = dir_convergence - dir_reference
@@ -560,7 +550,6 @@ class RotationalAvoider(BaseAvoider):
         )
 
         # Weight which ensures continuity at far end
-
         return w_conv * dir_tangent + (1 - w_conv) * dir_convergence
 
     def directional_convergence_summing(
@@ -587,20 +576,10 @@ class RotationalAvoider(BaseAvoider):
         converging_velocity: Weighted summing in direction-space to 'emulate' the modulation.
         """
         if weight >= 1:
-            # TODO return special
             weight = 1
 
         elif weight <= 0:
-            # TODO return special
             weight = 0
-
-        # dir_conv_rotated = self._get_rotated_convergence_direction(
-        # weight=weight,
-        # convergence_radius=convergence_radius,
-        # convergence_vector=convergence_vector,
-        # reference_vector=reference_vector,
-        # base=base,
-        # )
 
         dir_convergence = UnitDirection(base).from_vector(convergence_vector)
         dir_reference = UnitDirection(base).from_vector(reference_vector)
@@ -615,16 +594,7 @@ class RotationalAvoider(BaseAvoider):
         if nonlinear_velocity is None:
             return UnitDirection(base).from_vector(convergence_vector)
 
-        # if nonlinear_velocity is None:
-        # return dir_conv_rotated
-
         dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
-
-        # nonlinear_conv = self._get_projected_nonlinear_velocity(
-        # dir_conv_rotated=dir_conv_rotated,
-        # dir_nonlinear=dir_nonlinear,
-        # convergence_radius=convergence_radius,
-        # weight=weight,
 
         if (
             self.smooth_continuation_power
