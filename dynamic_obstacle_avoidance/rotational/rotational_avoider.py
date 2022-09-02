@@ -37,7 +37,7 @@ class RotationalAvoider(BaseAvoider):
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
     """
 
-    # TODO: don't use UnitDirection (as it has a large overhead)
+    # TODO: don't use UnitDirection (as it has a large overhead) (!!!)
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
@@ -277,8 +277,8 @@ class RotationalAvoider(BaseAvoider):
         # weight_nonl = weight * delta_nonl/(delta_nonl + delta_conv)
         return weight * delta_nonl / (delta_nonl + delta_conv)
 
+    @staticmethod
     def _get_projection_of_inverted_convergence_direction(
-        self,
         inv_conv_rotated: UnitDirection,
         inv_nonlinear: UnitDirection,
         inv_convergence_radius: UnitDirection,
@@ -434,8 +434,8 @@ class RotationalAvoider(BaseAvoider):
 
         return inv_nonlinear_conv.invert_normal()
 
+    @staticmethod
     def _get_projected_velocity(
-        self,
         dir_convergence_tangent: UnitDirection,
         dir_initial_velocity: UnitDirection,
         weight: float,
@@ -478,8 +478,8 @@ class RotationalAvoider(BaseAvoider):
 
         return dir_convergence
 
+    @staticmethod
     def _get_tangent_convergence_direction(
-        self,
         dir_convergence: UnitDirection,
         dir_reference: UnitDirection,
         convergence_radius: float = np.pi / 2,

@@ -241,7 +241,8 @@ class MotionLearnerThrougKMeans:
     def _check_that_main_direction_is_towards_parent(
         self, ind_node: NodeType, direction: Vector, it_max: int = 100
     ):
-        """Checks that the main direction point towards the intersection between parent and node"""
+        """Checks that the main direction point towards the intersection between
+        parent and node"""
         ind_parent = self._graph.nodes[ind_node]["parent"]
 
         mean_position = (
@@ -1227,11 +1228,10 @@ def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=T
 
 
 if (__name__) == "__main__":
-    test_four_cluster_kmean(visualize=True)
+    # test_four_cluster_kmean(visualize=False)
     # test_gamma_and_modulation(visualize=False, save_figure=False)
 
     # _test_a_matrix_loader(save_figure=False)
-
     # _test_gamma_values(save_figure=True)
 
     print("Tests finished.")
