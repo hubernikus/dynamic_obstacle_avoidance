@@ -47,6 +47,7 @@ class RotationalAvoider(BaseAvoider):
         obstacle_environment=None,
         convergence_system: DynamicalSystem = None,
         cut_off_gamma: float = 1e6,
+        tail_rotation: bool = False,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
         super().__init__(initial_dynamics, obstacle_environment)
@@ -62,11 +63,15 @@ class RotationalAvoider(BaseAvoider):
         # The larger the smoother (a good value is 0.3) )
         self.smooth_continuation_power = 0.3
 
+        self.tail_rotation = tail_rotation
+
     def avoid(
         self,
         position: np.ndarray,
         initial_velocity: np.ndarray,
         obstacle_list: list,
+        convergence_velocity: np.ndarray = None,
+        sticky_surface: bool = True,
     ) -> np.ndarray:
         """Obstacle avoidance based on 'local' rotation and the directional weighted mean.
 
@@ -84,6 +89,8 @@ class RotationalAvoider(BaseAvoider):
         """
         if initial_velocity is None:
             initial_velocity = self.initial_dynamics.evaluate(position)
+
+        norm_initial = LA.norm(initial_velocity)
 
         if obstacle_list is None:
             # TODO: depreciated
@@ -161,18 +168,26 @@ class RotationalAvoider(BaseAvoider):
 
             # Null matrix is pointing towards the object
             if obstacle_list[it_obs].is_boundary:
-                reference_dir = (-1) * reference_dir
+                # reference_dir = (-1) * reference_dir
                 # null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
+                null_matrix = normal_orthogonal_matrix[:, :, it]
 
             else:
+                reference_dir = (-1) * reference_dir
                 # null_matrix = normal_orthogonal_matrix[:, :, it]
                 null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
 
+            # Check if the reference / normal calculation was correct
+            if np.dot(null_matrix[:, 0], reference_dir) < 0:
+                breakpoint()
+                # TODO: test and fix this
+
             # Convergence direcctions can be local for certain obstacles
             # / convergence environments
-            convergence_velocity = obstacle_list.get_convergence_direction(
-                position=position, it_obs=it_obs
-            )
+            if convergence_velocity is None:
+                convergence_velocity = obstacle_list.get_convergence_direction(
+                    position=position, it_obs=it_obs
+                )
 
             conv_vel_norm = np.linalg.norm(convergence_velocity)
             if not conv_vel_norm:
@@ -197,21 +212,27 @@ class RotationalAvoider(BaseAvoider):
                 # base=DirectionBase(matrix=null_matrix),
             )
 
-        # base = DirectionBase(vector=initial_velocity)
         base = get_orthogonal_basis(initial_velocity)
         rotated_velocity = get_directional_weighted_sum_from_unit_directions(
             base=base, weights=weights, unit_directions=rotated_directions
         )
 
-        rotated_velocity = self._limit_magnitude(
-            modulated_velocity=rotated_velocity,
-            initial_magintude=LA.norm(initial_velocity),
-            gammas=gamma_array,
-            normals=normal_orthogonal_matrix[:, 0, :],
-            weights=weights,
-        )
+        if sticky_surface:
+            rotated_velocity = self._limit_magnitude(
+                modulated_velocity=rotated_velocity,
+                initial_magintude=LA.norm(initial_velocity),
+                gammas=gamma_array,
+                normals=normal_orthogonal_matrix[:, 0, :],
+                weights=weights,
+            )
 
-        rotated_velocity = rotated_velocity + relative_velocity
+            rotated_velocity = rotated_velocity + relative_velocity
+
+        else:
+            rotated_velocity = rotated_velocity + relative_velocity
+
+            if velocity_norm := LA.norm(rotated_velocity):
+                rotated_velocity = rotated_velocity / velocity_norm * norm_initial
 
         # TODO: check maximal magnitude (in dynamic environments); i.e. see paper
         return rotated_velocity
@@ -559,7 +580,6 @@ class RotationalAvoider(BaseAvoider):
         self,
         convergence_vector: np.ndarray,
         reference_vector: np.ndarray,
-        # base: DirectionBase,
         base: np.ndarray,
         weight: float,
         nonlinear_velocity: np.ndarray = None,
@@ -587,13 +607,6 @@ class RotationalAvoider(BaseAvoider):
         dir_convergence = UnitDirection(base).from_vector(convergence_vector)
         dir_reference = UnitDirection(base).from_vector(reference_vector)
 
-        tangent = self._get_tangent_convergence_direction(
-            dir_convergence=dir_convergence,
-            dir_reference=dir_reference,
-            # base=base,
-            convergence_radius=np.pi / 2,
-        )
-
         if nonlinear_velocity is None:
             return UnitDirection(base).from_vector(convergence_vector)
 
@@ -616,11 +629,19 @@ class RotationalAvoider(BaseAvoider):
                 )
                 weight = weight ** (1 / continuation_weight)
 
+        if self.tail_rotation or LA.norm(dir_convergence.as_angle()) < np.pi / 2:
+            dir_convergence = self._get_tangent_convergence_direction(
+                dir_convergence=dir_convergence,
+                dir_reference=dir_reference,
+                # base=base,
+                convergence_radius=np.pi / 2,
+            )
+
         rotated_velocity = self._get_projected_velocity(
-            dir_convergence_tangent=tangent,
+            dir_convergence_tangent=dir_convergence,
             dir_initial_velocity=dir_initial,
             weight=weight,
             convergence_radius=np.pi / 2,
         )
-
+        # breakpoint()
         return rotated_velocity

@@ -44,3 +44,13 @@ class DirectionalLearningSystem(DynamicalSystem):
 
     def evaluate_deviation(self, position: Vector) -> DeviationVector:
         return np.zeros(self.dimension - 1)
+
+
+def test_simple_circle_avoidance(visualize=True, save_figure=False):
+    pass
+
+
+if (__name__) == "__main__":
+
+    test_simple_circle_avoidance()
+    print("Tests finished.")

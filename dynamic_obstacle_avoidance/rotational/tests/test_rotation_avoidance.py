@@ -28,7 +28,9 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
 )
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
-from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
+from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+    obstacle_avoidance_rotational,
+)
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 from dynamic_obstacle_avoidance.visualization import (
@@ -650,12 +652,12 @@ if (__name__) == "__main__":
 
     # test_convergence_pulling()
 
-    test_single_circle_linear(visualize=True)
+    # test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
 
-    test_single_perpendicular_ellipse(visualize=True)
+    # test_single_perpendicular_ellipse(visualize=True)
 
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=False)
