@@ -1,166 +1,91 @@
 """ Gaussian Mixture Regression"""
 
 import warnings
+from math import pi
+from dataclasses import dataclass
 
 import numpy as np
 from numpy import linalg as LA
 
-# from sklearn.mixture import GaussianMixture
+from sklearn import mixture
 from sklearn.mixture import BayesianGaussianMixture
+from sklearn.model_selection import train_test_split
+
+# from sklearn.mixture import GaussianMixture
 
 
-class GMR:
-    def __init__(self):
-        pass
-
-    def fit(self, n_gaussian=5, covariance_type="full", tt_ratio=0.75):
-        """Regress based on the data given."""
-        a_label = np.zeros(self.num_samples)
-        all_index = np.arange(self.num_samples)
-
-        train_index, test_index = train_test_split(all_index, test_size=(1 - tt_ratio))
-
-        X_train = self.X[train_index, :]
-        X_test = self.X[test_index, :]
-
-        y_train = a_label[train_index]
-        y_test = a_label[test_index]
+class GaussianMixtureRegression:
+    def __init__(self, n_components: int = 5, covariance_type: str = "full"):
 
         self.dpgmm = mixture.BayesianGaussianMixture(
-            n_components=n_gaussian, covariance_type=covariance_type
+            n_components=n_components, covariance_type=covariance_type
         )
 
-        # sample dataset
-        reference_dataset = 0
-        n_start = 0
-        for it_set in range(reference_dataset):
-            n_start += self.dataset["data"][0, it_set].shape[1]
+    @property
+    def n_components(self) -> int:
+        return self.dpgmm.n_components
 
-        index_sample = [
-            int(
-                np.round(
-                    n_start
-                    + self.dataset["data"][0, reference_dataset].shape[1]
-                    / n_gaussian
-                    * ii
-                )
-            )
-            for ii in range(n_gaussian)
-        ]
+    @n_components.setter
+    def n_components(self, value: int) -> None:
+        self.dpgmm.n_components = value
 
-        self.dpgmm.means_init = self.X[index_sample, :]
-        self.dpgmm.means_init = X_train[np.random.choice(np.arange(n_gaussian)), :]
+    @property
+    def covariance_type(self) -> str:
+        return self.dpgmm.covariance_type
 
-        self.dpgmm.fit(X_train[:, :])
+    @covariance_type.setter
+    def covariance_type(self, value: str) -> None:
+        self.dpgmm.covariance_type = value
 
-    def _predict(
-        self,
-        X,
-        input_output_normalization=True,
-        feat_in=None,
-        feat_out=None,
-        convergence_attractor=False,
-        p_beta=2,
-        beta_min=0.5,
-        beta_r=0.3,
-    ):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Regress based on the data given."""
+        self.n_samples_fit_ = X.shape[0]
+
+        if y.shape[0] != self.n_samples_fit_:
+            raise ValueError("Input data is not consistent.")
+
+        self.n_features_in_ = X.shape[1]
+        self.n_features_out_ = y.shape[1]
+
+        self.indexes_in_ = np.arange(self.n_features_in_)
+        self.indexes_out_ = np.arange(
+            self.n_features_in_, self.n_features_in_ + self.n_features_out_
+        )
+
+        self.dpgmm.fit(np.hstack((X, y)))
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
         """Evaluate the regress field at all the points X"""
-        dim = self.dim_gmm
-        n_samples = X.shape[0]
-        dim_in = X.shape[1]
-
-        if feat_in is None:
-            feat_in = np.arange(dim_in)
-
-        if feat_out is None:
-            # Default only the 'direction' at the end; additional -1 for indexing at end
-            feat_out = self.dim_gmm - 1 - np.arange(self.dim_space - 1)
-        dim_out = np.array(feat_out).shape[0]
-
-        if input_output_normalization:
-            X = self.transform_initial_to_normalized(X, dims_ind=feat_in)
 
         # Gausian Mixture Model Properties
-        beta = self.get_mixing_weights(X, feat_in=feat_in, feat_out=feat_out)
-        mu_yx = self.get_mean_yx(X, feat_in=feat_in, feat_out=feat_out)
+        beta = self._predict_mixing_weights(X)
+        mu_yx = self._predict_mean_yx(X)
 
-        if convergence_attractor:
-            if self.pos_attractor is None:
-                raise ValueError("Convergence to attractor without attractor...")
-
-            if dim_in == self.dim_space:
-                attractor = self.pos_attractor
-            else:
-                # Attractor + zero-velocity
-                attractor = np.hstack((self.pos_attractor, np.zeros(self.dim_space)))
-
-            dist_attr = np.linalg.norm(X - np.tile(attractor, (n_samples, 1)), axis=1)
-
-            beta = np.vstack((beta, np.zeros(n_samples)))
-
-            # Zero values
-            ind_zero = dist_attr == 0
-            beta[:, ind_zero] = 0
-            beta[-1, ind_zero] = 1
-
-            # Nonzeros values
-            ind_nonzero = dist_attr != 0
-            beta[-1, ind_nonzero] = (dist_attr[ind_nonzero] / beta_r) ** (
-                -p_beta
-            ) + beta_min
-            beta[:, ind_nonzero] = beta[:, ind_nonzero] / np.tile(
-                np.linalg.norm(beta[:, ind_nonzero], axis=0), (self.n_gaussians + 1, 1)
-            )
-
-            # Add zero velocity
-            mu_yx = np.dstack((mu_yx, np.zeros((dim_out, n_samples, 1))))
-
-        regression_value = np.sum(np.tile(beta.T, (dim_out, 1, 1)) * mu_yx, axis=2).T
-
-        # breakpoint()
-        if input_output_normalization:
-            regression_value = self.transform_normalized_to_initial(
-                regression_value, dims_ind=feat_out
-            )
-
-        if False:
-            print("shape X", X.shape)
-            if X.shape[0] == 1:
-                print("X", X)
-                print("beta", np.round(beta.T, 2))
-                print("mu_yx", np.round(mu_yx, 2))
-                print("regression", regression_value)
-            breakpoint()
+        regression_value = np.sum(
+            np.tile(beta.T, (self.n_features_out_, 1, 1)) * mu_yx, axis=2
+        ).T
 
         return regression_value
 
-    def get_mixing_weights(
+    def _predict_mixing_weights(
         self,
-        X,
-        feat_in,
-        feat_out,
-        input_needs_normalization=False,
-        normalize_probability=False,
-        weight_factor=4.0,
+        X: np.ndarray,
+        normalize_probability: bool = True,
+        weight_factor: float = 4.0,
     ):
         """Get input positions X of the form [dimension, number of samples]."""
         # TODO: try to learn the 'weight_factor' [optimization problem?]
-        if input_needs_normalization:
-            X = self.transform_initial_to_normalized(X, feat_in)
+        dim_in = self.indexes_in_.shape[0]
 
-        n_samples = X.shape[0]
-        dim_in = feat_in.shape[0]
-
-        prob_gaussian = self.get_gaussian_probability(X, feat_in=feat_in)
-        sum_probGaussian = np.sum(prob_gaussian, axis=0)
+        prob_gaussian = self._predict_gaussian_probability(X)
 
         alpha_times_prob = (
-            np.tile(self.dpgmm.weights_, (n_samples, 1)).T * prob_gaussian
+            np.tile(self.dpgmm.weights_, (X.shape[0], 1)).T * prob_gaussian
         )
 
         if normalize_probability:
             beta = alpha_times_prob / np.tile(
-                np.sum(alpha_times_prob, axis=0), (self.n_gaussians, 1)
+                np.sum(alpha_times_prob, axis=0), (self.n_components, 1)
             )
         else:
             beta = alpha_times_prob
@@ -170,13 +95,11 @@ class GMR:
             sum_beta = np.sum(beta, axis=0)
             ind_large = sum_beta > 1
             beta[:, ind_large] = beta[:, ind_large] / np.tile(
-                sum_beta[ind_large], (self.n_gaussians, 1)
+                sum_beta[ind_large], (self.n_components, 1)
             )
         return beta
 
-    def get_gaussian_probability(
-        self, X, feat_in=None, covariance_matrices=None, mean=None
-    ):
+    def _predict_gaussian_probability(self, X: np.ndarray = None) -> np.ndarray:
         """Returns the array of 'mean'-values based on input positions.
 
         Parameters
@@ -190,27 +113,24 @@ class GMR:
         prob_gauss (beta): array of shape (n_samples)
             The weights (similar to prior) which is gaussian is assigned.
         """
-        if covariance_matrices is None:
-            covariance_matrices = self.dpgmm.covariances_[:, feat_in, :][:, :, feat_in]
-        if mean is None:
-            mean = self.dpgmm.means_[:, feat_in]
+        covariance_matrices = self.dpgmm.covariances_[:, self.indexes_in_, :][
+            :, :, self.indexes_in_
+        ]
+
+        mean = self.dpgmm.means_[:, self.indexes_in_]
 
         n_samples = X.shape[0]
         dim_in = X.shape[1]
-        # dim_in = mean.shape[1]
 
         # Calculate weight (GAUSSIAN ML)
-        prob_gauss = np.zeros((self.n_gaussians, n_samples))
+        prob_gauss = np.zeros((self.n_components, n_samples))
 
-        for gg in range(self.n_gaussians):
-            # Create function of this
+        for gg in range(self.n_components):
             covariance = covariance_matrices[gg, :, :]
-            try:
-                fac = 1 / (
-                    (2 * pi) ** (dim_in * 0.5) * (np.linalg.det(covariance)) ** (0.5)
-                )
-            except:
-                breakpoint()
+            fac = 1 / (
+                (2 * pi) ** (dim_in * 0.5) * (np.linalg.det(covariance)) ** (0.5)
+            )
+
             dX = X - np.tile(mean[gg, :], (n_samples, 1))
 
             val_pow_fac = np.sum(
@@ -224,7 +144,7 @@ class GMR:
 
         return prob_gauss
 
-    def get_covariance_out(self, feat_in, feat_out, stretch_input_values=False):
+    def _predict_mean_yx(self, X: np.ndarray) -> np.ndarray:
         """Returns the array of 'mean'-values based on input positions.
 
         Parameters
@@ -239,65 +159,155 @@ class GMR:
             List of n_features-dimensional output data. Each column
             corresponds to a single data point.
         """
-        dim_out = np.array(feat_out).shape[0]
-        covariance_out = np.zeros((dim_out, dim_out, self.n_gaussians))
-
-        for gg in range(self.n_gaussians):
-            covariance = self.dpgmm.covariances_[gg, :, :]
-            covariance_out[:, :, gg] = (
-                covariance[feat_out, :][:, feat_out]
-                - covariance[feat_out, :][:, feat_in]
-                @ np.linalg.pinv(covariance[feat_in, :][:, feat_in])
-                @ covariance[feat_in, :][:, feat_out]
-            )
-        return covariance_out
-
-    def get_mean_yx(self, X, feat_in, feat_out, stretch_input_values=False):
-        """Returns the array of 'mean'-values based on input positions.
-
-        Parameters
-        ----------
-        X: array-like of shape (n_samples, n_input_features)
-        List of n_features-dimensional input data. Each column
-            corresponds to a single data point.
-
-        Returns
-        -------
-        mu_yx: array-like of shape (n_samples, n_output_features)
-            List of n_features-dimensional output data. Each column
-            corresponds to a single data point.
-        """
-        dim_out = np.array(feat_out).shape[0]
         n_samples = X.shape[0]
 
-        mu_yx = np.zeros((dim_out, n_samples, self.n_gaussians))
-        mu_yx_hat = np.zeros((dim_out, n_samples, self.n_gaussians))
+        mu_yx = np.zeros((self.n_features_out_, n_samples, self.n_components))
+        mu_yx_hat = np.zeros((self.n_features_out_, n_samples, self.n_components))
 
-        for gg in range(self.n_gaussians):
-            mu_yx[:, :, gg] = np.tile(self.dpgmm.means_[gg, feat_out], (n_samples, 1)).T
-            matrix_mult = self.dpgmm.covariances_[gg][feat_out, :][:, feat_in].dot(
-                np.linalg.pinv(self.dpgmm.covariances_[gg][feat_in, :][:, feat_in])
+        for gg in range(self.n_components):
+            mu_yx[:, :, gg] = np.tile(
+                self.dpgmm.means_[gg, self.indexes_out_], (n_samples, 1)
+            ).T
+            matrix_mult = self.dpgmm.covariances_[gg][self.indexes_out_, :][
+                :, self.indexes_in_
+            ].dot(
+                LA.pinv(
+                    self.dpgmm.covariances_[gg][self.indexes_in_, :][
+                        :, self.indexes_in_
+                    ]
+                )
             )
 
             mu_yx[:, :, gg] += matrix_mult.dot(
-                (X - np.tile(self.dpgmm.means_[gg, feat_in], (n_samples, 1))).T
+                (X - np.tile(self.dpgmm.means_[gg, self.indexes_in_], (n_samples, 1))).T
             )
 
-            ### START REMOVE ###
-            for nn in range(n_samples):  # TODO #speed - batch process!!
-                mu_yx_hat[:, nn, gg] = self.dpgmm.means_[
-                    gg, feat_out
-                ] + self.dpgmm.covariances_[gg][feat_out, :][
-                    :, feat_in
-                ] @ np.linalg.pinv(
-                    self.dpgmm.covariances_[gg][feat_in, :][:, feat_in]
-                ) @ (
-                    X[nn, :] - self.dpgmm.means_[gg, feat_in]
-                )
+            # ### START REMOVE ###
+            # for nn in range(n_samples):  # TODO #speed - batch process!!
+            #     mu_yx_hat[:, nn, gg] = self.dpgmm.means_[
+            #         gg, self.indexes_out_
+            #     ] + self.dpgmm.covariances_[gg][self.indexes_out_, :][
+            #         :, self.indexes_in_
+            #     ] @ np.linalg.pinv(
+            #         self.dpgmm.covariances_[gg][self.indexes_in_, :][
+            #             :, self.indexes_in_
+            #         ]
+            #     ) @ (
+            #         X[nn, :] - self.dpgmm.means_[gg, self.indexes_in_]
+            #     )
 
-        if np.sum(mu_yx - mu_yx_hat) > 1e-6:
-            breakpoint()
-        else:
-            # TODO: remove when warning never shows up anymore
-            warnings.warn("Remove looped multiplication, since is the same...")
+        # if np.sum(mu_yx - mu_yx_hat) > 1e-6:
+        #     breakpoint()
+        # else:
+        #     # TODO: remove when warning never shows up anymore
+        #     warnings.warn("Remove looped multiplication, since is the same...")
         return mu_yx
+
+    def get_covariance_out(self, stretch_input_values: bool = False):
+        """Returns the array of 'mean'-values based on input positions.
+
+        Parameters
+        ----------
+        X: array-like of shape (n_samples, n_input_features)
+        List of n_features-dimensional input data. Each column
+            corresponds to a single data point.
+
+        Returns
+        -------
+        mu_yx: array-like of shape (n_samples, n_output_features)
+            List of n_features-dimensional output data. Each column
+            corresponds to a single data point.
+        """
+        dim_out = np.array(self.indexes_out_).shape[0]
+        covariance_out = np.zeros((dim_out, dim_out, self.n_components))
+
+        for gg in range(self.n_components):
+            covariance = self.dpgmm.covariances_[gg, :, :]
+            covariance_out[:, :, gg] = (
+                covariance[self.indexes_out_, :][:, self.indexes_out_]
+                - covariance[self.indexes_out_, :][:, self.indexes_in_]
+                @ np.linalg.pinv(covariance[self.indexes_in_, :][:, self.indexes_in_])
+                @ covariance[self.indexes_in_, :][:, self.indexes_out_]
+            )
+        return covariance_out
+
+
+def plot_ellipses(gmm, ax):
+    import matplotlib as mpl
+
+    for n in range(gmm.n_components):
+        if gmm.covariance_type == "full":
+            covariances = gmm.covariances_[n][:2, :2]
+        elif gmm.covariance_type == "tied":
+            covariances = gmm.covariances_[:2, :2]
+        elif gmm.covariance_type == "diag":
+            covariances = np.diag(gmm.covariances_[n][:2])
+        elif gmm.covariance_type == "spherical":
+            covariances = np.eye(gmm.means_.shape[1]) * gmm.covariances_[n]
+        v, w = np.linalg.eigh(covariances)
+        u = w[0] / np.linalg.norm(w[0])
+        angle = np.arctan2(u[1], u[0])
+        angle = 180 * angle / np.pi  # convert to degrees
+        v = 2.0 * np.sqrt(2.0) * np.sqrt(v)
+        ell = mpl.patches.Ellipse(
+            gmm.means_[n, :2],
+            v[0],
+            v[1],
+            180 + angle,
+            # color=color
+        )
+        ell.set_clip_box(ax.bbox)
+        ell.set_alpha(0.5)
+        ax.add_artist(ell)
+
+
+def test_sinus_regression(visualize=False):
+    RANDOM_SEED = 2
+    np.random.seed(RANDOM_SEED)
+
+    X = 5 * np.random.rand(1000, 1)
+
+    # Add noise to targets
+    y = np.sin(X).ravel()
+    y[::5] += 3 * (0.5 - np.random.rand(X.shape[0] // 5))
+    y = y.reshape(-1, 1)
+
+    tt_ratio = 2 / 3
+    all_index = np.arange(X.shape[0])
+    train_index, test_index = train_test_split(all_index, test_size=(1 - tt_ratio))
+
+    X_train = X[train_index, :]
+    X_test = X[test_index, :]
+
+    y_train = y[train_index, :]
+    y_test = y[test_index, :]
+
+    regression_model = GaussianMixtureRegression(n_components=5)
+    regression_model.fit(X_train, y_train)
+
+    # X_check = np.array([5]).reshape(1, -1)
+    # y_check = regression_model.predict(X_check)
+
+    y_predict = regression_model.predict(X_test)
+
+    error = np.sum((y_test - y_predict) ** 2) / y_predict.shape[0]
+
+    if visualize:
+        import matplotlib.pyplot as plt
+
+        plt.ion()
+        # plt.close("all")
+
+        fig, ax = plt.subplots()
+        ax.plot(X, y, ".", label="Original")
+
+        ax.plot(X_test, y_predict, ".", color="red")
+        ax.plot(X_test, y_test, ".", color="green")
+
+        plot_ellipses(regression_model.dpgmm, ax=ax)
+
+    assert error < 0.5, "Error is too large."
+
+
+if (__name__) == "__main__":
+    test_sinus_regression()
