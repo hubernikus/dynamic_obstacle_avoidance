@@ -10,6 +10,9 @@ TODO / method:
 >> between consecutive regions there is a smooth flow-through in one direction! which ensures transition
 >> the 'welcoming' arc in the subsequent region is cropped such that it does NOT overly any additional obstacle
 
+>> Allow for 'friendly-neighbour' => a cluster which shares the direction,
+  and allows full flow through (!)
+
 > GMM for obstacle avoidance
 >> Place GMM's such that they are ]-pi/2, pi/2[ with the local 'straight?' dynamics
 >> (Maybe) additionally ensure that the flow stays within the 
@@ -44,6 +47,7 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
 )
+from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
 from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KmeansObstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
@@ -52,7 +56,7 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 NodeType = int
 
 figure_type = ".png"
-figure_type = ".pdf"
+# figure_type = ".pdf"
 
 
 @dataclass
@@ -99,14 +103,12 @@ class MotionLearnerThrougKMeans:
         self.n_clusters = n_clusters
 
         self._graph = nx.DiGraph()
+        self._directions = VectorRotationTree()
 
         self.radius_factor = radius_factor
-        # self.region_radius_ = 1
-
-        # self._graph = None
 
         # Finally
-        self.evaluate_local_sets()
+        self.fit()
 
     def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
@@ -115,23 +117,18 @@ class MotionLearnerThrougKMeans:
         """Returns number of features."""
         return self.kmeans.cluster_centers_.shape[0]
 
-    def get_parents(self, index: int) -> list[int]:
+    def get_predecessors(self, index: int) -> list[int]:
         return list(self._graph.predecessors(index))
 
-    def get_children(self, index: int) -> list[int]:
+    def get_successors(self, index: int) -> list[int]:
         return list(self._graph.successors(index))
 
-    def evaluate_local_sets(self) -> None:
+    def fit(self) -> None:
         self.full_kmeans = KMeans(
             init="k-means++", n_clusters=self.n_clusters, n_init=5
         )
 
         self.full_kmeans.fit(self.data.X)
-
-        # TODO: would be nice, if you would not have to redo the learning to just be overwritten
-        # self.kmeans = KMeans(init="k-means++", n_clusters=self.n_clusters, n_init=4)
-        # self.kmeans.fit(self.data.X[:, : self.data.dimension])
-
         self.kmeans = copy.deepcopy(self.full_kmeans)
 
         # Reduce k_means to position only (!)
@@ -144,10 +141,10 @@ class MotionLearnerThrougKMeans:
         # Evaluate hierarchy and get the 'minimum' distance
         # Get hierarchy just from existing 'sequence label'
 
-        self._evaluate_cluster_hierarchy()
+        self._fit_cluster_hierarchy()
         self.region_radius_ = self.radius_factor * np.max(self.distances_parent)
 
-        self._evaluate_local_dynamics()
+        self._fit_local_dynamics()
 
         # Create succession obstacles
         self.region_obstacles = []
@@ -156,91 +153,65 @@ class MotionLearnerThrougKMeans:
 
             # Assumption of only one predecessor (!)
             # TODO: several predecessors and successors (?!)
-            self.region_obstacles[ii].successor_index = [
-                jj for jj in self._graph.successors(ii)
-            ]
+            self.region_obstacles[ii].successor_index = self.get_successors(ii)
 
         # TODO: learn local deviations
 
-    def predict(self, position: Vector) -> Vector:
-        # Get k-means-weights
-        position = np.array(position)
+    def _fit_cluster_hierarchy(self):
+        """Evaluates the sequence of each cluster along the trajectory.
+        -> this can only be used for demonstration which always take the same path."""
+        # TODO generalize for multiple (inconsistent sequences) learning
+        average_sequence = np.zeros(self.get_number_of_features())
+        self.distances_parent = np.zeros_like(average_sequence)
 
-        cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
-        weights = self._get_sequence_weights(position, cluster_label)
+        for ii, label in enumerate(self.get_feature_labels()):
+            average_sequence[ii] = np.mean(
+                self.data.sequence_value[self.kmeans.labels_ == label]
+            )
+        sorted_list = np.argsort(average_sequence)[::-1]
 
-        ind_relevant = np.arange(self.n_clusters)[weights > 0]
-
-        weights = weights
-        velocities = np.zeros((self.data.dimension, self.n_clusters))
-
-        for index in ind_relevant:
-            # TODO: there is an issue if the 'linear attractor'
-            velocities[:, index] = self._dynamics[index].evaluate(position)
-
-        # Modulate only the one which we are currently in
-        velocities[cluster_label, :] = obstacle_avoidance_rotational(
-            position,
-            velocities[cluster_label, :],
-            [self.region_obstacles[cluster_label]],
+        # Set attractor first
+        parent_id = -1
+        direction = (
+            self.kmeans.cluster_centers_[sorted_list[0], :] - self.data.attractor
         )
 
-        if np.sum(weights) < 1:
-            # TODO: allow for 'partial' weight, for e.g.,:
-            # - in between two non-neighboring ellipses
-            # - to transition from the outside to the inside (!)
-            # => create a 'transition margin' to allow for this!
-            # (make sure invariance of the region)
+        if dir_norm := LA.norm(direction):
+            direction = direction / dir_norm
+
+        else:
+            # What should be done in this case ?! -> go to one level higher?
             raise NotImplementedError()
 
-        # TODO: use partial vector_rotation (instead)
-        weighted_direction = get_directional_weighted_sum(
-            null_direction=velocities[cluster_label, :],
-            directions=velocities,
-            weights=weights,
-        )
+        # Distance to attractor has to be multiplied by two, to ensure that it's within
+        self.distances_parent[0] = dir_norm * 2.0
 
-        return weighted_direction
+        self._graph.add_node(sorted_list[0], level=0, direction=direction)
 
-    def _get_sequence_weights(
-        self,
-        position: Vector,
-        cluster_label: int,
-        parent_factor: float = 0.25,
-        gamma_cutoff: float = 4.0,
-    ) -> np.ndarray:
-        """Returns the weights whith which each of the superior clusters is considered
+        for jj, ind_node in enumerate(sorted_list[1:], 1):
+            ind_parent = sorted_list[jj - 1]
 
-        parent_factor in ]0, 1[: determines far into the new obstacle one can enter.
-        gamma_cutoff: ensure local convergences through impenetrability of walls
-        """
+            direction = (
+                self.kmeans.cluster_centers_[ind_node, :]
+                - self.kmeans.cluster_centers_[ind_parent, :]
+            )
 
-        parents = self.get_parents(cluster_label)
-        if len(parents) > 1:
-            raise NotImplementedError("How to treat a cluster with multiple parents?.")
+            if dir_norm := LA.norm(direction):
+                direction = direction / dir_norm
+            else:
+                raise ValueError("Two kmeans are aligned - check the cluster.")
 
-        gamma = self.region_obstacles[cluster_label].get_gamma(
-            position, ind_transparent=parents
-        )
+            self.distances_parent[jj] = dir_norm
 
-        center_dist = LA.norm(position - self.kmeans.cluster_centers_[cluster_label, :])
-        mean_dist = 0.5 * (
-            center_dist
-            + LA.norm(position - -self.kmeans.cluster_centers_[parents[0], :])
-        )
+            self._graph.add_node(
+                ind_node,
+                level=self._graph.nodes[ind_parent]["level"] + 1,
+                direction=direction,
+            )
 
-        tmp_weight = center_dist - mean_dist * parent_factor
-        if tmp_weight > 0 and gamma > gamma_cutoff:
-            tmp_weight /= (1 - parent_factor) * mean_dist
-            # Ensure it stops at boundary
-            tmp_weight *= 1 - 1 / (gamma - gamma_cutoff)
+            self._graph.add_edge(ind_node, ind_parent)
 
-        weights = np.zeros((self.n_clusters))
-        weights[parents[0]] = tmp_weight
-        weights[cluster_label] = 1 - np.sum(weights[cluster_label])
-        return weights
-
-    def _evaluate_local_dynamics(self):
+    def _fit_local_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
 
         # self._dynamics = [None for _ in self.get_number_of_features()]
@@ -296,59 +267,115 @@ class MotionLearnerThrougKMeans:
         for ii in range(it_max):
             raise NotImplementedError("TODO: Automatically update the label.")
 
-    def _evaluate_cluster_hierarchy(self):
-        """Evaluates the sequence of each cluster along the trajectory.
-        -> this can only be used for demonstration which always take the same path."""
-        # TODO generalize for multiple (inconsistent sequences) learning
-        average_sequence = np.zeros(self.get_number_of_features())
-        self.distances_parent = np.zeros_like(average_sequence)
+    def predict(self, position: Vector) -> Vector:
+        # Get k-means-weights
+        position = np.array(position)
 
-        for ii, label in enumerate(self.get_feature_labels()):
-            average_sequence[ii] = np.mean(
-                self.data.sequence_value[self.kmeans.labels_ == label]
-            )
-        sorted_list = np.argsort(average_sequence)[::-1]
+        cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
+        weights = self._predict_sequence_weights(position, cluster_label)
 
-        # Set attractor first
-        parent_id = -1
-        direction = (
-            self.kmeans.cluster_centers_[sorted_list[0], :] - self.data.attractor
+        ind_relevant = np.arange(self.n_clusters)[weights > 0]
+
+        velocities = np.zeros((self.data.dimension, self.n_clusters))
+
+        for index in ind_relevant:
+            # TODO: there is an issue if the 'linear attractor'
+            velocities[:, index] = self._dynamics[index].evaluate(position)
+
+        # Modulate only the one which we are currently in
+        velocities[:, cluster_label] = obstacle_avoidance_rotational(
+            position,
+            velocities[:, cluster_label],
+            [self.region_obstacles[cluster_label]],
+            convergence_velocity=velocities[:, cluster_label],
+            sticky_surface=False,
         )
 
-        if dir_norm := LA.norm(direction):
-            direction = direction / dir_norm
-
-        else:
-            # What should be done in this case ?! -> go to one level higher?
+        if np.sum(weights) < 1:
+            # TODO: allow for 'partial' weight, for e.g.,:
+            # - in between two non-neighboring ellipses
+            # - to transition from the outside to the inside (!)
+            # => create a 'transition margin' to allow for this!
+            # (make sure invariance of the region)
             raise NotImplementedError()
 
-        # Distance to attractor has to be multiplied by two, to ensure that it's within
-        self.distances_parent[0] = dir_norm * 2.0
+        # TODO: use partial vector_rotation (instead)
+        weighted_direction = get_directional_weighted_sum(
+            null_direction=velocities[:, cluster_label],
+            directions=velocities,
+            weights=weights,
+        )
 
-        self._graph.add_node(sorted_list[0], level=0, direction=direction)
+        return weighted_direction
 
-        for jj, ind_node in enumerate(sorted_list[1:], 1):
-            ind_parent = sorted_list[jj - 1]
+    def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:
+        tmp_directions = VectorRotationTree()
+        # TODO
+        # -> sorted hierarchy
+        # -> additionaly add modulated velocities / directions
+        # -> return weighted evaluation
 
-            direction = (
-                self.kmeans.cluster_centers_[ind_node, :]
-                - self.kmeans.cluster_centers_[ind_parent, :]
+    def _predict_sequence_weights(
+        self,
+        position: Vector,
+        cluster_label: int = None,
+        parent_factor: float = 0.5,
+        gamma_cutoff: float = 2.0,
+    ) -> np.ndarray:
+        """Returns the weights whith which each of the superior clusters is considered
+
+        parent_factor in ]0, 1[: determines far into the new obstacle one can enter.
+        gamma_cutoff: ensure local convergences through impenetrability of walls
+        """
+        # TODO:
+        # -> evalution for several obstacles (i.e. in the outside region)
+        # -> how to additonally incoorporate a margin for smooth transition / vectorfield
+
+        if cluster_label is None:
+            cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
+
+        parents = self.get_predecessors(cluster_label)
+        if len(parents) > 1:
+            raise NotImplementedError("How to treat a cluster with multiple parents?.")
+
+        elif not len(parents):
+            # No parent -> whole weight on child
+            weights = np.zeros((self.n_clusters))
+            weights[cluster_label] = 1
+            return weights
+
+        parent = parents[0]
+
+        center = 0.5 * (
+            self.kmeans.cluster_centers_[cluster_label, :]
+            + self.kmeans.cluster_centers_[parent, :]
+        )
+        norm_dist = (
+            self.kmeans.cluster_centers_[cluster_label, :]
+            - self.kmeans.cluster_centers_[parent, :]
+        )
+        norm_dist = norm_dist / LA.norm(norm_dist)
+
+        pos_dist = norm_dist.dot(position - center)
+        center_dist = norm_dist.dot(
+            self.kmeans.cluster_centers_[cluster_label, :] - center
+        )
+
+        tmp_weight = max(1 - max(pos_dist, 0) / (center_dist * parent_factor), 0)
+
+        if tmp_weight > 0:
+            # Gamma of label limits the weight of the superiors
+            # to ensure it stops at boundary
+            gamma = self.region_obstacles[cluster_label].get_gamma(
+                position, in_global_frame=True, ind_transparent=parent
             )
 
-            if dir_norm := LA.norm(direction):
-                direction = direction / dir_norm
-            else:
-                raise ValueError("Two kmeans are aligned - check the cluster.")
+            tmp_weight *= 1 - 1 / (1 + max(gamma - gamma_cutoff, 0))
 
-            self.distances_parent[jj] = dir_norm
-
-            self._graph.add_node(
-                ind_node,
-                level=self._graph.nodes[ind_parent]["level"] + 1,
-                direction=direction,
-            )
-
-            self._graph.add_edge(ind_node, ind_parent)
+        weights = np.zeros((self.n_clusters))
+        weights[parent] = tmp_weight
+        weights[cluster_label] = 1 - np.sum(weights)
+        return weights
 
     def plot_kmeans(
         self,
@@ -478,7 +505,7 @@ def create_kmeans_obstacle_from_learner(
         index=index,
     )
 
-    instance.successor_index = [ii for ii in learner._graph.successors(index)]
+    instance.successor_index = learner.get_successors(index)
 
     return instance
 
@@ -766,27 +793,7 @@ def _test_modulation_values(save_figure=False):
 def test_gamma_kmeans(visualize=False, save_figure=False):
     """Test the intersection and surface points"""
     # TODO: maybe additional check how well gamma is working
-    plt.ion()
-    plt.close("all")
-
-    # Generate very simple dataset
-    RANDOM_SEED = 1
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-
-    datahandler = MotionDataHandler(
-        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
-    )
-    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
-    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
-    datahandler.attractor = np.array([0.5, 2])
-    datahandler.sequence_value = np.linspace(0, 1, 4)
-
-    x_lim = [-3, 5]
-    y_lim = [-2.0, 4.0]
-
-    # Learn KMeans from DataSet
-    main_learner = MotionLearnerThrougKMeans(datahandler)
+    main_learner = create_four_point_datahandler()
 
     index = main_learner.kmeans.predict([[-1, 0]])[0]
     region_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
@@ -816,6 +823,12 @@ def test_gamma_kmeans(visualize=False, save_figure=False):
     assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
 
     if visualize:
+        plt.ion()
+        plt.close("all")
+
+        x_lim = [-3, 5]
+        y_lim = [-2.0, 4.0]
+
         fig, ax = plt.subplots()
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
         ax.axis("equal")
@@ -905,8 +918,8 @@ def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=T
     return fig, ax
 
 
-def test_cluster_connection_and_invariance_set(visualize=False, save_figure=False):
-    # Generate very simple dataset
+def create_four_point_datahandler() -> MotionLearnerThrougKMeans:
+    """Helper function to create handler"""
     RANDOM_SEED = 1
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -919,11 +932,14 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
     datahandler.attractor = np.array([0.5, 2])
     datahandler.sequence_value = np.linspace(0, 1, 4)
 
-    x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+    return MotionLearnerThrougKMeans(datahandler, radius_factor=0.55)
 
-    # Learn KMeans from DataSet
-    # -> use low radius_factor for improved avoidance visualization
-    main_learner = MotionLearnerThrougKMeans(datahandler, radius_factor=0.55)
+
+def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
+    # Generate very simple dataset
+    main_learner = create_four_point_datahandler()
+    x_lim = [-2.1, 3.1]
+    y_lim = [-1.1, 3.1]
 
     # Get bottom left obstacle
     index = main_learner.kmeans.predict([[1, 0]])
@@ -952,9 +968,58 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
         plt.ion()
         plt.close("all")
 
+        # fig, ax = plt.subplots()
+        # main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
+        # ax.axis("equal")
+
+        # if save_figure:
+        #     fig_name = "kmeans_boundaries_with_radiusfactor_055"
+        #     fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        n_grid = 20
+        xx, yy = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_grid),
+            np.linspace(y_lim[0], y_lim[1], n_grid),
+        )
+        positions = np.array([xx.flatten(), yy.flatten()])
+
+        velocities = np.zeros_like(positions)
+
+        k_obstacles = [
+            create_kmeans_obstacle_from_learner(main_learner, ii)
+            for ii in range(main_learner.n_clusters)
+        ]
+
+        for pp in range(positions.shape[1]):
+            is_inside = False
+            for obs in k_obstacles:
+                if obs.is_inside(positions[:, pp], in_global_frame=True):
+                    is_inside = True
+                    break
+
+            if not is_inside:
+                continue
+
+            velocities[:, pp] = main_learner.predict(positions[:, pp])
+
+        fig, ax = plt.subplots()
+        main_learner.plot_boundaries(ax=ax)
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            velocities[0, :],
+            velocities[1, :],
+            # color="red",
+            scale=40,
+        )
+        ax.axis("equal")
+
+        if save_figure:
+            fig_name = "basic_rotated_velocity"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
         fig_init, axs_init = plt.subplots(2, 2, figsize=(14, 9))
         fig_mod, axs_mod = plt.subplots(2, 2, figsize=(14, 9))
-        # main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
 
         for ii in range(main_learner.n_clusters):
             ax_ini = axs_init[ii % 2, ii // 2]
@@ -1022,11 +1087,130 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
             fig_mod.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
+def test_transition_weight(visualize=False, save_figure=False):
+    main_learner = create_four_point_datahandler()
+    x_lim, y_lim = [-3, 5], [-1.5, 4.5]
+
+    index = main_learner.kmeans.predict([[1, 0]])[0]
+    ind_parent = main_learner.get_predecessors(index)[0]
+
+    if visualize:
+        plt.close("all")
+        plt.ion()
+
+        x_lim_test = [-2.5, 2.5]
+        y_lim_test = [-1.5, 1.5]
+
+        n_grid = 40
+        xx, yy = np.meshgrid(
+            np.linspace(x_lim_test[0], x_lim_test[1], n_grid),
+            np.linspace(y_lim_test[0], y_lim_test[1], n_grid),
+        )
+        positions = np.array([xx.flatten(), yy.flatten()])
+        weights = np.zeros((main_learner.n_clusters, positions.shape[1]))
+
+        for pp in range(positions.shape[1]):
+            weights[:, pp] = main_learner._get_sequence_weights(positions[:, pp], index)
+        # breakpoint()
+
+        fig, ax = plt.subplots()
+        main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
+
+        fig, ax = plt.subplots()
+        main_learner.plot_boundaries(ax=ax)
+
+        levels = np.linspace(0, 1, 11)
+
+        cntr = ax.contourf(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            weights[index].reshape(n_grid, n_grid),
+            levels=levels,
+            cmap="cool",
+            # alpha=0.7,
+        )
+        fig.colorbar(cntr)
+        ax.axis("equal")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        if save_figure:
+            fig_name = f"transition_weights_{index}"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        # Plot normal gamma with parent
+        fig, ax = plt.subplots()
+        region_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+        gammas = np.zeros(positions.shape[1])
+        for pp in range(positions.shape[1]):
+            gammas[pp] = region_obstacle.get_gamma(
+                positions[:, pp],
+                in_global_frame=True,
+                ind_transparent=ind_parent,
+            )
+
+        levels = np.linspace(1, 10, 10)
+        main_learner.plot_boundaries(ax=ax)
+        cntr = ax.contourf(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            gammas.reshape(n_grid, n_grid),
+            levels=levels,
+            cmap="cool",
+            extend="max",
+            # alpha=0.7,
+        )
+        fig.colorbar(cntr)
+        ax.axis("equal")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        if save_figure:
+            fig_name = f"gamma_values_cluster_{index}"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    # Weight behind (inside parent-cluster)
+    position = np.array([-0.91, 0.60])
+    weights = main_learner._get_sequence_weights(position, index)
+    expected_weights = np.zeros_like(weights)
+    expected_weights[ind_parent] = 1
+    assert np.allclose(weights, expected_weights)
+
+    # Weight at top border (inside index-cluster)
+    position = np.array([0.137, -0.625])
+    weights = main_learner._get_sequence_weights(position, index)
+    expected_weights = np.zeros_like(weights)
+    expected_weights[index] = 1
+    assert np.allclose(weights, expected_weights)
+
+    # Weight at parent center
+    position = main_learner.kmeans.cluster_centers_[ind_parent, :]
+    weights = main_learner._get_sequence_weights(position, index)
+    expected_weights = np.zeros_like(weights)
+    expected_weights[ind_parent] = 1
+    assert np.allclose(weights, expected_weights)
+
+    # Weight at cluster center point
+    position = main_learner.kmeans.cluster_centers_[index, :]
+    weights = main_learner._get_sequence_weights(position, index)
+    expected_weights = np.zeros_like(weights)
+    expected_weights[index] = 1
+    assert np.allclose(weights, expected_weights)
+
+    # Weight at transition point
+    position = np.array([0, 0])
+    weights = main_learner._get_sequence_weights(position, index)
+    expected_weights = np.zeros_like(weights)
+    expected_weights[ind_parent] = 1
+    assert np.allclose(weights, expected_weights)
+
+
 if (__name__) == "__main__":
     # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
-    # test_cluster_connection_and_invariance_set(visualize=True, save_figure=True)
+    # test_transition_weight(visualize=True, save_figure=True)
 
+    # _test_evaluate_partial_deviations(visualize=True, save_figure=True)
     # _test_a_matrix_loader(save_figure=False)
     # _test_gamma_values(save_figure=True)
 

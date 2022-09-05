@@ -161,6 +161,7 @@ class KmeansObstacle(Obstacle):
         return self.kmeans.cluster_centers_.shape[0]
 
     def is_inside(self, position: Vector, in_global_frame: bool = False) -> bool:
+        # return self.kmeans.predict(position.reshape(1, -1))[0] == self._index
         gamma = self.get_gamma(position, in_global_frame, ind_transparent=-1)
         # gamma = self._get_gamma_without_transition(position, in_global_frame)
         return gamma > 1
