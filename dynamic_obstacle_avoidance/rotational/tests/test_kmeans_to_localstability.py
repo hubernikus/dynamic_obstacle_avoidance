@@ -52,7 +52,6 @@ from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KmeansObstacle
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
-
 NodeType = int
 
 figure_type = ".png"
@@ -241,7 +240,7 @@ class MotionLearnerThrougKMeans:
 
     def _check_that_main_direction_is_towards_parent(
         self, ind_node: NodeType, direction: Vector, it_max: int = 100
-    ):
+    ) -> None:
         """Checks that the main direction point towards the intersection between
         parent and node"""
         ind_parent = self._graph.nodes[ind_node]["parent"]
@@ -635,76 +634,6 @@ def test_surface_position_and_normal(visualize=True):
     assert gamma < 1
 
 
-def _test_a_matrix_loader(save_figure=False):
-    plt.ion()
-    plt.close("all")
-
-    RANDOM_SEED = 1
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-
-    data = HandwrittingHandler(file_name="2D_Ashape.mat")
-    main_learner = MotionLearnerThrougKMeans(data)
-
-    fig, ax_kmeans = plt.subplots()
-    main_learner.plot_kmeans(ax=ax_kmeans)
-    if save_figure:
-        fig_name = "kmeans_a_shape"
-        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-    fig, ax = plt.subplots()
-    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
-    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
-    ax.set_xlim(ax_kmeans.get_xlim())
-    ax.set_ylim(ax_kmeans.get_ylim())
-    if save_figure:
-        fig_name = "raw_data_a_shape"
-        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-    fig, axs = plt.subplots(2, 2, figsize=(14, 9))
-    for ii in range(main_learner.kmeans.n_clusters):
-        ax = axs[ii % 2, ii // 2]
-
-        main_learner.plot_kmeans(ax=ax)
-
-        # Plot a specific obstacle
-        region_obstacle = KmeansObstacle(
-            radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
-        )
-
-        ff = 1.2
-        # Test normal
-        positions = get_grid_points(
-            main_learner.kmeans.cluster_centers_[ii, 0],
-            main_learner.region_radius_ * ff,
-            main_learner.kmeans.cluster_centers_[ii, 1],
-            main_learner.region_radius_ * ff,
-            n_points=10,
-        )
-
-        normals = np.zeros_like(positions)
-
-        for ii in range(positions.shape[1]):
-            if region_obstacle.get_gamma(positions[:, ii], in_global_frame=True) < 1:
-                continue
-
-            normals[:, ii] = region_obstacle.get_normal_direction(
-                positions[:, ii], in_global_frame=True
-            )
-
-            if any(np.isnan(normals[:, ii])):
-                breakpoint()
-
-        ax.quiver(
-            positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=15
-        )
-        ax.axis("equal")
-
-    if save_figure:
-        fig_name = "kmeans_obstacles_multiplot_normal"
-        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
-
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
     """Returns grid based on input x and y values."""
     x_min = mean_x - delta_x
@@ -968,14 +897,6 @@ def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
         plt.ion()
         plt.close("all")
 
-        # fig, ax = plt.subplots()
-        # main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
-        # ax.axis("equal")
-
-        # if save_figure:
-        #     fig_name = "kmeans_boundaries_with_radiusfactor_055"
-        #     fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-
         n_grid = 20
         xx, yy = np.meshgrid(
             np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -1110,7 +1031,7 @@ def test_transition_weight(visualize=False, save_figure=False):
         weights = np.zeros((main_learner.n_clusters, positions.shape[1]))
 
         for pp in range(positions.shape[1]):
-            weights[:, pp] = main_learner._get_sequence_weights(positions[:, pp], index)
+            weights[:, pp] = main_learner._fit_sequence_weights(positions[:, pp], index)
         # breakpoint()
 
         fig, ax = plt.subplots()
@@ -1171,47 +1092,146 @@ def test_transition_weight(visualize=False, save_figure=False):
 
     # Weight behind (inside parent-cluster)
     position = np.array([-0.91, 0.60])
-    weights = main_learner._get_sequence_weights(position, index)
+    weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[ind_parent] = 1
     assert np.allclose(weights, expected_weights)
 
     # Weight at top border (inside index-cluster)
     position = np.array([0.137, -0.625])
-    weights = main_learner._get_sequence_weights(position, index)
+    weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[index] = 1
     assert np.allclose(weights, expected_weights)
 
     # Weight at parent center
     position = main_learner.kmeans.cluster_centers_[ind_parent, :]
-    weights = main_learner._get_sequence_weights(position, index)
+    weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[ind_parent] = 1
     assert np.allclose(weights, expected_weights)
 
     # Weight at cluster center point
     position = main_learner.kmeans.cluster_centers_[index, :]
-    weights = main_learner._get_sequence_weights(position, index)
+    weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[index] = 1
     assert np.allclose(weights, expected_weights)
 
     # Weight at transition point
     position = np.array([0, 0])
-    weights = main_learner._get_sequence_weights(position, index)
+    weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[ind_parent] = 1
     assert np.allclose(weights, expected_weights)
+
+
+def test_normals(visualize=False, save_figure=False):
+    # TODO: some real test
+    main_learner = create_four_point_datahandler()
+    x_lim, y_lim = [-3.0, 4.5], [-1.5, 3.5]
+
+    if visualize:
+        plt.ion()
+        plt.close("all")
+
+        fig, ax_kmeans = plt.subplots()
+        main_learner.plot_kmeans(ax=ax_kmeans, x_lim=x_lim, y_lim=y_lim)
+        ax_kmeans.axis("equal")
+        ax_kmeans.set_xlim(x_lim)
+        ax_kmeans.set_ylim(y_lim)
+
+        if save_figure:
+            fig_name = "kmeans_shape"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+        fig, axs = plt.subplots(2, 2, figsize=(14, 9))
+        for ii in range(main_learner.kmeans.n_clusters):
+            ax = axs[ii % 2, ii // 2]
+
+            main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+            # Plot a specific obstacle
+            region_obstacle = KmeansObstacle(
+                radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
+            )
+
+            ff = 1.2
+            # Test normal
+            positions = get_grid_points(
+                main_learner.kmeans.cluster_centers_[ii, 0],
+                main_learner.region_radius_ * ff,
+                main_learner.kmeans.cluster_centers_[ii, 1],
+                main_learner.region_radius_ * ff,
+                n_points=10,
+            )
+
+            normals = np.zeros_like(positions)
+
+            for ii in range(positions.shape[1]):
+                if (
+                    region_obstacle.get_gamma(positions[:, ii], in_global_frame=True)
+                    < 1
+                ):
+                    continue
+
+                normals[:, ii] = region_obstacle.get_normal_direction(
+                    positions[:, ii], in_global_frame=True
+                )
+
+                if any(np.isnan(normals[:, ii])):
+                    breakpoint()
+
+            ax.quiver(
+                positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=15
+            )
+            ax.axis("equal")
+
+        if save_figure:
+            fig_name = "kmeans_obstacles_multiplot_normal"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def _test_local_deviation(visualize=False, save_figure=False):
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    main_learner = MotionLearnerThrougKMeans(data)
+
+    fig, ax_kmeans = plt.subplots()
+    main_learner.plot_kmeans(ax=ax_kmeans)
+    ax_kmeans.axis("equal")
+    # ax_kmeans.set_xlim(x_lim)
+    # ax_kmeans.set_ylim(y_lim)
+
+    if save_figure:
+        fig_name = "kmeans_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    fig, ax = plt.subplots()
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    ax.set_xlim(ax_kmeans.get_xlim())
+    ax.set_ylim(ax_kmeans.get_ylim())
+
+    if save_figure:
+        fig_name = "raw_data_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    # main_learner.kmeans.
+    breakpoint()
 
 
 if (__name__) == "__main__":
     # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
     # test_transition_weight(visualize=True, save_figure=True)
+    # test_normals(visualize=True)
 
-    # _test_evaluate_partial_deviations(visualize=True, save_figure=True)
-    # _test_a_matrix_loader(save_figure=False)
+    _test_local_deviation(save_figure=False)
+    # _test_evaluate_partial_deviations(visualize=True, save_figure=False)
     # _test_gamma_values(save_figure=True)
 
     print("Tests finished.")
