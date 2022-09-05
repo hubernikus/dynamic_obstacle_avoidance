@@ -166,21 +166,22 @@ class RotationalAvoider(BaseAvoider):
                 position, in_global_frame=True
             )
 
-            # Null matrix is pointing towards the object
+            # Null matrix (zero-vector) and reference direction should be pointing
+            # towards the wall - the initial reference direction is pointing towards
+            # the reference
             if obstacle_list[it_obs].is_boundary:
-                # reference_dir = (-1) * reference_dir
+                reference_dir = (-1) * reference_dir
                 # null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
                 null_matrix = normal_orthogonal_matrix[:, :, it]
 
             else:
-                reference_dir = (-1) * reference_dir
-                # null_matrix = normal_orthogonal_matrix[:, :, it]
-                null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
+                # reference_dir = (-1) * reference_dir
+                null_matrix = (-1) * normal_orthogonal_matrix[:, :, it]
+                # null_matrix = normal_orthogonal_matrix[:, :, it] * (-1)
 
-            # Check if the reference / normal calculation was correct
-            if np.dot(null_matrix[:, 0], reference_dir) < 0:
-                breakpoint()
-                # TODO: test and fix this
+            if np.dot(reference_dir, null_matrix[:, 0]) < 0:
+                # TODO: this check should not be necessary with proper obstacle definition
+                null_matrix = null_matrix * (-1)
 
             # Convergence direcctions can be local for certain obstacles
             # / convergence environments

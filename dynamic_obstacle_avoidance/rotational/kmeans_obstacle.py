@@ -143,9 +143,9 @@ class KmeansObstacle(Obstacle):
 
     def get_reference_direction(self, position: Vector, in_global_frame: bool = False):
         if in_global_frame:
-            direction = position - self.kmeans.cluster_centers_[self._index, :]
+            direction = self.kmeans.cluster_centers_[self._index, :] - position
         else:
-            direction = position
+            direction = position * (-1)
 
         if norm_dir := LA.norm(direction):
             direction = direction / norm_dir

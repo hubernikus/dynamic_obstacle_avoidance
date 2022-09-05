@@ -92,13 +92,15 @@ class MotionDataHandler:
 
 
 class MotionLearnerThrougKMeans:
-    def __init__(self, data: HandwrittingHandler, n_clusters: int = 4):
+    def __init__(
+        self, data: HandwrittingHandler, n_clusters: int = 4, radius_factor: float = 0.7
+    ):
         self.data = data
         self.n_clusters = n_clusters
 
         self._graph = nx.DiGraph()
 
-        self.radius_factor = 0.7
+        self.radius_factor = radius_factor
         # self.region_radius_ = 1
 
         # self._graph = None
@@ -920,7 +922,8 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
     x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
     # Learn KMeans from DataSet
-    main_learner = MotionLearnerThrougKMeans(datahandler)
+    # -> use low radius_factor for improved avoidance visualization
+    main_learner = MotionLearnerThrougKMeans(datahandler, radius_factor=0.55)
 
     # Get bottom left obstacle
     index = main_learner.kmeans.predict([[1, 0]])
@@ -928,11 +931,15 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
     # ii = 1
     # position = np.array([1.5, 3.2])
     ii = 3
-    position = np.array([2.5, 1.8])
-    # position = np.array([2.9, 1.5])
+    # position = np.array([2.5, 1.8])
+    position = np.array([2.4, 1.9])
 
     region_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
     initial_velocity = main_learner._dynamics[ii].evaluate(position)
+
+    # norm_dir = region_obstacle.get_normal_direction(position)
+    # ref_dir = region_obstacle.get_reference_direction(position)
+    # breakpoint()
 
     modulated_velocity = obstacle_avoidance_rotational(
         position,
@@ -956,7 +963,7 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
             main_learner.plot_boundaries(ax=ax_ini)
             main_learner.plot_boundaries(ax=ax_mod)
 
-            ff = 1.1
+            ff = 1.05
             n_grid = 10
             positions = get_grid_points(
                 main_learner.kmeans.cluster_centers_[ii, 0],
@@ -1018,7 +1025,7 @@ def test_cluster_connection_and_invariance_set(visualize=False, save_figure=Fals
 if (__name__) == "__main__":
     # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
-    test_cluster_connection_and_invariance_set(visualize=True, save_figure=True)
+    # test_cluster_connection_and_invariance_set(visualize=True, save_figure=True)
 
     # _test_a_matrix_loader(save_figure=False)
     # _test_gamma_values(save_figure=True)
