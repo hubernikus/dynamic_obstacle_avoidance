@@ -23,6 +23,7 @@ import copy
 import random
 import warnings
 import math
+from math import pi
 
 from dataclasses import dataclass
 
@@ -49,6 +50,10 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
 )
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
 from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KmeansObstacle
+from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import (
+    MultiOutputSVR,
+    DeviationOfConstantFlow,
+)
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
@@ -216,7 +221,7 @@ class MotionLearnerThrougKMeans:
         # self._dynamics = [None for _ in self.get_number_of_features()]
         self._dynamics = []
 
-        for label in self.get_feature_labels():
+        for ii, label in enumerate(self.get_feature_labels()):
             # if self._graph.nodes[label].pre < 0:
             # pred = next(self._graph.predecessors(label))[0]
             if self._graph.nodes[label]["level"] == 0:
@@ -236,7 +241,29 @@ class MotionLearnerThrougKMeans:
                 # Use the K-Means dynamics as default
                 direction = self._graph.nodes[label]["direction"]
 
-            self._dynamics.append(ConstantValue(direction))
+            # self._dynamics.append(ConstantValue(direction))
+
+            # TODO: how do other regressors perform (?)
+            self._dynamics.append(
+                DeviationOfConstantFlow(
+                    reference_velocity=direction,
+                    regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
+                )
+            )
+
+            # TODO: maybe multiple fits -> choose the best (?)
+            labels_local = np.array(
+                [label] + self.get_predecessors(label) + self.get_successors(label)
+            )
+            indexes_local = np.max(
+                np.tile(self.kmeans.labels_, (labels_local.shape[0], 1))
+                == np.tile(labels_local, (self.kmeans.labels_.shape[0], 1)).T,
+                axis=0,
+            )
+            self._dynamics[label].fit_from_velocities(
+                self.data.position[indexes_local, :],
+                self.data.velocity[indexes_local, :],
+            )
 
     def _check_that_main_direction_is_towards_parent(
         self, ind_node: NodeType, direction: Vector, it_max: int = 100
@@ -1193,15 +1220,20 @@ def test_normals(visualize=False, save_figure=False):
 
 
 def _test_local_deviation(visualize=False, save_figure=False):
+    plt.close("all")
+
     RANDOM_SEED = 1
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
+
+    x_lim = [-5.5, 0.5]
+    y_lim = [-1.5, 3.0]
 
     data = HandwrittingHandler(file_name="2D_Ashape.mat")
     main_learner = MotionLearnerThrougKMeans(data)
 
     fig, ax_kmeans = plt.subplots()
-    main_learner.plot_kmeans(ax=ax_kmeans)
+    main_learner.plot_kmeans(ax=ax_kmeans, x_lim=x_lim, y_lim=y_lim)
     ax_kmeans.axis("equal")
     # ax_kmeans.set_xlim(x_lim)
     # ax_kmeans.set_ylim(y_lim)
@@ -1213,15 +1245,95 @@ def _test_local_deviation(visualize=False, save_figure=False):
     fig, ax = plt.subplots()
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
     ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
-    ax.set_xlim(ax_kmeans.get_xlim())
-    ax.set_ylim(ax_kmeans.get_ylim())
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
 
     if save_figure:
         fig_name = "raw_data_a_shape"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-    # main_learner.kmeans.
-    breakpoint()
+    for index in range(main_learner.kmeans.n_clusters):
+        if index == 1:
+            continue
+        print(f"Doing index {index}")
+
+        index_neighbourhood = np.array(
+            [index]
+            + main_learner.get_successors(index)
+            + main_learner.get_predecessors(index)
+        )
+
+        x_min = (
+            np.min(main_learner.kmeans.cluster_centers_[index_neighbourhood, 0])
+            - main_learner.region_radius_
+        )
+        x_max = (
+            np.max(main_learner.kmeans.cluster_centers_[index_neighbourhood, 0])
+            + main_learner.region_radius_
+        )
+
+        y_min = (
+            np.min(main_learner.kmeans.cluster_centers_[index_neighbourhood, 1])
+            - main_learner.region_radius_
+        )
+        y_max = (
+            np.max(main_learner.kmeans.cluster_centers_[index_neighbourhood, 1])
+            + main_learner.region_radius_
+        )
+
+        n_grid = 40
+        xx, yy = np.meshgrid(
+            np.linspace(x_min, x_max, n_grid),
+            np.linspace(y_min, y_max, n_grid),
+        )
+        positions = np.array([xx.flatten(), yy.flatten()])
+        predictions = np.zeros(positions.shape[0])
+
+        levels = np.linspace(-pi / 2, pi / 2, 50)
+
+        predictions = main_learner._dynamics[index].predict(positions.T).T
+
+        for pp in range(positions.shape[1]):
+            is_inside = False
+            for ii in index_neighbourhood:
+                if main_learner.region_obstacles[ii].is_inside(
+                    positions[:, pp], in_global_frame=True
+                ):
+                    is_inside = True
+                    break
+
+            if not is_inside:
+                predictions[pp] = 0
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        # fig, ax = fig.subplots(figsize=(14, 9))
+        cntr = ax.contourf(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            predictions.reshape(n_grid, n_grid),
+            levels=levels,
+            # cmap="cool",
+            cmap="seismic",
+            # alpha=0.7,
+            extend="both",
+        )
+        fig.colorbar(cntr)
+
+        main_learner.plot_boundaries(ax=ax)
+
+        reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+        ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+
+        ax.axis("equal")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        # main_learner.kmeans.
+        # breakpoint()
+
+        if save_figure:
+            fig_name = f"local_rotation_around_neighbourhood_{index}"
+            fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
 if (__name__) == "__main__":
@@ -1230,7 +1342,7 @@ if (__name__) == "__main__":
     # test_transition_weight(visualize=True, save_figure=True)
     # test_normals(visualize=True)
 
-    _test_local_deviation(save_figure=False)
+    _test_local_deviation(save_figure=True)
     # _test_evaluate_partial_deviations(visualize=True, save_figure=False)
     # _test_gamma_values(save_figure=True)
 
