@@ -17,6 +17,7 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 
 from sklearn.svm import SVR
+from sklearn.model_selection import train_test_split
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import DynamicalSystem, ConstantValue
@@ -115,6 +116,9 @@ class DeviationOfConstantFlow(DirectionalSystem):
             deviation = deviation / dev_norm
         return deviation
 
+    def predict(self, position: np.ndarray) -> np.ndarray:
+        return self.regressor.predict(position)
+
 
 def test_learn_sinus_motion(visualize=False, save_figure=False):
     # Data going from right to left
@@ -131,16 +135,64 @@ def test_learn_sinus_motion(visualize=False, save_figure=False):
     velocities = X[1:, :] - X[:-1, :]
     X = X[:-1, :]
 
-    dynamics = DeviationOfConstantFlow(
-        reference_velocity=np.mean(velocities, axis=0),
-        regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
+    tt_ratio = 2 / 3
+    train_index, test_index = train_test_split(
+        np.arange(X.shape[0]), test_size=(1 - tt_ratio)
     )
 
-    dynamics.fit_from_velocities(X, velocities)
+    X_train = X[train_index, :]
+    X_test = X[test_index, :]
+
+    y_train = velocities[train_index, :]
+    y_test = velocities[test_index, :]
+
+    dynamics = DeviationOfConstantFlow(
+        reference_velocity=np.mean(velocities, axis=0),
+        regressor=MultiOutputSVR(kernel="rbf", gamma=0.05),
+    )
+
+    dynamics.fit_from_velocities(X_train, y_train)
+
+    direction_predict = dynamics.predict(X_test)
+    direction_test = dynamics._clean_input_data(y_test)
+
+    MSE = np.mean((direction_predict - direction_test) ** 2)
+    print(f"Mean squared error of {MSE}.")
 
     if visualize:
+        plt.close("all")
+        plt.ion()
+
         fig, ax = plt.subplots()
-        ax.plot(X[:, 0], X[:, 1], ".")
+        ax.plot(X[:, 0], X[:, 1], ".", color="black")
+
+        x_lim = [x[0], x[-1]]
+        y_lim = [-1.3, 1.3]
+
+        n_grid = 40
+        xx, yy = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_grid),
+            np.linspace(y_lim[0], y_lim[1], n_grid),
+        )
+        positions = np.array([xx.flatten(), yy.flatten()])
+
+        predictions = dynamics.predict(positions.T).T
+        levels = np.linspace(-pi / 2, pi / 2, 21)
+
+        cntr = ax.contourf(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            predictions.reshape(n_grid, n_grid),
+            levels=levels,
+            # cmap="cool",
+            cmap="seismic",
+            # alpha=0.7,
+            extend="both",
+        )
+        fig.colorbar(cntr)
+
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
 
 
 if (__name__) == "__main__":
