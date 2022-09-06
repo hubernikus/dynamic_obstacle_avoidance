@@ -59,8 +59,7 @@ class MultiOutputSVR:
 class DirectionalSystem(ABC):
     def evaluate(self, position: Vector) -> Vector:
         angle_deviation = self.evaluate_deviation(position)
-
-        return get_angle_space_inverse(angle_deviation, self.base)
+        return get_angle_space_inverse(angle_deviation, null_matrix=self.base)
 
     @abstractmethod
     def evaluate_deviation(self, position: Vector) -> DeviationVector:
@@ -153,13 +152,12 @@ def test_learn_sinus_motion(visualize=False, save_figure=False):
 
     dynamics.fit_from_velocities(X_train, y_train)
 
-    direction_predict = dynamics.predict(X_test)
-    direction_test = dynamics._clean_input_data(y_test)
-
-    MSE = np.mean((direction_predict - direction_test) ** 2)
-    print(f"Mean squared error of {MSE}.")
-
     if visualize:
+        direction_predict = dynamics.predict(X_test)
+        direction_test = dynamics._clean_input_data(y_test)
+        MSE = np.mean((direction_predict - direction_test) ** 2)
+        print(f"Mean squared error of test-set: {round(MSE, 4)}")
+
         plt.close("all")
         plt.ion()
 
@@ -194,8 +192,16 @@ def test_learn_sinus_motion(visualize=False, save_figure=False):
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
+    #
+    position = np.array([4.8, 0])
+    velocity = dynamics.evaluate(position)
+    assert velocity[1] > 0
+
+    position = np.array([7.8, 0])
+    velocity = dynamics.evaluate(position)
+    assert velocity[1] < 0
+
 
 if (__name__) == "__main__":
-
-    test_learn_sinus_motion(visualize=True)
+    # test_learn_sinus_motion(visualize=True)
     print("Tests finished.")
