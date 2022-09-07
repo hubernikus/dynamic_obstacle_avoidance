@@ -156,7 +156,8 @@ class RotationalAvoider(BaseAvoider):
         inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
         # rotated_velocities = np.zeros((dimension, n_obs_close))
 
-        rotated_directions = [None] * n_obs_close
+        # rotated_directions = [None] * n_obs_close
+        rotated_directions = np.zeros((dimension, n_obs_close))
         for it, it_obs in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
             # It is with respect to the close-obstacles
             # -- it_obs ONLY to use in obstacle_list (whole)
@@ -190,21 +191,21 @@ class RotationalAvoider(BaseAvoider):
                     position=position, it_obs=it_obs
                 )
 
-            conv_vel_norm = np.linalg.norm(convergence_velocity)
-            if not conv_vel_norm:
+            if not (conv_vel_norm := LA.norm(convergence_velocity)):
                 # Zero value
                 # base = DirectionBase(matrix=null_matrix)
                 base = null_matrix
 
                 # rotated_velocities[:, it] = UnitDirection(base).from_vector(initial_velocity)
-                rotated_directions[it] = UnitDirection(base).from_vector(
-                    initial_velocity
-                )
+                rotated_directions[:, it] = initial_velocity
+                # rotated_directions[it] = UnitDirection(base).from_vector(
+                #     initial_velocity
+                # )
                 continue
 
             # Note that the inv_gamma_weight was prepared for the multiboundary
             # environment through the reference point displacement (see 'loca_reference_point')
-            rotated_directions[it] = self.directional_convergence_summing(
+            rotated_directions[:, it] = self.directional_convergence_summing(
                 convergence_vector=convergence_velocity,
                 reference_vector=reference_dir,
                 weight=inv_gamma_weight[it],
@@ -214,8 +215,14 @@ class RotationalAvoider(BaseAvoider):
             )
 
         base = get_orthogonal_basis(initial_velocity)
-        rotated_velocity = get_directional_weighted_sum_from_unit_directions(
-            base=base, weights=weights, unit_directions=rotated_directions
+        # rotated_velocity = get_directional_weighted_sum_from_unit_directions(
+        #     base=base, weights=weights, unit_directions=rotated_directions
+        # )
+
+        rotated_velocity = get_directional_weighted_sum(
+            null_direction=base[:, 0],
+            weights=weights,
+            directions=rotated_directions,
         )
 
         if sticky_surface:
@@ -611,8 +618,6 @@ class RotationalAvoider(BaseAvoider):
         if nonlinear_velocity is None:
             return UnitDirection(base).from_vector(convergence_vector)
 
-        dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
-
         if (
             self.smooth_continuation_power
             and weight < 1
@@ -638,11 +643,26 @@ class RotationalAvoider(BaseAvoider):
                 convergence_radius=np.pi / 2,
             )
 
-        rotated_velocity = self._get_projected_velocity(
-            dir_convergence_tangent=dir_convergence,
-            dir_initial_velocity=dir_initial,
-            weight=weight,
-            convergence_radius=np.pi / 2,
+        # dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
+        # rotated_direction = self._get_projected_velocity(
+        #     dir_convergence_tangent=dir_convergence,
+        #     dir_initial_velocity=dir_initial,
+        #     weight=weight,
+        #     convergence_radius=np.pi / 2,
+        # )
+        # return rotated_direction.as_vector()
+
+        conv_vector = dir_convergence.as_vector()
+        if not (vel_norm := LA.norm(nonlinear_velocity)):
+            breakpoint()
+        vec_initial = nonlinear_velocity / vel_norm
+
+        rotated_velocity = get_directional_weighted_sum(
+            null_direction=conv_vector,
+            weights=np.array([weight, (1 - weight)]),
+            directions=np.vstack((conv_vector, vec_initial)).T,
         )
-        # breakpoint()
+
         return rotated_velocity
+
+    # def _get_projected_velocity(self,):

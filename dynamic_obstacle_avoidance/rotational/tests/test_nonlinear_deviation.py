@@ -68,9 +68,13 @@ class MultiOutputSVR:
 
 
 class DirectionalSystem(ABC):
+    @abstractmethod
     def evaluate(self, position: Vector) -> Vector:
-        angle_deviation = self.evaluate_deviation(position)
-        return get_angle_space_inverse(angle_deviation, null_matrix=self.base)
+        pass
+
+    @abstractmethod
+    def evaluate_convergence_velocity(position: Vector) -> Vector:
+        pass
 
     # @abstractmethod
     # def evaluate_deviation(self, position: Vector) -> DeviationVector:
@@ -80,8 +84,10 @@ class DirectionalSystem(ABC):
 class DeviationOfConstantFlow(DirectionalSystem):
     maximal_deviation = 0.99 * pi / 2.0
 
-    def __init__(self, reference_velocity: np.ndarray, regressor) -> None:
+    def __init__(self, reference_velocity: Vector, regressor) -> None:
         self.reference_velocity = reference_velocity
+        self.velocity_magnitude = LA.norm(self.reference_velocity)
+
         self.base = get_orthogonal_basis(
             reference_velocity / LA.norm(reference_velocity)
         )
@@ -118,16 +124,26 @@ class DeviationOfConstantFlow(DirectionalSystem):
             directions[ii, :] = get_angle_space(data[ii, :], null_matrix=self.base)
         return directions
 
+    def evaluate(self, position: Vector) -> Vector:
+        angle_deviation = self.evaluate_deviation(position)
+        return (
+            get_angle_space_inverse(angle_deviation, null_matrix=self.base)
+            * self.velocity_magnitude
+        )
+
     def evaluate_deviation(self, position: Vector) -> np.ndarray:
         """Return deviation, while making sure that the deviation stays within the
         feasible boundaries."""
         deviation = self.regressor.predict(position.reshape(1, -1))[0]
         if (dev_norm := LA.norm(deviation)) > self.maximal_deviation:
-            deviation = deviation / dev_norm
+            deviation = deviation / dev_norm * self.maximal_deviation
         return deviation
 
     def predict(self, position: np.ndarray) -> np.ndarray:
         return self.regressor.predict(position)
+
+    def evaluate_convergence_velocity(self, position: Vector) -> Vector:
+        return self.reference_velocity
 
 
 class DeviationOfLinearDS(DirectionalSystem):
@@ -194,6 +210,8 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
         self.n_features_in_ = X.shape[1]
         self.n_features_out_ = y.shape[1]
 
+        X_relative = X - np.tile(self.attractor_position, (X.shape[0], 1))
+
         self._null_matrices = np.zeros(
             (self.dimension, self.dimension, 2, self.dimension)
         )
@@ -205,7 +223,7 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
                 null_axis[dd] = (-1) * sign
                 self._null_matrices[:, :, dd, ii] = get_orthogonal_basis(null_axis)
 
-                ind_good = (X[:, dd] * sign) >= 0
+                ind_good = (X_relative[:, dd] * sign) >= 0
 
                 if not np.sum(ind_good):
                     self.regressors[dd][ii] = ConstantRegressor(
@@ -213,7 +231,7 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
                     )
                     continue
 
-                X_tmp = X[ind_good, :]
+                X_tmp = X_relative[ind_good, :]
                 y_tmp = self.velocity_to_direction(
                     y[
                         ind_good,
@@ -239,7 +257,7 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
 
         local_predictions = np.zeros((self.dimension, self.dimension))
         for dd in np.arange(self.dimension):
-            ii = 0 if position[dd] < 0 else 1
+            ii = 0 if relative_position[dd] < 0 else 1
             angle = self.regressors[dd][ii].predict(relative_position.reshape(1, -1))[0]
 
             if (angle_norm := LA.norm(angle)) > self.max_angle:
@@ -249,11 +267,10 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
             local_predictions[:, dd] = get_angle_space_inverse(
                 angle, null_matrix=self._null_matrices[:, :, dd, ii]
             )
+            # breakpoint()
 
-        # The further along an axis, the higher the weight
-        # weights = position**2
-        weights = abs(position)
-        weights = weights / np.sum(weights)
+        # breakpoint()
+        weights = self.get_weights(relative_position)
 
         # TODO: transfer of direction would allow for higher directions
         # i.e. less conservative cut-off
@@ -263,21 +280,39 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
             weights=weights,
         )
 
-        velocity_factor = min(1, distance / self.prox_distance) * self.max_velocity
+        return final_direction * self.get_velocity_factor(distance)
 
-        return final_direction * velocity_factor
+    def get_velocity_factor(self, distance):
+        return min(1, distance / self.prox_distance) * self.max_velocity
 
-    def predict(self, position: np.ndarray) -> np.ndarray:
+    def evaluate_convergence_velocity(self, position: Vector) -> Vector:
+        direction = self.attractor_position - position
+
+        if dir_norm := LA.norm(direction):
+            dir_norm = direction / dir_norm * self.get_velocity_factor(dir_norm)
+
+        return direction
+
+    def get_weights(self, relative_position):
+        # The further along an axis, the higher the weight
+        # weights = position**2
+        weights = abs(relative_position)
+        return weights / np.sum(weights)
+
+    def get_reference_system(self, position: Vector):
+        pass
+
+    def predict(self, positions: VectorArray) -> np.ndarray:
         """Predicts the deviation."""
-        deviations = np.zeros((position.shape[0], self.dimension - 1))
-        for pp in range(position.shape[0]):
-            if not (norm_pos := LA.norm(position[pp, :])):
+        deviations = np.zeros((positions.shape[0], self.dimension - 1))
+        for pp in range(positions.shape[0]):
+            if not (norm_pos := LA.norm(positions[pp, :])):
                 continue
 
-            velocity = self.evaluate(position[pp, :])
+            velocity = self.evaluate(positions[pp, :])
             norm_vel = LA.norm(velocity)
 
-            deviations[pp, :] = np.cross(position[pp, :], velocity) / (
+            deviations[pp, :] = np.cross(positions[pp, :], velocity) / (
                 norm_pos * norm_vel
             )
 

@@ -25,7 +25,6 @@ import warnings
 import math
 from math import pi
 
-from dataclasses import dataclass
 
 import numpy as np
 from numpy import linalg as LA
@@ -40,7 +39,7 @@ from vartools.dynamical_systems import LinearSystem, ConstantValue
 
 from vartools.directional_space import get_directional_weighted_sum
 
-from vartools.handwritting_handler import HandwrittingHandler
+from vartools.handwritting_handler import MotionDataHandler, HandwrittingHandler
 from vartools.math import get_intersection_between_line_and_plane
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
@@ -62,42 +61,6 @@ NodeType = int
 
 figure_type = ".png"
 # figure_type = ".pdf"
-
-
-@dataclass
-class MotionDataHandler:
-    """Stores (and imports) data for evaluation with the various learners.
-
-    Attributes
-    ----------
-    positions: numpy-VectorArray of shape [n_datapoints x dimension]
-    velocities: numpy-VectorArray of shape [n_datapoints x dimension]
-    directions: numpy-VectorArray of shape [n_datapoints - 1 x dimension]
-    time: numpy-Array of shape[n_datapoints]
-    """
-
-    position: VectorArray = None
-    velocity: VectorArray = None
-    sequence_value: VectorArray = None
-
-    direction: VectorArray = None
-
-    attractor: Vector = None
-
-    @property
-    def dimension(self) -> int:
-        return self.position.shape[1]
-
-    # def normalize(self):
-    #     self.mean_positions = np.mean(self.positions)
-    #     self.var_positions = np.variance(self.positions)
-    #     self.positions = (seplf.positions - self.mean_positions) / self.var_positions
-
-    @property
-    def X(self) -> VectorArray:
-        return np.hstack(
-            (self.position, self.velocity, self.sequence_value.reshape(-1, 1))
-        )
 
 
 class MotionLearnerThrougKMeans:
@@ -320,7 +283,9 @@ class MotionLearnerThrougKMeans:
             position,
             velocities[:, cluster_label],
             [self.region_obstacles[cluster_label]],
-            convergence_velocity=velocities[:, cluster_label],
+            convergence_velocity=self._dynamics[
+                cluster_label
+            ].evaluate_convergence_velocity(position),
             sticky_surface=False,
         )
 
@@ -493,10 +458,11 @@ class MotionLearnerThrougKMeans:
 
         for ii in range(self.get_number_of_features()):
             d_txt = 0.15
+            level = self._graph.nodes[ii]["level"]
             ax.text(
                 self.kmeans.cluster_centers_[ii, 0] + d_txt,
                 self.kmeans.cluster_centers_[ii, 1] + d_txt,
-                self._graph.nodes[ii]["level"],
+                f"{ii} @ {level}",
                 fontsize=20,
                 color="white",
             )
@@ -511,7 +477,7 @@ class MotionLearnerThrougKMeans:
             zorder=10,
         )
 
-    def plot_boundaries(self, ax) -> None:
+    def plot_boundaries(self, ax, plot_attractor=False) -> None:
         for ii in range(self.kmeans.n_clusters):
             tmp_obstacle = create_kmeans_obstacle_from_learner(self, ii)
 
@@ -522,6 +488,16 @@ class MotionLearnerThrougKMeans:
                 color="black",
                 linewidth=3.5,
                 zorder=20,
+            )
+
+        if plot_attractor:
+            ax.scatter(
+                self.data.attractor[0],
+                self.data.attractor[1],
+                marker="*",
+                s=200,
+                color="black",
+                zorder=10,
             )
 
 
@@ -898,38 +874,44 @@ def create_four_point_datahandler() -> MotionLearnerThrougKMeans:
     return MotionLearnerThrougKMeans(datahandler, radius_factor=0.55)
 
 
-def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
+def _test_evaluate_partial_dynamics(
+    visualize=False,
+    save_figure=False,
+    main_learner=None,
+    x_lim=None,
+    y_lim=None,
+):
     # Generate very simple dataset
-    main_learner = create_four_point_datahandler()
-    x_lim = [-2.1, 3.1]
-    y_lim = [-1.1, 3.1]
+    if main_learner is None:
+        main_learner = create_four_point_datahandler()
 
-    # Get bottom left obstacle
-    index = main_learner.kmeans.predict([[1, 0]])
+    if x_lim is None:
+        x_lim = [-2.1, 3.1]
+    if y_lim is None:
+        y_lim = [-1.1, 3.1]
 
-    # ii = 1
-    # position = np.array([1.5, 3.2])
-    ii = 3
-    # position = np.array([2.5, 1.8])
-    position = np.array([2.4, 1.9])
+    # index = 2
+    # position = np.array([-3.0, 0.5])
 
-    region_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
-    initial_velocity = main_learner._dynamics[ii].evaluate(position)
+    # index = 0
+    # position = np.array([-4.387, -0.092])
+    # # position = np.array([-3.2, 1.86])
 
-    # norm_dir = region_obstacle.get_normal_direction(position)
-    # ref_dir = region_obstacle.get_reference_direction(position)
-    # breakpoint()
+    # # position = np.array([-4.16, -0.88])
+    # velocity = main_learner._dynamics[index].evaluate(position)
+    # conv_vel = main_learner._dynamics[index].evaluate_convergence_velocity(position)
 
-    modulated_velocity = obstacle_avoidance_rotational(
-        position,
-        initial_velocity,
-        [region_obstacle],
-        convergence_velocity=initial_velocity,
-    )
+    # modulated_velocity = obstacle_avoidance_rotational(
+    #     position,
+    #     velocity,
+    #     [main_learner.region_obstacles[index]],
+    #     convergence_velocity=conv_vel,
+    #     sticky_surface=False,
+    # )
 
     if visualize:
         plt.ion()
-        plt.close("all")
+        # plt.close("all")
 
         n_grid = 20
         xx, yy = np.meshgrid(
@@ -957,15 +939,15 @@ def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
 
             velocities[:, pp] = main_learner.predict(positions[:, pp])
 
-        fig, ax = plt.subplots()
-        main_learner.plot_boundaries(ax=ax)
+        fig, ax = plt.subplots(figsize=(12, 9))
+        main_learner.plot_boundaries(ax=ax, plot_attractor=True)
         ax.quiver(
             positions[0, :],
             positions[1, :],
             velocities[0, :],
             velocities[1, :],
             # color="red",
-            scale=40,
+            scale=50,
         )
         ax.axis("equal")
 
@@ -980,8 +962,8 @@ def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
             ax_ini = axs_init[ii % 2, ii // 2]
             ax_mod = axs_mod[ii % 2, ii // 2]
 
-            main_learner.plot_boundaries(ax=ax_ini)
-            main_learner.plot_boundaries(ax=ax_mod)
+            main_learner.plot_boundaries(ax=ax_ini, plot_attractor=True)
+            main_learner.plot_boundaries(ax=ax_mod, plot_attractor=True)
 
             ff = 1.05
             n_grid = 10
@@ -1010,7 +992,9 @@ def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
                     positions[:, jj],
                     initial_velocities[:, jj],
                     [region_obstacle],
-                    convergence_velocity=initial_velocities[:, jj],
+                    convergence_velocity=main_learner._dynamics[
+                        ii
+                    ].evaluate_convergence_velocity(positions[:, jj]),
                     sticky_surface=False,
                 )
 
@@ -1023,7 +1007,6 @@ def _test_evaluate_partial_deviations(visualize=False, save_figure=False):
                 scale=15,
             )
             ax_ini.axis("equal")
-
             ax_mod.quiver(
                 positions[0, :],
                 positions[1, :],
@@ -1065,7 +1048,9 @@ def test_transition_weight(visualize=False, save_figure=False):
         weights = np.zeros((main_learner.n_clusters, positions.shape[1]))
 
         for pp in range(positions.shape[1]):
-            weights[:, pp] = main_learner._fit_sequence_weights(positions[:, pp], index)
+            weights[:, pp] = main_learner._predict_sequence_weights(
+                positions[:, pp], index
+            )
         # breakpoint()
 
         fig, ax = plt.subplots()
@@ -1227,6 +1212,7 @@ def test_normals(visualize=False, save_figure=False):
 
 
 def _test_local_deviation(visualize=False, save_figure=False):
+    plt.ion()
     plt.close("all")
 
     RANDOM_SEED = 1
@@ -1352,14 +1338,35 @@ def _test_local_deviation(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
+def plot_a_shape_motion():
+    plt.ion()
+    # plt.close("all")
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    main_learner = MotionLearnerThrougKMeans(data)
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax)
+
+    _test_evaluate_partial_dynamics(
+        visualize=True,
+        main_learner=main_learner,
+        x_lim=[-5.5, 0.5],
+        y_lim=[-1.5, 2.5],
+    )
+
+
 if (__name__) == "__main__":
     # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
     # test_transition_weight(visualize=True, save_figure=True)
     # test_normals(visualize=True)
 
-    _test_local_deviation(save_figure=True)
-    # _test_evaluate_partial_deviations(visualize=True, save_figure=False)
-    # _test_gamma_values(save_figure=True)
+    # _test_evaluate_partial_dynamics(visualize=True, save_figure=True)
+    plot_a_shape_motion()
+    # _test_local_deviation(save_figure=True)
 
     print("Tests finished.")
