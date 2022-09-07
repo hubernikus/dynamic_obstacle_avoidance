@@ -39,6 +39,14 @@ DeviationVector = np.ndarray
 # - directly incoorporate (rotational + fast)) obstacle avoidance as a function
 
 
+class ConstantRegressor:
+    def __init__(self, value: np.ndarray):
+        self.value = value
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return np.tile(self.value, (X.shape[0], 1))
+
+
 class MultiOutputSVR:
     """Creates several svr-models to predict multi-dimensional output."""
 
@@ -56,7 +64,7 @@ class MultiOutputSVR:
             svr.fit(X, y[:, ii])
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return np.array([svr.predict(X) for svr in self._models])
+        return np.array([svr.predict(X) for svr in self._models]).T
 
 
 class DirectionalSystem(ABC):
@@ -199,6 +207,12 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
 
                 ind_good = (X[:, dd] * sign) >= 0
 
+                if not np.sum(ind_good):
+                    self.regressors[dd][ii] = ConstantRegressor(
+                        np.zeros(self.dimension - 1)
+                    )
+                    continue
+
                 X_tmp = X[ind_good, :]
                 y_tmp = self.velocity_to_direction(
                     y[
@@ -252,6 +266,22 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
         velocity_factor = min(1, distance / self.prox_distance) * self.max_velocity
 
         return final_direction * velocity_factor
+
+    def predict(self, position: np.ndarray) -> np.ndarray:
+        """Predicts the deviation."""
+        deviations = np.zeros((position.shape[0], self.dimension - 1))
+        for pp in range(position.shape[0]):
+            if not (norm_pos := LA.norm(position[pp, :])):
+                continue
+
+            velocity = self.evaluate(position[pp, :])
+            norm_vel = LA.norm(velocity)
+
+            deviations[pp, :] = np.cross(position[pp, :], velocity) / (
+                norm_pos * norm_vel
+            )
+
+        return deviations
 
 
 def test_learning_deviation_of_linear_DS(visualize=False, save_figure=False):
@@ -449,5 +479,5 @@ def test_learn_sinus_motion(visualize=False, save_figure=False):
 
 if (__name__) == "__main__":
     # test_learn_sinus_motion(visualize=True)
-    test_learning_deviation_of_linear_DS(visualize=True)
+    # test_learning_deviation_of_linear_DS(visualize=True)
     print("Tests finished.")

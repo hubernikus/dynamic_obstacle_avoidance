@@ -53,6 +53,7 @@ from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KmeansObstacle
 from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import (
     MultiOutputSVR,
     DeviationOfConstantFlow,
+    PerpendicularDeviatoinOfLinearDS,
 )
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
@@ -227,29 +228,33 @@ class MotionLearnerThrougKMeans:
             if self._graph.nodes[label]["level"] == 0:
                 # Zero level => Parent is root
                 self._dynamics.append(
-                    LinearSystem(attractor_position=self.data.attractor)
+                    PerpendicularDeviatoinOfLinearDS(
+                        attractor_position=self.data.attractor,
+                        regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
+                    )
                 )
-                continue
+                # continue
 
-            ind = np.arange(self.kmeans.labels_.shape[0])[self.kmeans.labels_ == label]
-
-            direction = np.mean(self.data.velocity[ind, :], axis=0)
-
-            if norm_dir := LA.norm(direction):
-                direction = direction / norm_dir
             else:
-                # Use the K-Means dynamics as default
-                direction = self._graph.nodes[label]["direction"]
+                ind = np.arange(self.kmeans.labels_.shape[0])[
+                    self.kmeans.labels_ == label
+                ]
 
-            # self._dynamics.append(ConstantValue(direction))
+                direction = np.mean(self.data.velocity[ind, :], axis=0)
 
-            # TODO: how do other regressors perform (?)
-            self._dynamics.append(
-                DeviationOfConstantFlow(
-                    reference_velocity=direction,
-                    regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
+                if norm_dir := LA.norm(direction):
+                    direction = direction / norm_dir
+                else:
+                    # Use the K-Means dynamics as default
+                    direction = self._graph.nodes[label]["direction"]
+
+                # TODO: how do other regressors perform (?)
+                self._dynamics.append(
+                    DeviationOfConstantFlow(
+                        reference_velocity=direction,
+                        regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
+                    )
                 )
-            )
 
             # TODO: maybe multiple fits -> choose the best (?)
             labels_local = np.array(
@@ -260,6 +265,8 @@ class MotionLearnerThrougKMeans:
                 == np.tile(labels_local, (self.kmeans.labels_.shape[0], 1)).T,
                 axis=0,
             )
+            # breakpoint()
+            # print("label", label)
             self._dynamics[label].fit_from_velocities(
                 self.data.position[indexes_local, :],
                 self.data.velocity[indexes_local, :],
@@ -1253,8 +1260,8 @@ def _test_local_deviation(visualize=False, save_figure=False):
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     for index in range(main_learner.kmeans.n_clusters):
-        if index == 1:
-            continue
+        # if index == 1:
+        # continue
         print(f"Doing index {index}")
 
         index_neighbourhood = np.array(
@@ -1291,8 +1298,7 @@ def _test_local_deviation(visualize=False, save_figure=False):
 
         levels = np.linspace(-pi / 2, pi / 2, 50)
 
-        predictions = main_learner._dynamics[index].predict(positions.T).T
-
+        predictions = main_learner._dynamics[index].predict(positions.T)
         for pp in range(positions.shape[1]):
             is_inside = False
             for ii in index_neighbourhood:
@@ -1323,6 +1329,16 @@ def _test_local_deviation(visualize=False, save_figure=False):
 
         reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
         ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+
+        # Plot attractor
+        ax.scatter(
+            main_learner.data.attractor[0],
+            main_learner.data.attractor[1],
+            marker="*",
+            s=200,
+            color="black",
+            zorder=10,
+        )
 
         ax.axis("equal")
         ax.set_xlim(x_lim)
