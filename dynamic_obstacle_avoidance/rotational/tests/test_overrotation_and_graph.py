@@ -73,9 +73,9 @@ class TestMultiHullBehvior(unittest.TestCase):
 
 
 if (__name__) == "__main__":
-    unittest.main(argv=["first-arg-is-ignored"], exit=False)
+    # unittest.main(argv=["first-arg-is-ignored"], exit=False)
 
-    manual_test = True
-    if manual_test:
-        my_tester = TestMultiHullBehvior()
-        my_tester.test_creation()
+    my_tester = TestMultiHullBehvior()
+    my_tester.test_creation()
+
+    print("Tests done")

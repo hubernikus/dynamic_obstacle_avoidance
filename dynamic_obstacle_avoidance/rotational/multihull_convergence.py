@@ -137,7 +137,7 @@ def multihull_attraction(
     if not n_obstacles:  # No obstacles in the environment
         return initial_velocity
 
-    # dimension = position.shape[0]
+    dimension = position.shape[0]
 
     gamma_array = np.zeros((n_obstacles))
     for ii in range(n_obstacles):
@@ -154,7 +154,9 @@ def multihull_attraction(
     inv_gamma_weight = get_weight_from_inv_of_gamma(gamma_array)
 
     # rotated_velocities = np.zeros((dimension, n_obs_close))
-    rotated_directions = [None] * n_obs_close
+    avoider = RotationalAvoider()
+    rotated_directions = np.zeros((dimension, n_obs_close))
+    
     # for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
     for it, oo in enumerate(np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -179,7 +181,7 @@ def multihull_attraction(
         if conv_vel_norm:  # Zero value
             # base = DirectionBase(matrix=normal_orthogonal_matrix)
             base = normal_orthogonal_matrix
-            rotated_directions[it] = UnitDirection(base).from_angle(initial_velocity)
+            rotated_directions[:, it] = initial_velocity
 
         # position, gamma_value, it_obs, obstacle_list, dotprod_weight=1, gamma_weight=1):
         convergence_radius = get_desired_radius(
@@ -189,8 +191,8 @@ def multihull_attraction(
         # convergence_radius = pi*0.9
         # inv_gamma_weight[it] = 1
         # TODO: better weight-function (less doubling with the radius)
-        avoider = RotationalAvoider()
-        rotated_directions[it] = avoider.directional_convergence_summing(
+        
+        rotated_directions[:, it] = avoider.directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
             weight=inv_gamma_weight[it],
@@ -212,9 +214,12 @@ def multihull_attraction(
     #     )
     # base = DirectionBase(vector=initial_velocity)
     base = get_orthogonal_basis(initial_velocity)
-    # breakpoint()
-    rotated_velocity = get_directional_weighted_sum_from_unit_directions(
-        base=base, weights=gamma_weight, unit_directions=rotated_directions
+    
+    # rotated_velocity = get_directional_weighted_sum_from_unit_directions(
+    #     base=base, weights=gamma_weight, unit_directions=rotated_directions
+    # )
+    rotated_velocity = get_directional_weighted_sum(
+        null_direction=base[:, 0], weights=gamma_weight, directions=rotated_directions
     )
 
     rotated_velocity = rotated_velocity * np.linalg.norm(initial_velocity)

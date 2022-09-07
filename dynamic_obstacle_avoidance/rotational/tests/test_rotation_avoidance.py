@@ -645,14 +645,11 @@ def test_stable_linear_avoidance(visualize=False):
 
 if (__name__) == "__main__":
     # test_intersection_with_circle()
-    # test_rotational_pulling(visualize=True)
 
     # test_convergence_tangent(visualize=False)
     # test_rotating_towards_tangent()
 
-    # test_convergence_pulling()
-
-    # test_single_circle_linear(visualize=True)
+    test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

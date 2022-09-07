@@ -653,10 +653,11 @@ class RotationalAvoider(BaseAvoider):
         # return rotated_direction.as_vector()
 
         angle_margin = np.pi * 0.7
+        ang_min = np.pi * 0.5
         if (ang_norm := LA.norm(dir_initial.as_angle())) >= angle_margin:
             return dir_initial.as_vector()
-
-        weight = weight * 1 - ang_norm / angle_margin
+        elif ang_norm > np.pi * ang_min:
+            weight = weight * (1 - (ang_norm - ang_min) / (angle_margin - ang_min))
         #     return dir_initial.as_vector()
 
         conv_vector = dir_convergence.as_vector()
