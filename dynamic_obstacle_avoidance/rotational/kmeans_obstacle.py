@@ -244,7 +244,10 @@ class KmeansObstacle(Obstacle):
 
         # Only consider positive ones for the weight
         weights = np.maximum(weights, 0)
-        weights = weights / np.sum(weights)
+        if not (weights_sum := np.sum(weights)):
+            breakpoint()
+            
+        weights = weights / weights_sum
 
         if self.is_boundary:
             local_radiuses = position_norm - distances_surface
