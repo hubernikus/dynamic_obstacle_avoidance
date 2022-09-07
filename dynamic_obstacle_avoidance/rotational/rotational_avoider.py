@@ -643,7 +643,7 @@ class RotationalAvoider(BaseAvoider):
                 convergence_radius=np.pi / 2,
             )
 
-        # dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
+        dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
         # rotated_direction = self._get_projected_velocity(
         #     dir_convergence_tangent=dir_convergence,
         #     dir_initial_velocity=dir_initial,
@@ -652,17 +652,19 @@ class RotationalAvoider(BaseAvoider):
         # )
         # return rotated_direction.as_vector()
 
+        angle_margin = np.pi * 0.7
+        if (ang_norm := LA.norm(dir_initial.as_angle())) >= angle_margin:
+            return dir_initial.as_vector()
+
+        weight = weight * 1 - ang_norm / angle_margin
+        #     return dir_initial.as_vector()
+
         conv_vector = dir_convergence.as_vector()
-        if not (vel_norm := LA.norm(nonlinear_velocity)):
-            breakpoint()
-        vec_initial = nonlinear_velocity / vel_norm
 
         rotated_velocity = get_directional_weighted_sum(
             null_direction=conv_vector,
             weights=np.array([weight, (1 - weight)]),
-            directions=np.vstack((conv_vector, vec_initial)).T,
+            directions=np.vstack((conv_vector, dir_initial.as_vector())).T,
         )
 
         return rotated_velocity
-
-    # def _get_projected_velocity(self,):
