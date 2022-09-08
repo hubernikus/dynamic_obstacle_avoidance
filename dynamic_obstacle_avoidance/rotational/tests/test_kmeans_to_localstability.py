@@ -1325,31 +1325,76 @@ def plot_a_shape_partial_motions(save_figure=False):
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
 
+    plot_trajectories(ax, main_learner)
+
+    if save_figure:
+        fig_name = f"global_dynamics_and_trajectories_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_snake_partial_motions(save_figure=False):
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    data = HandwrittingHandler(file_name="Snake.mat")
+    main_learner = MotionLearnerThrougKMeans(data)
+
+    _test_evaluate_partial_dynamics(
+        visualize=True,
+        main_learner=main_learner,
+        x_lim=[-5.5, 0.5],
+        y_lim=[-1.5, 2.5],
+        save_figure=save_figure,
+        name="snake",
+    )
+
+    x_lim = [-5.5, 0.5]
+    y_lim = [-1.5, 2.5]
+
+    fig, ax = plot_region_dynamics(main_learner, x_lim, y_lim)
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    plot_trajectories(ax, main_learner)
+
+    if save_figure:
+        fig_name = f"global_dynamics_and_trajectories_snake"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_trajectories(
+    ax,
+    main_learner,
+    it_max=200,
+    dt=0.1,
+    convergence_margin=1e-3,
+    dimension=2,
+):
     # Trajectory integration
-    it_max = 100
-    dt = 0.1
-    convergence_margin = 1e-3
-    dimension = 2
+    data = main_learner.data
 
     for tt in range(data.start_positions.shape[1]):
+        print(f"Doing trajectory {tt}")
+
         positions = np.zeros((dimension, it_max + 1))
 
         positions[:, 0] = data.start_positions[:, tt]
 
         for ii in range(it_max):
-            try:
-                velocity = main_learner.evaluate(positions[:, ii])
-            except:
-                # break
-                # TODO: debug
-                breakpoint()
-
+            velocity = main_learner.evaluate(positions[:, ii])
             positions[:, ii + 1] = velocity * dt + positions[:, ii]
+
+            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
+                print(f"Trajectory {tt} has converged at it={ii}.")
+                positions = positions[:, : ii + 2]
+                break
 
         ax.plot(positions[0, :], positions[1, :], "r")
         ax.plot(positions[0, 0], positions[1, 0], "or")
-
-    # n_steps = np.
 
 
 if (__name__) == "__main__":
@@ -1363,6 +1408,8 @@ if (__name__) == "__main__":
 
     # _test_evaluate_partial_dynamics(visualize=True, save_figure=True)
     plot_a_shape_partial_motions(save_figure=True)
+    # plot_snake_partial_motions(save_figure=True)
+
     # _test_local_deviation(save_figure=True)
 
     print("Tests finished.")

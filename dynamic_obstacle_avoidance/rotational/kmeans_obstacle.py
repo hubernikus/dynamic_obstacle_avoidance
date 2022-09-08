@@ -193,6 +193,9 @@ class KmeansObstacle(Obstacle):
                 return distance_surface / distance_position
             return distance_surface / distance_position
 
+    def project_position_to_outside(self, relative_position: Vector):
+        pass
+
     def get_gamma(
         self,
         position: Vector,
@@ -218,18 +221,33 @@ class KmeansObstacle(Obstacle):
         distances_surface = self._get_normal_distances(position, is_boundary=False)
         distances_surface[self._index] = position_norm - self.radius
 
-        max_dist = np.max(distances_surface[self.ind_relevant_and_self])
+        argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
+        max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+
         if max_dist < 0:
+            # Get the real distance to the surface
+            if self.ind_relevant_and_self[argmax] != self._index:
+                # Project distance onto normal, if it is not with respect to radius
+                max_dist = max_dist / (
+                    np.dot(
+                        relative_position / LA.norm(relative_position),
+                        self._normal_directions[argmax, :],
+                    )
+                )
+
             # Position is inside -> project it to the outside
-            position = (
+            proj_position = (
                 self.center_position
                 + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
             )
 
-            weights = self._get_normal_distances(position, is_boundary=False)
+            weights = self._get_normal_distances(proj_position, is_boundary=False)
             weights[self._index] = (
-                LA.norm(position - self.center_position) - self.radius
+                LA.norm(proj_position - self.center_position) - self.radius
             )
+
+            if np.sum(np.maximum(weights, 0)) == 0:
+                breakpoint()
 
         elif max_dist == 0:
             if not len(self.successor_index) or position_norm == self.radius:
@@ -244,10 +262,7 @@ class KmeansObstacle(Obstacle):
 
         # Only consider positive ones for the weight
         weights = np.maximum(weights, 0)
-        if not (weights_sum := np.sum(weights)):
-            breakpoint()
-            
-        weights = weights / weights_sum
+        weights = weights / np.sum(weights)
 
         if self.is_boundary:
             local_radiuses = position_norm - distances_surface
