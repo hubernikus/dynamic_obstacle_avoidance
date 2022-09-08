@@ -233,10 +233,7 @@ class KMeansObstacle(Obstacle):
             else:
                 0
 
-        # try:
         surf_position = self.get_point_on_surface(position, in_global_frame=True)
-        # except:
-        # breakpoint()
         surf_norm = LA.norm(surf_position - self.center_position)
 
         if position_norm < surf_norm:
@@ -246,16 +243,28 @@ class KMeansObstacle(Obstacle):
 
             # Put to global frame
             proj_position = proj_position + self.center_position
-            # is_inside = True
 
         elif position_norm == surf_norm:
-            # We are on the surface -> gamma = 1
-            return 1
+            # Surface points cannot be disregarded yet, since we need to check for
+            # transition regions
+            if ind_transparent is None and len(self.successor_index) != 1:
+                # We are on the surface -> gamma = 1 / or infty if in gap
+                return 1.0
 
+            ind_transparent = self.successor_index[0]
+
+            if np.dot(
+                surf_position - self.inbetween_points[ind_transparent, :],
+                self.normal_directions[ind_transparent, :],
+            ):
+                # NOT on the transparent surface
+                return 1.0
+
+            return sys.float_info.max
         else:
+
             proj_position = position
             proj_position_norm = position_norm
-            # is_inside = False
 
         distances_surface = self._get_normal_distances(proj_position, is_boundary=False)
         distances_surface[self._index] = proj_position_norm - self.radius
@@ -308,7 +317,7 @@ class KMeansObstacle(Obstacle):
 
         if self.is_boundary:
             # TODO: maybe here we actually have to consider the projected_normal distance (?!)
-            local_radiuses = proj_position_norm + distances_surface
+            local_radiuses = proj_position_norm - distances_surface
 
             if ind_transparent is None:
                 if len(self.successor_index) > 1:

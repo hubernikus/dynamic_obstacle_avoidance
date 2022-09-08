@@ -156,7 +156,7 @@ def multihull_attraction(
     # rotated_velocities = np.zeros((dimension, n_obs_close))
     avoider = RotationalAvoider()
     rotated_directions = np.zeros((dimension, n_obs_close))
-    
+
     # for it, oo in zip(range(n_obs_close), np.arange(n_obstacles)[ind_obs]):
     for it, oo in enumerate(np.arange(n_obstacles)[ind_obs]):
         # It is with respect to the close-obstacles -- oo ONLY to use in obstacle_list (whole)
@@ -191,7 +191,7 @@ def multihull_attraction(
         # convergence_radius = pi*0.9
         # inv_gamma_weight[it] = 1
         # TODO: better weight-function (less doubling with the radius)
-        
+
         rotated_directions[:, it] = avoider.directional_convergence_summing(
             convergence_vector=convergence_velocity,
             reference_vector=reference_dir,
@@ -214,7 +214,7 @@ def multihull_attraction(
     #     )
     # base = DirectionBase(vector=initial_velocity)
     base = get_orthogonal_basis(initial_velocity)
-    
+
     # rotated_velocity = get_directional_weighted_sum_from_unit_directions(
     #     base=base, weights=gamma_weight, unit_directions=rotated_directions
     # )
