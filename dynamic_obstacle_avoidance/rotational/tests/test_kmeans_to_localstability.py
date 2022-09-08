@@ -48,7 +48,7 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
 )
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
-from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KmeansObstacle
+from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
 from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import (
     MultiOutputSVR,
     DeviationOfConstantFlow,
@@ -506,12 +506,12 @@ class MotionLearnerThrougKMeans:
 
 def create_kmeans_obstacle_from_learner(
     learner: MotionLearnerThrougKMeans, index: int
-) -> KmeansObstacle:
+) -> KMeansObstacle:
     """Simple KMeans-factory.
 
-    Note that this is defined alongside the MotionLearnerThroughKmeans,
+    Note that this is defined alongside the MotionLearnerThroughKMeans,
     to avoid circular imports."""
-    instance = KmeansObstacle(
+    instance = KMeansObstacle(
         kmeans=learner.kmeans,
         radius=learner.region_radius_,
         index=index,
@@ -520,6 +520,37 @@ def create_kmeans_obstacle_from_learner(
     instance.successor_index = learner.get_successors(index)
 
     return instance
+
+
+def plot_trajectories(
+    ax,
+    main_learner,
+    it_max=200,
+    dt=0.1,
+    convergence_margin=1e-3,
+    dimension=2,
+):
+    # Trajectory integration
+    data = main_learner.data
+
+    for tt in range(data.start_positions.shape[1]):
+        print(f"Doing trajectory {tt}")
+
+        positions = np.zeros((dimension, it_max + 1))
+
+        positions[:, 0] = data.start_positions[:, tt]
+
+        for ii in range(it_max):
+            velocity = main_learner.evaluate(positions[:, ii])
+            positions[:, ii + 1] = velocity * dt + positions[:, ii]
+
+            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
+                print(f"Trajectory {tt} has converged at it={ii}.")
+                positions = positions[:, : ii + 2]
+                break
+
+        ax.plot(positions[0, :], positions[1, :], "r")
+        ax.plot(positions[0, 0], positions[1, 0], "or")
 
 
 def test_surface_position_and_normal(visualize=True):
@@ -543,11 +574,11 @@ def test_surface_position_and_normal(visualize=True):
         np.array(datahandler.position).copy(order="C").astype(np.double)
     )
 
-    if visualize:
-        plt.close("all")
-        x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+    radius = 1.5
+    region_obstacle = KMeansObstacle(radius=radius, kmeans=kmeans, index=0)
 
-        radius = 1.5
+    if visualize:
+        x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
         fig, ax = plt.subplots(figsize=(14, 9))
         main_learner = MotionLearnerThrougKMeans(datahandler)
@@ -559,11 +590,11 @@ def test_surface_position_and_normal(visualize=True):
 
         for ii in range(kmeans.n_clusters):
             # for ii in [1]:
-            tmp_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=ii)
+            tmp_obstacle = KMeansObstacle(radius=radius, kmeans=kmeans, index=ii)
             positions = tmp_obstacle.evaluate_surface_points()
             ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
 
-        region_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=0)
+        region_obstacle = KMeansObstacle(radius=radius, kmeans=kmeans, index=0)
 
         ff = 1.2
         # Test normal
@@ -594,7 +625,15 @@ def test_surface_position_and_normal(visualize=True):
 
         ax.axis("equal")
 
-    region_obstacle = KmeansObstacle(radius=radius, kmeans=kmeans, index=0)
+    # Surface point of free space should be equal to the radius
+    position = np.array([-2, 0])
+    surface_position = region_obstacle.get_point_on_surface(
+        position, in_global_frame=True
+    )
+    position[0] = position[0] - region_obstacle.radius
+    assert np.allclose(surface_position, position)
+
+    region_obstacle = KMeansObstacle(radius=radius, kmeans=kmeans, index=0)
     # Test - somewhere in the middle
     position = np.array([2, -1])
     surface_position = region_obstacle.get_point_on_surface(
@@ -633,19 +672,6 @@ def test_surface_position_and_normal(visualize=True):
     )
     assert np.allclose(normal_direction, [0, -1])
 
-    # Test gammas
-    position = np.array([-0.4, -0.1])
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma > 1
-
-    position = np.array([-3.0, -1.6])
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma < 1
-
-    position = np.array([0.2, -0.1])
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma < 1
-
 
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
     """Returns grid based on input x and y values."""
@@ -682,7 +708,7 @@ def _test_modulation_values(save_figure=False):
 
     for ii in range(main_learner.kmeans.n_clusters):
         # Plot a specific obstacle
-        region_obstacle = KmeansObstacle(
+        region_obstacle = KMeansObstacle(
             radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
         )
 
@@ -736,30 +762,11 @@ def test_gamma_kmeans(visualize=False, save_figure=False):
 
     index = main_learner.kmeans.predict([[-1, 0]])[0]
     region_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+    region_obstacle.radius = 1.5
 
-    # Check gamma at the boundary
-    position = region_obstacle.center_position.copy()
-    position[0] = position[0] - region_obstacle.radius
+    position = np.array([1.38, 0.44])
     gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert np.isclose(gamma, 1), "Gamma is expected to be close to 1."
-
-    # Check gamma towards the successor
-    position = 0.5 * (
-        region_obstacle.center_position
-        + main_learner.kmeans.cluster_centers_[region_obstacle.successor_index[0], :]
-    )
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma > 1e9, "Gamma is expected to be very large."
-
-    position[0] = position[0] - region_obstacle.radius * 0.1
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma > 1e9, "Gamma is expected to be very large."
-
-    # Check inside the obstacle
-    position = region_obstacle.center_position.copy()
-    position[1] = position[1] + 0.5 * region_obstacle.radius
-    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
-    assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
+    breakpoint()
 
     if visualize:
         x_lim = [-3, 5]
@@ -789,6 +796,51 @@ def test_gamma_kmeans(visualize=False, save_figure=False):
             fig_name = "gamma_values_with_transition"
             fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
+    position = np.array([-1.5, 0])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1
+
+    position = np.array([-3.0, -1.6])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    breakpoint()
+    assert gamma < 1
+
+    # Test gammas
+    position = np.array([-0.4, -0.1])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1
+
+    position = np.array([0.2, -0.1])
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma < 1
+
+    # index = main_learner.kmeans.predict([[-1, 0]])[0]
+    # region_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+
+    # Check gamma at the boundary
+    position = region_obstacle.center_position.copy()
+    position[0] = position[0] - region_obstacle.radius
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert np.isclose(gamma, 1), "Gamma is expected to be close to 1."
+
+    # Check gamma towards the successor
+    position = 0.5 * (
+        region_obstacle.center_position
+        + main_learner.kmeans.cluster_centers_[region_obstacle.successor_index[0], :]
+    )
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1e9, "Gamma is expected to be very large."
+
+    position[0] = position[0] - region_obstacle.radius * 0.1
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1e9, "Gamma is expected to be very large."
+
+    # Check inside the obstacle
+    position = region_obstacle.center_position.copy()
+    position[1] = position[1] + 0.5 * region_obstacle.radius
+    gamma = region_obstacle.get_gamma(position, in_global_frame=True)
+    assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
+
 
 def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=True):
     """A local helper function to plot the gamma fields."""
@@ -801,7 +853,7 @@ def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=T
             region_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
 
         else:
-            region_obstacle = KmeansObstacle(
+            region_obstacle = KMeansObstacle(
                 radius=main_learner.region_radius_,
                 kmeans=main_learner.kmeans,
                 index=ii,
@@ -1134,7 +1186,7 @@ def test_normals(visualize=False, save_figure=False):
             main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
             # Plot a specific obstacle
-            region_obstacle = KmeansObstacle(
+            region_obstacle = KMeansObstacle(
                 radius=main_learner.region_radius_, kmeans=main_learner.kmeans, index=ii
             )
 
@@ -1303,6 +1355,7 @@ def plot_a_shape_partial_motions(save_figure=False):
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
 
+    # data = HandwrittingHandler(file_name="Angle.mat")
     data = HandwrittingHandler(file_name="2D_Ashape.mat")
     main_learner = MotionLearnerThrougKMeans(data)
 
@@ -1337,8 +1390,25 @@ def plot_snake_partial_motions(save_figure=False):
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
 
-    data = HandwrittingHandler(file_name="Snake.mat")
-    main_learner = MotionLearnerThrougKMeans(data)
+    data = HandwrittingHandler(file_name="2D_messy-snake.mat")
+    main_learner = MotionLearnerThrougKMeans(data, n_clusters=4)
+
+    print(repr(main_learner.kmeans.cluster_centers_))
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax)
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    main_learner.plot_boundaries(ax=ax)
+
+    index = 0
+    tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+
+    position = np.array([-3.04769137, -0.12654154])
+    ax.plot(position[0], position[1], "ro")
+
+    gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
+    breakpoint()
 
     _test_evaluate_partial_dynamics(
         visualize=True,
@@ -1366,48 +1436,17 @@ def plot_snake_partial_motions(save_figure=False):
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
-def plot_trajectories(
-    ax,
-    main_learner,
-    it_max=200,
-    dt=0.1,
-    convergence_margin=1e-3,
-    dimension=2,
-):
-    # Trajectory integration
-    data = main_learner.data
-
-    for tt in range(data.start_positions.shape[1]):
-        print(f"Doing trajectory {tt}")
-
-        positions = np.zeros((dimension, it_max + 1))
-
-        positions[:, 0] = data.start_positions[:, tt]
-
-        for ii in range(it_max):
-            velocity = main_learner.evaluate(positions[:, ii])
-            positions[:, ii + 1] = velocity * dt + positions[:, ii]
-
-            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
-                print(f"Trajectory {tt} has converged at it={ii}.")
-                positions = positions[:, : ii + 2]
-                break
-
-        ax.plot(positions[0, :], positions[1, :], "r")
-        ax.plot(positions[0, 0], positions[1, 0], "or")
-
-
 if (__name__) == "__main__":
     plt.ion()
-    plt.close("all")
+    # plt.close("all")
 
     # test_surface_position_and_normal(visualize=True)
-    # test_gamma_kmeans(visualize=True, save_figure=False)
+    test_gamma_kmeans(visualize=True, save_figure=False)
     # test_transition_weight(visualize=True, save_figure=True)
     # test_normals(visualize=True)
 
     # _test_evaluate_partial_dynamics(visualize=True, save_figure=True)
-    plot_a_shape_partial_motions(save_figure=True)
+    # plot_a_shape_partial_motions(save_figure=True)
     # plot_snake_partial_motions(save_figure=True)
 
     # _test_local_deviation(save_figure=True)

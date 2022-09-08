@@ -20,7 +20,7 @@ from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
 
 
-class KmeansObstacle(Obstacle):
+class KMeansObstacle(Obstacle):
     """Pseudo obstacle based on a learned kmeans clustering."""
 
     def __init__(
@@ -42,7 +42,19 @@ class KmeansObstacle(Obstacle):
         self.ind_relevant = np.arange(self.n_clusters)
         self.ind_relevant = np.delete(self.ind_relevant, self._index)
 
-        self._center_positions = 0.5 * (
+        # Since obstacle are convex -> intersection needs to be part of one or the other
+        # Note that another obstacle can be in between the obstacles,
+        dists = LA.norm(
+            np.tile(
+                self.kmeans.cluster_centers_[self._index, :],
+                (self.ind_relevant.shape[0], 1),
+            )
+            - self.kmeans.cluster_centers_[self.ind_relevant, :],
+            axis=1,
+        )
+        self.ind_relevant = self.ind_relevant[dists < 2 * self.radius]
+
+        self._inbetween_points = 0.5 * (
             np.tile(
                 self.kmeans.cluster_centers_[self._index, :],
                 (self.ind_relevant.shape[0], 1),
@@ -50,11 +62,11 @@ class KmeansObstacle(Obstacle):
             + self.kmeans.cluster_centers_[self.ind_relevant, :]
         )
 
-        # Since obstacle are convex -> intersection needs to be part of one or the other
-        labels = self.kmeans.predict(self._center_positions)
-        ind_close = np.logical_or(labels == self.ind_relevant, labels == self._index)
-        self.ind_relevant = self.ind_relevant[ind_close]
-        self._center_positions = self._center_positions[ind_close, :]
+        # hence the interesections do NOT need to be part of each other
+        # labels = self.kmeans.predict(self._inbetween_points)
+        # ind_close = np.logical_or(labels == self.ind_relevant, labels == self._index)
+        # self.ind_relevant = self.ind_relevant[ind_close]
+        # self._inbetween_points = self._inbetween_points[ind_close, :]
 
         normal_directions = np.zeros((self.n_clusters, self.dimension))
         normal_directions[self.ind_relevant, :] = self.kmeans.cluster_centers_[
@@ -82,7 +94,7 @@ class KmeansObstacle(Obstacle):
     # def from_learner(cls, kmeans_learner: MotionLearnerThrougKMeans, index: int):
     #     """Alternative constructor by using kmeans-leraner only."""
     #     instance = cls(
-    #         Kmeans=kmeans_learner.kmeans,
+    #         KMeans=kmeans_learner.kmeans,
     #         radius=kmeans_learner.region_radius_,
     #         index=index,
     #     )
@@ -104,11 +116,11 @@ class KmeansObstacle(Obstacle):
     @property
     def inbetween_points(self) -> VectorArray:
         inbetween_points = np.zeros((self.n_clusters, self.dimension))
-        inbetween_points[self.ind_relevant, :] = self._center_positions
+        inbetween_points[self.ind_relevant, :] = self._inbetween_points
         return inbetween_points
 
     def get_inbetween_position(self, index) -> Vector:
-        return self._center_positions[self.ind_relevant, :]
+        return self._inbetween_points[self.ind_relevant, :]
 
     @property
     def num_relevant(self) -> int:
@@ -193,8 +205,11 @@ class KmeansObstacle(Obstacle):
                 return distance_surface / distance_position
             return distance_surface / distance_position
 
-    def project_position_to_outside(self, relative_position: Vector):
-        pass
+    def project_position_to_outside(
+        self, position: Vector, in_global_frame: bool = False
+    ) -> Vector:
+        # position_surface = self.get_surface_point(relative_position)
+        raise NotImplementedError()
 
     def get_gamma(
         self,
@@ -218,54 +233,82 @@ class KmeansObstacle(Obstacle):
             else:
                 0
 
-        distances_surface = self._get_normal_distances(position, is_boundary=False)
-        distances_surface[self._index] = position_norm - self.radius
+        # try:
+        surf_position = self.get_point_on_surface(position, in_global_frame=True)
+        # except:
+        # breakpoint()
+        surf_norm = LA.norm(surf_position - self.center_position)
 
-        argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
-        max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+        if position_norm < surf_norm:
+            # Project towards the outside
+            proj_position = relative_position * (surf_norm / position_norm) ** 2
+            proj_position_norm = LA.norm(proj_position)
 
-        if max_dist < 0:
-            # Get the real distance to the surface
-            if self.ind_relevant_and_self[argmax] != self._index:
-                # Project distance onto normal, if it is not with respect to radius
-                max_dist = max_dist / (
-                    np.dot(
-                        relative_position / LA.norm(relative_position),
-                        self._normal_directions[argmax, :],
-                    )
-                )
+            # Put to global frame
+            proj_position = proj_position + self.center_position
+            # is_inside = True
 
-            # Position is inside -> project it to the outside
-            proj_position = (
-                self.center_position
-                + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
-            )
-
-            weights = self._get_normal_distances(proj_position, is_boundary=False)
-            weights[self._index] = (
-                LA.norm(proj_position - self.center_position) - self.radius
-            )
-
-            if np.sum(np.maximum(weights, 0)) == 0:
-                breakpoint()
-
-        elif max_dist == 0:
-            if not len(self.successor_index) or position_norm == self.radius:
-                # Point is exactly on the surface -> return relative position
-                return 1
-            else:
-                # Point is exactly in gap
-                return sys.float_info.max
+        elif position_norm == surf_norm:
+            # We are on the surface -> gamma = 1
+            return 1
 
         else:
-            weights = distances_surface
+            proj_position = position
+            proj_position_norm = position_norm
+            # is_inside = False
+
+        distances_surface = self._get_normal_distances(proj_position, is_boundary=False)
+        distances_surface[self._index] = proj_position_norm - self.radius
+
+        # argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
+        # max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+
+        # if max_dist < 0:
+        #     # Get the real distance to the surface
+        #     if self.ind_relevant_and_self[argmax] != self._index:
+        #         # Project distance onto normal, if it is not with respect to radius
+        #         dot_prod = np.dot(
+        #             relative_position / LA.norm(relative_position),
+        #             self._normal_directions[argmax, :],
+        #         )
+        #         dist_to_surface = max_dist / dot_prod
+        #     else:
+        #         dist_to_surface = max_dist
+
+        #     # Position is inside -> project it to the outside
+        #     proj_position = (
+        #         self.center_position
+        #         + (position_norm / (position_norm + dist_to_surface)) ** 2
+        #         * relative_position
+        #     )
+
+        #     weights = self._get_normal_distances(proj_position, is_boundary=False)
+        #     weights[self._index] = (
+        #         LA.norm(proj_position - self.center_position) - self.radius
+        #     )
+
+        #     if np.sum(np.maximum(weights, 0)) == 0:
+        #         # Debugging stop
+        #         breakpoint()
+
+        # elif max_dist == 0:
+        #     if not len(self.successor_index) or position_norm == self.radius:
+        #         # Point is exactly on the surface -> return relative position
+        #         return 1
+        #     else:
+        #         # Point is exactly in gap
+        #         return sys.float_info.max
+
+        # else:
+        #     weights = distances_surface
 
         # Only consider positive ones for the weight
-        weights = np.maximum(weights, 0)
+        weights = np.maximum(distances_surface, 0)
         weights = weights / np.sum(weights)
 
         if self.is_boundary:
-            local_radiuses = position_norm - distances_surface
+            # TODO: maybe here we actually have to consider the projected_normal distance (?!)
+            local_radiuses = proj_position_norm + distances_surface
 
             if ind_transparent is None:
                 if len(self.successor_index) > 1:
@@ -281,15 +324,16 @@ class KmeansObstacle(Obstacle):
                 return np.sum(weights * local_radiuses) / position_norm
 
             if weights[ind_transparent] > 0:
+                if weights[ind_transparent] >= 1:
+                    return sys.float_info.max
+
                 weights = np.maximum(weights - weights[ind_transparent], 0)
                 weights[ind_transparent] = 1 - np.sum(weights)
 
-                if weights[ind_transparent] < 1:
-                    local_radiuses[ind_transparent] = local_radiuses[
-                        ind_transparent
-                    ] / (1 - weights[ind_transparent])
-                else:
-                    return sys.float_info.max
+                local_radiuses[ind_transparent] = local_radiuses[ind_transparent] / (
+                    1 - weights[ind_transparent]
+                )
+
             return np.sum(weights * local_radiuses) / position_norm
 
         else:
@@ -321,16 +365,31 @@ class KmeansObstacle(Obstacle):
         distances_surface = self._get_normal_distances(position, is_boundary=False)
         distances_surface[self._index] = position_norm - self.radius
 
-        if (max_dist := np.max(distances_surface[self.ind_relevant_and_self])) < 0:
+        argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
+        max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+
+        if max_dist < 0:
             # Position is inside -> project it to the outside
-            position = (
+            if self.ind_relevant_and_self[argmax] != self._index:
+                # Project distance onto normal, if it is not with respect to radius
+                max_dist = max_dist / (
+                    np.dot(
+                        relative_position / LA.norm(relative_position),
+                        self._normal_directions[argmax, :],
+                    )
+                )
+
+            # Position is inside -> project it to the outside
+            proj_position = (
                 self.center_position
                 + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
             )
 
-            distances_surface = self._get_normal_distances(position, is_boundary=False)
+            distances_surface = self._get_normal_distances(
+                proj_position, is_boundary=False
+            )
             distances_surface[self._index] = (
-                LA.norm(position - self.center_position) - self.radius
+                LA.norm(proj_position - self.center_position) - self.radius
             )
 
             # Only consider positive ones for the weight
@@ -419,32 +478,31 @@ class KmeansObstacle(Obstacle):
         boundary_position = self.center_position + direction * self.radius
 
         # Find closest boundary
-        dists = self._get_normal_distances(boundary_position, is_boundary=False)
+        # dists = self._get_normal_distances(boundary_position, is_boundary=False)
+        dists = self._normal_directions @ direction
 
         surface_distance = self.radius
         # Only change the default if there is an intersection
-        for ii in np.arange(dists.shape[0])[dists > 0]:
+        # for ii in self.ind_relevant[dists > 0]:
+        normals = self.normal_directions
+        inbetweeners = self.inbetween_points
+
+        for ii in self.ind_relevant[abs(dists) > 1e-9]:
             intersection = get_intersection_between_line_and_plane(
                 self.center_position,
                 direction,
-                self.inbetween_points[ii, :],
-                self.normal_directions[ii, :],
+                inbetweeners[ii, :],
+                normals[ii, :],
+                positive_only=True,
             )
+            if intersection is None:
+                continue
 
             if LA.norm(self.center_position - intersection) < surface_distance:
                 surface_distance = LA.norm(self.center_position - intersection)
                 boundary_position = intersection
 
-        # Somehow working with the normal leads to wrong estimation in corners..
-        # if any(dists > 0):
-        #     max_ind = np.argmax(dists)
-        #     boundary_position = self.center_position + direction * (
-        #         self.radius
-        #         - dists[max_ind] / np.dot(self.normal_directions[max_ind, :], direction)
-        #     )
-
         if not in_global_frame:
-            # position = self.pose.transform_position_to_relative(position)
             boundary_position = boundary_position - self.center_position
 
         return boundary_position
@@ -462,7 +520,7 @@ class KmeansObstacle(Obstacle):
             self._normal_directions
             * (
                 np.tile(position, (self.ind_relevant.shape[0], 1))
-                - self._center_positions
+                - self._inbetween_points
             ),
             axis=1,
         )
@@ -487,3 +545,77 @@ class KmeansObstacle(Obstacle):
             )
 
         return self.surface_points
+
+
+def test_distributed_kmeans():
+    RANDOM_SEED = 1
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    centers = np.array(
+        [
+            [-3.24225835, 0.84629337],
+            [-4.43803427, 0.88446869],
+            [-0.86091289, 0.9189247],
+            [-4.04617905, 0.69277709],
+        ]
+    )
+
+    datahandler = MotionDataHandler(
+        # position=np.array([[-1, 0], [1, 0], [1, 2], [-1, 2]])
+        position=centers
+    )
+
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
+    datahandler.attractor = np.array([0.0, 1])
+    datahandler.sequence_value = np.linspace(0, 1, 4)
+
+    dimension = 2
+
+    main_learner = MotionLearnerThrougKMeans(data=datahandler)
+
+    from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_to_localstability import (
+        create_kmeans_obstacle_from_learner,
+    )
+
+    # Make sure surface point is close (much smaller than the surface)
+    position = np.array([-2.5, 5])
+    index = 0
+    tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+    surf_point = tmp_obstacle.get_point_on_surface(position, in_global_frame=True)
+    assert LA.norm(surf_point - tmp_obstacle.center_position) < 2
+
+    # index = 0
+    # tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+    # position = np.array([-3.04769137, -0.12654154])
+    # tmp_obstacle.radius = 1.6677169816152546
+    # gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
+
+    plt.close("all")
+    fig, ax = plt.subplots()
+    for ii in range(main_learner.n_clusters):
+        tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
+
+        positions = tmp_obstacle.evaluate_surface_points(n_points=500)
+        ax.plot(
+            positions[0, :],
+            positions[1, :],
+            color="black",
+            linewidth=3.5,
+            zorder=20,
+        )
+        ax.plot(tmp_obstacle.center_position[0], tmp_obstacle.center_position[1], "k+")
+
+    ax.plot(datahandler.attractor[0], datahandler.attractor[1], "k*")
+
+    main_learner.plot_kmeans(ax=ax)
+
+    pass
+
+
+if (__name__) == "__main__":
+    plt.ion()
+    # plt.close("all")
+
+    test_distributed_kmeans()
