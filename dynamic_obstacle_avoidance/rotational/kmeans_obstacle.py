@@ -269,6 +269,10 @@ class KMeansObstacle(Obstacle):
         distances_surface = self._get_normal_distances(proj_position, is_boundary=False)
         distances_surface[self._index] = proj_position_norm - self.radius
 
+        # Only consider positive ones for the weight
+        weights = np.maximum(distances_surface, 0)
+        weights = weights / np.sum(weights)
+
         # argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
         # max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
 
@@ -311,10 +315,6 @@ class KMeansObstacle(Obstacle):
         # else:
         #     weights = distances_surface
 
-        # Only consider positive ones for the weight
-        weights = np.maximum(distances_surface, 0)
-        weights = weights / np.sum(weights)
-
         if self.is_boundary:
             # TODO: maybe here we actually have to consider the projected_normal distance (?!)
             local_radiuses = proj_position_norm - distances_surface
@@ -333,11 +333,11 @@ class KMeansObstacle(Obstacle):
                 return np.sum(weights * local_radiuses) / position_norm
 
             if weights[ind_transparent] > 0:
-                if weights[ind_transparent] >= 1:
-                    return sys.float_info.max
-
                 weights = np.maximum(weights - weights[ind_transparent], 0)
                 weights[ind_transparent] = 1 - np.sum(weights)
+
+                if weights[ind_transparent] >= 1:
+                    return sys.float_info.max
 
                 local_radiuses[ind_transparent] = local_radiuses[ind_transparent] / (
                     1 - weights[ind_transparent]
@@ -371,58 +371,99 @@ class KMeansObstacle(Obstacle):
             # Some direction (normed).
             position[0] = 1
             return position
-        distances_surface = self._get_normal_distances(position, is_boundary=False)
-        distances_surface[self._index] = position_norm - self.radius
 
-        argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
-        max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+        surf_position = self.get_point_on_surface(position, in_global_frame=True)
+        surf_norm = LA.norm(surf_position - self.center_position)
 
-        if max_dist < 0:
-            # Position is inside -> project it to the outside
-            if self.ind_relevant_and_self[argmax] != self._index:
-                # Project distance onto normal, if it is not with respect to radius
-                max_dist = max_dist / (
-                    np.dot(
-                        relative_position / LA.norm(relative_position),
-                        self._normal_directions[argmax, :],
-                    )
-                )
+        if position_norm < surf_norm:
+            # Project towards the outside
+            proj_position = relative_position * (surf_norm / position_norm) ** 2
+            proj_position_norm = LA.norm(proj_position)
 
-            # Position is inside -> project it to the outside
-            proj_position = (
-                self.center_position
-                + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
-            )
+            # Put to global frame
+            proj_position = proj_position + self.center_position
 
-            distances_surface = self._get_normal_distances(
-                proj_position, is_boundary=False
-            )
-            distances_surface[self._index] = (
-                LA.norm(proj_position - self.center_position) - self.radius
-            )
+        elif position_norm == surf_norm:
+            # Surface points cannot be disregarded yet, since we need to check for
+            # transition regions
+            if ind_transparent is None and len(self.successor_index) != 1:
+                # We are on the surface -> gamma = 1 / or infty if in gap
+                return 1.0
 
-            # Only consider positive ones for the weight
-            weights = np.maximum(distances_surface, 0)
-            weights = weights / np.sum(weights)
+            ind_transparent = self.successor_index[0]
 
-        elif max_dist == 0:
-            arg_max = np.argmax(distances_surface[self.ind_relevant_and_self])
-            weights = np.zeros(distances_surface.shape)
-            weights[self.ind_relevant_and_self[arg_max]] = 1
-            weights = weights / np.sum(weights)
+            if np.dot(
+                surf_position - self.inbetween_points[ind_transparent, :],
+                self.normal_directions[ind_transparent, :],
+            ):
+                # NOT on the transparent surface
+                return 1.0
 
-            # # Point is exactly on the surface -> return relative position
-            # if in_global_frame:
-            #     return relative_position / position_norm
-            # else:
-            #     return self.pose.transform_direction_to_relative(
-            #         relative_position / position_norm
-            #     )
-
+            return sys.float_info.max
         else:
-            # Only consider positive ones for the weight
-            weights = np.maximum(distances_surface, 0)
-            weights = weights / np.sum(weights)
+
+            proj_position = position
+            proj_position_norm = position_norm
+
+        distances_surface = self._get_normal_distances(proj_position, is_boundary=False)
+        distances_surface[self._index] = proj_position_norm - self.radius
+
+        # Only consider positive ones for the weight
+        weights = np.maximum(distances_surface, 0)
+        weights = weights / np.sum(weights)
+
+        # distances_surface = self._get_normal_distances(position, is_boundary=False)
+        # distances_surface[self._index] = position_norm - self.radius
+
+        # argmax = np.argmax(distances_surface[self.ind_relevant_and_self])
+        # max_dist = distances_surface[self.ind_relevant_and_self[argmax]]
+
+        # if max_dist < 0:
+        #     # Position is inside -> project it to the outside
+        #     if self.ind_relevant_and_self[argmax] != self._index:
+        #         # Project distance onto normal, if it is not with respect to radius
+        #         max_dist = max_dist / (
+        #             np.dot(
+        #                 relative_position / LA.norm(relative_position),
+        #                 self._normal_directions[argmax, :],
+        #             )
+        #         )
+
+        #     # Position is inside -> project it to the outside
+        #     proj_position = (
+        #         self.center_position
+        #         + ((position_norm - max_dist) / position_norm) ** 2 * relative_position
+        #     )
+
+        #     distances_surface = self._get_normal_distances(
+        #         proj_position, is_boundary=False
+        #     )
+        #     distances_surface[self._index] = (
+        #         LA.norm(proj_position - self.center_position) - self.radius
+        #     )
+
+        #     # Only consider positive ones for the weight
+        #     weights = np.maximum(distances_surface, 0)
+        #     weights = weights / np.sum(weights)
+
+        # elif max_dist == 0:
+        #     arg_max = np.argmax(distances_surface[self.ind_relevant_and_self])
+        #     weights = np.zeros(distances_surface.shape)
+        #     weights[self.ind_relevant_and_self[arg_max]] = 1
+        #     weights = weights / np.sum(weights)
+
+        #     # # Point is exactly on the surface -> return relative position
+        #     # if in_global_frame:
+        #     #     return relative_position / position_norm
+        #     # else:
+        #     #     return self.pose.transform_direction_to_relative(
+        #     #         relative_position / position_norm
+        #     #     )
+
+        # else:
+        #     # Only consider positive ones for the weight
+        #     weights = np.maximum(distances_surface, 0)
+        #     weights = weights / np.sum(weights)
 
         # The deviation at index is zero -> do the summing without it
         # instead of adding it to the normal_directions
