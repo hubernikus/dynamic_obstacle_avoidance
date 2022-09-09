@@ -41,37 +41,6 @@ fig_type = ".png"
 # fig_type = ".pdf"
 
 
-def plot_trajectories(
-    ax,
-    main_learner,
-    it_max=200,
-    dt=0.1,
-    convergence_margin=1e-3,
-    dimension=2,
-):
-    # Trajectory integration
-    data = main_learner.data
-
-    for tt in range(data.start_positions.shape[1]):
-        print(f"Doing trajectory {tt}")
-
-        positions = np.zeros((dimension, it_max + 1))
-
-        positions[:, 0] = data.start_positions[:, tt]
-
-        for ii in range(it_max):
-            velocity = main_learner.evaluate(positions[:, ii])
-            positions[:, ii + 1] = velocity * dt + positions[:, ii]
-
-            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
-                print(f"Trajectory {tt} has converged at it={ii}.")
-                positions = positions[:, : ii + 2]
-                break
-
-        ax.plot(positions[0, :], positions[1, :], "r")
-        ax.plot(positions[0, 0], positions[1, 0], "or")
-
-
 def test_surface_position_and_normal(visualize=True):
     """Test the intersection and surface points"""
     datahandler = MotionDataHandler(

@@ -104,7 +104,8 @@ class KMeansMotionLearner:
         for ii in range(it_fit_max):
             self._fit_remove_sparse_clusters()
             self._fit_cluster_hierarchy()
-            self.region_radius_ = self.radius_factor * np.max(self.distances_parent)
+
+        self._fit_region_radius()
 
         self._fit_local_dynamics()
 
@@ -116,6 +117,25 @@ class KMeansMotionLearner:
             # Assumption of only one predecessor (!)
             # TODO: several predecessors and successors (?!)
             self.region_obstacles[ii].successor_index = self.get_successors(ii)
+
+    def _fit_region_radius(self):
+        max_dist_clusters = self.radius_factor * np.max(self.distances_parent)
+
+        dists = LA.norm(
+            np.swapaxes(
+                np.tile(
+                    self.kmeans.cluster_centers_, (self.data.position.shape[0], 1, 1)
+                ),
+                axis1=0,
+                axis2=1,
+            )
+            - np.tile(self.data.position, (self.n_clusters, 1, 1)),
+            axis=2,
+        )
+
+        max_dist_data = 2 * self.radius_factor * np.max(np.min(dists, axis=0))
+
+        self.region_radius_ = max(max_dist_data, max_dist_clusters)
 
     def _fit_kmeans(self):
         """Fits kmeans on data."""
@@ -169,11 +189,19 @@ class KMeansMotionLearner:
                 logger.info(f"Removed cluster with label {ii}.")
                 # print(f"Removed cluster with label {ii}.")
 
+                self.kmeans.labels_[ind_label] = self.kmeans.predict(
+                    self.data.position[ind_label, :]
+                )
+
             elif n_delta_label:
                 # Update labels to have sequence of numbers
                 self.kmeans.labels_[ind_label] = (
                     self.kmeans.labels_[ind_label] - n_delta_label
                 )
+
+    def _fit_new_clusters_to_missfitting_datapoints(self):
+
+        breakpoint()
 
     def _fit_cluster_hierarchy(self):
         """Evaluates the sequence of each cluster along the trajectory.
@@ -183,9 +211,11 @@ class KMeansMotionLearner:
         self.distances_parent = np.zeros_like(average_sequence)
 
         for ii, label in enumerate(self.get_feature_labels()):
+
             average_sequence[ii] = np.mean(
                 self.data.sequence_value[self.kmeans.labels_ == label]
             )
+            # breakpoint()
         sorted_list = np.argsort(average_sequence)[::-1]
 
         # Set attractor first
@@ -246,7 +276,6 @@ class KMeansMotionLearner:
                         regressor=MultiOutputSVR(kernel="rbf", gamma=0.1),
                     )
                 )
-                # continue
 
             else:
                 ind = np.arange(self.kmeans.labels_.shape[0])[

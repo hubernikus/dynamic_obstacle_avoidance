@@ -30,6 +30,9 @@ from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_region_dynamics,
 )
+from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model import (
+    _test_evaluate_partial_dynamics,
+)
 
 # fig_dir = "/home/lukas/Code/dynamic_obstacle_avoidance/figures/"
 # fig_dir = "figures/"
@@ -37,6 +40,37 @@ from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
 # Chose figures as either png / pdf
 fig_type = ".png"
 # fig_type = ".pdf"
+
+
+def plot_trajectories(
+    ax,
+    main_learner,
+    it_max=200,
+    dt=0.1,
+    convergence_margin=1e-3,
+    dimension=2,
+):
+    # Trajectory integration
+    data = main_learner.data
+
+    for tt in range(data.start_positions.shape[1]):
+        print(f"Doing trajectory {tt}")
+
+        positions = np.zeros((dimension, it_max + 1))
+
+        positions[:, 0] = data.start_positions[:, tt]
+
+        for ii in range(it_max):
+            velocity = main_learner.evaluate(positions[:, ii])
+            positions[:, ii + 1] = velocity * dt + positions[:, ii]
+
+            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
+                print(f"Trajectory {tt} has converged at it={ii}.")
+                positions = positions[:, : ii + 2]
+                break
+
+        ax.plot(positions[0, :], positions[1, :], "r")
+        ax.plot(positions[0, 0], positions[1, 0], "or")
 
 
 def _test_local_deviation(visualize=False, save_figure=False):
@@ -212,11 +246,11 @@ def plot_snake_partial_motions(save_figure=False):
 
     data = HandwrittingHandler(file_name="2D_Sshape.mat")
     x_lim = [-6.5, 0.5]
-    y_lim = [-2.0, 3.0]
+    y_lim = [-1.8, 3.3]
     main_learner = KMeansMotionLearner(data, n_clusters=8)
 
     fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax)
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
     ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
     main_learner.plot_boundaries(ax=ax)
