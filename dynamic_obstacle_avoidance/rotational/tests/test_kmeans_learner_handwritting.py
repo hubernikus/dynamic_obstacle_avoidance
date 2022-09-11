@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 
 from vartools.handwritting_handler import HandwrittingHandler
 
-from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
+# from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
 from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
     KMeansMotionLearner,
     create_kmeans_obstacle_from_learner,
 )
 
-from dynamic_obstacle_avoidance.rotational.base_logger import logger
+# from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_region_dynamics,
 )
@@ -27,7 +27,10 @@ from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model
 )
 
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
-    plot_boundaries, plot_normals, plot_gamma, plot_reference_dynamics
+    plot_boundaries,
+    plot_normals,
+    plot_gamma,
+    plot_reference_dynamics,
 )
 
 
@@ -245,7 +248,7 @@ def plot_snake_partial_motions(save_figure=False):
     x_lim = [-6.5, 0.5]
     y_lim = [-1.8, 3.3]
     main_learner = KMeansMotionLearner(data, n_clusters=8)
-    
+
     position = np.array([-3.9, 0.61])
     velocity = main_learner.predict(position)
 

@@ -3,8 +3,9 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import create_kmeans_obstacle_from_learner
-
+from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
+    create_kmeans_obstacle_from_learner,
+)
 
 
 def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20):
@@ -46,10 +47,10 @@ def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20):
 def plot_gamma(ax, obstacle, x_lim=None, y_lim=None, n_grid=100):
     if x_lim is None:
         x_lim = obstacle.center_position[0] + np.array([-1, 1]) * obstacle.radius
-        
+
     if y_lim is None:
         y_lim = obstacle.center_position[1] + np.array([-1, 1]) * obstacle.radius
-        
+
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
@@ -63,14 +64,14 @@ def plot_gamma(ax, obstacle, x_lim=None, y_lim=None, n_grid=100):
 
         gamma[:, pp] = obstacle.get_gamma(positions[:, pp], in_global_frame=True)
 
-        
+
 def plot_normals(ax, obstacle, x_lim=None, y_lim=None, n_grid=10):
     if x_lim is None:
         x_lim = obstacle.center_position[0] + np.array([-1, 1]) * obstacle.radius
-        
+
     if y_lim is None:
         y_lim = obstacle.center_position[1] + np.array([-1, 1]) * obstacle.radius
-        
+
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
@@ -83,18 +84,14 @@ def plot_normals(ax, obstacle, x_lim=None, y_lim=None, n_grid=10):
         if not obstacle.is_inside(positions[:, pp], in_global_frame=True):
             continue
 
-        normals[:, pp] = obstacle.get_normal_direction(positions[:, pp], in_global_frame=True)
+        normals[:, pp] = obstacle.get_normal_direction(
+            positions[:, pp], in_global_frame=True
+        )
 
-    ax.quiver(
-        positions[0, :],
-        positions[1, :],
-        normals[0, :],
-        normals[1, :],
-        scale=50
-    )
+    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=50)
     # breakpoint()
 
-    
+
 def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
     for ii in range(kmeans_learner.kmeans.n_clusters):
         tmp_obstacle = create_kmeans_obstacle_from_learner(kmeans_learner, ii)
@@ -119,7 +116,6 @@ def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
         zorder=10,
     )
 
-
     if plot_attractor:
         ax.scatter(
             kmeans_learner.data.attractor[0],
@@ -130,51 +126,48 @@ def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
             zorder=10,
         )
 
+
 def plot_reference_dynamics(
-        ax, kmeans_learner, index, x_lim=None, y_lim=None, n_grid=10) -> None:
+    ax, kmeans_learner, index, x_lim=None, y_lim=None, n_grid=10
+) -> None:
     obstacle = kmeans_learner.region_obstacles[index]
-    
+
     if x_lim is None:
         x_lim = obstacle.center_position[0] + np.array([-1, 1]) * obstacle.radius
-        
+
     if y_lim is None:
         y_lim = obstacle.center_position[1] + np.array([-1, 1]) * obstacle.radius
-        
+
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
     )
-    
+
     positions = np.array([xx.flatten(), yy.flatten()])
     normals = np.zeros_like(positions)
 
     for pp in range(positions.shape[1]):
-        if not obstacle.is_inside(
-                positions[:, pp], in_global_frame=True):
+        if not obstacle.is_inside(positions[:, pp], in_global_frame=True):
             continue
 
-        normals[:, pp] = kmeans_learner._dynamics[index].evaluate_convergence_velocity(positions[:, pp])
+        normals[:, pp] = kmeans_learner._dynamics[index].evaluate_convergence_velocity(
+            positions[:, pp]
+        )
 
-    ax.quiver(
-        positions[0, :],
-        positions[1, :],
-        normals[0, :],
-        normals[1, :],
-        scale=50
-    )
+    ax.quiver(positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=50)
 
-    
+
 def plot_kmeans(
-        kmeans_learner,
-        mesh_distance: float = 0.01,
-        limit_to_radius=True,
-        ax=None,
-        x_lim=None,
-        y_lim=None,
+    kmeans_learner,
+    mesh_distance: float = 0.01,
+    limit_to_radius=True,
+    ax=None,
+    x_lim=None,
+    y_lim=None,
 ):
     reduced_data = kmeans_learner.data.X[:, : kmeans_learner.data.dimension]
 
-        if x_lim is None:
+    if x_lim is None:
         # Plot the decision boundary. For that, we will assign a color to each
         x_min, x_max = reduced_data[:, 0].min() - 1, reduced_data[:, 0].max() + 1
     else:
@@ -209,7 +202,8 @@ def plot_kmeans(
             dist = LA.norm(
                 pos
                 - np.tile(
-                    kmeans_learner.kmeans.cluster_centers_[label, :], (np.sum(ind_level), 1)
+                    kmeans_learner.kmeans.cluster_centers_[label, :],
+                    (np.sum(ind_level), 1),
                 ),
                 axis=1,
             )

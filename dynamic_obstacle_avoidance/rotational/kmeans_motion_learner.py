@@ -19,7 +19,8 @@ TODO / method:
 """
 
 import copy
-# import warnings
+import warnings
+
 # import math
 
 import numpy as np
@@ -34,6 +35,7 @@ from vartools.directional_space import get_directional_weighted_sum
 from vartools.handwritting_handler import HandwrittingHandler
 from vartools.math import get_intersection_between_line_and_plane
 
+from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
 )
@@ -46,11 +48,13 @@ from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import
 )
 
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
-    plot_boundaries, plot_kmeans
+    plot_boundaries,
+    plot_kmeans,
 )
 
 # from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+
 # from dynamic_obstacle_avoidance.rotational.datatypes import VectorArray
 
 NodeType = int
@@ -274,11 +278,7 @@ class KMeansMotionLearner:
 
                 direction = np.mean(self.data.velocity[ind, :], axis=0)
 
-                if norm_dir := LA.norm(direction):
-                    direction = direction / norm_dir
-                else:
-                    # Use the K-Means dynamics as default
-                    direction = self._graph.nodes[label]["direction"]
+                self._check_local_velocity(direction)
 
                 # TODO: how do other regressors perform (?)
                 self._dynamics.append(
@@ -297,7 +297,7 @@ class KMeansMotionLearner:
                 == np.tile(labels_local, (self.kmeans.labels_.shape[0], 1)).T,
                 axis=0,
             )
-            
+
             self._dynamics[label].fit_from_velocities(
                 self.data.position[indexes_local, :],
                 self.data.velocity[indexes_local, :],
@@ -308,28 +308,92 @@ class KMeansMotionLearner:
     ) -> None:
         """Checks that the main direction point towards the intersection between
         parent and node"""
+        if norm_dir := LA.norm(direction):
+            direction = direction / norm_dir
+        else:
+            # Use the K-Means dynamics as default
+            direction = self._graph.nodes[ind_node]["direction"]
+
+        breakpoint()  # -> check if pred or successor
+        ind_parent = self._graph.get_predecessors(ind_node)
+
+        if self._is_pointing_twards_parent(direction, ind_node, ind_parent):
+            return direction
+
+        parent_direction = (
+            self.kmeans.cluster_centers_[ind_parent, :]
+            - self.kmeans.cluster_centers_[ind_node, :]
+        )
+
+        if not (par_norm := parent_direction):
+            raise ValueError("Parent and node are aligned.")
+
+        parent_direction = parent_direction / par_norm
+
+        if np.isclose(np.dot(parent_direction, direction), -1):
+            warnings.warn("Direction is far away from expected direction.")
+
+            if self._is_pointing_towards_parent(parent_direction, ind_node, ind_parent):
+                return parent_direction
+            else:
+                raise NotImplementedError(
+                    "No intersection direction towards parent found."
+                    + " Different method is needed."
+                )
+
+        mean_diection = get_directional_weighted_sum(
+            direction,
+            weights=np.array([0.5, 0.5]),
+            directions=np.hstack((direction, parent_direction)),
+        )
+
+        if self._is_pointing_towards_parent(parent_direction, ind_node, ind_parent):
+            # If the parent is not pointing, do another (last) check
+
+            if not self._is_pointing_towards_parent(
+                mean_diection, ind_node, ind_parent
+            ):
+                raise NotImplementedError(
+                    "Improved strategy to find a parent has to be deveopped."
+                )
+            parent_direction = mean_diection
+        else:
+            direction = mean_diection
+
+        # TODO: to the it_max based on the angle bettween -> reach a minimum angle
+        # delta_angle = 0.05
+        for ii in range(it_max):
+            mean_diection = get_directional_weighted_sum(
+                direction,
+                weights=np.array([0.5, 0.5]),
+                directions=np.hstack((direction, parent_direction)),
+            )
+            if self._is_pointing_towards_parent(parent_direction, ind_node, ind_parent):
+                parent_direction = mean_diection
+            else:
+                direction = mean_diection
+
+        return direction
+
+    def _is_pointing_towards_parent(
+        self, position: Vector, ind_node: int, ind_parent: int
+    ) -> bool:
+        """Check if a position is part of the boundary between cluster1 and cluster2."""
+        surf_point_of_direction = self.region_obstacles[ind_node].get_point_on_surface(
+            self.kmeans.cluster_center_[ind_node, :] + direction, in_global_frame=True
+        )
         ind_parent = self._graph.nodes[ind_node]["parent"]
 
-        mean_position = (
-            self.kmeans.cluster_centers_[ind_node, :]
-            + self.kmeans.cluster_centers_[ind_parent, :]
-        )
+        if np.isclose(
+            LA.norm(surf_point_of_direction, self.kmeans.cluster_centers_[ind_node, :]),
+            LA.norm(
+                surf_point_of_direction, self.kmeans.cluster_centers_[ind_parent, :]
+            ),
+        ):
+            return True
 
-        intersection_position = get_intersection_between_line_and_plane(
-            self.kmeans.cluster_centers_[ind_node, :],
-            direction,
-            mean_position,
-            self.kmeans.cluster_centers_[ind_node, :]
-            - self.kmeans.cluster_centers_[ind_parent, :],
-        )
-
-        if self.kmeans.predict(intersection_position) in [ind_node, ind_parent]:
-            # Distance does not need to be checked, since intersection position is in
-            # the middle by construction
-            return
-
-        for ii in range(it_max):
-            raise NotImplementedError("TODO: Automatically update the label.")
+        else:
+            return False
 
     def evaluate(self, *args, **kwargs):
         return self.predict(*args, **kwargs)
@@ -359,7 +423,7 @@ class KMeansMotionLearner:
             ].evaluate_convergence_velocity(position),
             sticky_surface=False,
         )
-        
+
         if np.sum(weights) < 1:
             # TODO: allow for 'partial' weight, for e.g.,:
             # - in between two non-neighboring ellipses
@@ -379,11 +443,12 @@ class KMeansMotionLearner:
         return weighted_direction
 
     def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:
-        tmp_directions = VectorRotationTree()
         # TODO
         # -> sorted hierarchy
         # -> additionaly add modulated velocities / directions
         # -> return weighted evaluation
+        pass
+        # tmp_directions = VectorRotationTree()
 
     def _predict_sequence_weights(
         self,
@@ -449,7 +514,7 @@ class KMeansMotionLearner:
 
     def plot_kmeans(self, *args, **kwargs) -> None:
         return plot_kmeans(self, *args, **kwargs)
-    
+
     def plot_boundaries(self, *args, **kwargs) -> None:
         # TODO: this does not need to be here..
         return plot_boundaries(self, *args, **kwargs)
