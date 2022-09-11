@@ -18,30 +18,21 @@ TODO / method:
 >> (Maybe) additionally ensure that the flow stays within the 
 """
 
-import sys
 import copy
-import random
-import warnings
-import math
-from math import pi
+# import warnings
+# import math
 
 import numpy as np
 from numpy import linalg as LA
-
-import matplotlib.pyplot as plt
 
 import networkx as nx
 
 from sklearn.cluster import KMeans
 
-from vartools.dynamical_systems import LinearSystem, ConstantValue
-
 from vartools.directional_space import get_directional_weighted_sum
 
-from vartools.handwritting_handler import MotionDataHandler, HandwrittingHandler
+from vartools.handwritting_handler import HandwrittingHandler
 from vartools.math import get_intersection_between_line_and_plane
-
-from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
@@ -54,10 +45,13 @@ from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import
     PerpendicularDeviatoinOfLinearDS,
 )
 
+from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
+    plot_boundaries, plot_kmeans
+)
 
-from dynamic_obstacle_avoidance.rotational.base_logger import logger
-
-from dynamic_obstacle_avoidance.rotational.datatypes import Vector, VectorArray
+# from dynamic_obstacle_avoidance.rotational.base_logger import logger
+from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+# from dynamic_obstacle_avoidance.rotational.datatypes import VectorArray
 
 NodeType = int
 
@@ -200,8 +194,8 @@ class KMeansMotionLearner:
                 )
 
     def _fit_new_clusters_to_missfitting_datapoints(self):
-
         breakpoint()
+        pass
 
     def _fit_cluster_hierarchy(self):
         """Evaluates the sequence of each cluster along the trajectory.
@@ -219,7 +213,7 @@ class KMeansMotionLearner:
         sorted_list = np.argsort(average_sequence)[::-1]
 
         # Set attractor first
-        parent_id = -1
+        # parent_id = -1
         direction = (
             self.kmeans.cluster_centers_[sorted_list[0], :] - self.data.attractor
         )
@@ -261,13 +255,9 @@ class KMeansMotionLearner:
 
     def _fit_local_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
-
-        # self._dynamics = [None for _ in self.get_number_of_features()]
         self._dynamics = []
 
         for ii, label in enumerate(self.get_feature_labels()):
-            # if self._graph.nodes[label].pre < 0:
-            # pred = next(self._graph.predecessors(label))[0]
             if self._graph.nodes[label]["level"] == 0:
                 # Zero level => Parent is root
                 self._dynamics.append(
@@ -307,8 +297,7 @@ class KMeansMotionLearner:
                 == np.tile(labels_local, (self.kmeans.labels_.shape[0], 1)).T,
                 axis=0,
             )
-            # breakpoint()
-            # print("label", label)
+            
             self._dynamics[label].fit_from_velocities(
                 self.data.position[indexes_local, :],
                 self.data.velocity[indexes_local, :],
@@ -370,7 +359,7 @@ class KMeansMotionLearner:
             ].evaluate_convergence_velocity(position),
             sticky_surface=False,
         )
-
+        
         if np.sum(weights) < 1:
             # TODO: allow for 'partial' weight, for e.g.,:
             # - in between two non-neighboring ellipses
@@ -385,6 +374,7 @@ class KMeansMotionLearner:
             directions=velocities,
             weights=weights,
         )
+        # breakpoint()
 
         return weighted_direction
 
@@ -457,130 +447,12 @@ class KMeansMotionLearner:
         weights[cluster_label] = 1 - np.sum(weights)
         return weights
 
-    def plot_kmeans(
-        self,
-        mesh_distance: float = 0.01,
-        limit_to_radius=True,
-        ax=None,
-        x_lim=None,
-        y_lim=None,
-    ):
-        reduced_data = self.data.X[:, : self.data.dimension]
-
-        if x_lim is None:
-            # Plot the decision boundary. For that, we will assign a color to each
-            x_min, x_max = reduced_data[:, 0].min() - 1, reduced_data[:, 0].max() + 1
-        else:
-            x_min, x_max = x_lim
-        if y_lim is None:
-            y_min, y_max = reduced_data[:, 1].min() - 1, reduced_data[:, 1].max() + 1
-        else:
-            y_min, y_max = y_lim
-
-        xx, yy = np.meshgrid(
-            np.arange(x_min, x_max, mesh_distance),
-            np.arange(y_min, y_max, mesh_distance),
-        )
-
-        n_points = xx.shape[0] * xx.shape[1]
-        # Obtain labels for each point in mesh. Use last trained model.
-        Z = self.kmeans.predict(np.c_[xx.ravel(), yy.ravel()])
-
-        if limit_to_radius:
-            value_far = -1
-            for label in self.get_feature_labels():
-
-                xx_flat = xx.flatten()
-                yy_flat = yy.flatten()
-
-                ind_level = Z == label
-
-                ind = np.arange(xx_flat.shape[0])[ind_level]
-
-                pos = np.array([xx_flat[ind], yy_flat[ind]]).T
-
-                dist = LA.norm(
-                    pos
-                    - np.tile(
-                        self.kmeans.cluster_centers_[label, :], (np.sum(ind_level), 1)
-                    ),
-                    axis=1,
-                )
-                ind = ind[dist > self.region_radius_]
-
-                Z[ind] = value_far
-
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        if ax is None:
-            _, ax = plt.subplots()
-
-        # ax.clf()
-        ax.imshow(
-            Z,
-            interpolation="nearest",
-            extent=(xx.min(), xx.max(), yy.min(), yy.max()),
-            cmap=plt.cm.Paired,
-            aspect="auto",
-            origin="lower",
-        )
-
-        ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
-        # Plot the centroids as a white X
-        centroids = self.kmeans.cluster_centers_
-        ax.scatter(
-            centroids[:, 0],
-            centroids[:, 1],
-            marker="x",
-            s=169,
-            linewidths=3,
-            color="w",
-            zorder=10,
-        )
-
-        for ii in range(self.get_number_of_features()):
-            d_txt = 0.15
-            level = self._graph.nodes[ii]["level"]
-            ax.text(
-                self.kmeans.cluster_centers_[ii, 0] + d_txt,
-                self.kmeans.cluster_centers_[ii, 1] + d_txt,
-                f"{ii} @ {level}",
-                fontsize=20,
-                color="black",
-            )
-
-        # Plot attractor
-        ax.scatter(
-            self.data.attractor[0],
-            self.data.attractor[1],
-            marker="*",
-            s=200,
-            color="white",
-            zorder=10,
-        )
-
-    def plot_boundaries(self, ax, plot_attractor=False) -> None:
-        for ii in range(self.kmeans.n_clusters):
-            tmp_obstacle = create_kmeans_obstacle_from_learner(self, ii)
-
-            positions = tmp_obstacle.evaluate_surface_points()
-            ax.plot(
-                positions[0, :],
-                positions[1, :],
-                color="black",
-                linewidth=3.5,
-                zorder=20,
-            )
-
-        if plot_attractor:
-            ax.scatter(
-                self.data.attractor[0],
-                self.data.attractor[1],
-                marker="*",
-                s=200,
-                color="black",
-                zorder=10,
-            )
+    def plot_kmeans(self, *args, **kwargs) -> None:
+        return plot_kmeans(self, *args, **kwargs)
+    
+    def plot_boundaries(self, *args, **kwargs) -> None:
+        # TODO: this does not need to be here..
+        return plot_boundaries(self, *args, **kwargs)
 
 
 def create_kmeans_obstacle_from_learner(

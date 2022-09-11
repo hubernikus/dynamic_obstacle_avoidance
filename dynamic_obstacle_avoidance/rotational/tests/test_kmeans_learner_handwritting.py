@@ -2,11 +2,7 @@
 Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 """
 
-import sys
-import copy
 import random
-import warnings
-import math
 from math import pi
 
 import numpy as np
@@ -14,11 +10,7 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from vartools.handwritting_handler import MotionDataHandler, HandwrittingHandler
-
-from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
-    obstacle_avoidance_rotational,
-)
+from vartools.handwritting_handler import HandwrittingHandler
 
 from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
 from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
@@ -33,6 +25,11 @@ from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
 from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model import (
     _test_evaluate_partial_dynamics,
 )
+
+from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
+    plot_boundaries, plot_normals, plot_gamma, plot_reference_dynamics
+)
+
 
 # fig_dir = "/home/lukas/Code/dynamic_obstacle_avoidance/figures/"
 # fig_dir = "figures/"
@@ -248,6 +245,19 @@ def plot_snake_partial_motions(save_figure=False):
     x_lim = [-6.5, 0.5]
     y_lim = [-1.8, 3.3]
     main_learner = KMeansMotionLearner(data, n_clusters=8)
+    
+    position = np.array([-3.9, 0.61])
+    velocity = main_learner.predict(position)
+
+    # Analysis of specific cluster
+    index = 6
+    tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+    fig, ax = plt.subplots()
+    # plot_normals(ax, tmp_obstacle)
+    plot_reference_dynamics(ax, main_learner, index)
+    plot_boundaries(ax=ax, kmeans_learner=main_learner, plot_attractor=True)
+
+    breakpoint()
 
     fig, ax = plt.subplots()
     main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
@@ -283,7 +293,7 @@ def plot_snake_partial_motions(save_figure=False):
     plot_trajectories(ax, main_learner)
 
     if save_figure:
-        fig_name = f"global_dynamics_and_trajectories_snake"
+        fig_name = "global_dynamics_and_trajectories_snake"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
