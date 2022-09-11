@@ -253,6 +253,7 @@ def plot_snake_partial_motions(save_figure=False):
     velocity = main_learner.predict(position)
 
     # Analysis of specific cluster
+    # index = 5
     index = 6
     tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
     fig, ax = plt.subplots()

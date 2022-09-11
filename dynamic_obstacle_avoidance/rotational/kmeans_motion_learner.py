@@ -33,7 +33,7 @@ from sklearn.cluster import KMeans
 from vartools.directional_space import get_directional_weighted_sum
 
 from vartools.handwritting_handler import HandwrittingHandler
-from vartools.math import get_intersection_between_line_and_plane
+# from vartools.math import get_intersection_between_line_and_plane
 
 from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
@@ -47,10 +47,7 @@ from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import
     PerpendicularDeviatoinOfLinearDS,
 )
 
-from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
-    plot_boundaries,
-    plot_kmeans,
-)
+from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
 # from dynamic_obstacle_avoidance.rotational.base_logger import logger
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
@@ -275,10 +272,15 @@ class KMeansMotionLearner:
                 ind = np.arange(self.kmeans.labels_.shape[0])[
                     self.kmeans.labels_ == label
                 ]
-
+                
                 direction = np.mean(self.data.velocity[ind, :], axis=0)
 
-                self._check_local_velocity(direction)
+                # if norm_dir := LA.norm(direction):
+                #     direction = direction / norm_dir
+                # else:
+                #     # Use the K-Means dynamics as default
+                #     direction = self._graph.nodes[ind_node]["direction"]
+                # direction = self._enforces_direction_is_towards_parent(ii, direction)
 
                 # TODO: how do other regressors perform (?)
                 self._dynamics.append(
@@ -303,9 +305,9 @@ class KMeansMotionLearner:
                 self.data.velocity[indexes_local, :],
             )
 
-    def _check_that_main_direction_is_towards_parent(
+    def _enforces_direction_is_towards_parent(
         self, ind_node: NodeType, direction: Vector, it_max: int = 100
-    ) -> None:
+    ) -> Vector:
         """Checks that the main direction point towards the intersection between
         parent and node"""
         if norm_dir := LA.norm(direction):
@@ -513,11 +515,11 @@ class KMeansMotionLearner:
         return weights
 
     def plot_kmeans(self, *args, **kwargs) -> None:
-        return plot_kmeans(self, *args, **kwargs)
+        return helper_functions.plot_kmeans(self, *args, **kwargs)
 
     def plot_boundaries(self, *args, **kwargs) -> None:
         # TODO: this does not need to be here..
-        return plot_boundaries(self, *args, **kwargs)
+        return helper_functions.plot_boundaries(self, *args, **kwargs)
 
 
 def create_kmeans_obstacle_from_learner(
