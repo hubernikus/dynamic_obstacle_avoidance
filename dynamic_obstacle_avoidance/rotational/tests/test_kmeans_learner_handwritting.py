@@ -232,7 +232,7 @@ def plot_a_shape_partial_motions(save_figure=False):
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
-def plot_snake_partial_motions(save_figure=False):
+def plot_snake_partial_motions(save_figure=False, fig_name="", data=None):
     RANDOM_SEED = 3
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -243,10 +243,12 @@ def plot_snake_partial_motions(save_figure=False):
     # x_lim = [-6.5, 0.5]
     # y_lim = [-2.0, 3.0]
     # main_learner = KMeansMotionLearner(data, n_clusters=4)
+    if data is None:
+        data = HandwrittingHandler(file_name="2D_Sshape.mat")
+        fig_name = "sshape_2d_"
 
-    data = HandwrittingHandler(file_name="2D_Sshape.mat")
     x_lim = [-6.5, 0.5]
-    y_lim = [-1.8, 3.3]
+    y_lim = [-2.2, 3.5]
     main_learner = KMeansMotionLearner(data, n_clusters=8)
 
     position = np.array([-3.9, 0.61])
@@ -256,18 +258,32 @@ def plot_snake_partial_motions(save_figure=False):
     # index = 5
     index = 6
     tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+
     fig, ax = plt.subplots()
     # plot_normals(ax, tmp_obstacle)
     plot_reference_dynamics(ax, main_learner, index)
     plot_boundaries(ax=ax, kmeans_learner=main_learner, plot_attractor=True)
 
-    breakpoint()
-
-    fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+    fig, ax = plt.subplots(figsize=(11, 9))
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
     ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    if save_figure:
+        fig_name = f"data_only_" + fig_name
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+        breakpoint()
+
     main_learner.plot_boundaries(ax=ax)
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=False)
+
+    ax.axis("equal")
+
+    if save_figure:
+        fig_name = f"kmeans_handwritting_" + fig_name
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     index = 0
     tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
@@ -276,16 +292,6 @@ def plot_snake_partial_motions(save_figure=False):
     ax.plot(position[0], position[1], "ro")
 
     gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
-    # breakpoint()
-
-    # _test_evaluate_partial_dynamics(
-    #     visualize=True,
-    #     main_learner=main_learner,
-    #     x_lim=x_lim,
-    #     y_lim=y_lim,
-    #     save_figure=save_figure,
-    #     name="snake",
-    # )
 
     fig, ax = plot_region_dynamics(main_learner, x_lim, y_lim)
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
@@ -297,8 +303,76 @@ def plot_snake_partial_motions(save_figure=False):
     plot_trajectories(ax, main_learner)
 
     if save_figure:
-        fig_name = "global_dynamics_and_trajectories_snake"
+        fig_name = "global_dynamics_and_trajectories_" + fig_name
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_kmeans_messy_snake(save_figure=False, fig_name="", data=None):
+    RANDOM_SEED = 3
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    if data is None:
+        data = HandwrittingHandler(file_name="2D_messy-snake.mat")
+        fig_name = "2D_messy-snake"
+
+    x_lim = [-7.5, 1.5]
+    y_lim = [-2.2, 3.5]
+
+    main_learner = KMeansMotionLearner(data, n_clusters=10)
+
+    # index = 0
+    # fig, ax = plt.subplots()
+    # plot_reference_dynamics(ax, main_learner, index)
+    # plot_boundaries(ax=ax, kmeans_learner=main_learner, plot_attractor=True)
+
+    fig, ax = plt.subplots(figsize=(11, 7))
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    if save_figure:
+        fig_name = f"data_only_" + fig_name
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+        breakpoint()
+
+    main_learner.plot_boundaries(ax=ax)
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=True)
+
+    ax.axis("equal")
+
+    if save_figure:
+        fig_name = f"kmeans_handwritting_" + fig_name
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    index = 0
+    tmp_obstacle = create_kmeans_obstacle_from_learner(main_learner, index)
+
+    position = np.array([-3.04769137, -0.12654154])
+    ax.plot(position[0], position[1], "ro")
+
+    gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    plot_region_dynamics(main_learner, x_lim, y_lim, ax=ax)
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    plot_trajectories(ax, main_learner)
+
+    if save_figure:
+        fig_name = "global_dynamics_and_trajectories_" + fig_name
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def plot_snake_partial_motions():
+    data = HandwrittingHandler(file_name="2D_Sshape.mat")
+    fig_name = "snake_2d_"
 
 
 if (__name__) == "__main__":
@@ -306,6 +380,7 @@ if (__name__) == "__main__":
     # plt.close("all")
 
     # plot_a_shape_partial_motions(save_figure=False)
-    plot_snake_partial_motions(save_figure=False)
+    # plot_snake_partial_motions(save_figure=True)
+    plot_kmeans_messy_snake(save_figure=False)
 
     print("Tests finished.")

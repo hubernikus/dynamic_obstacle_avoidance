@@ -384,22 +384,30 @@ class KMeansObstacle(Obstacle):
             proj_position = proj_position + self.center_position
 
         elif position_norm == surf_norm:
-            # Surface points cannot be disregarded yet, since we need to check for
-            # transition regions
-            if ind_transparent is None and len(self.successor_index) != 1:
-                # We are on the surface -> gamma = 1 / or infty if in gap
-                return 1.0
+            # Surface points cannot be disregarded --- we're exactly on it(!)
+            ind_closest = np.argsort(
+                LA.norm(
+                    self.kmeans.cluster_centers_[self.ind_relevant, :]
+                    - np.tile(self.center_position, (len(self.ind_relevant), 1)),
+                    axis=0,
+                )
+            )
+            breakpoint()
 
-            ind_transparent = self.successor_index[0]
+            dist = LA.norm(
+                self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[0]], :]
+                - self.center_position
+            )
 
-            if np.dot(
-                surf_position - self.inbetween_points[ind_transparent, :],
-                self.normal_directions[ind_transparent, :],
-            ):
-                # NOT on the transparent surface
-                return 1.0
+            if dist >= self.radius:
+                return relative_position / LA.norm(relative_position)
 
-            return sys.float_info.max
+            normal_plane = (
+                self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[0]], :]
+                - self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[1]], :]
+            )
+
+            return normal_plane / LA.norm(normal_plane)
         else:
 
             proj_position = position

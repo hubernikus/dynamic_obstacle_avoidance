@@ -3,12 +3,10 @@ from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
-    create_kmeans_obstacle_from_learner,
-)
+from dynamic_obstacle_avoidance.rotational import kmeans_motion_learner as kml
 
 
-def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20):
+def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
@@ -29,7 +27,10 @@ def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20):
 
         velocities[:, pp] = main_learner.predict(positions[:, pp])
 
-    fig, ax = plt.subplots(figsize=(12, 9))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 9))
+    else:
+        fig = None
     main_learner.plot_boundaries(ax=ax, plot_attractor=True)
     ax.quiver(
         positions[0, :],
@@ -94,7 +95,7 @@ def plot_normals(ax, obstacle, x_lim=None, y_lim=None, n_grid=10):
 
 def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
     for ii in range(kmeans_learner.kmeans.n_clusters):
-        tmp_obstacle = create_kmeans_obstacle_from_learner(kmeans_learner, ii)
+        tmp_obstacle = kml.create_kmeans_obstacle_from_learner(kmeans_learner, ii)
 
         positions = tmp_obstacle.evaluate_surface_points()
         ax.plot(
@@ -164,6 +165,7 @@ def plot_kmeans(
     ax=None,
     x_lim=None,
     y_lim=None,
+    centerlabel=True,
 ):
     reduced_data = kmeans_learner.data.X[:, : kmeans_learner.data.dimension]
 
@@ -239,16 +241,18 @@ def plot_kmeans(
         zorder=10,
     )
 
-    for ii in range(kmeans_learner.get_number_of_features()):
-        d_txt = 0.15
-        level = kmeans_learner._graph.nodes[ii]["level"]
-        ax.text(
-            kmeans_learner.kmeans.cluster_centers_[ii, 0] + d_txt,
-            kmeans_learner.kmeans.cluster_centers_[ii, 1] + d_txt,
-            f"{ii} @ {level}",
-            fontsize=20,
-            color="black",
-        )
+    if centerlabel:
+        for ii in range(kmeans_learner.get_number_of_features()):
+            d_txt = 0.15
+            level = kmeans_learner._graph.nodes[ii]["level"]
+            ax.text(
+                kmeans_learner.kmeans.cluster_centers_[ii, 0] + d_txt,
+                kmeans_learner.kmeans.cluster_centers_[ii, 1] + d_txt,
+                f"{ii} @ {level}",
+                fontsize=15,
+                # color="black",
+                color="white",
+            )
 
     # Plot attractor
     ax.scatter(
