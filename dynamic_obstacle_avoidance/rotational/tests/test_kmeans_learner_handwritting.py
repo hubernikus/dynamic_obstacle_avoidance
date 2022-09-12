@@ -1,5 +1,10 @@
 """
 Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
+
+To run, in the ipython environment:
+>>>
+run dynamic_obstacle_avoidance/rotational/tests/test_kmeans_learner_handwritting.py
+
 """
 
 import random
@@ -308,7 +313,7 @@ def plot_snake_partial_motions(save_figure=False, fig_name="", data=None):
 
 
 def plot_kmeans_messy_snake(save_figure=False, fig_name="", data=None):
-    RANDOM_SEED = 3
+    RANDOM_SEED = 0
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
 
@@ -336,7 +341,6 @@ def plot_kmeans_messy_snake(save_figure=False, fig_name="", data=None):
     if save_figure:
         fig_name = f"data_only_" + fig_name
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
-        breakpoint()
 
     main_learner.plot_boundaries(ax=ax)
     main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=True)
@@ -381,6 +385,6 @@ if (__name__) == "__main__":
 
     # plot_a_shape_partial_motions(save_figure=False)
     # plot_snake_partial_motions(save_figure=True)
-    plot_kmeans_messy_snake(save_figure=False)
+    plot_kmeans_messy_snake(save_figure=True)
 
     print("Tests finished.")

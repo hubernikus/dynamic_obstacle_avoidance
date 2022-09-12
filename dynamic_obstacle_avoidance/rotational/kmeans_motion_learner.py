@@ -133,44 +133,34 @@ class KMeansMotionLearner:
 
         self.region_radius_ = max(max_dist_data, max_dist_clusters)
 
-    def _fit_kmeans(self):
+    def _fit_kmeans(self, normalize_init: bool = False):
         """Fits kmeans on data."""
         self.full_kmeans = KMeans(
             init="k-means++", n_clusters=self.n_clusters_fit, n_init=5
         )
+        if normalize_init:
+            self.full_kmeans.fit(self.data.get_normalized_data())
+        else:
+            self.full_kmeans.fit(self.data.X)
 
-        self.full_kmeans.fit(self.data.X)
-        self.kmeans = copy.deepcopy(self.full_kmeans)
-
-        # Reduce k_means to position only (!)
-        self.kmeans.n_features_in_ = self.data.dimension
-        # self.kmeans.cluster_centers_ = self.full_kmeans.cluster_centers_[
-        #     :, : self.data.dimension
-        # ].copy(order="C")
-
-        self.kmeans.cluster_centers_ = np.zeros(
-            (self.full_kmeans.n_clusters, self.data.dimension)
-        ).copy(order="C")
-
-        # Update with assigned points
-        for ii in range(self.kmeans.n_clusters):
-            self.kmeans.cluster_centers_[ii, :] = np.mean(
-                self.data.position[self.kmeans.labels_ == ii, :], axis=0
+        # Update with assigned points -> this is not just and 'update step' but uses
+        # information of velocity and sequence, too.
+        cluster_centers = np.zeros((self.full_kmeans.n_clusters, self.data.dimension))
+        for ii in range(self.full_kmeans.n_clusters):
+            cluster_centers[ii, :] = np.mean(
+                self.data.position[self.full_kmeans.labels_ == ii, :], axis=0
             )
 
-        # Update labels
-        self.kmeans.labels_ = self.kmeans.predict(self.data.position)
-
-        # Do a second update - reassign step
-        for ii in range(self.kmeans.n_clusters):
-            self.kmeans.cluster_centers_[ii, :] = np.mean(
-                self.data.position[self.kmeans.labels_ == ii, :], axis=0
-            )
+        # Initialize-kMeans, but only do few steps since the iteration is position only (!)
+        self.kmeans = KMeans(
+            n_clusters=self.n_clusters_fit, n_init=1, init=cluster_centers, max_iter=10
+        )
+        self.kmeans.fit(self.data.position)
 
     def _fit_remove_sparse_clusters(self, _cluster_removal_factor: float = 0.2) -> None:
         """Removes clusters which are very empty."""
         min_num_of_samples = (
-            _cluster_removal_factor * self.data.num_samples / self.n_clusters
+            _cluster_removal_factor * self.data.n_samples / self.n_clusters
         )
 
         n_delta_label = 0
@@ -200,7 +190,22 @@ class KMeansMotionLearner:
                 )
 
     def _fit_new_clusters_to_missfitting_datapoints(self):
+        # TODO:
+
+        # -> get directions (without caring about parent)
+        # -> remove very small clusters
+        # -> Check how much local velocities are aligned
+        # --> maybe a split (?)
+        # ---> check again, that the locals are now good
+        #
+        # -> do the hierarchy
+        # -> get direction, but has to be aligned with the superiors (!)
+        # --> adapt the hieararchy if needed (!)
         breakpoint()
+
+        for ii, label in enumerate(self.get_feature_labels()):
+
+            breakpoint()
         pass
 
     def _fit_cluster_hierarchy(self):
