@@ -287,7 +287,7 @@ def plot_snake_partial_motions(save_figure=False, fig_name="", data=None):
     ax.axis("equal")
 
     if save_figure:
-        fig_name = f"kmeans_handwritting_" + fig_name
+        fig_name = "kmeans_handwritting_" + fig_name
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     index = 0
@@ -296,7 +296,7 @@ def plot_snake_partial_motions(save_figure=False, fig_name="", data=None):
     position = np.array([-3.04769137, -0.12654154])
     ax.plot(position[0], position[1], "ro")
 
-    gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
+    # gamma = tmp_obstacle.get_gamma(position, in_global_frame=True)
 
     fig, ax = plot_region_dynamics(main_learner, x_lim, y_lim)
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
