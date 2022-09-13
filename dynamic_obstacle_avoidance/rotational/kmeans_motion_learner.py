@@ -203,9 +203,21 @@ class KMeansMotionLearner:
         # --> adapt the hieararchy if needed (!)
         breakpoint()
 
+        data = self.data.get_normalized_data()
+        # TODO: check sequence
         for ii, label in enumerate(self.get_feature_labels()):
+            indexes = self.kmeans.labels_ == ii
+            velocity_vars = np.vars(self.data.velocity[indexes, :])
 
-            breakpoint()
+            if velocity_vars < velocity_margin_max:
+                continue
+
+            # The points are not really aligned well -> we re-cluster the sub-system
+
+            # TODO: more general -> so far only two
+            tmp_kmeans = KMeans(n_clusters=2)
+            tmp_kmeans.fit(data[indexes, :])
+
         pass
 
     def _fit_cluster_hierarchy(self):

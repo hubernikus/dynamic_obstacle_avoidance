@@ -231,7 +231,7 @@ class KMeansObstacle(Obstacle):
             if self.is_boundary:
                 return sys.float_info.max
             else:
-                0
+                return 0
 
         surf_position = self.get_point_on_surface(position, in_global_frame=True)
         surf_norm = LA.norm(surf_position - self.center_position)
