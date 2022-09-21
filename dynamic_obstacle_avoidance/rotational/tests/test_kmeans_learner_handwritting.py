@@ -1,4 +1,4 @@
-"""
+ """
 Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 
 To run, in the ipython environment:
@@ -36,6 +36,10 @@ from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_normals,
     plot_gamma,
     plot_reference_dynamics,
+)
+
+from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model import (
+    _plot_gamma_of_learner,
 )
 
 
@@ -203,7 +207,7 @@ def _test_local_deviation(visualize=False, save_figure=False):
 
 
 def plot_a_shape_partial_motions(save_figure=False):
-    RANDOM_SEED = 1
+    RANDOM_SEED = 0
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
 
@@ -221,7 +225,7 @@ def plot_a_shape_partial_motions(save_figure=False):
     )
 
     x_lim = [-5.5, 0.5]
-    y_lim = [-1.5, 2.5]
+    y_lim = [-2.0, 3.0]
 
     fig, ax = plot_region_dynamics(main_learner, x_lim, y_lim)
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
@@ -234,6 +238,33 @@ def plot_a_shape_partial_motions(save_figure=False):
 
     if save_figure:
         fig_name = f"global_dynamics_and_trajectories_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+    ax.axis("equal")
+    if save_figure:
+        fig_name = f"kmeans_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    fig, ax = _plot_gamma_of_learner(
+        main_learner, x_lim, y_lim, hierarchy_passing_gamma=False
+    )
+
+    if save_figure:
+        fig_name = f"gamma_values_and_trajectories_a_shape"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    fig, ax = plt.subplots()
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+    ax.axis("equal")
+
+    fig, ax = _plot_gamma_of_learner(
+        main_learner, x_lim, y_lim, hierarchy_passing_gamma=True
+    )
+
+    if save_figure:
+        fig_name = f"gamma_values_with_transition_a_shape"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
@@ -383,8 +414,8 @@ if (__name__) == "__main__":
     plt.ion()
     # plt.close("all")
 
-    # plot_a_shape_partial_motions(save_figure=False)
+    plot_a_shape_partial_motions(save_figure=True)
     # plot_snake_partial_motions(save_figure=True)
-    plot_kmeans_messy_snake(save_figure=True)
+    # plot_kmeans_messy_snake(save_figure=True)
 
     print("Tests finished.")
