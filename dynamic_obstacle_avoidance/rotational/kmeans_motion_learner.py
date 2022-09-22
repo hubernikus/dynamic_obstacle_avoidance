@@ -60,9 +60,11 @@ NodeType = int
 
 class KMeansMotionLearner:
     def __init__(
-        self, data: HandwrittingHandler, n_clusters: int = 4, radius_factor: float = 0.7
+        self,
+        data: HandwrittingHandler = None,
+        n_clusters: int = 4,
+        radius_factor: float = 0.7,
     ):
-        self.data = data
         self.n_clusters_fit = n_clusters
 
         self._graph = nx.DiGraph()
@@ -71,7 +73,27 @@ class KMeansMotionLearner:
         self.radius_factor = radius_factor
 
         # Finally
-        self.fit()
+        if data is not None:
+            self.fit(data)
+
+    @classmethod
+    def from_centers(cls, cluster_centers, data):
+        """Alternative contstructor."""
+        n_clusters = cluster_centers.shape[1]
+        new_instance = cls(n_clusters=n_clusters)
+        new_instance.data = data
+
+        new_instance.kmeans = KMeans(
+            n_clusters=n_clusters, n_init=1, init=cluster_centers.T, max_iter=1
+        )
+        new_instance.kmeans.fit(data.position)
+
+        new_instance._fit_cluster_hierarchy()
+        new_instance._fit_region_radius()
+        new_instance._fit_region_obstacles()
+        new_instance._fit_local_dynamics()
+
+        return new_instance
 
     def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
@@ -90,7 +112,9 @@ class KMeansMotionLearner:
     def n_clusters(self) -> int:
         return self.kmeans.n_clusters
 
-    def fit(self) -> None:
+    def fit(self, data) -> None:
+        self.data = data
+
         # Evaluate hierarchy and get the 'minimum' distance
         # Get hierarchy just from existing 'sequence label'
         self._fit_kmeans()
@@ -102,7 +126,10 @@ class KMeansMotionLearner:
             self._fit_cluster_hierarchy()
 
         self._fit_region_radius()
+        self._fit_region_obstacles()
+        self._fit_local_dynamics()
 
+    def _fit_region_obstacles(self):
         # Create kmeans-obstacles
         self.region_obstacles = []
         for ii in range(self.n_clusters):
@@ -111,8 +138,6 @@ class KMeansMotionLearner:
             # Assumption of only one predecessor (!)
             # TODO: several predecessors and successors (?!)
             self.region_obstacles[ii].successor_index = self.get_successors(ii)
-
-        self._fit_local_dynamics()
 
     def _fit_region_radius(self):
         max_dist_clusters = self.radius_factor * np.max(self.distances_parent)

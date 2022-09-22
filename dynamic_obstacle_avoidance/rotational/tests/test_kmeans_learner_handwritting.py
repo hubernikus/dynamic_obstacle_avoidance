@@ -1,4 +1,4 @@
- """
+"""
 Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 
 To run, in the ipython environment:
@@ -406,16 +406,147 @@ def plot_kmeans_messy_snake(save_figure=False, fig_name="", data=None):
 
 
 def plot_snake_partial_motions():
-    data = HandwrittingHandler(file_name="2D_Sshape.mat")
-    fig_name = "snake_2d_"
+    file_name = "2D_messy-snake.mat"
+    # data = HandwrittingHandler(file_name="2D_Sshape.mat")
+    data = HandwrittingHandler(file_name=file_name)
+
+    priors, mu, sigma = get_gmm_from_matlab(data.position, data.velocity)
+    return priors, mu, sigma
+
+
+def get_gmm_from_matlab(position, velocity):
+    est_options = {
+        # "type": "diag",
+        "type": 0,
+        "maxK": 15.0,
+        "fixed_K": matlab.double([]),
+        "samplerIter": 20.0,
+        "do_plots": 0,
+        "sub_sample": 1,
+        "estimate_l": 1.0,
+        "l_sensitivity": 2.0,
+        "length_scale": matlab.double([]),
+    }
+
+    pos_array = matlab.double(position.T)
+    vel_array = matlab.double(velocity.T)
+
+    priors, mu, sigma = matlab_eng.fit_gmm(pos_array, vel_array, est_options, nargout=3)
+
+    priors = np.array(priors)
+    mu = np.array(mu)
+    sigma = np.array(sigma)
+
+    return priors, mu, sigma
+
+
+def get_min_max_from_data(positions, range_fraction=0.5):
+    # X-Values
+    x_min = positions[:, 0].min()
+    x_max = positions[:, 0].max()
+    x_range = x_max - x_min
+
+    delta_x = 1
+    # delta_x = x_range * range_fraction
+    delta_y = 1
+    # delta_y = y_range * range_fraction
+
+    # x_min = x_min - delta_x
+    # x_max = x_max + delta_x
+
+    # Y-Values
+    y_min = positions[:, 1].min()
+    y_max = positions[:, 1].max()
+    y_range = y_max - y_min
+
+    # y_min = y_min - delta_y
+    # y_max = y_max + delta_y
+
+    # Returns the ranges
+    return [x_min - delta_x, x_max + delta_x], [y_min - delta_y, y_max + delta_y]
+
+
+def create_kmeans_obstacle_from_centers(
+    centers, save_figure=False, data_name="", figsize=None
+):
+    if len(data_name):
+        file_name = data_name + ".mat"
+    else:
+        data_name = "2D_messy-snake"
+        file_name = "2D_messy-snake.mat"
+
+    data = HandwrittingHandler(file_name=file_name)
+
+    x_lim, y_lim = get_min_max_from_data(data.position)
+
+    if figsize is None:
+        ratio = (y_lim[1] - y_lim[0]) / (x_lim[1] - x_lim[0])
+        if ratio < 0.75:
+            height = 7
+            figsize = (height / ratio, height)
+        else:
+            wdith = 5.5
+            figsize = (ratio, width * ratio)
+
+    main_learner = KMeansMotionLearner.from_centers(centers, data=data)
+
+    fig, ax = plt.subplots(figsize=figsize)
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    if save_figure:
+        fig_name = f"{data_name}_data_only"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    main_learner.plot_boundaries(ax=ax)
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=False)
+
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    if save_figure:
+        fig_name = f"{data_name}_kmeans_boundary"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    fig, ax = plt.subplots(figsize=figsize)
+    _, ax = plot_region_dynamics(main_learner, x_lim, y_lim, ax=ax)
+
+    reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
+    ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
+
+    plot_trajectories(ax, main_learner)
+
+    ax.axis("equal")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    if save_figure:  #
+        fig_name = f"{data_name}_global_dyn amics_and_trajectories"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
 
 if (__name__) == "__main__":
+    start_global_matlab_engine = True
+    if start_global_matlab_engine and not "matlab_eng" in locals():
+        import matlab
+        import matlab.engine
+
+        matlab_eng = matlab.engine.start_matlab()
+
     plt.ion()
     # plt.close("all")
 
-    plot_a_shape_partial_motions(save_figure=True)
+    data_name = "2D_messy-snake"
+    # plot_a_shape_partial_motions(save_figure=True)
     # plot_snake_partial_motions(save_figure=True)
     # plot_kmeans_messy_snake(save_figure=True)
+
+    # To not have to redo the whole optimization
+    # priors, mu, sigma = plot_snake_partial_motions()
+    create_kmeans_obstacle_from_centers(mu, save_figure=True)
 
     print("Tests finished.")
