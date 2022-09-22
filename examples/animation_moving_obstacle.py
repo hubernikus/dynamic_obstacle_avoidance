@@ -51,7 +51,7 @@ class DynamicalSystemAnimation(Animator):
             obstacle_environment=self.obstacle_environment,
         )
 
-        self.position_list = np.zeros((self.dim, self.it_max))
+        self.position_list = np.zeros((self.dim, self.it_max + 1))
         self.position_list[:, 0] = start_position
 
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
@@ -61,12 +61,11 @@ class DynamicalSystemAnimation(Animator):
             print(f"it={ii}")
 
         # Here come the main calculation part
-        velocity = self.dynamic_avoider.evaluate(self.position_list[:, ii - 1])
+        velocity = self.dynamic_avoider.evaluate(self.position_list[:, ii])
 
-        self.position_list[:, ii] = (
-            velocity * self.dt_simulation + self.position_list[:, ii - 1]
+        self.position_list[:, ii + 1] = (
+            velocity * self.dt_simulation + self.position_list[:, ii]
         )
-        # print(
 
         # Update obstacles
         self.obstacle_environment.do_velocity_step(delta_time=self.dt_simulation)
@@ -75,11 +74,14 @@ class DynamicalSystemAnimation(Animator):
 
         # Drawing and adjusting of the axis
         self.ax.plot(
-            self.position_list[0, :ii], self.position_list[1, :ii], ":", color="#135e08"
+            self.position_list[0, : ii + 1],
+            self.position_list[1, : ii + 1],
+            ":",
+            color="#135e08",
         )
         self.ax.plot(
-            self.position_list[0, ii],
-            self.position_list[1, ii],
+            self.position_list[0, ii + 1],
+            self.position_list[1, ii + 1],
             "o",
             color="#135e08",
             markersize=12,
@@ -105,7 +107,7 @@ class DynamicalSystemAnimation(Animator):
         self.ax.set_aspect("equal", adjustable="box")
 
     def has_converged(self, ii) -> bool:
-        return np.allclose(self.position_list[:, ii], self.position_list[:, ii - 1])
+        return np.allclose(self.position_list[:, ii + 1], self.position_list[:, ii])
 
 
 def simple_point_robot():
@@ -200,6 +202,7 @@ def run_stationary_point_avoiding_dynamic_robot():
     my_animation.setup(
         initial_dynamics,
         obstacle_environment,
+        start_position=np.array([0.1, 2.1]),
         x_lim=[-3, 3],
         y_lim=[-2.1, 2.1],
     )
