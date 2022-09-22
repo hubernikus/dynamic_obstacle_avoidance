@@ -29,8 +29,16 @@ from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
 )
 
 from dynamic_obstacle_avoidance.rotational.base_logger import logger
+
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
+    plot_boundaries,
+    plot_normals,
+    plot_gamma,
+    plot_reference_dynamics,
+    plot_trajectories,
     plot_region_dynamics,
+    plot_partial_dynamcs_of_four_clusters,
+    plot_gamma_of_learner,
 )
 
 # fig_dir = "/home/lukas/Code/dynamic_obstacle_avoidance/figures/"
@@ -334,174 +342,6 @@ def test_gamma_kmeans(visualize=False, save_figure=False):
     assert gamma > 1 and gamma < 10, "Gamma is expected to be in lower positive range."
 
 
-def _plot_gamma_of_learner(main_learner, x_lim, y_lim, hierarchy_passing_gamma=True):
-    """A local helper function to plot the gamma fields."""
-    fig, ax = plt.subplots()
-
-    levels = np.linspace(1, 21, 51)  # For gamma visualization
-
-    for ii in range(main_learner.kmeans.n_clusters):
-        if hierarchy_passing_gamma:
-            region_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
-
-        else:
-            region_obstacle = KMeansObstacle(
-                radius=main_learner.region_radius_,
-                kmeans=main_learner.kmeans,
-                index=ii,
-            )
-
-        positions = region_obstacle.evaluate_surface_points()
-        ax.plot(positions[0, :], positions[1, :], color="black", linewidth=3.5)
-
-        ff = 1.2
-        n_grid = 60
-        positions = get_grid_points(
-            main_learner.kmeans.cluster_centers_[ii, 0],
-            main_learner.region_radius_ * ff,
-            main_learner.kmeans.cluster_centers_[ii, 1],
-            main_learner.region_radius_ * ff,
-            n_points=n_grid,
-        )
-
-        gammas = np.zeros(positions.shape[1])
-        for jj in range(positions.shape[1]):
-
-            if (
-                LA.norm(positions[:, jj] - region_obstacle.center_position)
-                > region_obstacle.radius
-            ):
-                # For nicer visualization, only internally
-                continue
-
-            gammas[jj] = region_obstacle.get_gamma(
-                positions[:, jj], in_global_frame=True
-            )
-
-        cntr = ax.contourf(
-            positions[0, :].reshape(n_grid, n_grid),
-            positions[1, :].reshape(n_grid, n_grid),
-            gammas.reshape(n_grid, n_grid),
-            levels=levels,
-            # cmap="Blues_r",
-            # cmap="magma",
-            cmap="pink",
-            # alpha=0.7,
-        )
-
-    cbar = fig.colorbar(cntr)
-
-    ax.axis("equal")
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
-
-    return fig, ax
-
-
-def create_four_point_datahandler() -> KMeansMotionLearner:
-    """Helper function to create handler"""
-    RANDOM_SEED = 1
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-
-    datahandler = MotionDataHandler(
-        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
-    )
-    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
-    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
-    datahandler.attractor = np.array([0.5, 2])
-    datahandler.sequence_value = np.linspace(0, 1, 4)
-
-    return KMeansMotionLearner(datahandler, radius_factor=0.55)
-
-
-def _test_evaluate_partial_dynamics(
-    visualize=False,
-    save_figure=False,
-    main_learner=None,
-    x_lim=None,
-    y_lim=None,
-    name="",
-):
-    # Generate very simple dataset
-    if main_learner is None:
-        main_learner = create_four_point_datahandler()
-
-    if x_lim is None:
-        x_lim = [-2.1, 3.1]
-    if y_lim is None:
-        y_lim = [-1.1, 3.1]
-
-    if visualize:
-        fig_init, axs_init = plt.subplots(2, 2, figsize=(14, 9))
-        fig_mod, axs_mod = plt.subplots(2, 2, figsize=(14, 9))
-
-        for ii in range(main_learner.n_clusters):
-            ax_ini = axs_init[ii % 2, ii // 2]
-            ax_mod = axs_mod[ii % 2, ii // 2]
-
-            main_learner.plot_boundaries(ax=ax_ini, plot_attractor=True)
-            main_learner.plot_boundaries(ax=ax_mod, plot_attractor=True)
-
-            ff = 1.05
-            n_grid = 10
-            positions = get_grid_points(
-                main_learner.kmeans.cluster_centers_[ii, 0],
-                main_learner.region_radius_ * ff,
-                main_learner.kmeans.cluster_centers_[ii, 1],
-                main_learner.region_radius_ * ff,
-                n_points=n_grid,
-            )
-            initial_velocities = np.zeros_like(positions)
-            modulated_velocities = np.zeros_like(positions)
-
-            for jj in range(positions.shape[1]):
-                if not main_learner.region_obstacles[ii].is_inside(
-                    positions[:, jj], in_global_frame=True
-                ):
-                    continue
-
-                initial_velocities[:, jj] = main_learner._dynamics[ii].evaluate(
-                    positions[:, jj]
-                )
-
-                modulated_velocities[:, jj] = obstacle_avoidance_rotational(
-                    positions[:, jj],
-                    initial_velocities[:, jj],
-                    [main_learner.region_obstacles[ii]],
-                    convergence_velocity=main_learner._dynamics[
-                        ii
-                    ].evaluate_convergence_velocity(positions[:, jj]),
-                    sticky_surface=False,
-                )
-
-            ax_ini.quiver(
-                positions[0, :],
-                positions[1, :],
-                initial_velocities[0, :],
-                initial_velocities[1, :],
-                # color="blue",
-                scale=15,
-            )
-            ax_ini.axis("equal")
-            ax_mod.quiver(
-                positions[0, :],
-                positions[1, :],
-                modulated_velocities[0, :],
-                modulated_velocities[1, :],
-                # color="red",
-                scale=15,
-            )
-            ax_mod.axis("equal")
-
-        if save_figure:
-            fig_name = "initial_local_velocities" + "_" + name
-            fig_init.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
-
-            fig_name = "modulated_local_velocities" + "_" + name
-            fig_mod.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
-
-
 def test_transition_weight(visualize=False, save_figure=False):
     main_learner = create_four_point_datahandler()
     x_lim, y_lim = [-3, 5], [-1.5, 4.5]
@@ -684,13 +524,29 @@ def test_normals(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
 
+def create_four_point_datahandler(RANDOM_SEED=1) -> KMeansMotionLearner:
+    """Helper function to create handler"""
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    datahandler = MotionDataHandler(
+        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
+    )
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
+    datahandler.attractor = np.array([0.5, 2])
+    datahandler.sequence_value = np.linspace(0, 1, 4)
+
+    return KMeansMotionLearner(datahandler, radius_factor=0.55)
+
+
 if (__name__) == "__main__":
     plt.ion()
-    # plt.close("all")
+    plt.close("all")
 
     # test_surface_position_and_normal(visualize=True)
-    # test_gamma_kmeans(visualize=False, save_figure=False)
-    # test_transition_weight(visualize=False, save_figure=False)
+    # test_gamma_kmeans(visualize=True, save_figure=False)
+    # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
     # _test_evaluate_partial_dynamics(visualize=True, save_figure=True)

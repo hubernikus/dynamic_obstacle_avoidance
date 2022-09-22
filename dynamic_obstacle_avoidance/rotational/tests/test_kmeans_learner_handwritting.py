@@ -7,6 +7,8 @@ run dynamic_obstacle_avoidance/rotational/tests/test_kmeans_learner_handwritting
 
 """
 
+import warnings
+
 import random
 from math import pi
 
@@ -14,6 +16,9 @@ import numpy as np
 from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
+
+# import matplotlib
+# matplotlib.use("Agg")
 
 from vartools.handwritting_handler import HandwrittingHandler
 
@@ -23,23 +28,16 @@ from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
     create_kmeans_obstacle_from_learner,
 )
 
-# from dynamic_obstacle_avoidance.rotational.base_logger import logger
-from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
-    plot_region_dynamics,
-)
-from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model import (
-    _test_evaluate_partial_dynamics,
-)
 
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_boundaries,
     plot_normals,
     plot_gamma,
     plot_reference_dynamics,
-)
-
-from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model import (
-    _plot_gamma_of_learner,
+    plot_trajectories,
+    plot_region_dynamics,
+    plot_partial_dynamcs_of_four_clusters,
+    plot_gamma_of_learner,
 )
 
 
@@ -49,37 +47,6 @@ from dynamic_obstacle_avoidance.rotational.tests.test_kmeans_learner_basic_model
 # Chose figures as either png / pdf
 fig_type = ".png"
 # fig_type = ".pdf"
-
-
-def plot_trajectories(
-    ax,
-    main_learner,
-    it_max=200,
-    dt=0.1,
-    convergence_margin=1e-3,
-    dimension=2,
-):
-    # Trajectory integration
-    data = main_learner.data
-
-    for tt in range(data.start_positions.shape[1]):
-        print(f"Doing trajectory {tt}")
-
-        positions = np.zeros((dimension, it_max + 1))
-
-        positions[:, 0] = data.start_positions[:, tt]
-
-        for ii in range(it_max):
-            velocity = main_learner.evaluate(positions[:, ii])
-            positions[:, ii + 1] = velocity * dt + positions[:, ii]
-
-            if LA.norm(positions[:, ii + 1] - positions[:, ii]) < convergence_margin:
-                print(f"Trajectory {tt} has converged at it={ii}.")
-                positions = positions[:, : ii + 2]
-                break
-
-        ax.plot(positions[0, :], positions[1, :], "r")
-        ax.plot(positions[0, 0], positions[1, 0], "or")
 
 
 def _test_local_deviation(visualize=False, save_figure=False):
@@ -211,61 +178,91 @@ def plot_a_shape_partial_motions(save_figure=False):
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
 
-    # data = HandwrittingHandler(file_name="Angle.mat")
+    dataname = "a_shape"
     data = HandwrittingHandler(file_name="2D_Ashape.mat")
+
     main_learner = KMeansMotionLearner(data)
 
-    _test_evaluate_partial_dynamics(
-        visualize=True,
-        main_learner=main_learner,
-        x_lim=[-5.5, 0.5],
-        y_lim=[-1.5, 2.5],
-        save_figure=save_figure,
-        name="a_shape",
-    )
+    figsize = (7, 5.0)
+    x_lim, y_lim = get_min_max_from_data(data.position)
 
-    x_lim = [-5.5, 0.5]
-    y_lim = [-2.0, 3.0]
-
-    fig, ax = plot_region_dynamics(main_learner, x_lim, y_lim)
+    fig, ax = plt.subplots(figsize=figsize)
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
     ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
 
     ax.set_xlim(x_lim)
     ax.set_ylim(y_lim)
+    ax.axis("equal")
+
+    if save_figure:
+        fig_name = f"{dataname}_data_only"
+        fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+    plot_region_dynamics(main_learner, x_lim, y_lim, ax=ax)
+
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    ax.axis("equal")
 
     plot_trajectories(ax, main_learner)
 
     if save_figure:
-        fig_name = f"global_dynamics_and_trajectories_a_shape"
+        fig_name = f"{dataname}_global_dynamics_and_trajectories"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=figsize)
     main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
     ax.axis("equal")
     if save_figure:
-        fig_name = f"kmeans_a_shape"
+        fig_name = f"{dataname}_kmeans"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-    fig, ax = _plot_gamma_of_learner(
-        main_learner, x_lim, y_lim, hierarchy_passing_gamma=False
+    fig, ax = plt.subplots(figsize=figsize)
+    plot_gamma_of_learner(
+        main_learner, x_lim, y_lim, hierarchy_passing_gamma=False, fig=fig, ax=ax
     )
 
     if save_figure:
-        fig_name = f"gamma_values_and_trajectories_a_shape"
+        fig_name = f"{dataname}_gamma_values_and_trajectories"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
-    fig, ax = plt.subplots()
-    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
-    ax.axis("equal")
-
-    fig, ax = _plot_gamma_of_learner(
-        main_learner, x_lim, y_lim, hierarchy_passing_gamma=True
+    fig, ax = plt.subplots(figsize=figsize)
+    plot_gamma_of_learner(
+        main_learner,
+        x_lim,
+        y_lim,
+        hierarchy_passing_gamma=True,
+        ax=ax,
+        fig=fig,
     )
 
     if save_figure:
         fig_name = f"gamma_values_with_transition_a_shape"
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
+
+
+def do_individual_cluster_evaluations(save_figure=False):
+    RANDOM_SEED = 0
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
+    dataname = "a_shape"
+
+    # data = HandwrittingHandler(file_name="Angle.mat")
+    data = HandwrittingHandler(file_name="2D_Ashape.mat")
+    main_learner = KMeansMotionLearner(data)
+
+    figsize = (6, 5.5)
+    x_lim, y_lim = get_min_max_from_data(data.position)
+
+    plot_partial_dynamcs_of_four_clusters(
+        visualize=True,
+        main_learner=main_learner,
+        x_lim=x_lim,
+        y_lim=y_lim,
+        save_figure=save_figure,
+        name=dataname,
+    )
 
 
 def plot_snake_partial_motions(save_figure=False, fig_name="", data=None):
@@ -466,7 +463,7 @@ def get_min_max_from_data(positions, range_fraction=0.5):
     return [x_min - delta_x, x_max + delta_x], [y_min - delta_y, y_max + delta_y]
 
 
-def create_kmeans_obstacle_from_centers(
+def create_kmeans_obstacle_physically_consistent(
     centers, save_figure=False, data_name="", figsize=None
 ):
     if len(data_name):
@@ -513,7 +510,7 @@ def create_kmeans_obstacle_from_centers(
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     fig, ax = plt.subplots(figsize=figsize)
-    _, ax = plot_region_dynamics(main_learner, x_lim, y_lim, ax=ax)
+    plot_region_dynamics(main_learner, x_lim, y_lim, ax=ax)
 
     reduced_data = main_learner.data.X[:, : main_learner.data.dimension]
     ax.plot(reduced_data[:, 0], reduced_data[:, 1], "k.", markersize=2)
@@ -532,21 +529,37 @@ def create_kmeans_obstacle_from_centers(
 if (__name__) == "__main__":
     start_global_matlab_engine = True
     if start_global_matlab_engine and not "matlab_eng" in locals():
+        # TODO: this should be included in the upcoming learning-library (!)
+        warnings.warn(
+            "This requires MATLAB setup. See following repository for more information: \n"
+            + "https://github.com/nbfigueroa/phys-gmm"
+            "Additionally install the matlab interface: \n"
+            + "$ cd 'matlabroot\extern\engines\python \n'"
+            + "$ python -m pip install ."
+        )
+
         import matlab
         import matlab.engine
 
         matlab_eng = matlab.engine.start_matlab()
 
     plt.ion()
-    # plt.close("all")
+    plt.close("all")
 
     data_name = "2D_messy-snake"
-    # plot_a_shape_partial_motions(save_figure=True)
+    plot_a_shape_partial_motions(save_figure=False)
     # plot_snake_partial_motions(save_figure=True)
     # plot_kmeans_messy_snake(save_figure=True)
 
     # To not have to redo the whole optimization
-    # priors, mu, sigma = plot_snake_partial_motions()
-    create_kmeans_obstacle_from_centers(mu, save_figure=True)
+    if False:
+        # Messy snake with Physically Consistent
+        try:
+            # priors, mu, sigma = plot_snake_partial_motions()
+            create_kmeans_obstacle_physically_consistent(mu, save_figure=True)
+
+        except:
+            priors, mu, sigma = plot_snake_partial_motions()
+            create_kmeans_obstacle_physically_consistent(mu, save_figure=True)
 
     print("Tests finished.")
