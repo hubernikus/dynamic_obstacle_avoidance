@@ -49,37 +49,34 @@ fig_type = ".png"
 # fig_type = ".pdf"
 
 
-def test_surface_position_and_normal(visualize=True):
-    """Test the intersection and surface points"""
+def create_four_point_datahandler(RANDOM_SEED=1) -> KMeansMotionLearner:
+    """Helper function to create handler"""
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+
     datahandler = MotionDataHandler(
-        # position=np.array([[-1, 0], [1, 0], [1, 2], [-1, 2]])
         position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
     )
-
     datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
     datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
     datahandler.attractor = np.array([0.5, 2])
     datahandler.sequence_value = np.linspace(0, 1, 4)
 
+    return KMeansMotionLearner(datahandler, radius_factor=0.55)
+
+
+def test_surface_position_and_normal(visualize=True):
+    """Test the intersection and surface points"""
+    main_learner = create_four_point_datahandler()
+
     dimension = 2
-    kmeans = KMeans(init="k-means++", n_clusters=4, n_init=2)
-    kmeans.fit(datahandler.position)
-
-    kmeans.n_features_in_ = dimension
-    kmeans.cluster_centers_ = (
-        np.array(datahandler.position).copy(order="C").astype(np.double)
-    )
-
     radius = 1.5
-    region_obstacle = KMeansObstacle(radius=radius, kmeans=kmeans, index=0)
-
-    main_learner = KMeansMotionLearner(datahandler)
 
     if visualize:
         x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
         fig, ax = plt.subplots(figsize=(14, 9))
-        main_learner.kmeans = kmeans
+        kmeans = main_learner.kmeans
         main_learner.region_radius_ = radius
         main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
 
@@ -524,20 +521,16 @@ def test_normals(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
 
-def create_four_point_datahandler(RANDOM_SEED=1) -> KMeansMotionLearner:
-    """Helper function to create handler"""
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
+def test_global_dynamics(visualize=False, save_figure=False):
+    main_learner = create_four_point_datahandler()
 
-    datahandler = MotionDataHandler(
-        position=np.array([[-1, 0], [1, 0], [2, 1], [1, 2]])
-    )
-    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
-    datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
-    datahandler.attractor = np.array([0.5, 2])
-    datahandler.sequence_value = np.linspace(0, 1, 4)
+    x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
-    return KMeansMotionLearner(datahandler, radius_factor=0.55)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+    ax.axis("equal")
+    # ax.set_xlim(x_lim)
+    # ax.set_ylim(y_lim)
 
 
 if (__name__) == "__main__":
@@ -549,8 +542,10 @@ if (__name__) == "__main__":
     # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
-    # _test_evaluate_partial_dynamics(visualize=True, save_figure=True)
+    # plot_partial_dynamcs_of_four_clusters(visualize=True, save_figure=True)
 
-    # _test_local_deviation(save_figure=True)
+    test_global_dynamics()
+
+    # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
 
     print("Tests finished.")
