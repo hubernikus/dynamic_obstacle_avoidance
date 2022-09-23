@@ -661,9 +661,23 @@ class RotationalAvoider(BaseAvoider):
         #     return dir_initial.as_vector()
 
         conv_vector = dir_convergence.as_vector()
+        if (dot_weights := np.dot(conv_vector, dir_initial.as_vector())) < 0:
+            # When the two 'tangents' are far apart use the normal as fill-in
+            # this ensure continuous value even far away
+            dot_weights = (-1) * dot_weights
+            normal_vector = base[:, 0]
+
+            null_vector = get_directional_weighted_sum(
+                null_direction=conv_vector,
+                weights=np.array([(1 - dot_weights), dot_weights]),
+                directions=np.vstack((conv_vector, normal_vector)).T,
+            )
+
+        else:
+            null_vector = conv_vector
 
         rotated_velocity = get_directional_weighted_sum(
-            null_direction=conv_vector,
+            null_direction=null_vector,
             weights=np.array([weight, (1 - weight)]),
             directions=np.vstack((conv_vector, dir_initial.as_vector())).T,
         )

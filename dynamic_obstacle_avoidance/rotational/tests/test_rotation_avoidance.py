@@ -649,7 +649,7 @@ if (__name__) == "__main__":
     # test_convergence_tangent(visualize=False)
     # test_rotating_towards_tangent()
 
-    test_single_circle_linear(visualize=True)
+    # test_single_circle_linear(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
@@ -657,6 +657,6 @@ if (__name__) == "__main__":
     # test_single_perpendicular_ellipse(visualize=True)
 
     # test_double_ellipse(visualize=True)
-    # test_stable_linear_avoidance(visualize=False)
+    # test_stable_linear_avoidance(visualize=True)
 
     print("[Rotational Tests] Done tests")

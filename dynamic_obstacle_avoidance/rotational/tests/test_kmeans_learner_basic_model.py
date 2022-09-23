@@ -529,8 +529,8 @@ def test_global_dynamics(visualize=False, save_figure=False):
     fig, ax = plt.subplots(figsize=(8, 6))
     main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
     ax.axis("equal")
-    # ax.set_xlim(x_lim)
-    # ax.set_ylim(y_lim)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
 
 
 if (__name__) == "__main__":
