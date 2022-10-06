@@ -547,12 +547,12 @@ if (__name__) == "__main__":
     plt.close("all")
 
     data_name = "2D_messy-snake"
-    plot_a_shape_partial_motions(save_figure=False)
+    # plot_a_shape_partial_motions(save_figure=False)
     # plot_snake_partial_motions(save_figure=True)
     # plot_kmeans_messy_snake(save_figure=True)
 
     # To not have to redo the whole optimization
-    if False:
+    if True:
         # Messy snake with Physically Consistent
         try:
             # priors, mu, sigma = plot_snake_partial_motions()

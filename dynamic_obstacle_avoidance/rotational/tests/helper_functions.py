@@ -6,6 +6,22 @@ import matplotlib.pyplot as plt
 from dynamic_obstacle_avoidance.rotational import kmeans_motion_learner as kml
 
 
+def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
+    """Returns grid based on input x and y values."""
+    x_min = mean_x - delta_x
+    x_max = mean_x + delta_x
+
+    y_min = mean_y - delta_y
+    y_max = mean_y + delta_y
+
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, n_points),
+        np.linspace(y_min, y_max, n_points),
+    )
+
+    return np.array([xx.flatten(), yy.flatten()])
+
+
 def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -94,6 +110,7 @@ def plot_normals(ax, obstacle, x_lim=None, y_lim=None, n_grid=10):
 
 
 def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
+
     for ii in range(kmeans_learner.kmeans.n_clusters):
         tmp_obstacle = kml.create_kmeans_obstacle_from_learner(kmeans_learner, ii)
 
@@ -300,6 +317,8 @@ def plot_gamma_of_learner(
     main_learner, x_lim, y_lim, hierarchy_passing_gamma=True, fig=None, ax=None
 ):
     """A local helper function to plot the gamma fields."""
+    # from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
+
     if ax is None:
         if fig is None:
             raise ValueError("Need figure AND axes.")
@@ -310,10 +329,10 @@ def plot_gamma_of_learner(
 
     for ii in range(main_learner.kmeans.n_clusters):
         if hierarchy_passing_gamma:
-            region_obstacle = create_kmeans_obstacle_from_learner(main_learner, ii)
+            region_obstacle = kml.create_kmeans_obstacle_from_learner(main_learner, ii)
 
         else:
-            region_obstacle = KMeansObstacle(
+            region_obstacle = kml.KMeansObstacle(
                 radius=main_learner.region_radius_,
                 kmeans=main_learner.kmeans,
                 index=ii,

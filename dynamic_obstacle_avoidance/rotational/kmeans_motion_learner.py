@@ -491,12 +491,19 @@ class KMeansMotionLearner:
 
         return weighted_direction
 
-    def _predict_outside_obstacle(self, gamma_values: np.ndarray, cut_off_gamma: float = ) -> Vector:
-        """ Returns the velocity vector if we are outside of all position"""
-        if any (gamma_values >= 1):
-            warnings.warn("Is on boundary of the obstacle - this should be caught before (!).")
+    def _predict_outside_obstacle(
+        self, gamma_values: np.ndarray, cut_off_gamma: float = None
+    ) -> Vector:
+        """Returns the velocity vector if we are outside of all position"""
+        breakpoint()  # TODO
+        if any(gamma_values >= 1):
+            warnings.warn(
+                "Is on boundary of the obstacle - this should be caught before (!)."
+            )
             if gamma_values > 1:
-                raise ValueError("Inside an obstacle - why has this not been caught before.")
+                raise ValueError(
+                    "Inside an obstacle - why has this not been caught before."
+                )
 
         ind_relevant = gamma_values > cut_off_gamma
 
@@ -506,14 +513,13 @@ class KMeansMotionLearner:
             # just go for it
             return direction / LA.norm(direction)
 
-        
         # weights = 1 / (1 - gamma_values) - 1 / (1-cut_off_gamma)
         # weights = weights / np.sum(weights)
-        
+
         # TODO:
-            # Different weight: only one is ever relevant!!
-            # project velocity onto obstacle
-            # Weighted mean
+        # Different weight: only one is ever relevant!!
+        # project velocity onto obstacle
+        # Weighted mean
 
     def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:
         # TODO:
