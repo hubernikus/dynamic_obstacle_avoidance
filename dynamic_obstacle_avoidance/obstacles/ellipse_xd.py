@@ -83,7 +83,7 @@ class EllipseWithAxes(obstacles.Obstacle):
             )
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         self._reference_point = position
 
@@ -95,9 +95,7 @@ class EllipseWithAxes(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            return self.pose.transform_position_from_local_to_reference(
-                self._reference_point
-            )
+            return self.pose.transform_position_from_relative(self._reference_point)
         else:
             return self._reference_point
 
@@ -151,7 +149,7 @@ class EllipseWithAxes(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         if margin_absolut is None:
             margin_absolut = self.margin_absolut
@@ -187,7 +185,7 @@ class EllipseWithAxes(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         normal = (
             2
@@ -202,8 +200,9 @@ class EllipseWithAxes(obstacles.Obstacle):
             normal = normal / normal_norm
         else:
             normal[0] = 1
+
         if not in_obstacle_frame:
-            normal = self.pose.transform_direction_from_local_to_reference(normal)
+            normal = self.pose.transform_direction_from_relative(normal)
 
         return normal
 
@@ -211,8 +210,8 @@ class EllipseWithAxes(obstacles.Obstacle):
         self, point0: np.ndarray, point1: np.ndarray, in_global_frame: bool = False
     ):
         if in_global_frame:
-            point0 = self.pose.transform_position_from_reference_to_local(point0)
-            point1 = self.pose.transform_position_from_reference_to_local(point1)
+            point0 = self.pose.transfrom_positions_to_relative(point0)
+            point1 = self.pose.transfrom_positions_to_relative(point1)
 
         point0 = point0 / self.semiaxes_with_magin
         point1 = point1 / self.semiaxes_with_magin
@@ -222,9 +221,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         )
 
         if in_global_frame:
-            surface_point = self.pose.transform_position_from_local_to_reference(
-                surface_point
-            )
+            surface_point = self.pose.transform_position_from_relative(surface_point)
 
         return surface_point
 
@@ -241,7 +238,7 @@ class EllipseWithAxes(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         # Position in the circle-world
         if margin_absolut is None:
@@ -263,9 +260,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         # surface_point = surface_point * self.semiaxes
 
         if not in_obstacle_frame:
-            surface_point = self.pose.transform_position_from_local_to_reference(
-                surface_point
-            )
+            surface_point = self.pose.transform_position_from_relative(surface_point)
 
         return surface_point
 
@@ -296,7 +291,7 @@ class HyperSphere(obstacles.Obstacle):
     ):
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         pos_norm = LA.norm(position)
         if not pos_norm:
@@ -305,7 +300,7 @@ class HyperSphere(obstacles.Obstacle):
         normal = position / pos_norm
 
         if not in_obstacle_frame:
-            normal = self.pose.transform_direction_from_reference_to_local(normal)
+            normal = self.pose.transform_position_from_relative(normal)
 
         return normal
 
@@ -317,7 +312,7 @@ class HyperSphere(obstacles.Obstacle):
         """Returns the point on the surface from the center with respect to position."""
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         pos_norm = LA.norm(position)
         if not pos_norm:
@@ -328,9 +323,7 @@ class HyperSphere(obstacles.Obstacle):
             surface_point = position / pos_norm
 
         if not in_obstacle_frame:
-            surface_point = self.pose.transform_position_from_local_to_reference(
-                surface_point
-            )
+            surface_point = self.pose.transform_position_from_relative(surface_point)
 
         return surface_point
 

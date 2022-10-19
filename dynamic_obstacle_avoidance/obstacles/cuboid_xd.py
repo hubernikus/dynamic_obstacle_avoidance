@@ -68,7 +68,7 @@ class CuboidXd(obstacles.Obstacle):
             )
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         self._reference_point = position
 
@@ -80,9 +80,7 @@ class CuboidXd(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            return self.pose.transform_position_from_local_to_reference(
-                self._reference_point
-            )
+            return self.pose.transform_position_from_relative(self._reference_point)
         else:
             return self._reference_point
 
@@ -241,9 +239,7 @@ class CuboidXd(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            cube_position = self.pose.transform_position_from_reference_to_local(
-                position
-            )
+            cube_position = self.pose.transform_position_to_relative(position)
 
         cube_position = cube_position / self.semiaxes
 
