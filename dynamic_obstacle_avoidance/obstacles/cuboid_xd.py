@@ -135,7 +135,7 @@ class CuboidXd(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
 
         ind_relevant = np.abs(position) > self.semiaxes
 
@@ -164,7 +164,7 @@ class CuboidXd(obstacles.Obstacle):
         normal = normal / LA.norm(normal)
 
         if not in_obstacle_frame:
-            normal = self.pose.transform_direction_from_local_to_reference(normal)
+            normal = self.pose.transform_direction_from_relative(normal)
 
         return normal
 
@@ -172,7 +172,8 @@ class CuboidXd(obstacles.Obstacle):
         self, position, in_obstacle_frame: bool = True, margin_absolut: float = None
     ):
         if not in_obstacle_frame:
-            position = self.pose.transform_position_from_reference_to_local(position)
+            position = self.pose.transform_position_to_relative(position)
+
         if margin_absolut is None:
             margin_absolut = self.margin_absolut
 
@@ -226,6 +227,7 @@ class CuboidXd(obstacles.Obstacle):
         if is_boundary:
             gamma = 1 / gamma
 
+        # breakpoint()
         return gamma
 
     def get_point_on_surface(

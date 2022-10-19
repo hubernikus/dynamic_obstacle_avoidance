@@ -120,6 +120,11 @@ class VectorRotationXd:
             base=np.array([vec_init, vec_perp]).T, rotation_angle=np.arccos(dot_prod)
         )
 
+    # def __mult__(self, factor) -> VectorRotationXd:
+    #     instance_copy = copy.deepcopy(self)
+    #     instance_copy.rotation_angle = instance_copy.rotation_angle * factor
+    #     return instance_copy
+
     @property
     def dimension(self):
         try:
