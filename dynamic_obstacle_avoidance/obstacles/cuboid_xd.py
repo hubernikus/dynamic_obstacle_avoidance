@@ -211,21 +211,31 @@ class CuboidXd(obstacles.Obstacle):
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
 
-        distance = self.get_distance_to_surface(
+        distance_surface = self.get_distance_to_surface(
             position=position,
             in_obstacle_frame=in_obstacle_frame,
             margin_absolut=margin_absolut,
         )
 
-        gamma = distance * self.distance_scaling + 1
+        is_boundary = is_boundary or self.is_boundary
+        if distance_surface < 0:
+            # or (distance_surface > 0  and not is_boundary)):
+            self.boundary_power_factor = 1
+            distance_center = LA.norm(position)
+            gamma = distance_center / (distance_center - distance_surface)
 
-        if is_boundary is None:
-            is_boundary = self.is_boundary
+            # print("gamma boundary", gamma)
+            gamma = (1 - gamma) ** self.boundary_power_factor
+
+            # print("gamma boundary", gamma)
+            # breakpoint()
+
+        else:
+            gamma = distance_surface * self.distance_scaling + 1
 
         if is_boundary:
             gamma = 1 / gamma
 
-        # breakpoint()
         return gamma
 
     def get_point_on_surface(

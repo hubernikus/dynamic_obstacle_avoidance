@@ -95,8 +95,53 @@ def simple_vectorfield_around_circle_zoom():
     plt.show()
 
 
+def vectorfield_single_obstacle():
+    obstacle_environment = ObstacleContainer()
+    obstacle_environment.append(
+        EllipseWithAxes(
+            axes_length=[2.0, 4.0],
+            center_position=np.array([0.0, -0.0]),
+            margin_absolut=0,
+            orientation=0 * pi / 180,
+            tail_effect=False,
+            repulsion_coeff=1.0,
+        )
+    )
+
+    initial_dynamics = LinearSystem(
+        attractor_position=np.array([2.0, 0.0]),
+        maximum_velocity=1,
+        distance_decrease=0.3,
+    )
+
+    x_lim = [-2, 4]
+    y_lim = [-3, 3.0]
+
+    n_resolution = 100
+    dim = 2
+
+    fig, ax = Simulation_vectorFields(
+        x_lim,
+        y_lim,
+        point_grid=n_resolution,
+        obs=obstacle_environment,
+        pos_attractor=initial_dynamics.attractor_position,
+        dynamical_system=initial_dynamics.evaluate,
+        noTicks=True,
+        showLabel=False,
+        automatic_reference_point=False,
+        show_streamplot=True,
+        draw_vectorField=True,
+        normalize_vectors=False,
+        streamColor="blue",
+    )
+
+    pass
+
+
 if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
-    simple_vectorfield_around_circle_zoom()
+    # simple_vectorfield_around_circle_zoom()
+    vectorfield_single_obstacle()

@@ -292,15 +292,20 @@ class Obstacle(ABC):
         self._reference_point = value
 
     @property
-    def orientation(self):
-        return self.pose.orientation
+    def orientation(self) -> float:
+        """Returns the basic orientation"""
+        if self.pose.orientation is None:
+            return 0
+        else:
+            return self.pose.orientation
 
     @orientation.setter
-    def orientation(self, value):
+    def orientation(self, value: float) -> None:
         self.pose.orientation = value
 
     @property
     def orientation_in_degree(self) -> float:
+        """Transform the basic rotation to from radian to degree."""
         if self.orientation is None:
             return 0
         else:
