@@ -10,7 +10,7 @@ Requirements: python
 # Description
 The algorithms allows to avoid dynamic, star-shaped obstacles. It requires anlytical description of the environment. It allows to navigate within moving, expanding and static obstacles.
 <p align="center">
-<img src="https://raw.githubusercontent.com/epfl-lasa/dynamic_obstacle_avoidance_linear/master/images/wheelchairObstacles.png"  width="350"></>
+<img src="https://raw.githubusercontent.com/epfl-lasa/dynamic_obstacle_avoidance/main/figures/description/dynamic_crowd_horizontal.gif"  width="550"></>
 
 
 
