@@ -499,7 +499,7 @@ def create_kmeans_obstacle_physically_consistent(
         fig.savefig("figures/" + fig_name + ".png", bbox_inches="tight")
 
     main_learner.plot_boundaries(ax=ax)
-    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=False)
+    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim, centerlabel=True)
 
     ax.axis("equal")
     ax.set_xlim(x_lim)
@@ -529,19 +529,20 @@ def create_kmeans_obstacle_physically_consistent(
 if (__name__) == "__main__":
     start_global_matlab_engine = True
     if start_global_matlab_engine and not "matlab_eng" in locals():
-        # TODO: this should be included in the upcoming learning-library (!)
-        warnings.warn(
-            "This requires MATLAB setup. See following repository for more information: \n"
-            + "https://github.com/nbfigueroa/phys-gmm"
-            "Additionally install the matlab interface: \n"
-            + "$ cd 'matlabroot\extern\engines\python \n'"
-            + "$ python -m pip install ."
-        )
+        try:
+            import matlab
+            import matlab.engine
 
-        import matlab
-        import matlab.engine
-
-        matlab_eng = matlab.engine.start_matlab()
+            matlab_eng = matlab.engine.start_matlab()
+        except:
+            # TODO: this should be included in the upcoming learning-library (!)
+            warnings.warn(
+                "This requires MATLAB setup. See following repository for more information: \n"
+                + "https://github.com/nbfigueroa/phys-gmm"
+                "Additionally install the matlab interface: \n"
+                + "$ cd 'matlabroot\extern\engines\python \n'"
+                + "$ python -m pip install ."
+            )
 
     plt.ion()
     plt.close("all")

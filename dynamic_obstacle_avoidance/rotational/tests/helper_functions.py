@@ -120,7 +120,7 @@ def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
             positions[1, :],
             color="black",
             linewidth=3.5,
-            zorder=20,
+            zorder=5,
         )
 
     centroids = kmeans_learner.kmeans.cluster_centers_
@@ -131,7 +131,7 @@ def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
         s=169,
         linewidths=3,
         color="black",
-        zorder=10,
+        zorder=5,
     )
 
     if plot_attractor:
@@ -141,7 +141,7 @@ def plot_boundaries(kmeans_learner, ax, plot_attractor=False) -> None:
             marker="*",
             s=200,
             color="black",
-            zorder=10,
+            zorder=5,
         )
 
 
@@ -265,10 +265,11 @@ def plot_kmeans(
             ax.text(
                 kmeans_learner.kmeans.cluster_centers_[ii, 0] + d_txt,
                 kmeans_learner.kmeans.cluster_centers_[ii, 1] + d_txt,
-                f"{ii} @ {level}",
+                f"# {ii} @ {level}",
                 fontsize=15,
-                # color="black",
-                color="white",
+                color="black",
+                # color="white",
+                zorder=10,
             )
 
     # Plot attractor

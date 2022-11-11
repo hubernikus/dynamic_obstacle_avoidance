@@ -392,7 +392,7 @@ class KMeansObstacle(Obstacle):
                     axis=0,
                 )
             )
-            breakpoint()
+            # breakpoint()
 
             dist = LA.norm(
                 self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[0]], :]
