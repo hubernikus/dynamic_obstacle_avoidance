@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.rotational import kmeans_motion_learner as kml
 
+fig_type = ".png"
+# fig_type = ".pdf"
+
 
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
     """Returns grid based on input x and y values."""
@@ -23,6 +26,7 @@ def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
 
 
 def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
+    """ Plot the dynamics withing the obstacle."""
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
@@ -59,6 +63,38 @@ def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     ax.axis("equal")
 
     return fig, ax
+
+
+def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
+    """ Plot the dynamics withing the obstacle."""
+    print("entering")
+    xx, yy = np.meshgrid(
+        np.linspace(x_lim[0], x_lim[1], n_grid),
+        np.linspace(y_lim[0], y_lim[1], n_grid),
+    )
+    positions = np.array([xx.flatten(), yy.flatten()])
+    velocities = np.zeros_like(positions)
+
+    for pp in range(positions.shape[1]):
+        velocities[:, pp] = main_learner.predict(positions[:, pp])
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 9))
+    else:
+        fig = None
+    main_learner.plot_boundaries(ax=ax, plot_attractor=True)
+    ax.quiver(
+        positions[0, :],
+        positions[1, :],
+        velocities[0, :],
+        velocities[1, :],
+        # color="red",
+        scale=50,
+    )
+    ax.axis("equal")
+
+    return fig, ax
+
 
 
 def plot_gamma(ax, obstacle, x_lim=None, y_lim=None, n_grid=100):
@@ -395,8 +431,8 @@ def plot_partial_dynamcs_of_four_clusters(
     name="",
 ):
     # Generate very simple dataset
-    if main_learner is None:
-        main_learner = create_four_point_datahandler()
+    # if main_learner is None:
+    #     main_learner = create_four_point_datahandler()
 
     if x_lim is None:
         x_lim = [-2.1, 3.1]

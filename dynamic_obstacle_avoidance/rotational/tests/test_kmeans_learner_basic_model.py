@@ -2,15 +2,12 @@
 Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 """
 
-import sys
-import copy
+# import copy
+# import math
 import random
 import warnings
-import math
-from math import pi
 
 import numpy as np
-from numpy import linalg as LA
 
 from sklearn.cluster import KMeans
 
@@ -28,7 +25,9 @@ from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
     create_kmeans_obstacle_from_learner,
 )
 
-from dynamic_obstacle_avoidance.rotational.base_logger import logger
+# from dynamic_obstacle_avoidance.rotational.base_logger import logger
+
+from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_boundaries,
@@ -528,9 +527,8 @@ def test_global_dynamics(visualize=False, save_figure=False):
 
     fig, ax = plt.subplots(figsize=(8, 6))
     main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
-    ax.axis("equal")
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
+
+    helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
 
 
 if (__name__) == "__main__":
@@ -544,6 +542,10 @@ if (__name__) == "__main__":
 
     # plot_partial_dynamcs_of_four_clusters(visualize=True, save_figure=True)
 
+    import faulthandler
+    faulthandler.enable()
+
+    breakpoint()
     test_global_dynamics()
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!

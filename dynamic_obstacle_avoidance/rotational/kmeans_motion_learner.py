@@ -31,6 +31,7 @@ import networkx as nx
 from sklearn.cluster import KMeans
 
 from vartools.directional_space import get_directional_weighted_sum
+from vartools.dynamical_systems import LinearSystem
 
 from vartools.handwritting_handler import HandwrittingHandler
 
@@ -59,6 +60,15 @@ NodeType = int
 
 
 class KMeansMotionLearner:
+    """
+    This class learns and predicts highly non-linear motion (!)
+
+    Attributes
+    ----------
+    region_radius_: The radius-value of all obstacles (for now we consider 
+        uniform size of the obstacles
+
+    """
     def __init__(
         self,
         data: HandwrittingHandler = None,
@@ -70,6 +80,7 @@ class KMeansMotionLearner:
         self._graph = nx.DiGraph()
         self._directions = VectorRotationTree()
 
+        self.region_radius_ = 0
         self.radius_factor = radius_factor
 
         # Finally
@@ -94,6 +105,12 @@ class KMeansMotionLearner:
         new_instance._fit_local_dynamics()
 
         return new_instance
+
+    def get_distance_from_centers(self, position: Vector) -> np.ndarray:
+        return LA.norm(
+            np.tile(position, (self.kmeans.cluster_centers_.shape[0], 1))
+            - self.kmeans.cluster_centers_,
+            axis=1)
 
     def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
@@ -128,6 +145,12 @@ class KMeansMotionLearner:
         self._fit_region_radius()
         self._fit_region_obstacles()
         self._fit_local_dynamics()
+
+        # Set 'general'/ global velocity (more complex motion could be approximated...)
+        self.outside_dynamics = LinearSystem(
+            attractor_position=self.data.attractor_posiition,
+            maximum_velocity=1.0,
+        )
 
     def _fit_region_obstacles(self):
         # Create kmeans-obstacles
@@ -452,12 +475,17 @@ class KMeansMotionLearner:
         position = np.array(position)
 
         cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
+
+        if self.region_obstacles[cluster_label].get_gamma(position) < 1:
+            return self._predict_outside_obstacle(position)
+        
         weights = self._predict_sequence_weights(position, cluster_label)
 
         ind_relevant = np.arange(self.n_clusters)[weights > 0]
-
+        
         velocities = np.zeros((self.data.dimension, self.n_clusters))
 
+        # breakpoint()
         for index in ind_relevant:
             # TODO: there is an issue if the 'linear attractor'
             velocities[:, index] = self._dynamics[index].evaluate(position)
@@ -492,34 +520,45 @@ class KMeansMotionLearner:
         return weighted_direction
 
     def _predict_outside_obstacle(
-        self, gamma_values: np.ndarray, cut_off_gamma: float = None
+            self, position: Vector, cut_off_ratio: float = 1.5, power_factor: float = 1,
     ) -> Vector:
-        """Returns the velocity vector if we are outside of all position"""
-        breakpoint()  # TODO
-        if any(gamma_values >= 1):
-            warnings.warn(
-                "Is on boundary of the obstacle - this should be caught before (!)."
-            )
-            if gamma_values > 1:
-                raise ValueError(
-                    "Inside an obstacle - why has this not been caught before."
-                )
+        """Returns the velocity vector if we are outside of all position.
 
-        ind_relevant = gamma_values > cut_off_gamma
+        Arguments
+        ---------
+        cut_off_ratio (> 1): The distance at which the radius does not have any effect anymore
+        """
+        
+        # Find the two clusters which are the closest
+        center_dists = self.get_distance_from_centers(position)
+        arg_sort = np.argsort(center_dists)[:2]
+        close_dists = center_dists[arg_sort]
 
-        if not np.sum(ind_relevant):
-            direction = self.attractor_position - position
-            # Previously it was already checked that we are away from the attractor
-            # just go for it
-            return direction / LA.norm(direction)
+        max_radius = self.region_radius_ * cut_off_ratio
+        surface_distance = max_radius - close_dists[0]
+        if close_dists[1] > max_radius:
+            relative_dist = surface_distance
+        else:
+            relative_dist = close_dists[1] - close_dists[0]
 
-        # weights = 1 / (1 - gamma_values) - 1 / (1-cut_off_gamma)
-        # weights = weights / np.sum(weights)
+        max_dist = max_radius - self.region_radius_
 
-        # TODO:
-        # Different weight: only one is ever relevant!!
-        # project velocity onto obstacle
-        # Weighted mean
+        weight = relative_dist / max_dist
+        weight = weight ** (surface_distance / max_dist * power_factor)
+
+        projected_position = self.region_obstacles.get_point_on_surface(
+            position, in_global_frame=True
+        )
+        surface_velocity = self.predict(projected_position)
+        outside_velocity = self.outside_dynamics.evaluate(position)
+
+        mean_direction = get_directional_weighted_sum(
+            outside_velocity,
+            weights=np.array([weight, (1-weight)]),
+            directions=np.vstack((surface_velocity, outside_velocity)).T,
+        )
+
+        return mean_direction
 
     def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:
         # TODO:

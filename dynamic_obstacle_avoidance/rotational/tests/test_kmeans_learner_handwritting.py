@@ -473,7 +473,6 @@ def create_kmeans_obstacle_physically_consistent(
         file_name = "2D_messy-snake.mat"
 
     data = HandwrittingHandler(file_name=file_name)
-
     x_lim, y_lim = get_min_max_from_data(data.position)
 
     if figsize is None:
@@ -528,7 +527,7 @@ def create_kmeans_obstacle_physically_consistent(
 
 if (__name__) == "__main__":
     start_global_matlab_engine = True
-    if start_global_matlab_engine and not "matlab_eng" in locals():
+    if start_global_matlab_engine and "matlab_eng" not in locals():
         try:
             import matlab
             import matlab.engine
