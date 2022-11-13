@@ -225,7 +225,7 @@ class Obstacle(ABC):
         if self._relative_reference_point is None:
             return self.center_position
         else:
-            return self.transform_relative2global(self._relative_reference_point)
+            return self.transform_position_from_relative(self._relative_reference_point)
 
     @global_relative_reference_point.setter
     def global_relative_reference_point(self, value):
@@ -1038,7 +1038,11 @@ class Obstacle(ABC):
         """Returns reference direction pointing away from obstacle.
         At the reference point, a (dummy) vector of length one is returned."""
         if in_global_frame:
-            ref_dir = self.transform_relative2global(self.reference_point) - position
+            # ref_dir = self.transform_relative2global(self.reference_point) - position
+            ref_dir = (
+                self.pose.transform_position_from_relative(self.reference_point)
+                - position
+            )
         else:
             ref_dir = self.reference_point - position
 
