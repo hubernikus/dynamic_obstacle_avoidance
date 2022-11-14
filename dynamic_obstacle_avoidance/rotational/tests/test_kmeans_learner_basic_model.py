@@ -3,21 +3,21 @@ Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 """
 
 # import copy
-import math
+# import math
 import random
 import warnings
 
 import numpy as np
 
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
 
 import matplotlib.pyplot as plt
 
 from vartools.handwritting_handler import MotionDataHandler, HandwrittingHandler
 
-from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
-    obstacle_avoidance_rotational,
-)
+# from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+#     obstacle_avoidance_rotational,
+# )
 
 from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
 from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
@@ -31,7 +31,7 @@ from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_boundaries,
-    plot_normals,
+    # plot_normals,
     plot_gamma,
     plot_reference_dynamics,
     plot_trajectories,
