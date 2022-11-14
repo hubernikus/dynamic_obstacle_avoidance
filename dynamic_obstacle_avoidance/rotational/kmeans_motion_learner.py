@@ -65,10 +65,11 @@ class KMeansMotionLearner:
 
     Attributes
     ----------
-    region_radius_: The radius-value of all obstacles (for now we consider 
+    region_radius_: The radius-value of all obstacles (for now we consider
         uniform size of the obstacles
 
     """
+
     def __init__(
         self,
         data: HandwrittingHandler = None,
@@ -110,7 +111,8 @@ class KMeansMotionLearner:
         return LA.norm(
             np.tile(position, (self.kmeans.cluster_centers_.shape[0], 1))
             - self.kmeans.cluster_centers_,
-            axis=1)
+            axis=1,
+        )
 
     def get_feature_labels(self) -> np.ndarray:
         return np.arange(self.kmeans.cluster_centers_.shape[0])
@@ -478,11 +480,11 @@ class KMeansMotionLearner:
 
         if self.region_obstacles[cluster_label].get_gamma(position) < 1:
             return self._predict_outside_obstacle(position)
-        
+
         weights = self._predict_sequence_weights(position, cluster_label)
 
         ind_relevant = np.arange(self.n_clusters)[weights > 0]
-        
+
         velocities = np.zeros((self.data.dimension, self.n_clusters))
 
         # breakpoint()
@@ -520,7 +522,10 @@ class KMeansMotionLearner:
         return weighted_direction
 
     def _predict_outside_obstacle(
-            self, position: Vector, cut_off_ratio: float = 1.5, power_factor: float = 1,
+        self,
+        position: Vector,
+        cut_off_ratio: float = 1.5,
+        power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
 
@@ -528,7 +533,7 @@ class KMeansMotionLearner:
         ---------
         cut_off_ratio (> 1): The distance at which the radius does not have any effect anymore
         """
-        
+
         # Find the two clusters which are the closest
         center_dists = self.get_distance_from_centers(position)
         arg_sort = np.argsort(center_dists)[:2]
@@ -554,7 +559,7 @@ class KMeansMotionLearner:
 
         mean_direction = get_directional_weighted_sum(
             outside_velocity,
-            weights=np.array([weight, (1-weight)]),
+            weights=np.array([weight, (1 - weight)]),
             directions=np.vstack((surface_velocity, outside_velocity)).T,
         )
 

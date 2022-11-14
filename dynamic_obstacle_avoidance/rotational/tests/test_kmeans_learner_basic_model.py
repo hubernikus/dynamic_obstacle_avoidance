@@ -543,6 +543,7 @@ if (__name__) == "__main__":
     # plot_partial_dynamcs_of_four_clusters(visualize=True, save_figure=True)
 
     import faulthandler
+
     faulthandler.enable()
 
     breakpoint()

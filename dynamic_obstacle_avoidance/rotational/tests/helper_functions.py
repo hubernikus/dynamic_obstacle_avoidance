@@ -26,7 +26,7 @@ def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
 
 
 def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
-    """ Plot the dynamics withing the obstacle."""
+    """Plot the dynamics withing the obstacle."""
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
@@ -66,7 +66,7 @@ def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
 
 
 def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
-    """ Plot the dynamics withing the obstacle."""
+    """Plot the dynamics withing the obstacle."""
     print("entering")
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -94,7 +94,6 @@ def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     ax.axis("equal")
 
     return fig, ax
-
 
 
 def plot_gamma(ax, obstacle, x_lim=None, y_lim=None, n_grid=100):
