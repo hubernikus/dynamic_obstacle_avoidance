@@ -116,14 +116,17 @@ class VectorRotationXd:
                 vec_perp[1] = vec_init[0] * (-1)
                 vec_perp[:2] = vec_perp[:2] / LA.norm(vec_perp[:2])
 
-        return cls(
-            base=np.array([vec_init, vec_perp]).T, rotation_angle=np.arccos(dot_prod)
-        )
+        angle = np.arccos(min(max(dot_prod, -1), 1))
+        return cls(base=np.array([vec_init, vec_perp]).T, rotation_angle=angle)
 
     # def __mult__(self, factor) -> VectorRotationXd:
     #     instance_copy = copy.deepcopy(self)
     #     instance_copy.rotation_angle = instance_copy.rotation_angle * factor
     #     return instance_copy
+
+    @property
+    def base0(self):
+        return self.base[:, 0]
 
     @property
     def dimension(self):
@@ -149,6 +152,17 @@ class VectorRotationXd:
             rotation_angle=rot_factor * self.rotation_angle,
             base=self.base,
         )
+
+    def rotate_vector_rotation(
+        self, rotation: VectorRotationXd, rot_factor: float = 1
+    ) -> VectorRotationXd:
+        rotation = copy.deepcopy(rotation)
+        rotation.base = rotate_array(
+            directions=rotation.base,
+            base=rotation.base,
+            rotation_angle=rot_factor * self.rotation_angle,
+        )
+        return rotation
 
     def inverse_rotate(self, direction):
         return rotate_direction(

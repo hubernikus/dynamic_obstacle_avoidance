@@ -150,7 +150,7 @@ class KMeansMotionLearner:
 
         # Set 'general'/ global velocity (more complex motion could be approximated...)
         self.outside_dynamics = LinearSystem(
-            attractor_position=self.data.attractor_posiition,
+            attractor_position=self.data.attractor_position,
             maximum_velocity=1.0,
         )
 

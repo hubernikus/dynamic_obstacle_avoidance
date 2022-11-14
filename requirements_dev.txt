@@ -10,6 +10,10 @@ ipython==7.34  # 8-series of ipython has gives random error when reloading
 # flake8>=3.9
 # tox>=3.24
 
+pep8
+autopep8
+
+
 pre-commit
 pytest
 

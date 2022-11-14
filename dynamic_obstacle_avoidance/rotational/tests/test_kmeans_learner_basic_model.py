@@ -3,7 +3,7 @@ Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 """
 
 # import copy
-# import math
+import math
 import random
 import warnings
 
@@ -546,7 +546,7 @@ if (__name__) == "__main__":
 
     faulthandler.enable()
 
-    breakpoint()
+    # breakpoint()
     test_global_dynamics()
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
