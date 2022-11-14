@@ -4,19 +4,19 @@ Basic class to represent obstacles
 import time
 import warnings
 import sys
-from math import sin, cos, pi, ceil
+from math import pi
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+
+# from dataclasses import dataclass
 from enum import Enum, auto
-from functools import lru_cache
+
+# from functools import lru_cache
 
 import numpy as np
 import numpy.linalg as LA
 
 import matplotlib.pyplot as plt
-
-from scipy.spatial.transform import Rotation  # scipy rotation
 
 from vartools.angle_math import angle_difference_directional
 from vartools.linalg import get_orthogonal_basis
@@ -622,9 +622,6 @@ class Obstacle(ABC):
 
             # Somehow only appears when additionally a 'plot is generated' (BUG?)
             ax.plot([], [])
-
-        if outline_color is not None:
-            ax.plot(inner_margin[0, :], inner_margin[1, :], "-", color=outline_color)
 
         if plot_center_position:
             ax.plot(

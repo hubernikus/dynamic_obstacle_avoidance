@@ -6,8 +6,9 @@ from numpy import linalg as LA
 import warnings
 
 from vartools.dynamical_systems import DynamicalSystem
-from vartools.linalg import get_orthogonal_basis
-from vartools.directional_space import get_angle_space
+
+# from vartools.linalg import get_orthogonal_basis
+# from vartools.directional_space import get_angle_space
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
