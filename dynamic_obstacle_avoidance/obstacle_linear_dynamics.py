@@ -19,9 +19,15 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
     """
     A dynamical system which locally modulates
 
+    Properties
+    ----------
     obstacle: The obstacle around which shape the DS is deformed
-    center_direction: The direction of the DS at the
-    max_gamma (> 1): The gamma-distance at which the influence stops.
+    attractor_position: Position of the attractor
+    center_direction: The direction of the DS at the center of the obstacle
+
+    (Optional)
+    min_gamma (> 1): The position at which the DS has 'maximum' rotation
+    max_gamma (> min_gamma): The gamma-distance at which the influence stops.
     """
 
     def __init__(
