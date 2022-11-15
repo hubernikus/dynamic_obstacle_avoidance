@@ -75,6 +75,7 @@ class KMeansMotionLearner:
         data: HandwrittingHandler = None,
         n_clusters: int = 4,
         radius_factor: float = 0.7,
+        repulsive_boundary: bool = True,
     ):
         self.n_clusters_fit = n_clusters
 
@@ -87,6 +88,8 @@ class KMeansMotionLearner:
         # Finally
         if data is not None:
             self.fit(data)
+
+        self.repulsive_boundary = repulsive_boundary
 
     @classmethod
     def from_centers(cls, cluster_centers, data):

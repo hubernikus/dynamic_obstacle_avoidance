@@ -658,19 +658,8 @@ def Simulation_vectorFields(
         )
 
     if plotStream and point_grid:
-        if colorCode:
+        if not colorCode:
             # velMag = np.linalg.norm(np.dstack((dx1_noColl, dx2_noColl)), axis=2 )/6*100
-            strm = res_ifd = ax.streamplot(
-                XX,
-                YY,
-                dx1_noColl,
-                dx2_noColl,
-                color=velMag,
-                cmap="winter",
-                norm=matplotlib.colors.Normalize(vmin=0, vmax=10.0),
-            )
-
-        else:
             # Normalize
             if normalize_vectors:
                 normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
@@ -703,7 +692,7 @@ def Simulation_vectorFields(
                 dx1_noColl = dx1_noColl.flatten()[ind_flatten]
                 dx2_noColl = dx2_noColl.flatten()[ind_flatten]
 
-                res_ifd = ax.quiver(
+                _ = ax.quiver(
                     XX,
                     YY,
                     dx1_noColl * quiver_factor,

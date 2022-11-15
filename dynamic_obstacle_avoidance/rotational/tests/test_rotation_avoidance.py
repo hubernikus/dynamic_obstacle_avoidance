@@ -485,6 +485,52 @@ def test_single_circle_linear(visualize=False):
     ), " Rotation in the wrong direction to avoid the circle."
 
 
+def test_single_circle_linear_inverted(visualize=False):
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([3, 3]),
+            is_boundary=True,
+        )
+    )
+
+    # Arbitrary constant velocity
+    initial_dynamics = LinearSystem(attractor_position=np.array([1, 0]))
+
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
+    # ConvergingDynamics=ConstantValue (initial_velocity)
+
+    main_avoider = RotationalAvoider()
+
+    if visualize:
+        # Plot Normals
+        Simulation_vectorFields(
+            x_lim=[-2, 2],
+            y_lim=[-2, 2],
+            n_resolution=20,
+            obstacle_list=obstacle_list,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=initial_dynamics.evaluate,
+            obs_avoidance_func=main_avoider.avoid,
+            automatic_reference_point=False,
+            pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or stream plot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
+
+    # No effect when already pointing away (save circle)
+    position = np.array([1.12, 0.11])
+    modulated_velocity = obstacle_avoidance_rotational(
+        position,
+        initial_dynamics.evaluate(position),
+        obstacle_list,
+    )
+
+
 def test_single_perpendicular_ellipse(visualize=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
@@ -646,10 +692,11 @@ def test_stable_linear_avoidance(visualize=False):
 if (__name__) == "__main__":
     # test_intersection_with_circle()
 
-    # test_convergence_tangent(visualize=False)
+    # test_convergence_tangent(visualize=True)
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
+    test_single_circle_linear_inverted(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

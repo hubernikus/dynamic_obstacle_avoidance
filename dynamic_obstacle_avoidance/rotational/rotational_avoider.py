@@ -7,7 +7,9 @@ Library for the Rotation (Modulation Imitation) of Linear Systems
 
 import warnings
 import copy
-from math import pi
+import math
+
+# from math import pi
 
 import numpy as np
 from numpy import linalg as LA
@@ -72,6 +74,7 @@ class RotationalAvoider(BaseAvoider):
         obstacle_list: list,
         convergence_velocity: np.ndarray = None,
         sticky_surface: bool = True,
+        convergence_radius: float = math.pi / 2,
     ) -> np.ndarray:
         """Obstacle avoidance based on 'local' rotation and the directional weighted mean.
 
@@ -402,7 +405,7 @@ class RotationalAvoider(BaseAvoider):
             angle_inv_conv_proj
         )
 
-        if LA.norm(inv_conv_proj.as_angle()) > np.pi:
+        if LA.norm(inv_conv_proj.as_angle()) > math.pi:
             # -> DEBUG
             raise NotImplementedError(
                 f"Unexpected value of {LA.norm(inv_conv_proj.as_angle())}"
@@ -415,7 +418,7 @@ class RotationalAvoider(BaseAvoider):
         dir_conv_rotated: UnitDirection,
         dir_nonlinear: UnitDirection,
         weight: float,
-        convergence_radius: float = np.pi / 2,
+        convergence_radius: float = math.pi / 2,
     ) -> UnitDirection:
         """Invert the directional-circle-space and project the nonlinear velocity to approach
         the linear counterpart.
@@ -438,7 +441,7 @@ class RotationalAvoider(BaseAvoider):
         inv_nonlinear = dir_nonlinear.invert_normal()
 
         # Only project when 'outside the radius'
-        inv_convergence_radius = np.pi - convergence_radius
+        inv_convergence_radius = math.pi - convergence_radius
         if inv_nonlinear.norm() <= inv_convergence_radius:
             return dir_nonlinear
 
@@ -471,7 +474,7 @@ class RotationalAvoider(BaseAvoider):
         dir_convergence_tangent: UnitDirection,
         dir_initial_velocity: UnitDirection,
         weight: float,
-        convergence_radius: float = np.pi / 2,
+        convergence_radius: float = math.pi / 2,
     ) -> UnitDirection:
         """Invert the directional-circle-space and project the nonlinear velocity to approach
         the linear counterpart.
@@ -514,7 +517,7 @@ class RotationalAvoider(BaseAvoider):
     def _get_tangent_convergence_direction(
         dir_convergence: UnitDirection,
         dir_reference: UnitDirection,
-        convergence_radius: float = np.pi / 2,
+        convergence_radius: float = math.pi / 2,
     ) -> UnitDirection:
         """Projects the reference direction onto the surface"""
 
@@ -591,7 +594,7 @@ class RotationalAvoider(BaseAvoider):
         base: np.ndarray,
         weight: float,
         nonlinear_velocity: np.ndarray = None,
-        convergence_radius: float = np.pi / 2,
+        convergence_radius: float = math.pi / 2,
     ) -> UnitDirection:
         """Rotating / modulating a vector by using directional space.
 
@@ -635,12 +638,15 @@ class RotationalAvoider(BaseAvoider):
                 )
                 weight = weight ** (1 / continuation_weight)
 
-        if self.tail_rotation or LA.norm(dir_convergence.as_angle()) < np.pi / 2:
+        if (
+            self.tail_rotation
+            or LA.norm(dir_convergence.as_angle()) < convergence_radius
+        ):
             dir_convergence = self._get_tangent_convergence_direction(
                 dir_convergence=dir_convergence,
                 dir_reference=dir_reference,
                 # base=base,
-                convergence_radius=np.pi / 2,
+                convergence_radius=convergence_radius,
             )
 
         dir_initial = UnitDirection(base).from_vector(nonlinear_velocity)
@@ -648,15 +654,15 @@ class RotationalAvoider(BaseAvoider):
         #     dir_convergence_tangent=dir_convergence,
         #     dir_initial_velocity=dir_initial,
         #     weight=weight,
-        #     convergence_radius=np.pi / 2,
+        #     convergence_radius=math.pi / 2,
         # )
         # return rotated_direction.as_vector()
 
-        angle_margin = np.pi * 0.7
-        ang_min = np.pi * 0.5
+        angle_margin = math.pi * 0.7
+        ang_min = math.pi * 0.5
         if (ang_norm := LA.norm(dir_initial.as_angle())) >= angle_margin:
             return dir_initial.as_vector()
-        elif ang_norm > np.pi * ang_min:
+        elif ang_norm > math.pi * ang_min:
             weight = weight * (1 - (ang_norm - ang_min) / (angle_margin - ang_min))
         #     return dir_initial.as_vector()
 

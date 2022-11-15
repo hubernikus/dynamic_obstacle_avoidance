@@ -67,7 +67,6 @@ def plot_region_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
 
 def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     """Plot the dynamics withing the obstacle."""
-    print("entering")
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
         np.linspace(y_lim[0], y_lim[1], n_grid),
