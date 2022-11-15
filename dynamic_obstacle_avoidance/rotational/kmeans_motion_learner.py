@@ -477,9 +477,8 @@ class KMeansMotionLearner:
         position = np.array(position)
 
         cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
-
         if self.region_obstacles[cluster_label].get_gamma(position) < 1:
-            return self._predict_outside_obstacle(position)
+            return self._predict_outside_of_obstacle(position)
 
         weights = self._predict_sequence_weights(position, cluster_label)
 
@@ -487,7 +486,6 @@ class KMeansMotionLearner:
 
         velocities = np.zeros((self.data.dimension, self.n_clusters))
 
-        # breakpoint()
         for index in ind_relevant:
             # TODO: there is an issue if the 'linear attractor'
             velocities[:, index] = self._dynamics[index].evaluate(position)
@@ -521,13 +519,17 @@ class KMeansMotionLearner:
 
         return weighted_direction
 
-    def _predict_outside_obstacle(
+    def _predict_outside_of_obstacle(
         self,
         position: Vector,
         cut_off_ratio: float = 1.5,
         power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
+
+        Outside velocity has to be designed such that it does NOT cancel, i.e., when the closest
+        cluster is at the back, the transition to it has to be minimized -> adapt the weighting
+        function accordingly.
 
         Arguments
         ---------
@@ -536,10 +538,14 @@ class KMeansMotionLearner:
 
         # Find the two clusters which are the closest
         center_dists = self.get_distance_from_centers(position)
-        arg_sort = np.argsort(center_dists)[:2]
+        arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
         close_dists = center_dists[arg_sort]
 
         max_radius = self.region_radius_ * cut_off_ratio
+        if close_dists[0] > max_radius:
+            # Far away
+            return self.outside_dynamics.evaluate(position)
+
         surface_distance = max_radius - close_dists[0]
         if close_dists[1] > max_radius:
             relative_dist = surface_distance
@@ -548,18 +554,34 @@ class KMeansMotionLearner:
 
         max_dist = max_radius - self.region_radius_
 
-        weight = relative_dist / max_dist
-        weight = weight ** (surface_distance / max_dist * power_factor)
+        weight_surf = relative_dist / max_dist
+        weight_surf = weight_surf ** (surface_distance / max_dist * power_factor)
 
-        projected_position = self.region_obstacles.get_point_on_surface(
+        projected_position = self.region_obstacles[arg_sort[0]].get_point_on_surface(
             position, in_global_frame=True
         )
-        surface_velocity = self.predict(projected_position)
+
+        # Predict surface velocity
+        index = arg_sort[0]
+        # Modulate only the one which we are currently in
         outside_velocity = self.outside_dynamics.evaluate(position)
+        if weight_surf <= 0:
+            # Return velocity directly
+            return outside_velocity
+
+        surface_velocity = obstacle_avoidance_rotational(
+            position,
+            self._dynamics[index].evaluate(position),
+            [self.region_obstacles[index]],
+            convergence_velocity=self._dynamics[index].evaluate_convergence_velocity(
+                position
+            ),
+            sticky_surface=False,
+        )
 
         mean_direction = get_directional_weighted_sum(
             outside_velocity,
-            weights=np.array([weight, (1 - weight)]),
+            weights=np.array([weight_surf, (1 - weight_surf)]),
             directions=np.vstack((surface_velocity, outside_velocity)).T,
         )
 
