@@ -530,12 +530,15 @@ def test_global_dynamics(visualize=False, save_figure=False):
         fig, ax = plt.subplots(figsize=(8, 6))
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
-    # Specific points with repulsive_boundary (!)
+    # Specific point outside
+    breakpoint()
+
+    # Specific points within repulsive_boundary
     position = np.array([-0.6, 0.9])
     velocity = main_learner.predict(position)
     assert velocity[0] < 0, velocity[1] < 0
 
-    # Specific points with repulsive_boundary (!)
+    # Specific points within repulsive_boundary
     position = np.array([-1.3, 0.84])
     velocity = main_learner.predict(position)
     assert velocity[0] > 0, velocity[1] < 0
@@ -559,13 +562,13 @@ if (__name__) == "__main__":
     plt.ion()
     plt.close("all")
 
-    test_surface_position_and_normal(visualize=True)
+    # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
 
     # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
-    # test_global_dynamics(visualize=True)
+    test_global_dynamics(visualize=True)
     # _test_partial_dynamics(visualize=True, save_figure=True)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
