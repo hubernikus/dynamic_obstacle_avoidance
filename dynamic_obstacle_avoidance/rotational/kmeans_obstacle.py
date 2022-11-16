@@ -370,6 +370,9 @@ class KMeansObstacle(Obstacle):
         if not (position_norm := LA.norm(relative_position)):
             # Some direction (normed).
             position[0] = 1
+            if self.is_boundary:
+                position = (-1) * position
+
             return position
 
         surf_position = self.get_point_on_surface(position, in_global_frame=True)
@@ -400,14 +403,20 @@ class KMeansObstacle(Obstacle):
             )
 
             if dist >= self.radius:
-                return relative_position / LA.norm(relative_position)
+                normal = relative_position / LA.norm(relative_position)
+                if self.is_boundary:
+                    normal = (-1) * normal
+                return normal
 
             normal_plane = (
                 self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[0]], :]
                 - self.kmeans.cluster_centers_[self.ind_relevant[ind_closest[1]], :]
             )
 
-            return normal_plane / LA.norm(normal_plane)
+            normal = normal_plane / LA.norm(normal_plane)
+            if self.is_boundary:
+                normal = (-1) * normal
+            return normal
         else:
 
             proj_position = position
@@ -483,6 +492,9 @@ class KMeansObstacle(Obstacle):
             weights=weights,
             total_weight=np.sum(weights),
         )
+
+        if self.is_boundary:
+            weighted_direction = (-1) * weighted_direction
 
         return weighted_direction
         # if in_global_frame:

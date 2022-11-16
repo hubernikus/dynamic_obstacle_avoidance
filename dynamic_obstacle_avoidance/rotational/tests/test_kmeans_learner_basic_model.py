@@ -3,16 +3,14 @@ Tests (and visualizations) for KmeansMotionLearner and KMeansObstacle.
 """
 
 # import copy
-# import math
+import math
 import random
 import warnings
 
 import numpy as np
-
-# from sklearn.cluster import KMeans
+from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
-
 from vartools.handwritting_handler import MotionDataHandler, HandwrittingHandler
 
 # from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
@@ -28,7 +26,6 @@ from dynamic_obstacle_avoidance.rotational.kmeans_motion_learner import (
 # from dynamic_obstacle_avoidance.rotational.base_logger import logger
 
 from dynamic_obstacle_avoidance.rotational.tests import helper_functions
-
 from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_boundaries,
     # plot_normals,
@@ -36,7 +33,7 @@ from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_reference_dynamics,
     plot_trajectories,
     plot_region_dynamics,
-    plot_partial_dynamcs_of_four_clusters,
+    # plot_partial_dynamcis_of_four_clusters,
     plot_gamma_of_learner,
 )
 
@@ -64,19 +61,19 @@ def create_four_point_datahandler(RANDOM_SEED=1) -> KMeansMotionLearner:
     return KMeansMotionLearner(datahandler, radius_factor=0.55)
 
 
-def test_surface_position_and_normal(visualize=True):
+def test_surface_position_and_normal(visualize=False):
     """Test the intersection and surface points"""
-    main_learner = create_four_point_datahandler()
-
     dimension = 2
     radius = 1.5
+
+    main_learner = create_four_point_datahandler()
+    main_learner.region_radius_ = radius
 
     if visualize:
         x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
         fig, ax = plt.subplots(figsize=(14, 9))
         kmeans = main_learner.kmeans
-        main_learner.region_radius_ = radius
         main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
 
         ax.axis("equal")
@@ -143,8 +140,10 @@ def test_surface_position_and_normal(visualize=True):
         position, in_global_frame=True
     )
     # Is in between the two vectors
-    assert np.cross([-1, 0], normal_direction) > 0
-    assert np.cross([0, 1], normal_direction) < 0
+    rel_dir = region_obstacle.center_position - position
+    assert (
+        np.dot(rel_dir / LA.norm(rel_dir), normal_direction) > 0.9
+    ), "Normal should be pointing toward the center."
 
     # Test
     position = np.array([0.25, 0])
@@ -156,7 +155,7 @@ def test_surface_position_and_normal(visualize=True):
     normal_direction = region_obstacle.get_normal_direction(
         position, in_global_frame=True
     )
-    assert np.allclose(normal_direction, [1, 0])
+    assert np.allclose(normal_direction, [-1, 0])
 
     # Test 3
     position = np.array([-1, -2])
@@ -168,7 +167,7 @@ def test_surface_position_and_normal(visualize=True):
     normal_direction = region_obstacle.get_normal_direction(
         position, in_global_frame=True
     )
-    assert np.allclose(normal_direction, [0, -1])
+    assert np.allclose(normal_direction, [0, 1])
 
 
 def get_grid_points(mean_x, delta_x, mean_y, delta_y, n_points):
@@ -511,7 +510,7 @@ def test_normals(visualize=False, save_figure=False):
                     breakpoint()
 
             ax.quiver(
-                positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=15
+                positions[0, :], positions[1, :], normals[0, :], normals[1, :], scale=20
             )
             ax.axis("equal")
 
@@ -522,32 +521,52 @@ def test_normals(visualize=False, save_figure=False):
 
 def test_global_dynamics(visualize=False, save_figure=False):
     main_learner = create_four_point_datahandler()
+    main_learner.repulsive_boundary = True
+    main_learner.convergence_radius = math.pi / 2.0
 
-    x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+    if visualize:
+        x_lim, y_lim = [-3, 5], [-2.0, 4.0]
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
-    helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
+    # Specific points with repulsive_boundary (!)
+    position = np.array([-0.6, 0.9])
+    velocity = main_learner.predict(position)
+    assert velocity[0] < 0, velocity[1] < 0
+
+    # Specific points with repulsive_boundary (!)
+    position = np.array([-1.3, 0.84])
+    velocity = main_learner.predict(position)
+    assert velocity[0] > 0, velocity[1] < 0
+
+    if visualize:
+        helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
+
+
+def _test_partial_dynamics(visualize=False, save_figure=False):
+    main_learner = create_four_point_datahandler()
+    helper_functions.plot_partial_dynamics(
+        main_learner=main_learner, visualize=visualize, save_figure=save_figure
+    )
 
 
 if (__name__) == "__main__":
+    # If 'segmentation-fault' appears activate the following:
+    # import faulthandler
+    # faulthandler.enable()
+
     plt.ion()
     plt.close("all")
 
-    # test_surface_position_and_normal(visualize=True)
+    test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
+
     # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
-    # plot_partial_dynamcs_of_four_clusters(visualize=True, save_figure=True)
-
-    import faulthandler
-
-    faulthandler.enable()
-
-    # breakpoint()
-    test_global_dynamics()
+    # test_global_dynamics(visualize=True)
+    # _test_partial_dynamics(visualize=True, save_figure=True)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
 

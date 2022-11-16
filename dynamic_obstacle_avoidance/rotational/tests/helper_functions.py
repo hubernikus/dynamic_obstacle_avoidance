@@ -1,9 +1,21 @@
+"""
+Various helper-plotting function to simplify visualizing and debugging of the algorithms.
+
+No tests are executed here, but it should speed up the rectifying process.
+"""
+
+import math
+
 import numpy as np
 from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.rotational import kmeans_motion_learner as kml
+
+from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+    obstacle_avoidance_rotational,
+)
 
 fig_type = ".png"
 # fig_type = ".pdf"
@@ -76,6 +88,8 @@ def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
 
     for pp in range(positions.shape[1]):
         velocities[:, pp] = main_learner.predict(positions[:, pp])
+        # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
+    # breakpoint()
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 9))
@@ -420,7 +434,7 @@ def plot_gamma_of_learner(
     return fig, ax
 
 
-def plot_partial_dynamcs_of_four_clusters(
+def plot_partial_dynamics(
     visualize=False,
     save_figure=False,
     main_learner=None,
@@ -478,6 +492,7 @@ def plot_partial_dynamcs_of_four_clusters(
                         ii
                     ].evaluate_convergence_velocity(positions[:, jj]),
                     sticky_surface=False,
+                    convergence_radius=math.pi,
                 )
 
             ax_ini.quiver(

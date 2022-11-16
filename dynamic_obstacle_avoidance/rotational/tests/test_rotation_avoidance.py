@@ -497,7 +497,6 @@ def test_single_circle_linear_repulsive(visualize=False):
 
     # Arbitrary constant velocity
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
-
     obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
     # ConvergingDynamics=ConstantValue (initial_velocity)
 
@@ -543,6 +542,7 @@ def test_single_circle_linear_repulsive(visualize=False):
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
     )
+
     assert np.allclose(
         modulated_velocity / LA.norm(modulated_velocity), position / LA.norm(position)
     ), "Modulated velocity is expected to point away from the obstacle."
@@ -769,7 +769,7 @@ def test_stable_linear_avoidance(visualize=False):
             obs_avoidance_func=obstacle_avoidance_rotational,
             automatic_reference_point=False,
             pos_attractor=initial_dynamics.attractor_position,
-            # Quiver or Streamplot
+            # Quiver or stream-plot
             show_streamplot=False,
             # show_streamplot=False,
         )
@@ -783,7 +783,7 @@ if (__name__) == "__main__":
 
     # test_single_circle_linear(visualize=True)
     # test_single_circle_linear_repulsive(visualize=True)
-    test_single_circle_linear_inverted(visualize=True)
+    # test_single_circle_linear_inverted(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

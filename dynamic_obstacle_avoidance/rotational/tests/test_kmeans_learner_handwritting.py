@@ -36,9 +36,10 @@ from dynamic_obstacle_avoidance.rotational.tests.helper_functions import (
     plot_reference_dynamics,
     plot_trajectories,
     plot_region_dynamics,
-    plot_partial_dynamcs_of_four_clusters,
+    # plot_partial_dynamcs_of_four_clusters,
     plot_gamma_of_learner,
 )
+from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
 
 # fig_dir = "/home/lukas/Code/dynamic_obstacle_avoidance/figures/"
@@ -255,7 +256,7 @@ def do_individual_cluster_evaluations(save_figure=False):
     figsize = (6, 5.5)
     x_lim, y_lim = get_min_max_from_data(data.position)
 
-    plot_partial_dynamcs_of_four_clusters(
+    helper_functions.plot_region_dynamics(
         visualize=True,
         main_learner=main_learner,
         x_lim=x_lim,
@@ -526,7 +527,7 @@ def create_kmeans_obstacle_physically_consistent(
 
 
 if (__name__) == "__main__":
-    start_global_matlab_engine = True
+    start_global_matlab_engine = False
     if start_global_matlab_engine and "matlab_eng" not in locals():
         try:
             import matlab

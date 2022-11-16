@@ -20,8 +20,7 @@ TODO / method:
 
 import copy
 import warnings
-
-# import math
+import math
 
 import numpy as np
 from numpy import linalg as LA
@@ -90,6 +89,7 @@ class KMeansMotionLearner:
             self.fit(data)
 
         self.repulsive_boundary = repulsive_boundary
+        self.convergence_radius = math.pi if self.repulsive_boundary else math.pi
 
     @classmethod
     def from_centers(cls, cluster_centers, data):
@@ -480,7 +480,12 @@ class KMeansMotionLearner:
         position = np.array(position)
 
         cluster_label = self.kmeans.predict(position.reshape(1, -1))[0]
-        if self.region_obstacles[cluster_label].get_gamma(position) < 1:
+        if (
+            self.region_obstacles[cluster_label].get_gamma(
+                position, in_global_frame=True
+            )
+            < 1
+        ):
             return self._predict_outside_of_obstacle(position)
 
         weights = self._predict_sequence_weights(position, cluster_label)
@@ -502,6 +507,7 @@ class KMeansMotionLearner:
                 cluster_label
             ].evaluate_convergence_velocity(position),
             sticky_surface=False,
+            convergence_radius=math.pi,
         )
 
         if np.sum(weights) < 1:
@@ -512,15 +518,17 @@ class KMeansMotionLearner:
             # (make sure invariance of the region)
             raise NotImplementedError()
 
-        # TODO: use partial vector_rotation (instead)
-        weighted_direction = get_directional_weighted_sum(
-            null_direction=velocities[:, cluster_label],
-            directions=velocities,
-            weights=weights,
-        )
-        # breakpoint()
+        if len(ind_relevant) == 1:
+            velocity_direction = velocities[:, ind_relevant[0]]
+        else:
+            # TODO: use partial vector_rotation (instead)
+            velocity_direction = get_directional_weighted_sum(
+                null_direction=velocities[:, cluster_label],
+                directions=velocities,
+                weights=weights,
+            )
 
-        return weighted_direction
+        return velocity_direction
 
     def _predict_outside_of_obstacle(
         self,
