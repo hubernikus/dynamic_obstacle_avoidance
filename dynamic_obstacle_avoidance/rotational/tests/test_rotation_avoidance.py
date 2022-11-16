@@ -6,9 +6,10 @@
 # License: BSD (c) 2021
 
 import warnings
-
+from functools import partial
 import unittest
 from math import pi
+import math
 
 import numpy as np
 from numpy import linalg as LA
@@ -393,7 +394,7 @@ def test_single_circle_linear(visualize=False):
         Simulation_vectorFields(
             x_lim=[-2, 2],
             y_lim=[-2, 2],
-            n_resolution=20,
+            n_resolution=40,
             obstacle_list=obstacle_list,
             noTicks=False,
             showLabel=False,
@@ -485,6 +486,83 @@ def test_single_circle_linear(visualize=False):
     ), " Rotation in the wrong direction to avoid the circle."
 
 
+def test_single_circle_linear_repulsive(visualize=False):
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([2, 2]),
+        )
+    )
+
+    # Arbitrary constant velocity
+    initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
+
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
+    # ConvergingDynamics=ConstantValue (initial_velocity)
+
+    main_avoider = partial(RotationalAvoider().avoid, convergence_radius=math.pi)
+
+    # Test that goes below in front
+    position = np.array([-1, -1])
+    initial_velocity = initial_dynamics.evaluate(position)
+    modulated_velocity = main_avoider(
+        position=position,
+        initial_velocity=initial_velocity,
+        obstacle_list=obstacle_list,
+    )
+    assert np.cross(initial_velocity, modulated_velocity) < 0
+
+    # Test that goes below in front
+    position = np.array([-1, 1])
+    initial_velocity = initial_dynamics.evaluate(position)
+    modulated_velocity = main_avoider(
+        position=position,
+        initial_velocity=initial_velocity,
+        obstacle_list=obstacle_list,
+    )
+    assert np.cross(initial_velocity, modulated_velocity) > 0
+
+    # Pointing away on surface
+    position = np.array([1, 1]) * 1.001 / math.sqrt(2)
+    initial_velocity = initial_dynamics.evaluate(position)
+    modulated_velocity = main_avoider(
+        position=position,
+        initial_velocity=initial_velocity,
+        obstacle_list=obstacle_list,
+    )
+    breakpoint()
+    # assert np.allclose(modulated_velocitymodulated_velocity, position / LA.norm(position))
+    # Pointing away on surface
+    position = np.array([1, -1]) * 2 / math.sqrt(2)
+    initial_velocity = initial_dynamics.evaluate(position)
+    modulated_velocity = main_avoider(
+        position=position,
+        initial_velocity=initial_velocity,
+        obstacle_list=obstacle_list,
+    )
+    # assert np.allclose(modulated_velocity, position / LA.norm(position))
+
+    if visualize:
+        # Plot Normals
+        Simulation_vectorFields(
+            x_lim=[-2, 2],
+            y_lim=[-2, 2],
+            n_resolution=20,
+            obstacle_list=obstacle_list,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=initial_dynamics.evaluate,
+            obs_avoidance_func=main_avoider,
+            automatic_reference_point=False,
+            pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or stream plot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
+
+
 def test_single_circle_linear_inverted(visualize=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
@@ -502,6 +580,18 @@ def test_single_circle_linear_inverted(visualize=False):
     # ConvergingDynamics=ConstantValue (initial_velocity)
 
     main_avoider = RotationalAvoider()
+    my_avoider = partial(main_avoider.avoid, convergence_radius=math.pi)
+
+    # Little effect at center
+    position = np.array([0, 1])
+    modulated_velocity = obstacle_avoidance_rotational(
+        position,
+        initial_dynamics.evaluate(position),
+        obstacle_list,
+        convergence_radius=math.pi,
+    )
+    # assert modulated_velocity[0] > 1
+    # assert modulated_velocity[1] == 0
 
     if visualize:
         # Plot Normals
@@ -514,21 +604,13 @@ def test_single_circle_linear_inverted(visualize=False):
             showLabel=False,
             draw_vectorField=True,
             dynamical_system=initial_dynamics.evaluate,
-            obs_avoidance_func=main_avoider.avoid,
+            obs_avoidance_func=my_avoider,
             automatic_reference_point=False,
             pos_attractor=initial_dynamics.attractor_position,
             # Quiver or stream plot
             show_streamplot=False,
             # show_streamplot=False,
         )
-
-    # No effect when already pointing away (save circle)
-    position = np.array([1.12, 0.11])
-    modulated_velocity = obstacle_avoidance_rotational(
-        position,
-        initial_dynamics.evaluate(position),
-        obstacle_list,
-    )
 
 
 def test_single_perpendicular_ellipse(visualize=False):
@@ -599,7 +681,7 @@ def test_double_ellipse(visualize=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
-            center_position=np.array([0, 0]),
+            center_position=np.array([-2, 0]),
             axes_length=np.array([1, 2]),
             name="center_ellipse",
         )
@@ -623,8 +705,8 @@ def test_double_ellipse(visualize=False):
     if visualize:
         # Plot Normals
         Simulation_vectorFields(
-            x_lim=[-2, 2],
-            y_lim=[-2, 2],
+            x_lim=[-4, 4],
+            y_lim=[-4, 4],
             n_resolution=20,
             obstacle_list=obstacle_list,
             noTicks=False,
@@ -696,7 +778,8 @@ if (__name__) == "__main__":
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
-    test_single_circle_linear_inverted(visualize=True)
+    test_single_circle_linear_repulsive(visualize=True)
+    # test_single_circle_linear_inverted(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

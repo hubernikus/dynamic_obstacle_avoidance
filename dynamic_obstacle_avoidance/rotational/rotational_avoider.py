@@ -214,6 +214,7 @@ class RotationalAvoider(BaseAvoider):
                 weight=inv_gamma_weight[it],
                 nonlinear_velocity=initial_velocity,
                 base=null_matrix,
+                convergence_radius=convergence_radius,
                 # base=DirectionBase(matrix=null_matrix),
             )
 
@@ -639,8 +640,8 @@ class RotationalAvoider(BaseAvoider):
                 weight = weight ** (1 / continuation_weight)
 
         if (
-            self.tail_rotation
-            or LA.norm(dir_convergence.as_angle()) < convergence_radius
+            LA.norm(dir_convergence.as_angle()) < convergence_radius
+            or self.tail_rotation
         ):
             dir_convergence = self._get_tangent_convergence_direction(
                 dir_convergence=dir_convergence,
@@ -658,13 +659,14 @@ class RotationalAvoider(BaseAvoider):
         # )
         # return rotated_direction.as_vector()
 
-        angle_margin = math.pi * 0.7
-        ang_min = math.pi * 0.5
-        if (ang_norm := LA.norm(dir_initial.as_angle())) >= angle_margin:
-            return dir_initial.as_vector()
-        elif ang_norm > math.pi * ang_min:
-            weight = weight * (1 - (ang_norm - ang_min) / (angle_margin - ang_min))
-        #     return dir_initial.as_vector()
+        if False:
+            angle_margin = math.pi * 0.7
+            ang_min = math.pi * 0.5
+            if (ang_norm := LA.norm(dir_initial.as_angle())) >= angle_margin:
+                return dir_initial.as_vector()
+            elif ang_norm > math.pi * ang_min:
+                weight = weight * (1 - (ang_norm - ang_min) / (angle_margin - ang_min))
+                #     return dir_initial.as_vector()
 
         conv_vector = dir_convergence.as_vector()
         if (dot_weights := np.dot(conv_vector, dir_initial.as_vector())) < 0:
@@ -673,11 +675,22 @@ class RotationalAvoider(BaseAvoider):
             dot_weights = (-1) * dot_weights
             normal_vector = base[:, 0]
 
-            null_vector = get_directional_weighted_sum(
-                null_direction=conv_vector,
-                weights=np.array([(1 - dot_weights), dot_weights]),
-                directions=np.vstack((conv_vector, normal_vector)).T,
+            # null_vector = get_directional_weighted_sum(
+            #     null_direction=conv_vector,
+            #     weights=np.array([(1 - dot_weights), dot_weights]),
+            #     directions=np.vstack((conv_vector, normal_vector)).T,
+            # )
+            null_direction = copy.deepcopy(dir_convergence)
+            null_direction = null_direction.from_angle(
+                null_direction.as_angle() * dot_weights
             )
+            null_vector = null_direction.as_vector()
+
+            # print(f"{dot_weights=}")
+            # print(f"{conv_vector=}")
+            # print(f"{normal_vector=}")
+            # print(f"{null_vector=}")
+            # breakpoint()
 
         else:
             null_vector = conv_vector
@@ -687,5 +700,11 @@ class RotationalAvoider(BaseAvoider):
             weights=np.array([weight, (1 - weight)]),
             directions=np.vstack((conv_vector, dir_initial.as_vector())).T,
         )
+        # print(f"{weight=}")
+        # print(f"{rotated_velocity=}")
+        # print(f"{null_vector=}")
+        # print(f"{conv_vector=}")
+        # print(f"{dir_initial.as_vector()=}")
+        # breakpoint()
 
         return rotated_velocity

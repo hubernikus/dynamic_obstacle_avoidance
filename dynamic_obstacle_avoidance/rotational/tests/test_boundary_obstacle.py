@@ -118,7 +118,7 @@ def test_boundary_obstacle_weight(visualize=False, savefig=False):
     assert np.isclose(weights[my_hullobstacle._indices_outer], 1)
 
 
-def test_mixed_boundary_obstacle_reference(visualize=False):
+def _test_mixed_boundary_obstacle_reference(visualize=False):
     outer_obstacle = Cuboid(
         center_position=np.array([0, 0]),
         axes_length=np.array([2, 2]),
@@ -556,8 +556,8 @@ def _test_multiholes_obstacle(visualize=False, savefig=False):
 if (__name__) == "__main__":
     plt.close("all")
     # test_boundary_obstacle_weight(visualize=True, savefig=True)
-    # test_mixed_boundary_obstacle_reference(visualize=True)
-    test_shortes_path(visualize=True, savefig=False)
+    # _test_mixed_boundary_obstacle_reference(visualize=True)
+    # test_shortes_path(visualize=True, savefig=False)
 
     # _test_multiholes_obstacle(visualize=True, savefig=True)
 
