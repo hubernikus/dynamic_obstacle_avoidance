@@ -164,6 +164,9 @@ class CuboidXd(obstacles.Obstacle):
         if not in_obstacle_frame:
             normal = self.pose.transform_direction_from_relative(normal)
 
+        if self.is_boundary:
+            normal = (-1) * normal
+
         return normal
 
     def get_distance_to_surface(
