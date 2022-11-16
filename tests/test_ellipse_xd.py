@@ -7,10 +7,12 @@ Test normal formation
 # Email: lukas.huber@epfl.ch
 
 import unittest
+import math
 
 import numpy as np
 from numpy import linalg as LA
 
+from vartools.dynamical_systems import plot_dynamical_system_quiver
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes
@@ -191,13 +193,45 @@ def test_normal_and_reference_directions(visualize=False):
     assert reference.dot(normal) < 0, "Print reference and normal are not opposing."
 
 
+def test_normal_inverted(visualize=False):
+    x_lim = [-10, 10]
+    y_lim = [-10, 10]
+
+    obstacle = EllipseWithAxes(
+        center_position=np.array([0, 0]),
+        axes_length=np.array([10, 10]),
+        orientation=70 * math.pi / 180.0,
+        is_boundary=True,
+    )
+
+    if visualize:
+
+        class TmpSystem:
+            @staticmethod
+            def evaluate(position):
+                return obstacle.get_normal_direction(position, in_global_frame=True)
+
+        _, ax = plot_dynamical_system_quiver(dynamical_system=TmpSystem)
+        obs_boundary = np.array(obstacle.get_boundary_with_margin_xy())
+        ax.plot(obs_boundary[0, :], obs_boundary[1, :], "--", color="k")
+
+    # For obstacle normal and reference should be opposing.
+    position = np.array([1, 1])
+    normal = obstacle.get_normal_direction(position, in_global_frame=True)
+    reference = obstacle.get_normal_direction(position, in_global_frame=True)
+
+    assert np.allclose(
+        normal, reference
+    ), "For a circle-boundary, we expect opposite normal and reference."
+
+
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
 
     # test_gamma_and_normal(visualize=True, n_resolution=20)
-    test_normal_and_reference_directions(visualize=True)
+    # test_normal_and_reference_directions(visualize=True)
 
-    # test_normal_directionsp(visualize=False)
+    test_normal_inverted(visualize=True)
 
-    print("Tests done.")
+    # print("Tests done.")
