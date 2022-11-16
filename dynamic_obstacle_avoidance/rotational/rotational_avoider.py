@@ -117,7 +117,10 @@ class RotationalAvoider(BaseAvoider):
 
             if gamma_array[ii] < 1 and not obstacle_list[ii].is_boundary:
                 # Since boundaries are mutually subtracted,
-                raise NotImplementedError()
+                # raise NotImplementedError()
+                warnings.warn("The evaluation is in the boundary.")
+
+                gamma_array[ii] = 1
 
         ind_obs = np.logical_and(gamma_array < self.cut_off_gamma, gamma_array >= 1)
 

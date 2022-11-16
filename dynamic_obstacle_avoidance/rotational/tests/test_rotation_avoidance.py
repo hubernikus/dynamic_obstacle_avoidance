@@ -524,24 +524,28 @@ def test_single_circle_linear_repulsive(visualize=False):
     assert np.cross(initial_velocity, modulated_velocity) > 0
 
     # Pointing away on surface
-    position = np.array([1, 1]) * 1.001 / math.sqrt(2)
+    position = np.array([1, 1]) * 1.0 / math.sqrt(2)
     initial_velocity = initial_dynamics.evaluate(position)
     modulated_velocity = main_avoider(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
     )
-    breakpoint()
-    # assert np.allclose(modulated_velocitymodulated_velocity, position / LA.norm(position))
+    assert np.allclose(
+        modulated_velocity / LA.norm(modulated_velocity), position / LA.norm(position)
+    ), "Modulated velocity is expected to point away from the obstacle."
+
     # Pointing away on surface
-    position = np.array([1, -1]) * 2 / math.sqrt(2)
+    position = np.array([1, -1]) * 1.0 / math.sqrt(2)
     initial_velocity = initial_dynamics.evaluate(position)
     modulated_velocity = main_avoider(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
     )
-    # assert np.allclose(modulated_velocity, position / LA.norm(position))
+    assert np.allclose(
+        modulated_velocity / LA.norm(modulated_velocity), position / LA.norm(position)
+    ), "Modulated velocity is expected to point away from the obstacle."
 
     if visualize:
         # Plot Normals
@@ -778,8 +782,8 @@ if (__name__) == "__main__":
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
-    test_single_circle_linear_repulsive(visualize=True)
-    # test_single_circle_linear_inverted(visualize=True)
+    # test_single_circle_linear_repulsive(visualize=True)
+    test_single_circle_linear_inverted(visualize=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
