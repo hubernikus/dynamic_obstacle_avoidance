@@ -531,7 +531,17 @@ def test_global_dynamics(visualize=False, save_figure=False):
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
     # Specific point outside
+    position = np.array([-2, 1])
+    velocity = main_learner.predict(position)
+    attr_dir = main_learner.
+    # assert np.allclose(velocity, )
+
+    position = np.array([3.5, 1])
+    velocity = main_learner.predict(position)
+    # assert np.allclose(velocity, [-1, 0])
     breakpoint()
+
+    position = np.array([-2, 1])
 
     # Specific points within repulsive_boundary
     position = np.array([-0.6, 0.9])

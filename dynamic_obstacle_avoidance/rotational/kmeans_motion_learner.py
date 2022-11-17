@@ -110,6 +110,10 @@ class KMeansMotionLearner:
 
         return new_instance
 
+    @property
+    def attractor_position(self) -> Vector:
+        return self.data.attractor_position
+
     def get_distance_from_centers(self, position: Vector) -> np.ndarray:
         return LA.norm(
             np.tile(position, (self.kmeans.cluster_centers_.shape[0], 1))
@@ -549,7 +553,8 @@ class KMeansMotionLearner:
 
         # Find the two clusters which are the closest
         center_dists = self.get_distance_from_centers(position)
-        arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
+        # arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
+        arg_sort = np.argsort(center_dists)[:2]  # Get last two elements
         close_dists = center_dists[arg_sort]
 
         max_radius = self.region_radius_ * cut_off_ratio
@@ -576,6 +581,8 @@ class KMeansMotionLearner:
         index = arg_sort[0]
         # Modulate only the one which we are currently in
         outside_velocity = self.outside_dynamics.evaluate(position)
+
+        breakpoint()
         if weight_surf <= 0:
             # Return velocity directly
             return outside_velocity
@@ -595,6 +602,8 @@ class KMeansMotionLearner:
             weights=np.array([weight_surf, (1 - weight_surf)]),
             directions=np.vstack((surface_velocity, outside_velocity)).T,
         )
+
+        breakpoint()
 
         return mean_direction
 

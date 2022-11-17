@@ -31,6 +31,9 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
     max_gamma (> min_gamma): The gamma-distance at which the influence stops.
     """
 
+    # TODO: include Lyapunov function which checks avoidance.
+    # this might effect the 'single-saddle point' on the surface'
+
     def __init__(
         self,
         obstacle: Obstacle,
