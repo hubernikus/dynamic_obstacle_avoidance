@@ -50,7 +50,7 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         reference_velocity = reference_velocity / self.maximum_velocity
 
         attractor_dir = self.attractor_position - obstacle.center_position
-        if not (attr_norm:= LA.norm(attractor_dir)):
+        if not (attr_norm := LA.norm(attractor_dir)):
             warnings.warn("Obstacle is at attractor - zero deviation")
             return
 
@@ -111,7 +111,7 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         # Weight is based on gamma
         gamma = self.obstacle.get_gamma(position, in_global_frame=True)
         if gamma < self.min_gamma:
-             weight = 1
+            weight = 1
         elif gamma > self.max_gamma:
             weight = 0
         else:
@@ -136,9 +136,8 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
             attr_weight = tmp_weight / (tmp_weight + attr_weight)
         else:
             attr_weight = 1
-            
-        weight = weight ** (2.0 / (1 + dot_product)) * attr_weight
 
+        weight = weight ** (2.0 / (1 + dot_product)) * attr_weight
 
         global_rotation = VectorRotationXd.from_directions(
             self.rotation.base0, attractor_dir
@@ -214,4 +213,4 @@ def test_ellipse_ds(visualize=False):
 
 
 if (__name__) == "__main__":
-    test_ellipse_ds(visualize=False)
+    test_ellipse_ds(visualize=True)
