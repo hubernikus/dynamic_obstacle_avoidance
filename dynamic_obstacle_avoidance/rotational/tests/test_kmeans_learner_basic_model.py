@@ -360,7 +360,6 @@ def test_transition_weight(visualize=False, save_figure=False):
             weights[:, pp] = main_learner._predict_sequence_weights(
                 positions[:, pp], index
             )
-        # breakpoint()
 
         fig, ax = plt.subplots()
         main_learner.plot_kmeans(x_lim=x_lim, y_lim=y_lim, ax=ax)
@@ -423,7 +422,7 @@ def test_transition_weight(visualize=False, save_figure=False):
     weights = main_learner._predict_sequence_weights(position, index)
     expected_weights = np.zeros_like(weights)
     expected_weights[ind_parent] = 1
-    # breakpoint()
+
     # assert np.allclose(weights, expected_weights)
     warnings.warn("Check is deactivated..")
 
@@ -531,6 +530,7 @@ def test_global_dynamics(visualize=False, save_figure=False):
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
     # Specific point outside
+    # TODO
     breakpoint()
 
     # Specific points within repulsive_boundary
