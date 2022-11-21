@@ -497,11 +497,15 @@ class KMeansMotionLearner:
         weights = self._predict_sequence_weights(position, cluster_label)
         ind_rel = np.arange(self.n_clusters)[weights > 0]
         if np.sum(ind_rel) > 1:
-            (
-                lyapunov_direction,
-                inital_velocity,
-            ) = self._get_lyapunov_sum_and_initial_direction(
+            lyapunov_direction = self._predict_averaged_lyapunov(
                 position,
+                weights=weights,
+                indexes_relative=ind_rel,
+            )
+
+            initial_velocity = self._predict_initial_direction(
+                position,
+                averaged_lyapunov=lyapunov_direction,
                 weights=weights,
                 indexes_relative=ind_rel,
             )
@@ -533,19 +537,14 @@ class KMeansMotionLearner:
 
         return rotated_velocity
 
-    def _get_lyapunov_sum_and_initial_direction(
+    def _predict_averaged_lyapunov(
         self,
         position: np.ndarray,
         indexes_relative: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
-    ) -> (Vector, Vector):
-        """Returns initial velocity and the convergence velocity"""
-        # velocities = np.zeros((self.dimension, ind_rel.shape[0]))
-        # lyap_dirs = np.zeros((self.dimension, ind_rel.shape[0]))
-
+    ) -> Vector:
         indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
         lyap_dirs = np.zeros((self.dimension, indexes_absolute.shape[0]))
-
         for i_rel, i_abs in enumerate(indexes_absolute):
             lyap_dirs[:, i_rel] = self._dynamics[i_abs].get_lyapunov_gradient_direction(
                 position
@@ -557,44 +556,42 @@ class KMeansMotionLearner:
             directions=lyap_dirs,
         )
 
-        temp_tree = VectorRotationTree(root_id=0, root_direction=averaged_lyapunov)
+        return averaged_lyapunov
+
+    def _predict_initial_direction(
+        self,
+        position: np.ndarray,
+        averaged_lyapunov: np.ndarray,
+        indexes_relative: Optional[np.ndarray] = None,
+        weights: Optional[np.ndarray] = None,
+    ) -> Vector:
+        """Returns initial velocity and the convergence velocity"""
+        indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
+
+        # Start root below index (otherwise naming conflict may occur)
+        root_id = -1
+        temp_tree = VectorRotationTree(
+            root_id=root_id, root_direction=averaged_lyapunov
+        )
         for i_abs in indexes_absolute:
             # TODO: there is an issue if the 'linear attractor'
             temp_tree.add_node(
-                parent_id=0,
+                parent_id=root_id,
                 node_id=i_abs,
                 direction=lyap_dirs[:, i_rel],
             )
-
             temp_tree.add_node(
                 parent_id=i_abs,
                 node_id=i_abs + self.n_clusters,
-                # direction=0,
                 direction=self._dynamics[i_abs].evaluate_without_lyapunov_check(
                     position
                 ),
             )
-
-        # weighted_lyapunov = temp_tree.get_weighted_mean(
-        #     node_list=indexes_absolute,
-        #     weights=weights[ind_rel],
-        # )
         averaged_direction = temp_tree.get_weighted_mean(
             node_list=indexes_absolute + self.n_clusters,
             weights=weights[indexes_absolute],
         )
-
-        return averaged_lyapunov, averaged_direction
-        # lyapunov_direction = self._predict_lyaponuv_gradient_direction(
-        #     position, sequence_weights=weights
-        # )
-
-        # initial_velocity = self._lyapunov_limit_and_sum_dynamics(
-        #     lyapunov_direction, velocities=velocities, ind_relevant=ind_relevant
-        # )
-
-        # n_clusters = ind_rel.shape[0]
-        # for ii in np.arange(n_clusters)[ind_rel]:
+        return averaged_direction
 
     def _predict_outside_of_obstacle(
         self,

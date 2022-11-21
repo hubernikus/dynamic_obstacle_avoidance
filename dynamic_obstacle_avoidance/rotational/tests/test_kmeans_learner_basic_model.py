@@ -593,6 +593,20 @@ def test_transition_region(visualize=False, save_figure=False):
     ind0 = ind_close[0]
     ind1 = ind_close[1]
 
+    # At obstacle-center
+    position = np.array([1, 0])
+    weights = main_learner._predict_sequence_weights(position)
+    weights_expected = np.zeros(main_learner.n_clusters)
+    weights_expected[ind1] = 1
+    assert np.allclose(weights, weights_expected)
+    lyap_dir = main_learner._predict_averaged_lyapunov(
+        position,
+        weights=weights,
+        indexes_relative=(weights > 0),
+    )
+    expceted_dir = np.array([1, 1]) * math.sqrt(2) / 2
+    assert np.allclose(lyap_dir, expceted_dir)
+
     # Evaluation just before border
     position = np.array([-0.1, 0.1])
     weights = main_learner._predict_sequence_weights(position)
@@ -600,32 +614,25 @@ def test_transition_region(visualize=False, save_figure=False):
     weights_expected[ind0] = 1
     assert np.allclose(weights, weights_expected)
 
-    lyap_dir, init_dir = main_learner._get_lyapunov_sum_and_initial_direction(
+    lyap_dir = main_learner._predict_averaged_lyapunov(
         position,
         weights=weights,
         indexes_relative=(weights > 0),
     )
     assert np.allclose(lyap_dir, [1, 0])
 
-    # At obstacle-center
-    position = np.array([1, 0])
-    weights = main_learner._predict_sequence_weights(position)
-    weights_expected = np.zeros(main_learner.n_clusters)
-    weights_expected[ind1] = 1
-    assert np.allclose(weights, weights_expected)
-    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
-    expceted_dir = np.array([1, 1]) * math.sqrt(2) / 2
-    assert np.allclose(direction, expceted_dir)
-
     # In between boundaries
     position = np.array([0.1, 0.1])
     weights = main_learner._predict_sequence_weights(position)
     assert weights[ind0] > 0
     assert weights[ind1] > 0
-
-    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
-    assert np.dot(direction, [1, 0]) > 0, "Rotation in the wrong direction."
-    assert np.dot(direction, [1, 1]) > 0, "Rotation in the wrong direction."
+    lyap_dir = main_learner._predict_averaged_lyapunov(
+        position,
+        weights=weights,
+        indexes_relative=(weights > 0),
+    )
+    assert np.dot(lyap_dir, [1, 0]) > 0, "Rotation in the wrong direction."
+    assert np.dot(lyap_dir, [0, 1]) > 0, "Rotation in the wrong direction."
 
     if visualize:
         # TODO
@@ -649,7 +656,6 @@ if (__name__) == "__main__":
     # test_normals(visualize=True)
 
     # _test_partial_dynamics(visualize=True, save_figure=True)
-
     test_transition_region(visualize=True, save_figure=False)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
