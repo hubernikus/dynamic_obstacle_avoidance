@@ -656,8 +656,8 @@ if (__name__) == "__main__":
     # test_normals(visualize=True)
 
     # _test_partial_dynamics(visualize=True, save_figure=True)
-    test_transition_region(visualize=True, save_figure=False)
+    # test_transition_region(visualize=True, save_figure=False)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
-    # test_global_dynamics(visualize=True, save_figure=False)
+    test_global_dynamics(visualize=True, save_figure=False)
     print("Tests finished.")

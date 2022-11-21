@@ -495,7 +495,8 @@ class KMeansMotionLearner:
             return self._predict_outside_of_obstacle(position)
 
         weights = self._predict_sequence_weights(position, cluster_label)
-        ind_rel = np.arange(self.n_clusters)[weights > 0]
+        # ind_rel = np.arange(self.n_clusters)[weights > 0]
+        ind_rel = weights > 0
         if np.sum(ind_rel) > 1:
             lyapunov_direction = self._predict_averaged_lyapunov(
                 position,
@@ -512,7 +513,7 @@ class KMeansMotionLearner:
 
         else:
             # Ensure stability with respect to function-lyapunov
-            initial_velocity = self._dynamics[cluster_label]._predict(position)
+            initial_velocity = self._dynamics[cluster_label].evaluate(position)
             lyapunov_direction = self._dynamics[
                 cluster_label
             ].get_lyapunov_gradient_direction(position)
@@ -543,7 +544,11 @@ class KMeansMotionLearner:
         indexes_relative: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
     ) -> Vector:
-        indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
+        try:
+            indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
+        except:
+            breakpoint()
+
         lyap_dirs = np.zeros((self.dimension, indexes_absolute.shape[0]))
         for i_rel, i_abs in enumerate(indexes_absolute):
             lyap_dirs[:, i_rel] = self._dynamics[i_abs].get_lyapunov_gradient_direction(
@@ -573,7 +578,7 @@ class KMeansMotionLearner:
             # This is the simplified calculation while the directional-tree
             # is not fully debugged
             # TODO: remove this once we have FULLY working vector-tree
-            vels = np.zeros(self.dimension, indexes_absolute.shape[0])
+            vels = np.zeros((self.dimension, indexes_absolute.shape[0]))
             for i_rel, i_abs in enumerate(indexes_absolute):
                 vels[:, i_rel] = self._dynamics[i_abs].evaluate_without_lyapunov_check(
                     position
