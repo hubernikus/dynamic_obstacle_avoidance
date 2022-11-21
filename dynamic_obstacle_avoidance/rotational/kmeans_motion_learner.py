@@ -564,9 +564,25 @@ class KMeansMotionLearner:
         averaged_lyapunov: np.ndarray,
         indexes_relative: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
+        simplified_calculation: bool = True,
     ) -> Vector:
         """Returns initial velocity and the convergence velocity"""
         indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
+
+        if simplified_calculation:
+            # This is the simplified calculation while the directional-tree
+            # is not fully debugged
+            # TODO: remove this once we have FULLY working vector-tree
+            vels = np.zeros(self.dimension, indexes_absolute.shape[0])
+            for i_rel, i_abs in enumerate(indexes_absolute):
+                vels[:, i_rel] = self._dynamics[i_abs].evaluate_without_lyapunov_check(
+                    position
+                )
+            return get_directional_weighted_sum(
+                averaged_lyapunov,
+                weights=weights[indexes_relative],
+                directions=vels,
+            )
 
         # Start root below index (otherwise naming conflict may occur)
         root_id = -1
