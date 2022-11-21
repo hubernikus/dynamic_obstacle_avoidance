@@ -57,7 +57,6 @@ def create_four_point_datahandler(RANDOM_SEED=1) -> KMeansMotionLearner:
     datahandler.velocity = np.vstack((datahandler.velocity, [[0, 0]]))
     datahandler.attractor = np.array([0.5, 2])
     datahandler.sequence_value = np.linspace(0, 1, 4)
-
     return KMeansMotionLearner(datahandler, radius_factor=0.55)
 
 
@@ -524,10 +523,15 @@ def test_global_dynamics(visualize=False, save_figure=False):
     main_learner.convergence_radius = math.pi
 
     if visualize:
-        x_lim, y_lim = [-3, 5], [-2.0, 4.0]
+        x_lim, y_lim = [-3, 4], [-2.0, 4.0]
 
         fig, ax = plt.subplots(figsize=(8, 6))
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+    # Specifi point where it all failed
+    position = np.array([1.7894736842105257, 1.7894736842105216])
+    velocity = main_learner.predict(position)
+    # TODO: test weights on boundary...
 
     # Larger deviation closer to the obstacle
     position1 = np.array([-1.7, 1.46])
@@ -559,12 +563,64 @@ def test_global_dynamics(visualize=False, save_figure=False):
     if visualize:
         helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
 
+        if save_figure:
+            fig_name = "global_dynamics_with_boundary_avoidance"
+            fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
+
 
 def _test_partial_dynamics(visualize=False, save_figure=False):
     main_learner = create_four_point_datahandler()
     helper_functions.plot_partial_dynamics(
         main_learner=main_learner, visualize=visualize, save_figure=save_figure
     )
+
+
+def test_transition_region(visualize=False, save_figure=False):
+    main_learner = create_four_point_datahandler()
+    main_learner.repulsive_boundary = True
+    main_learner.convergence_radius = math.pi
+
+    # Get transition Lyapunov
+    if visualize:
+        x_lim, y_lim = [-3, 4], [-2.0, 4.0]
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+    position = np.array([-1, 1])
+    dists = main_learner.get_distance_from_centers(position)
+    ind_close = np.argsort(dists)
+    ind0 = ind_close[0]
+    ind1 = ind_close[1]
+
+    # Evaluation just before border
+    position = np.array([-0.1, 0.1])
+    weights = main_learner._predict_sequence_weights(position)
+    weights_expected = np.zeros(main_learner.n_clusters)
+    weights_expected[ind0] = 1
+    assert np.allclose(weights, weights_expected)
+    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
+    assert np.allclose(direction, [1, 0])
+
+    # At obstacle-center
+    position = np.array([1, 0])
+    weights = main_learner._predict_sequence_weights(position)
+    weights_expected = np.zeros(main_learner.n_clusters)
+    weights_expected[ind1] = 1
+    assert np.allclose(weights, weights_expected)
+    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
+    expceted_dir = np.array([1, 1]) * math.sqrt(2) / 2
+    assert np.allclose(direction, expceted_dir)
+
+    # In between boundaries
+    position = np.array([0.1, 0.1])
+    weights = main_learner._predict_sequence_weights(position)
+    assert weights[ind0] > 0
+    assert weights[ind1] > 0
+
+    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
+    assert np.dot(direction, [1, 0]) > 0, "Rotation in the wrong direction."
+    assert np.dot(direction, [1, 1]) > 0, "Rotation in the wrong direction."
 
 
 if (__name__) == "__main__":
@@ -581,9 +637,11 @@ if (__name__) == "__main__":
     # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
-    # test_global_dynamics(visualize=True)
     # _test_partial_dynamics(visualize=True, save_figure=True)
+
+    test_transition_region(visualize=True, save_figure=False)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
 
+    # test_global_dynamics(visualize=True, save_figure=False)
     print("Tests finished.")

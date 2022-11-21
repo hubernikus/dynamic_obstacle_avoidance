@@ -10,11 +10,14 @@ ones
 
 >> Allow for 'friendly-neighbour' => a cluster which shares the direction,
   and allows full flow through (!) /
+
+>> Transition Region: 
 """
 
 import copy
 import warnings
 import math
+from typing import Optional
 
 import numpy as np
 from numpy import linalg as LA
@@ -109,6 +112,14 @@ class KMeansMotionLearner:
     def attractor_position(self) -> Vector:
         return self.data.attractor_position
 
+    @property
+    def n_clusters(self) -> int:
+        return self.kmeans.n_clusters
+
+    @property
+    def dimension(self) -> int:
+        return self.data.dimension
+
     def get_distance_from_centers(self, position: Vector) -> np.ndarray:
         return LA.norm(
             np.tile(position, (self.kmeans.cluster_centers_.shape[0], 1))
@@ -128,10 +139,6 @@ class KMeansMotionLearner:
 
     def get_successors(self, index: int) -> list[int]:
         return list(self._graph.successors(index))
-
-    @property
-    def n_clusters(self) -> int:
-        return self.kmeans.n_clusters
 
     def fit(self, data) -> None:
         self.data = data
@@ -197,7 +204,7 @@ class KMeansMotionLearner:
 
         # Update with assigned points -> this is not just and 'update step' but uses
         # information of velocity and sequence, too.
-        cluster_centers = np.zeros((self.full_kmeans.n_clusters, self.data.dimension))
+        cluster_centers = np.zeros((self.full_kmeans.n_clusters, self.dimension))
         for ii in range(self.full_kmeans.n_clusters):
             cluster_centers[ii, :] = np.mean(
                 self.data.position[self.full_kmeans.labels_ == ii, :], axis=0
@@ -490,7 +497,7 @@ class KMeansMotionLearner:
         weights = self._predict_sequence_weights(position, cluster_label)
 
         ind_relevant = np.arange(self.n_clusters)[weights > 0]
-        velocities = np.zeros((self.data.dimension, self.n_clusters))
+        velocities = np.zeros((self.dimension, self.n_clusters))
 
         for index in ind_relevant:
             # TODO: there is an issue if the 'linear attractor'
@@ -565,8 +572,8 @@ class KMeansMotionLearner:
         max_dist = max_radius - self.region_radius_
 
         if surface_distance > max_dist:
+            # TODO: only for sanity/temp-debugging [remove if never called]
             breakpoint()
-            # TODO: only for temp-debugging / remove if never called
 
         weight_surf = relative_dist / max_dist
         # print(f"1: {weight_surf=}")
@@ -583,7 +590,6 @@ class KMeansMotionLearner:
             # Return velocity directly
             return outside_velocity
 
-        # breakpoint()
         center_dir = surface_velocity = (
             self.region_obstacles[arg_sort[0]].center_position - position
         )
@@ -597,8 +603,6 @@ class KMeansMotionLearner:
         weight_surf = weight_surf ** (
             (1 - math.cos(self.convergence_radius)) / pow_weight
         )
-
-        # print("weight_surf [after power]", weight_surf)
 
         if math.isclose(self.convergence_radius, math.pi):
             # Since all velocities are towards the center on the surface of a cluster
@@ -636,6 +640,31 @@ class KMeansMotionLearner:
         pass
         # tmp_directions = VectorRotationTree()
 
+    def _predict_lyaponuv_gradient_direction(
+        self, position: Vector, sequence_weights: Optional[np.ndarray] = None
+    ) -> Vector:
+        if sequence_weights is None:
+            sequence_weights = self._predict_sequence_weights(position)
+
+        ind_nonzero = sequence_weights > 0
+
+        directions = np.zeros((self.dimension, np.sum(ind_nonzero)))
+        for ii_rel, ii_abs in enumerate(np.arange(ind_nonzero.shape[0])[ind_nonzero]):
+            directions[:, ii_rel] = self._dynamics[
+                ii_abs
+            ].get_lyapunov_gradient_direction(position)
+
+        if directions[1].shape[0] == 1:
+            return directions[:, 0]
+
+        mean_direction = get_directional_weighted_sum(
+            directions[np.argmax(sequence_weights[ind_nonzero])],
+            weights=sequence_weights[ind_nonzero],
+            directions=directions,
+        )
+
+        return mean_direction
+
     def _predict_sequence_weights(
         self,
         position: Vector,
@@ -645,8 +674,15 @@ class KMeansMotionLearner:
     ) -> np.ndarray:
         """Returns the weights whith which each of the superior clusters is considered
 
+        Arguments
+        ---------
         parent_factor in ]0, 1[: determines far into the new obstacle one can enter.
         gamma_cutoff: ensure local convergences through impenetrability of walls
+
+        Returns
+        -------
+        weights: A (np.ndarray of floats) vector containing the weights of importance of all
+            kmeans clusters
         """
         # TODO:
         # -> evalution for several obstacles (i.e. in the outside region)
@@ -687,6 +723,8 @@ class KMeansMotionLearner:
         if tmp_weight > 0:
             # Gamma of label limits the weight of the superiors
             # to ensure it stops at boundary
+
+            # TODO: test that it is reaally parent vs. child index ?!
             gamma = self.region_obstacles[cluster_label].get_gamma(
                 position, in_global_frame=True, ind_transparent=parent
             )

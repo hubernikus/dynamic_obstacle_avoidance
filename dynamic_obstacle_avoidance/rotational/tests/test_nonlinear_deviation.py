@@ -94,6 +94,11 @@ class DeviationOfConstantFlow(DirectionalSystem):
 
         self.regressor = regressor
 
+    def get_lyapunov_gradient_direction(self, position: Vector) -> Vector:
+        """Returns the reference direction / gradient of the Lyapunov function.
+        The value is normalize (!), since only the direction is relevant."""
+        return self.reference_velocity
+
     @property
     def dimension(self):
         return self.reference_velocity.shape[0]
@@ -139,6 +144,13 @@ class DeviationOfConstantFlow(DirectionalSystem):
             deviation = deviation / dev_norm * self.maximal_deviation
         return deviation
 
+    def evaulate_without_lyapunov_check(self, position: Vector) -> np.ndarray:
+        angle_deviation = self.regressor.predict(position.reshape(1, -1))[0]
+        return (
+            get_angle_space_inverse(angle_deviation, null_matrix=self.base)
+            * self.velocity_magnitude
+        )
+
     def predict(self, position: np.ndarray) -> np.ndarray:
         return self.regressor.predict(position)
 
@@ -160,6 +172,15 @@ class DeviationOfLinearDS(DirectionalSystem):
         covariance_type: str = "full",
     ):
         self.attractor_position = attractor_position
+
+    def get_lyapunov_gradient_direction(self, position: Vector) -> Vector:
+        """Returns the reference direction / gradient of the Lyapunov function.
+        Note that this is only the direction but not the magnitude (!)."""
+        attr_dir = self.attractor_position - position
+        if not (attr_norm := LA.norm(attr_dir)):
+            return np.zeros_like(position)
+
+        return attr_dir / attr_norm
 
     def get_distance(self, positions: VectorArray, factor_dp: float = 1.0) -> float:
         """Returns 'angle' distance, i.e., a combination of dot-product and local-radius

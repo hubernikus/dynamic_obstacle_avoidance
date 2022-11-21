@@ -87,9 +87,8 @@ def plot_global_dynamics(main_learner, x_lim, y_lim, n_grid=20, ax=None):
     velocities = np.zeros_like(positions)
 
     for pp in range(positions.shape[1]):
-        velocities[:, pp] = main_learner.predict(positions[:, pp])
         # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
-    # breakpoint()
+        velocities[:, pp] = main_learner.predict(positions[:, pp])
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 9))
@@ -329,6 +328,8 @@ def plot_kmeans(
         color="white",
         zorder=10,
     )
+
+    ax.axis("equal")
 
 
 def plot_trajectories(

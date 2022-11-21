@@ -247,11 +247,12 @@ class KMeansObstacle(Obstacle):
         elif position_norm == surf_norm:
             # Surface points cannot be disregarded yet, since we need to check for
             # transition regions
-            if ind_transparent is None and len(self.successor_index) != 1:
-                # We are on the surface -> gamma = 1 / or infty if in gap
-                return 1.0
+            if ind_transparent is None:
+                if len(self.successor_index) != 1:
+                    # We are on the surface -> gamma = 1 / or infty if in gap
+                    return 1.0
 
-            ind_transparent = self.successor_index[0]
+                ind_transparent = self.successor_index[0]
 
             if np.dot(
                 surf_position - self.inbetween_points[ind_transparent, :],
