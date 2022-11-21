@@ -4,18 +4,12 @@ global attraction to final goal
 
 TODO / method:
 > K-means learning of transition; ensure that
->> directional space is used for the learning
->> the k-weight ensures transition from one to next [common boundary (!)]
->> between non-consecutive regions there is a 'transition' (use perpendicular arc addition)
->> between consecutive regions there is a smooth flow-through in one direction! which ensures transition
->> the 'welcoming' arc in the subsequent region is cropped such that it does NOT overly any additional obstacle
+>> there exists / is a smoothly defined Lyapunov function / contraction metric which ensures
+converging flow even at 'passage regions', the Lyapunov function is the sum of the previous
+ones
 
 >> Allow for 'friendly-neighbour' => a cluster which shares the direction,
-  and allows full flow through (!)
-
-> GMM for obstacle avoidance
->> Place GMM's such that they are ]-pi/2, pi/2[ with the local 'straight?' dynamics
->> (Maybe) additionally ensure that the flow stays within the 
+  and allows full flow through (!) /
 """
 
 import copy
@@ -90,6 +84,7 @@ class KMeansMotionLearner:
 
         self.repulsive_boundary = repulsive_boundary
         self.convergence_radius = math.pi if self.repulsive_boundary else math.pi
+        # self.convergence_cos
 
     @classmethod
     def from_centers(cls, cluster_centers, data):
@@ -109,6 +104,10 @@ class KMeansMotionLearner:
         new_instance._fit_local_dynamics()
 
         return new_instance
+
+    @property
+    def attractor_position(self) -> Vector:
+        return self.data.attractor_position
 
     def get_distance_from_centers(self, position: Vector) -> np.ndarray:
         return LA.norm(
@@ -491,7 +490,6 @@ class KMeansMotionLearner:
         weights = self._predict_sequence_weights(position, cluster_label)
 
         ind_relevant = np.arange(self.n_clusters)[weights > 0]
-
         velocities = np.zeros((self.data.dimension, self.n_clusters))
 
         for index in ind_relevant:
@@ -533,7 +531,7 @@ class KMeansMotionLearner:
     def _predict_outside_of_obstacle(
         self,
         position: Vector,
-        cut_off_ratio: float = 1.5,
+        cut_off_ratio: float = 2.0,
         power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
@@ -549,7 +547,8 @@ class KMeansMotionLearner:
 
         # Find the two clusters which are the closest
         center_dists = self.get_distance_from_centers(position)
-        arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
+        # arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
+        arg_sort = np.argsort(center_dists)[:2]  # Get last two elements
         close_dists = center_dists[arg_sort]
 
         max_radius = self.region_radius_ * cut_off_ratio
@@ -565,30 +564,60 @@ class KMeansMotionLearner:
 
         max_dist = max_radius - self.region_radius_
 
-        weight_surf = relative_dist / max_dist
-        weight_surf = weight_surf ** (surface_distance / max_dist * power_factor)
+        if surface_distance > max_dist:
+            breakpoint()
+            # TODO: only for temp-debugging / remove if never called
 
-        projected_position = self.region_obstacles[arg_sort[0]].get_point_on_surface(
-            position, in_global_frame=True
-        )
+        weight_surf = relative_dist / max_dist
+        # print(f"1: {weight_surf=}")
+        # print(f"power: {(surface_distance / max_dist * power_factor)}")
+        weight_surf = weight_surf ** (max_dist / surface_distance * power_factor)
+        # print(f"2: {weight_surf=}")
 
         # Predict surface velocity
         index = arg_sort[0]
         # Modulate only the one which we are currently in
         outside_velocity = self.outside_dynamics.evaluate(position)
+
         if weight_surf <= 0:
             # Return velocity directly
             return outside_velocity
 
-        surface_velocity = obstacle_avoidance_rotational(
-            position,
-            self._dynamics[index].evaluate(position),
-            [self.region_obstacles[index]],
-            convergence_velocity=self._dynamics[index].evaluate_convergence_velocity(
-                position
-            ),
-            sticky_surface=False,
+        # breakpoint()
+        center_dir = surface_velocity = (
+            self.region_obstacles[arg_sort[0]].center_position - position
         )
+        center_dir = center_dir / LA.norm(center_dir)
+
+        dot_prod = np.dot(center_dir, outside_velocity) / LA.norm(outside_velocity)
+        pow_weight = dot_prod - math.cos(self.convergence_radius)
+        if pow_weight <= 0:
+            # Pointing away from the closest center -> turn around
+            return outside_velocity
+        weight_surf = weight_surf ** (
+            (1 - math.cos(self.convergence_radius)) / pow_weight
+        )
+
+        # print("weight_surf [after power]", weight_surf)
+
+        if math.isclose(self.convergence_radius, math.pi):
+            # Since all velocities are towards the center on the surface of a cluster
+            surface_velocity = center_dir
+
+        else:
+            projected_position = self.region_obstacles[
+                arg_sort[0]
+            ].get_point_on_surface(position, in_global_frame=True)
+
+            surface_velocity = obstacle_avoidance_rotational(
+                position,
+                self._dynamics[index].evaluate(projected_position),
+                [self.region_obstacles[index]],
+                convergence_velocity=self._dynamics[
+                    index
+                ].evaluate_convergence_velocity(projected_position),
+                sticky_surface=False,
+            )
 
         mean_direction = get_directional_weighted_sum(
             outside_velocity,
@@ -596,6 +625,7 @@ class KMeansMotionLearner:
             directions=np.vstack((surface_velocity, outside_velocity)).T,
         )
 
+        # breakpoint()
         return mean_direction
 
     def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:

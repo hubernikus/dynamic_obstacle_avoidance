@@ -521,7 +521,7 @@ def test_normals(visualize=False, save_figure=False):
 def test_global_dynamics(visualize=False, save_figure=False):
     main_learner = create_four_point_datahandler()
     main_learner.repulsive_boundary = True
-    main_learner.convergence_radius = math.pi / 2.0
+    main_learner.convergence_radius = math.pi
 
     if visualize:
         x_lim, y_lim = [-3, 5], [-2.0, 4.0]
@@ -529,9 +529,22 @@ def test_global_dynamics(visualize=False, save_figure=False):
         fig, ax = plt.subplots(figsize=(8, 6))
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
 
-    # Specific point outside
-    # TODO
-    breakpoint()
+    # Larger deviation closer to the obstacle
+    position1 = np.array([-1.7, 1.46])
+    position2 = np.array([-1.7, 1.1])
+    velocity1 = main_learner.predict(position1)
+    velocity2 = main_learner.predict(position2)
+    assert np.cross(velocity1, velocity2) < 0
+
+    # Point should continue pointing into direction of center / initial velocity
+    position = np.array([-2, -1])
+    velocity = main_learner.predict(position)
+    surface_velocity = main_learner.region_obstacles[2].center_position - position
+    assert (
+        np.dot(velocity, surface_velocity)
+        / (LA.norm(velocity) * LA.norm(surface_velocity))
+        > 0.99
+    ), "The velocity is expected to move in the direction of the closest cluster."
 
     # Specific points within repulsive_boundary
     position = np.array([-0.6, 0.9])
@@ -568,7 +581,7 @@ if (__name__) == "__main__":
     # test_transition_weight(visualize=True, save_figure=False)
     # test_normals(visualize=True)
 
-    test_global_dynamics(visualize=True)
+    # test_global_dynamics(visualize=True)
     # _test_partial_dynamics(visualize=True, save_figure=True)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
