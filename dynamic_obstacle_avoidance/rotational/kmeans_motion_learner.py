@@ -495,24 +495,32 @@ class KMeansMotionLearner:
             return self._predict_outside_of_obstacle(position)
 
         weights = self._predict_sequence_weights(position, cluster_label)
+        ind_rel = np.arange(self.n_clusters)[weights > 0]
+        if np.sum(ind_rel) > 1:
+            (
+                lyapunov_direction,
+                inital_velocity,
+            ) = self._get_lyapunov_sum_and_initial_direction(
+                position,
+                weights=weights,
+                indexes_relative=ind_rel,
+            )
 
-        ind_relevant = np.arange(self.n_clusters)[weights > 0]
-        velocities = np.zeros((self.dimension, self.n_clusters))
-
-        for index in ind_relevant:
-            # TODO: there is an issue if the 'linear attractor'
-            velocities[:, index] = self._dynamics[index].evaluate(position)
+        else:
+            # Ensure stability with respect to function-lyapunov
+            initial_velocity = self._dynamics[cluster_label]._predict(position)
+            lyapunov_direction = self._dynamics[
+                cluster_label
+            ].get_lyapunov_gradient_direction(position)
 
         # Modulate only the one which we are currently in
-        velocities[:, cluster_label] = obstacle_avoidance_rotational(
+        rotated_velocity = obstacle_avoidance_rotational(
             position,
-            velocities[:, cluster_label],
+            initial_velocity,
             [self.region_obstacles[cluster_label]],
-            convergence_velocity=self._dynamics[
-                cluster_label
-            ].evaluate_convergence_velocity(position),
+            convergence_velocity=lyapunov_direction,
             sticky_surface=False,
-            convergence_radius=math.pi,
+            convergence_radius=self.convergence_radius * weights[cluster_label],
         )
 
         if np.sum(weights) < 1:
@@ -523,17 +531,70 @@ class KMeansMotionLearner:
             # (make sure invariance of the region)
             raise NotImplementedError()
 
-        if len(ind_relevant) == 1:
-            velocity_direction = velocities[:, ind_relevant[0]]
-        else:
-            # TODO: use partial vector_rotation (instead)
-            velocity_direction = get_directional_weighted_sum(
-                null_direction=velocities[:, cluster_label],
-                directions=velocities,
-                weights=weights,
+        return rotated_velocity
+
+    def _get_lyapunov_sum_and_initial_direction(
+        self,
+        position: np.ndarray,
+        indexes_relative: Optional[np.ndarray] = None,
+        weights: Optional[np.ndarray] = None,
+    ) -> (Vector, Vector):
+        """Returns initial velocity and the convergence velocity"""
+        # velocities = np.zeros((self.dimension, ind_rel.shape[0]))
+        # lyap_dirs = np.zeros((self.dimension, ind_rel.shape[0]))
+
+        indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
+        lyap_dirs = np.zeros((self.dimension, indexes_absolute.shape[0]))
+
+        for i_rel, i_abs in enumerate(indexes_absolute):
+            lyap_dirs[:, i_rel] = self._dynamics[i_abs].get_lyapunov_gradient_direction(
+                position
             )
 
-        return velocity_direction
+        averaged_lyapunov = get_directional_weighted_sum(
+            lyap_dirs[:, 0],
+            weights=weights[indexes_relative],
+            directions=lyap_dirs,
+        )
+
+        temp_tree = VectorRotationTree(root_id=0, root_direction=averaged_lyapunov)
+        for i_abs in indexes_absolute:
+            # TODO: there is an issue if the 'linear attractor'
+            temp_tree.add_node(
+                parent_id=0,
+                node_id=i_abs,
+                direction=lyap_dirs[:, i_rel],
+            )
+
+            temp_tree.add_node(
+                parent_id=i_abs,
+                node_id=i_abs + self.n_clusters,
+                # direction=0,
+                direction=self._dynamics[i_abs].evaluate_without_lyapunov_check(
+                    position
+                ),
+            )
+
+        # weighted_lyapunov = temp_tree.get_weighted_mean(
+        #     node_list=indexes_absolute,
+        #     weights=weights[ind_rel],
+        # )
+        averaged_direction = temp_tree.get_weighted_mean(
+            node_list=indexes_absolute + self.n_clusters,
+            weights=weights[indexes_absolute],
+        )
+
+        return averaged_lyapunov, averaged_direction
+        # lyapunov_direction = self._predict_lyaponuv_gradient_direction(
+        #     position, sequence_weights=weights
+        # )
+
+        # initial_velocity = self._lyapunov_limit_and_sum_dynamics(
+        #     lyapunov_direction, velocities=velocities, ind_relevant=ind_relevant
+        # )
+
+        # n_clusters = ind_rel.shape[0]
+        # for ii in np.arange(n_clusters)[ind_rel]:
 
     def _predict_outside_of_obstacle(
         self,

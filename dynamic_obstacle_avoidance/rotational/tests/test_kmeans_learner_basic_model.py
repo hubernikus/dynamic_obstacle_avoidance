@@ -599,8 +599,13 @@ def test_transition_region(visualize=False, save_figure=False):
     weights_expected = np.zeros(main_learner.n_clusters)
     weights_expected[ind0] = 1
     assert np.allclose(weights, weights_expected)
-    direction = main_learner._predict_lyaponuv_gradient_direction(position, weights)
-    assert np.allclose(direction, [1, 0])
+
+    lyap_dir, init_dir = main_learner._get_lyapunov_sum_and_initial_direction(
+        position,
+        weights=weights,
+        indexes_relative=(weights > 0),
+    )
+    assert np.allclose(lyap_dir, [1, 0])
 
     # At obstacle-center
     position = np.array([1, 0])
@@ -622,6 +627,12 @@ def test_transition_region(visualize=False, save_figure=False):
     assert np.dot(direction, [1, 0]) > 0, "Rotation in the wrong direction."
     assert np.dot(direction, [1, 1]) > 0, "Rotation in the wrong direction."
 
+    if visualize:
+        # TODO
+        pass
+
+    # Transition velocity
+
 
 if (__name__) == "__main__":
     # If 'segmentation-fault' appears activate the following:
@@ -642,6 +653,5 @@ if (__name__) == "__main__":
     test_transition_region(visualize=True, save_figure=False)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
-
     # test_global_dynamics(visualize=True, save_figure=False)
     print("Tests finished.")

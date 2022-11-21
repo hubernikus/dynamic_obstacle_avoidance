@@ -144,7 +144,7 @@ class DeviationOfConstantFlow(DirectionalSystem):
             deviation = deviation / dev_norm * self.maximal_deviation
         return deviation
 
-    def evaulate_without_lyapunov_check(self, position: Vector) -> np.ndarray:
+    def evaluate_without_lyapunov_check(self, position: Vector) -> np.ndarray:
         angle_deviation = self.regressor.predict(position.reshape(1, -1))[0]
         return (
             get_angle_space_inverse(angle_deviation, null_matrix=self.base)
@@ -223,6 +223,15 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
         self.max_angle = np.pi * 0.49
         # self.unbelievable_angle = np.pi * 0.8
 
+    def get_lyapunov_gradient_direction(self, position: Vector) -> Vector:
+        """Returns the reference direction / gradient of the Lyapunov function.
+        Note that this is only the direction but not the magnitude (!)."""
+        attr_dir = self.attractor_position - position
+        if not (attr_norm := LA.norm(attr_dir)):
+            return np.zeros_like(position)
+
+        return attr_dir / attr_norm
+
     @property
     def dimension(self):
         return self.attractor_position.shape[0]
@@ -268,7 +277,10 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
             directions[ii, :] = get_angle_space(data[ii, :], null_matrix=null_matrix)
         return directions
 
-    def evaluate(self, position: Vector):
+    def evaluate_without_lyapunov_check(self, position: Vector) -> Vector:
+        return self.evaluate(position)
+
+    def evaluate(self, position: Vector) -> Vector:
         relative_position = position - self.attractor_position
 
         if not (distance := LA.norm(relative_position)):
