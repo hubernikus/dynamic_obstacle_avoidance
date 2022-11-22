@@ -498,7 +498,7 @@ class KMeansMotionLearner:
         # ind_rel = np.arange(self.n_clusters)[weights > 0]
         ind_rel = weights > 0
         if np.sum(ind_rel) > 1:
-            lyapunov_direction = self._predict_averaged_lyapunov(
+            lyapunov_direction = self.predict_averaged_lyapunov(
                 position,
                 weights=weights,
                 indexes_relative=ind_rel,
@@ -538,12 +538,17 @@ class KMeansMotionLearner:
 
         return rotated_velocity
 
-    def _predict_averaged_lyapunov(
+    def predict_averaged_lyapunov(
         self,
         position: np.ndarray,
         indexes_relative: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
     ) -> Vector:
+
+        if indexes_relative is None:
+            weights = self._predict_sequence_weights(position)
+            indexes_relative = weights > 0
+
         try:
             indexes_absolute = np.arange(indexes_relative.shape[0])[indexes_relative]
         except:

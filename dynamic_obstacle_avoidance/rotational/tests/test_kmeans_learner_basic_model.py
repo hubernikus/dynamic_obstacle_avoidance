@@ -523,10 +523,14 @@ def test_global_dynamics(visualize=False, save_figure=False):
     main_learner.convergence_radius = math.pi
 
     if visualize:
-        x_lim, y_lim = [-3, 4], [-2.0, 4.0]
+        x_lim, y_lim = [-3, 4], [-1.8, 3.5]
 
         fig, ax = plt.subplots(figsize=(8, 6))
         main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+        if save_figure:
+            fig_name = "resulting_clustering"
+            fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
     # Specifi point where it all failed
     position = np.array([1.7894736842105257, 1.7894736842105216])
@@ -561,7 +565,7 @@ def test_global_dynamics(visualize=False, save_figure=False):
     assert velocity[0] > 0, velocity[1] < 0
 
     if visualize:
-        helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
+        fig, _ = helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
 
         if save_figure:
             fig_name = "global_dynamics_with_boundary_avoidance"
@@ -599,7 +603,7 @@ def test_transition_region(visualize=False, save_figure=False):
     weights_expected = np.zeros(main_learner.n_clusters)
     weights_expected[ind1] = 1
     assert np.allclose(weights, weights_expected)
-    lyap_dir = main_learner._predict_averaged_lyapunov(
+    lyap_dir = main_learner.predict_averaged_lyapunov(
         position,
         weights=weights,
         indexes_relative=(weights > 0),
@@ -614,7 +618,7 @@ def test_transition_region(visualize=False, save_figure=False):
     weights_expected[ind0] = 1
     assert np.allclose(weights, weights_expected)
 
-    lyap_dir = main_learner._predict_averaged_lyapunov(
+    lyap_dir = main_learner.predict_averaged_lyapunov(
         position,
         weights=weights,
         indexes_relative=(weights > 0),
@@ -626,7 +630,7 @@ def test_transition_region(visualize=False, save_figure=False):
     weights = main_learner._predict_sequence_weights(position)
     assert weights[ind0] > 0
     assert weights[ind1] > 0
-    lyap_dir = main_learner._predict_averaged_lyapunov(
+    lyap_dir = main_learner.predict_averaged_lyapunov(
         position,
         weights=weights,
         indexes_relative=(weights > 0),

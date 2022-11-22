@@ -559,30 +559,6 @@ def Simulation_vectorFields(
         N_x = N_y = 1
         XX, YY = np.array([[point_grid[0]]]), np.array([[point_grid[1]]])
 
-    ########## DEBUGGING ONLY ##########
-    # TODO: DEBUGGING Only for Development and testing
-    n_samples = 0
-    if n_samples:  # nonzero
-        it_start = 0
-
-        pos1 = [-2.807, 0.480]
-        pos2 = [-3.017, 0.337]
-
-        x_sample_range = [pos1[0], pos2[0]]
-        y_sample_range = [pos1[1], pos2[1]]
-
-        x_sample = np.linspace(x_sample_range[0], x_sample_range[1], n_samples)
-        y_sample = np.linspace(y_sample_range[0], y_sample_range[1], n_samples)
-
-        ii = 0
-        for ii in range(n_samples):
-            iy = (ii + it_start) % N_y
-            ix = int((ii + it_start) / N_x)
-
-            XX[ix, iy] = x_sample[ii]
-            YY[ix, iy] = y_sample[ii]
-    ########## STOP REMOVE ###########
-
     if dynamical_system is None:
         dynamical_system = LinearSystem(attractor_position=pos_attractor).evaluate
         # Default ds

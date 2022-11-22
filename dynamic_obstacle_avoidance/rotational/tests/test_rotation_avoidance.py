@@ -24,6 +24,8 @@ from vartools.directional_space import UnitDirection
 from vartools.dynamical_systems import plot_vectorfield
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
@@ -34,10 +36,9 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
 )
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
-from dynamic_obstacle_avoidance.visualization import (
-    Simulation_vectorFields,
-    plot_obstacles,
-)
+from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields
+
+# from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 
 def test_intersection_with_circle():
@@ -752,7 +753,6 @@ def test_stable_linear_avoidance(visualize=False):
 
     # Arbitrary constant velocity
     initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
-
     obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
 
     if visualize:
@@ -775,7 +775,65 @@ def test_stable_linear_avoidance(visualize=False):
         )
 
 
+def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
+    rotation_container = RotationContainer()
+    rotation_container.append(
+        Cuboid(
+            center_position=np.array([1, -2]),
+            axes_length=np.array([4, 2]),
+            orientation=30 / 90.0 * math.pi,
+        )
+    )
+
+    rotation_container.append(
+        Cuboid(
+            center_position=np.array([-1.5, 2]),
+            axes_length=np.array([3, 2.5]),
+            orientation=120 / 90.0 * math.pi,
+        )
+    )
+
+    rotation_container.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([10, 10]),
+            is_boundary=True,
+        )
+    )
+
+    initial_dynamics = LinearSystem(attractor_position=np.array([4.0, 0]))
+    rotation_container.set_convergence_directions(converging_dynamics=initial_dynamics)
+
+    if visualize:
+        x_lim = [-5.5, 5.5]
+        y_lim = [-5.1, 5.1]
+        # fig, ax = plt.subplots(figsize=(8, 6))
+
+        fig, _ = Simulation_vectorFields(
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_resolution=20,
+            obstacle_list=rotation_container,
+            noTicks=False,
+            showLabel=False,
+            draw_vectorField=True,
+            dynamical_system=initial_dynamics.evaluate,
+            obs_avoidance_func=obstacle_avoidance_rotational,
+            automatic_reference_point=False,
+            pos_attractor=initial_dynamics.attractor_position,
+            # Quiver or stream-plot
+            show_streamplot=False,
+            # show_streamplot=False,
+        )
+
+        if save_figure:
+            fig_name = "rotational_avoidance_obstacles_in_hull"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight")
+
+
 if (__name__) == "__main__":
+    figtype = ".png"
+    # figtype = ".pdf"
     # test_intersection_with_circle()
 
     # test_convergence_tangent(visualize=True)
@@ -792,5 +850,7 @@ if (__name__) == "__main__":
 
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=True)
+
+    # _test_obstacle_and_hull_avoidance(visualize=True)
 
     print("[Rotational Tests] Done tests")
