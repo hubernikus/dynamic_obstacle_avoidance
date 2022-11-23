@@ -116,7 +116,7 @@ class AvoiderWithKMeansTrajectory:
         # This radius is used for the avoidance of the obstacles
         self.margin_radius = 1
 
-    def update_clusters(self):
+    def reposition_obstacle_free(self):
         """Reposition clusters to be a minimum away from the obstacles."""
 
         # Update radius such that there is a minimum overlap between the obstacles
@@ -253,6 +253,10 @@ def _test_kmeans_dynamic_avoider(visualize=False, save_figure=False):
         if save_figure:
             fig_name = "t_table_global_dynamics"
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight")
+
+
+def _test_dynamic_avoidance():
+    pass
 
 
 if (__name__) == "__main__":
