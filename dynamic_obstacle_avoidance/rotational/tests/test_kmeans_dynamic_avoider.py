@@ -335,50 +335,7 @@ def _test_kmeans_dynamic_avoider(visualize=False, save_figure=False):
 
 
 class LearningAroundDynamicObstacles(Animator):
-    def setup(self, figsize=(10, 7)):
-        self.fig, self.ax = plt.subplots(figsize=(10, 8))
-        self.x_lim, self.y_lim = [-4, 4], [-1.8, 3.5]
-
-        positions = np.array(
-            [
-                [0, 0],
-                [1, 0],
-                [2, 0],
-                [3, 0],
-            ]
-        )
-
-        attractor_position = np.array([3.5, 0])
-        datahandler = MotionDataHandler(position=positions)
-        datahandler.velocity = (
-            datahandler.position[1:, :] - datahandler.position[:-1, :]
-        )
-        datahandler.velocity = np.vstack(
-            (datahandler.velocity, [attractor_position - datahandler.position[-1, :]])
-        )
-        datahandler.attractor = attractor_position
-        datahandler.sequence_value = np.linspace(0, 1, positions.shape[0])
-
-        main_learner = KMeansMotionLearner(datahandler, n_clusters=positions.shape[0])
-
-        obstacle_container = RotationContainer()
-        obstacle_container.append(
-            Ellipse(
-                center_position=np.array([0, -1.0]),
-                axes_length=np.array([2, 1.5]),
-                linear_velocity=np.array([0.2, 0.2])
-                # orientation=30 / 90.0 * math.pi,
-            )
-        )
-
-        self.motion_handler = AvoiderWithKMeansTrajectory(
-            kmeans_learner=main_learner,
-            obstacle_container=obstacle_container,
-        )
-
-    # def has_converged(self, ii):
-    #     pass
-
+    # def setup(self, figsize=(10, 7)):
     def update_step(self, ii):
         move_obstacles_2d(self.motion_handler.obstacle_container, self.dt_simulation)
 
@@ -386,9 +343,13 @@ class LearningAroundDynamicObstacles(Animator):
 
         self.ax.clear()
 
-        self.motion_handler.kmeans_learner.plot_kmeans(
-            ax=self.ax, x_lim=self.x_lim, y_lim=self.y_lim
+        helper_functions.plot_global_dynamics(
+            self.motion_handler.kmeans_learner, self.x_lim, self.y_lim, ax=self.ax
         )
+
+        # self.motion_handler.kmeans_learner.plot_kmeans(
+        #     ax=self.ax, x_lim=self.x_lim, y_lim=self.y_lim
+        # )
         plot_obstacles(
             self.motion_handler.obstacle_container,
             ax=self.ax,
@@ -455,7 +416,46 @@ def _test_dynamic_avoidance(visualize=False, save_figure=False):
 
 def run_animator():
     my_animator = LearningAroundDynamicObstacles(it_max=200)
-    my_animator.setup()
+    my_animator.fig, my_animator.ax = plt.subplots(figsize=(10, 8))
+    my_animator.x_lim = [-3, 5]
+    my_animator.y_lim = [-2.5, 3.0]
+
+    positions = np.array(
+        [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+            [3, 0],
+        ]
+    )
+
+    attractor_position = np.array([3.5, 0])
+    datahandler = MotionDataHandler(position=positions)
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack(
+        (datahandler.velocity, [attractor_position - datahandler.position[-1, :]])
+    )
+    datahandler.attractor = attractor_position
+    datahandler.sequence_value = np.linspace(0, 1, positions.shape[0])
+
+    main_learner = KMeansMotionLearner(datahandler, n_clusters=positions.shape[0])
+
+    obstacle_container = RotationContainer()
+    obstacle_container.append(
+        Ellipse(
+            center_position=np.array([0, -1.0]),
+            axes_length=np.array([2, 1.5]),
+            linear_velocity=np.array([0.2, 0.2])
+            # orientation=30 / 90.0 * math.pi,
+        )
+    )
+
+    my_animator.motion_handler = AvoiderWithKMeansTrajectory(
+        kmeans_learner=main_learner,
+        obstacle_container=obstacle_container,
+    )
+
+    # my_animator.setup()
     my_animator.run()
 
 
