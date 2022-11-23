@@ -114,13 +114,29 @@ class AvoiderWithKMeansTrajectory:
         self.kmeans_learner = kmeans_learner
 
         # This radius is used for the avoidance of the obstacles
-        self.margin_radius = 1
+        self.min_base_distance = self.kmeans_learner.region_radius_ / (
+            self.kmeans_learner.radius_factor * 2
+        )
+        # Store the original values; such that KMeans can always be reset
+        self._centers_init = copy.deepcopy(self.kmeans_learner.kmeans.cluster_centers_)
 
-    def reposition_obstacle_free(self):
+    def reposition_clusters(self):
         """Reposition clusters to be a minimum away from the obstacles."""
-
         # Update radius such that there is a minimum overlap between the obstacles
         # so far we increase the size equally | they could be rotated, too
+
+        # Assumption of Gamma being distance / scale - dependent
+        for kk in range(self.kmeans_learner.n_clusters):
+            displacement = np.zeros(self.kmeans_learner.dimension)
+            for obs in self.environment_container:
+                gamma[kk] = obs.get_gamma(kk)
+
+                # Assumption of [Gamma = Distance + 1]
+                if gamma[kk] > self.min_base_distance + 1:
+                    pass
+                    # displacement = displacement
+
+        # get_distance_from_centers()
         pass
 
     def evaluate(self, position):
@@ -139,7 +155,7 @@ class AvoiderWithKMeansTrajectory:
         return avoidance_velocity
 
 
-def create_boundary_vectorfield():
+def create_table_avoider_vectorfield():
     positions = np.array(
         [
             [-1, 0],
@@ -255,14 +271,60 @@ def _test_kmeans_dynamic_avoider(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight")
 
 
-def _test_dynamic_avoidance():
-    pass
+def _test_dynamic_avoidance(visualize=False, save_figure=False):
+    positions = np.array(
+        [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+            [3, 0],
+        ]
+    )
+
+    attractor_position = np.array([3.5, 0])
+    datahandler = MotionDataHandler(position=positions)
+    datahandler.velocity = datahandler.position[1:, :] - datahandler.position[:-1, :]
+    datahandler.velocity = np.vstack(
+        (datahandler.velocity, [attractor_position - datahandler.position[-1, :]])
+    )
+    datahandler.attractor = attractor_position
+    datahandler.sequence_value = np.linspace(0, 1, positions.shape[0])
+
+    main_learner = KMeansMotionLearner(datahandler, n_clusters=positions.shape[0])
+
+    obstacle_container = RotationContainer()
+    obstacle_container.append(
+        Ellipse(
+            center_position=np.array([0, -2.0]),
+            axes_length=np.array([2, 1.5]),
+            # orientation=30 / 90.0 * math.pi,
+        )
+    )
+
+    motion_handler = AvoiderWithKMeansTrajectory(
+        kmeans_learner=main_learner,
+        environment_container=obstacle_container,
+    )
+
+    if visualize:
+        plt.close("all")
+        x_lim, y_lim = [-2, 5], [-2.5, 2.5]
+        figsize = (10, 7)
+        fig, ax = plt.subplots(figsize=figsize)
+        main_learner.plot_kmeans(ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+        fig, ax = plt.subplots(figsize=figsize)
+        helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim, ax=ax)
+        plot_obstacles(obstacle_container, ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+    motion_handler.reposition_clusters()
 
 
 if (__name__) == "__main__":
     figtype = ".png"
     # figtype = ".pdf"
 
-    _test_kmeans_dynamic_avoider(visualize=True, save_figure=False)
+    # _test_kmeans_dynamic_avoider(visualize=True, save_figure=False)
+    _test_dynamic_avoidance(visualize=True, save_figure=False)
 
     print("[Rotational Tests] Done tests")

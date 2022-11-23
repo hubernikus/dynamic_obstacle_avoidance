@@ -622,7 +622,7 @@ class KMeansMotionLearner:
     def _predict_outside_of_obstacle(
         self,
         position: Vector,
-        cut_off_ratio: float = 2.0,
+        cut_off_ratio: float = 3.0,
         power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
