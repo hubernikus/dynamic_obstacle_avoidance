@@ -116,6 +116,23 @@ class KMeansMotionLearner:
     def n_clusters(self) -> int:
         return self.kmeans.n_clusters
 
+    # def get_parent_index(self, index: int) -> Optional(int):
+    #     """Get the cluster which follow in the row -> closer to root."""
+    #     return list(self._graph.successors(index))[0]
+
+    # def get_child_index(self, index: int) -> Optional(int):
+    #     """Get the cluster which comes before in the row -> further away from  root."""
+    #     # try:
+    #     return list(self._graph.predecessors(index))[0]
+    #     # except:
+    #     #     return None
+
+    def get_predecessors(self, index: int) -> list[int]:
+        return list(self._graph.predecessors(index))
+
+    def get_successors(self, index: int) -> list[int]:
+        return list(self._graph.successors(index))
+
     @property
     def dimension(self) -> int:
         return self.data.dimension
@@ -133,12 +150,6 @@ class KMeansMotionLearner:
     def get_number_of_features(self) -> int:
         """Returns number of features."""
         return self.kmeans.cluster_centers_.shape[0]
-
-    def get_predecessors(self, index: int) -> list[int]:
-        return list(self._graph.predecessors(index))
-
-    def get_successors(self, index: int) -> list[int]:
-        return list(self._graph.successors(index))
 
     def fit(self, data) -> None:
         self.data = data
@@ -334,6 +345,24 @@ class KMeansMotionLearner:
             )
 
             self._graph.add_edge(ind_node, ind_parent)
+
+    def compute_distances_to_neighbours(self) -> np.ndarray:
+        """Calculates all the distances between sequential clusters."""
+        distances_to_neighbours = np.zeros(self.n_clusters)
+        for jj, ind_node in enumerate(self._graph.nodes):
+            if self._graph.nodes[ind_node]["level"] == 0:
+                # Contains attractor
+                succ_position = self.attractor_position
+
+            else:
+                successor_id = self.get_successors(ind_node)[0]
+                succ_position = self.kmeans.cluster_centers_[successor_id, :]
+
+            distances_to_neighbours[jj] = LA.norm(
+                self.kmeans.cluster_centers_[ind_node, :] - succ_position
+            )
+
+        return distances_to_neighbours
 
     def _fit_local_dynamics(self):
         """Assigns constant-value-dynamics to all but the first DS."""
@@ -622,7 +651,7 @@ class KMeansMotionLearner:
     def _predict_outside_of_obstacle(
         self,
         position: Vector,
-        cut_off_ratio: float = 3.0,
+        cut_off_ratio: float = 5.0,
         power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
@@ -647,6 +676,7 @@ class KMeansMotionLearner:
             # Far away
             return self.outside_dynamics.evaluate(position)
 
+        # TODO: consider all of them - rather then closest one only (!)
         surface_distance = max_radius - close_dists[0]
         if close_dists[1] > max_radius:
             relative_dist = surface_distance

@@ -4,6 +4,7 @@
 # License BSD
 
 # import warnings
+from typing import Optional
 
 import numpy as np
 from numpy import linalg as LA
@@ -141,8 +142,8 @@ class EllipseWithAxes(obstacles.Obstacle):
         self,
         position: np.ndarray,
         in_obstacle_frame: bool = True,
-        in_global_frame: bool = None,
-        margin_absolut: float = None,
+        in_global_frame: Optional[bool] = None,
+        margin_absolut: Optional[float] = None,
     ):
         """Gets a gamma which is not directly related to the axes length."""
         if in_global_frame is not None:
@@ -173,6 +174,24 @@ class EllipseWithAxes(obstacles.Obstacle):
             gamma = 1 / gamma
 
         return gamma
+
+    def get_local_radius(
+        self,
+        position: np.ndarray,
+        in_relative_frame: bool = True,
+        in_global_frame: Optional[bool] = None,
+        margin_absolut: Optional[float] = None,
+    ):
+        if in_global_frame is not None:
+            in_relative_frame = not (in_global_frame)
+
+        surface_point = self.get_point_on_surface(
+            position=position,
+            in_obstacle_frame=in_relative_frame,
+            margin_absolut=margin_absolut,
+        )
+
+        return LA.norm(surface_point - self.center_position)
 
     def get_normal_direction(
         self,
