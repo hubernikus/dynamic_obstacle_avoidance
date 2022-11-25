@@ -523,6 +523,7 @@ def test_global_dynamics(visualize=False, save_figure=False):
     main_learner.convergence_radius = math.pi
 
     if visualize:
+        plt.close("all")
         x_lim, y_lim = [-3, 4], [-1.8, 3.5]
 
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -532,17 +533,18 @@ def test_global_dynamics(visualize=False, save_figure=False):
             fig_name = "resulting_clustering"
             fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
-    # Specifi point where it all failed
-    position = np.array([1.7894736842105257, 1.7894736842105216])
-    velocity = main_learner.predict(position)
-    # TODO: test weights on boundary...
+        fig, _ = helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
+
+        if save_figure:
+            fig_name = "global_dynamics_with_boundary_avoidance"
+            fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
     # Larger deviation closer to the obstacle
-    position1 = np.array([-1.7, 1.46])
-    position2 = np.array([-1.7, 1.1])
-    velocity1 = main_learner.predict(position1)
-    velocity2 = main_learner.predict(position2)
-    assert np.cross(velocity1, velocity2) < 0
+    position1 = np.array([-1.7, 1.1])
+    position2 = np.array([-1.7, 1.46])
+    velocity1 = main_learner._predict_outside_of_obstacle(position1)
+    velocity2 = main_learner._predict_outside_of_obstacle(position2)
+    assert np.cross(velocity1, velocity2) > 0
 
     # Point should continue pointing into direction of center / initial velocity
     position = np.array([-2, -1])
@@ -563,13 +565,6 @@ def test_global_dynamics(visualize=False, save_figure=False):
     position = np.array([-1.3, 0.84])
     velocity = main_learner.predict(position)
     assert velocity[0] > 0, velocity[1] < 0
-
-    if visualize:
-        fig, _ = helper_functions.plot_global_dynamics(main_learner, x_lim, y_lim)
-
-        if save_figure:
-            fig_name = "global_dynamics_with_boundary_avoidance"
-            fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
 
 def _test_partial_dynamics(visualize=False, save_figure=False):
@@ -651,7 +646,6 @@ if (__name__) == "__main__":
     # faulthandler.enable()
 
     plt.ion()
-    plt.close("all")
 
     # test_surface_position_and_normal(visualize=True)
     # test_gamma_kmeans(visualize=True, save_figure=False)
@@ -663,5 +657,8 @@ if (__name__) == "__main__":
     # test_transition_region(visualize=True, save_figure=False)
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
-    test_global_dynamics(visualize=True, save_figure=False)
+
+    # test_global_dynamics(visualize=True, save_figure=False)
+    test_global_dynamics(visualize=False, save_figure=False)
+
     print("Tests finished.")

@@ -776,7 +776,8 @@ def test_stable_linear_avoidance(visualize=False):
 
 
 def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
-    rotation_container = RotationContainer()
+    rotation
+    _container = RotationContainer()
     rotation_container.append(
         Cuboid(
             center_position=np.array([1, -2]),

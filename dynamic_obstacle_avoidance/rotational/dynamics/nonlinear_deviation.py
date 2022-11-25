@@ -5,6 +5,7 @@
 # Github: hubernikus
 # License: BSD (c) 2022
 
+import sys
 from abc import ABC, abstractmethod
 
 import copy

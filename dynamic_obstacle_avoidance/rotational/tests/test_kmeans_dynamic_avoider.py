@@ -44,6 +44,8 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
+from dynamic_obstacle_avoidance.visualization import plot_obstacle_dynamics
+
 
 def move_obstacles_2d(
     obstacle_container: ObstacleContainer, timestep: float = 0.1
@@ -54,56 +56,6 @@ def move_obstacles_2d(
             obs.center_position = obs.center_position + obs.linear_velocity * timestep
         if obs.angular_velocity is not None:
             obs.orientation = obs.orientation + obs.angular_velocity * dt
-
-
-def plot_obstacle_dynamics(
-    obstacle_container: ObstacleContainer,
-    dynamics: Callable[[Vector], Vector],
-    x_lim: list[float],
-    y_lim: list[float],
-    n_grid: int = 20,
-    ax=None,
-    attractor_position=None,
-):
-    xx, yy = np.meshgrid(
-        np.linspace(x_lim[0], x_lim[1], n_grid),
-        np.linspace(y_lim[0], y_lim[1], n_grid),
-    )
-    positions = np.array([xx.flatten(), yy.flatten()])
-    velocities = np.zeros_like(positions)
-
-    for pp in range(positions.shape[1]):
-        # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
-        if obstacle_container.get_minimum_gamma(positions[:, pp]) <= 1:
-            continue
-
-        velocities[:, pp] = dynamics(positions[:, pp])
-
-    ax.quiver(
-        positions[0, :],
-        positions[1, :],
-        velocities[0, :],
-        velocities[1, :],
-        # color="red",
-        scale=50,
-    )
-    if attractor_position is not None:
-        ax.scatter(
-            attractor_position[0],
-            attractor_position[1],
-            marker="*",
-            s=200,
-            color="black",
-            zorder=5,
-        )
-    ax.axis("equal")
-
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = None
-
-    return (fig, ax)
 
 
 class AvoiderWithKMeansTrajectory:

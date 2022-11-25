@@ -39,18 +39,18 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
 )
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
 from dynamic_obstacle_avoidance.rotational.kmeans_obstacle import KMeansObstacle
-from dynamic_obstacle_avoidance.rotational.tests.test_nonlinear_deviation import (
-    MultiOutputSVR,
-    DeviationOfConstantFlow,
+
+from dynamic_obstacle_avoidance.rotational.dynamics import MultiOutputSVR
+from dynamic_obstacle_avoidance.rotational.dynamics import DeviationOfConstantFlow
+from dynamic_obstacle_avoidance.rotational.dynamics import (
     PerpendicularDeviatoinOfLinearDS,
 )
 
 from dynamic_obstacle_avoidance.rotational.tests import helper_functions
 
-# from dynamic_obstacle_avoidance.rotational.base_logger import logger
+# from dynamic_obstacle_avoidance.rotational.datatypes import VectorArray
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
-# from dynamic_obstacle_avoidance.rotational.datatypes import VectorArray
 
 NodeType = int
 
@@ -651,7 +651,7 @@ class KMeansMotionLearner:
     def _predict_outside_of_obstacle(
         self,
         position: Vector,
-        cut_off_ratio: float = 5.0,
+        cut_off_ratio: float = 4.0,
         power_factor: float = 1,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
@@ -663,20 +663,122 @@ class KMeansMotionLearner:
         Arguments
         ---------
         cut_off_ratio (> 1): The distance at which the radius does not have any effect anymore
+        power_factor (in [0, infinity]): The power of the surface weight
         """
 
         # Find the two clusters which are the closest
         center_dists = self.get_distance_from_centers(position)
+        max_radius = self.region_radius_ * cut_off_ratio
+
+        ind_rel = center_dists < max_radius
+        n_relevant = np.sum(ind_rel)  # int sine it is a sum of bools
+        if not n_relevant:
+            # Far away
+            return self.outside_dynamics.evaluate(position)
+
+        max_dist = max_radius - self.region_radius_
+        relevant_dists = center_dists[ind_rel] - self.region_radius_
+
+        weights_surf = relevant_dists / max_dist
+        # print(f"1: {weights_surf=}")
+        # print(f"power: {(surface_distance / max_dist * power_factor)}")
+        weights_surf = weights_surf ** (max_dist / relevant_dists * power_factor)
+        # print(f"2: {weights_surf=}")
+
+        # Predict surface velocity
+        outside_velocity = self.outside_dynamics.evaluate(position)
+
+        if np.all(weights_surf <= 0):
+            # Return velocity directly
+            return outside_velocity
+
+        center_dirs = self.kmeans.cluster_centers_[ind_rel, :] - np.tile(
+            position, (n_relevant, 1)
+        )
+        center_dirs = (
+            center_dirs / np.tile(LA.norm(center_dirs, axis=1), (self.dimension, 1)).T
+        )
+
+        dot_prod = np.sum(
+            center_dirs
+            * np.tile(outside_velocity / LA.norm(outside_velocity), (n_relevant, 1)),
+            axis=1,
+        )
+        pow_weight = dot_prod - math.cos(self.convergence_radius)
+
+        ind_nonzero = pow_weight > 0
+        if not np.sum(ind_nonzero):
+            # Pointing away from the closest center -> turn around
+            return outside_velocity
+
+        if not np.all(ind_nonzero < 0):
+            ind_rel = np.arange(ind_rel.shape[0])[ind_rel][ind_nonzero]
+            weights_surf = weights_surf[ind_nonzero]
+            pow_weight = pow_weight[ind_nonzero]
+            center_dirs = center_dirs[ind_nonzero, :]
+
+        breakpoint()
+        # TODO: the 2nd weight should be the highest; for now it's the 3rd one (!?)
+        weights_surf = weights_surf ** (
+            (1 - math.cos(self.convergence_radius)) / pow_weight
+        )
+
+        if math.isclose(self.convergence_radius, math.pi):
+            # Since all velocities are towards the center on the surface of a cluster
+            surface_velocities = center_dirs
+
+        else:
+            raise NotImplementedError()
+            # projected_position = self.region_obstacles[
+            #     arg_sort[0]
+            # ].get_point_on_surface(position, in_global_frame=True)
+
+            # surface_velocity = obstacle_avoidance_rotational(
+            #     position,
+            #     self._dynamics[index].evaluate(projected_position),
+            #     [self.region_obstacles[index]],
+            #     convergence_velocity=self._dynamics[
+            #         index
+            #     ].evaluate_convergence_velocity(projected_position),
+            #     sticky_surface=False,
+            # )
+
+        if (weight_sum := np.sum(weights_surf)) > 1:
+            all_weights = np.hstack((weights_surf / weight_sum, 0))
+        else:
+            all_weights = np.hstack((weights_surf, 1 - weight_sum))
+
+        mean_direction = get_directional_weighted_sum(
+            outside_velocity,
+            weights=all_weights,
+            directions=np.vstack((surface_velocities, outside_velocity)).T,
+        )
+        breakpoint()
+
+        return mean_direction
+
+    def _predict_outside_of_obstacle_mutually_exclusive(
+        self,
+        position: Vector,
+        cut_off_ratio: float = 4.0,
+        power_factor: float = 1,
+    ) -> Vector:
+        """Returns the velocity vector if we are outside of all position.
+
+        this is an older function
+        """
+
+        # Find the two clusters which are the closest
+        center_dists = self.get_distance_from_centers(position)
+
         # arg_sort = np.argsort(center_dists)[-1:-3:-1]  # Get last two elements
         arg_sort = np.argsort(center_dists)[:2]  # Get last two elements
         close_dists = center_dists[arg_sort]
 
         max_radius = self.region_radius_ * cut_off_ratio
         if close_dists[0] > max_radius:
-            # Far away
             return self.outside_dynamics.evaluate(position)
 
-        # TODO: consider all of them - rather then closest one only (!)
         surface_distance = max_radius - close_dists[0]
         if close_dists[1] > max_radius:
             relative_dist = surface_distance
@@ -685,28 +787,20 @@ class KMeansMotionLearner:
 
         max_dist = max_radius - self.region_radius_
 
-        if surface_distance > max_dist:
-            # TODO: only for sanity/temp-debugging [remove if never called]
-            breakpoint()
-
-        weight_surf = relative_dist / max_dist
-        # print(f"1: {weight_surf=}")
-        # print(f"power: {(surface_distance / max_dist * power_factor)}")
-        weight_surf = weight_surf ** (max_dist / surface_distance * power_factor)
-        # print(f"2: {weight_surf=}")
+        weights_surf = relative_dist / max_dist
+        weights_surf = weights_surf ** (max_dist / surface_distance * power_factor)
 
         # Predict surface velocity
         index = arg_sort[0]
+
         # Modulate only the one which we are currently in
         outside_velocity = self.outside_dynamics.evaluate(position)
 
-        if weight_surf <= 0:
+        if weights_surf <= 0:
             # Return velocity directly
             return outside_velocity
 
-        center_dir = surface_velocity = (
-            self.region_obstacles[arg_sort[0]].center_position - position
-        )
+        center_dir = self.region_obstacles[arg_sort[0]].center_position - position
         center_dir = center_dir / LA.norm(center_dir)
 
         dot_prod = np.dot(center_dir, outside_velocity) / LA.norm(outside_velocity)
@@ -714,7 +808,7 @@ class KMeansMotionLearner:
         if pow_weight <= 0:
             # Pointing away from the closest center -> turn around
             return outside_velocity
-        weight_surf = weight_surf ** (
+        weights_surf = weights_surf ** (
             (1 - math.cos(self.convergence_radius)) / pow_weight
         )
 
@@ -739,11 +833,10 @@ class KMeansMotionLearner:
 
         mean_direction = get_directional_weighted_sum(
             outside_velocity,
-            weights=np.array([weight_surf, (1 - weight_surf)]),
+            weights=np.array([weights_surf, (1 - weights_surf)]),
             directions=np.vstack((surface_velocity, outside_velocity)).T,
         )
 
-        # breakpoint()
         return mean_direction
 
     def _predict_directional_sum(self, position: Vector, weights, velocities) -> Vector:

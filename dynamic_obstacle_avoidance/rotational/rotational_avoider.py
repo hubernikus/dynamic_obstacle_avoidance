@@ -97,7 +97,7 @@ class RotationalAvoider(BaseAvoider):
 
         if obstacle_list is None:
             # TODO: depreciated
-            obstacle_list = self.obstacle_environment
+            obstacle_olist = self.obstacle_environment
 
         n_obstacles = len(obstacle_list)
         if not n_obstacles:  # No obstacles in the environment
@@ -120,7 +120,7 @@ class RotationalAvoider(BaseAvoider):
                 # raise NotImplementedError()
                 warnings.warn("The evaluation is in the boundary.")
                 # TODO: the repulsion could / should be increased with increasing
-                # penetration of the obstacle
+                # penetration of the obstacle$
                 gamma_array[ii] = 1
 
         ind_obs = np.logical_and(gamma_array < self.cut_off_gamma, gamma_array >= 1)

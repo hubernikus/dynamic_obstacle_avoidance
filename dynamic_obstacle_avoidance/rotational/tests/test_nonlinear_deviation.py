@@ -30,20 +30,13 @@ from vartools.directional_space import get_angle_space_inverse
 from vartools.directional_space import get_angle_space, get_angle_space_of_array
 from vartools.directional_space import get_directional_weighted_sum
 
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import (
-    ConstantRegressor,
-)
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import MultiOutputSVR
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import (
-    DirectionalSystem,
-)
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import (
-    DeviationOfConstantFlow,
-)
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import (
-    DeviationOfLinearDS,
-)
-from dynamic_obstacle_avoidance.rotational.nonlinear_deviation_ds import (
+from dynamic_obstacle_avoidance.rotational.dynamics import ConstantRegressor
+from dynamic_obstacle_avoidance.rotational.dynamics import MultiOutputSVR
+from dynamic_obstacle_avoidance.rotational.dynamics import DirectionalSystem
+from dynamic_obstacle_avoidance.rotational.dynamics import DeviationOfConstantFlow
+
+from dynamic_obstacle_avoidance.rotational.dynamics import DeviationOfLinearDS
+from dynamic_obstacle_avoidance.rotational.dynamics import (
     PerpendicularDeviatoinOfLinearDS,
 )
 
