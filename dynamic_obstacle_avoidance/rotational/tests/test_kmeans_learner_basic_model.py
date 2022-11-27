@@ -539,6 +539,11 @@ def test_global_dynamics(visualize=False, save_figure=False):
             fig_name = "global_dynamics_with_boundary_avoidance"
             fig.savefig("figures/" + fig_name + fig_type, bbox_inches="tight")
 
+    # Specific point
+    position = np.array([-2.6, -0.7])
+    velocity = main_learner._predict_outside_of_obstacle(position)
+    assert np.dot(position, velocity) < 0
+
     # Larger deviation closer to the obstacle
     position1 = np.array([-1.7, 1.1])
     position2 = np.array([-1.7, 1.46])
@@ -658,7 +663,7 @@ if (__name__) == "__main__":
 
     # _test_local_deviation(save_figure=True) -> NOT WORKING ANYMORE !!!
 
-    # test_global_dynamics(visualize=True, save_figure=False)
-    test_global_dynamics(visualize=False, save_figure=False)
+    test_global_dynamics(visualize=True, save_figure=False)
+    # test_global_dynamics(visualize=False, save_figure=False)
 
     print("Tests finished.")

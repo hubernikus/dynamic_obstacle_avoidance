@@ -652,7 +652,7 @@ class KMeansMotionLearner:
         self,
         position: Vector,
         cut_off_ratio: float = 4.0,
-        power_factor: float = 1,
+        power_factor: float = 0.5,
     ) -> Vector:
         """Returns the velocity vector if we are outside of all position.
 
@@ -679,10 +679,11 @@ class KMeansMotionLearner:
         max_dist = max_radius - self.region_radius_
         relevant_dists = center_dists[ind_rel] - self.region_radius_
 
-        weights_surf = relevant_dists / max_dist
+        weights_surf = max_dist / relevant_dists
+        # weights_surf = weights_surf**power_factor
         # print(f"1: {weights_surf=}")
         # print(f"power: {(surface_distance / max_dist * power_factor)}")
-        weights_surf = weights_surf ** (max_dist / relevant_dists * power_factor)
+        # weights_surf = weights_surf ** (max_dist / relevant_dists * power_factor)
         # print(f"2: {weights_surf=}")
 
         # Predict surface velocity
@@ -705,9 +706,10 @@ class KMeansMotionLearner:
             axis=1,
         )
         pow_weight = dot_prod - math.cos(self.convergence_radius)
+        # pow_weight = dot_prod - math.cos(self.convergence_radius)
 
         ind_nonzero = pow_weight > 0
-        if not np.sum(ind_nonzero):
+        if not np.any(ind_nonzero):
             # Pointing away from the closest center -> turn around
             return outside_velocity
 
@@ -717,10 +719,10 @@ class KMeansMotionLearner:
             pow_weight = pow_weight[ind_nonzero]
             center_dirs = center_dirs[ind_nonzero, :]
 
-        breakpoint()
         # TODO: the 2nd weight should be the highest; for now it's the 3rd one (!?)
+        # breakpoint()
         weights_surf = weights_surf ** (
-            (1 - math.cos(self.convergence_radius)) / pow_weight
+            pow_weight / (1 - math.cos(self.convergence_radius))
         )
 
         if math.isclose(self.convergence_radius, math.pi):
@@ -743,17 +745,18 @@ class KMeansMotionLearner:
             #     sticky_surface=False,
             # )
 
-        if (weight_sum := np.sum(weights_surf)) > 1:
+        weight_norm_factor = 10
+        if (weight_sum := np.sum(weights_surf)) > weight_norm_factor:
             all_weights = np.hstack((weights_surf / weight_sum, 0))
         else:
-            all_weights = np.hstack((weights_surf, 1 - weight_sum))
+            all_weights = np.hstack((weights_surf, 1 - weight_sum)) / weight_norm_factor
 
         mean_direction = get_directional_weighted_sum(
             outside_velocity,
             weights=all_weights,
             directions=np.vstack((surface_velocities, outside_velocity)).T,
         )
-        breakpoint()
+        # breakpoint()
 
         return mean_direction
 
