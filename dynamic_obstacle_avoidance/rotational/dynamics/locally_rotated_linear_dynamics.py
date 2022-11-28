@@ -17,37 +17,6 @@ from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotation
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
-class ObstacleRotatedDynamics(DynamicalSystem):
-    def __init__(self, obstacle_container initial_dynamics) -> None:
-        self.obstacle_container = obstacle_container
-        self.initial_dynamics = initial_dynamics
-
-        self.center_dynamics = np.zeros((len(self.obstacle_container), self.dimension))
-
-    def dimension(self) -> int
-        return self.obstacle_container.dimension
-
-    def evaluate(self, position: Vector, update_center_dynamics: bool = True) -> Vector:
-        if update_center_dynamics:
-            for ii, obs in enumerate(self.obstacle_container):
-                self.center_dynamics[:, ii] = self.initial_dynmics.evaluate(obs.center_position)
-
-        # center_positions = np.array([obs.center_position for obs in self.obstacle_container]).T
-        # center_dists = LA.norm(np.tile(position, (len(self.obstacle_container), 1)).T - center_positions, axis=0)
-        gammas = np.array([obs.get_gamma(position, in_global_frame=True) for obs in self.obstacle_container])
-        
-        if np.any((ind_zero := gammas) <= 1):
-            weights = ind_zero / np.sum(ind_zero)
-            weight_sum = 1
-        else:
-            weights = 1 / (1-gammas)
-            if (weight_sum := np.sum(weights) => 1:
-                weights = weights / weight_sum
-                weight_sum = 1
-
-        
-        
-
 class LocallyRotatedFromObtacle(DynamicalSystem):
     """
     A dynamical system which locally modulates

@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 
 from vartools.dynamical_systems import DynamicalSystem
 from vartools.dynamical_systems import CircularStable
+from vartools.dynamical_systems import LinearSystem
+from vartools.directional_space import get_directional_weighted_sum
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
@@ -25,21 +27,36 @@ from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotation
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 from dynamic_obstacle_avoidance.visualization import plot_obstacle_dynamics
+from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 
 class ObstacleRotatedDynamics(DynamicalSystem):
+    """
+    Attributes
+    ----------
+    obstacle_container: Obstacle environment which have to be avoided
+    initial_dynamics: The dynamics to fall back to when being far way from obstacles
+    zero_dynamics: The (linear) dynamics which we compare the angle to
+    velocity_scaling: Velocity scaling of the weight
+    dotprod_factor: The factor at which the dot-product finishes.
+    """
+
     def __init__(
         self, obstacle_container: ObstacleContainer, initial_dynamics: DynamicalSystem
     ) -> None:
         self.obstacle_container = obstacle_container
         self.initial_dynamics = initial_dynamics
+        self.zero_dynamics = LinearSystem(
+            attractor_position=np.zeros(self.dimension), maximum_velocity=1.0
+        )
 
-        self.center_dynamics = np.zeros((len(self.obstacle_container), self.dimension))
+        self.center_dynamics = np.zeros((self.dimension, len(self.obstacle_container)))
 
         self.velocity_scaling = 1
         # Factor by which the dot-product gets multiplied before being applied
         self.dotprod_factor = 5
 
+    @property
     def dimension(self) -> int:
         return self.obstacle_container.dimension
 
@@ -59,22 +76,22 @@ class ObstacleRotatedDynamics(DynamicalSystem):
             weight_sum = 1
 
         else:
-            weights = 1 / (1 - gammas)
+            weights = 1 / (gammas - 1)
             if (weight_sum := np.sum(weights)) >= 1:
                 weights = weights / weight_sum
                 weight_sum = 1
 
         if update_center_dynamics:
-            center_directions = np.zeros((len(self.obstacle_container), self.dimension))
+            zero_dynamics = np.zeros((self.dimension, len(self.obstacle_container)))
             for ii, obs in enumerate(self.obstacle_container):
                 if not gammas[ii]:
                     continue
 
                 # We don't normalize before the summing, to keep the 'importance'
-                self.center_dynamics[:, ii] = self.initial_dynmics.evaluate(
+                self.center_dynamics[:, ii] = self.initial_dynamics.evaluate(
                     obs.center_position
                 )
-                center_directions[:, ii] = obs.center_position
+                zero_dynamics[:, ii] = self.zero_dynamics.evaluate(obs.center_position)
                 # center_norms = LA.norm(center_dirs, axis=0)
                 # ind_nonzero = center_norms > 0
                 # center_dirs = center_dirs / np.tile(
@@ -83,7 +100,6 @@ class ObstacleRotatedDynamics(DynamicalSystem):
 
                 # if not np.all(ind_nonzero):
                 #     # TODO: maybe evaluate weight based on magnitude of the velocity
-                #     breakpoint()
 
                 # ind_nonzero = center_norms > 0
                 # center_dirs[:, ind_nonzero] = center_dirs[:, ind_nonzero] / np.tile(
@@ -105,14 +121,13 @@ class ObstacleRotatedDynamics(DynamicalSystem):
                 # )
 
         # center_positions = np.array([obs.center_position for obs in self.obstacle_container]).T
-        # center_dists = LA.norm(np.tile(position, (len(self.obstacle_container), 1)).T - center_positions, axis=0)
+        # center_dists = LA.norm(np.tile(position, (len(self.obstacle_container), 1)).T
+        #        - center_positions, axis=0)
 
         # Get mean-basis
-        base0 = np.sum(
-            self.center_dynamics * np.tile(weights, (self.dimension, 1)), axis=1
-        )
+        base0 = np.sum(zero_dynamics * np.tile(weights, (self.dimension, 1)), axis=1)
         base1 = np.sum(
-            center_directions * np.tile(weights, (self.dimension, 1)), axis=1
+            self.center_dynamics * np.tile(weights, (self.dimension, 1)), axis=1
         )
 
         if not (base0_norm := LA.norm(base0)) or not (base1_norm := LA.norm(base1)):
@@ -123,15 +138,26 @@ class ObstacleRotatedDynamics(DynamicalSystem):
         base1 = base1 / base1_norm
 
         vector_rotation = VectorRotationXd.from_directions(base0, base1)
-        weight = max(base0_norm, base1_norm) / self.velocity_scaling
+        weight = min(base0_norm, base1_norm) / self.velocity_scaling
+        weight = min(weight, 1.0)
+
         dot_prod_weight = np.dot(base1, base1) + 1
-        dot_prod_weight = max(self.dotprod_factor * dot_prod_weight, 1)
+        dot_prod_weight = min(self.dotprod_factor * dot_prod_weight, 1.0)
         weight = weight * dot_prod_weight
 
         rotated_velocity = vector_rotation.rotate(
-            self.initial_dynamics.evaluate(position), rot_factor=weight
+            self.zero_dynamics.evaluate(position), rot_factor=weight
         )
-        return rotated_velocity
+
+        initial_velocity = self.initial_dynamics.evaluate(position)
+
+        average_velocity = get_directional_weighted_sum(
+            rotated_velocity,
+            weights=np.array([weight, (1 - weight)]),
+            directions=np.vstack((rotated_velocity, initial_velocity)).T,
+        )
+        # breakpoint()
+        return rotated_velocity  #
 
 
 def test_local_rotation(visualize=False):
@@ -145,14 +171,20 @@ def test_local_rotation(visualize=False):
     )
 
     circular_ds = CircularStable(radius=10, maximum_velocity=1)
-    # rotated_ds = ObstacleRotatedDynamics()
+
+    rotated_ds = ObstacleRotatedDynamics(
+        obstacle_container=obstacle_list,
+        initial_dynamics=circular_ds,
+    )
 
     if visualize:
         plt.close("all")
+
         fig, ax = plt.subplots(figsize=(7, 6))
         plot_obstacle_dynamics(
             obstacle_container=[],
-            dynamics=circular_ds.evaluate,
+            dynamics=rotated_ds.evaluate,
+            # dynamics=circular_ds.evaluate,
             x_lim=[-15, 15],
             y_lim=[-15, 15],
             n_grid=30,
@@ -167,15 +199,37 @@ def test_local_rotation(visualize=False):
             zorder=5,
         )
 
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=0.6,
+        )
+
+    position = np.array([10, -10])
+    velocity = rotated_ds.evaluate(position)
+    breakpoint()
+
+    position = np.array([5, 5])
+    velocity = rotated_ds.evaluate(position)
+
+    position = np.array([8.5, 7.4])
+    velocity = rotated_ds.evaluate(position)
+
+    position = np.array([-9.91, 10.86])
+    velocity = rotated_ds.evaluate(position)
+    # breakpoint()
+
+    position = np.array([1, 0])
+    velocity = rotated_ds.evaluate(position)
+    #
     # Position
     position = np.array([0, 0])
     velocity = rotated_ds.evaluate(position)
-
-    position = np.array([1, 0])
 
 
 if (__name__) == "__main__":
     figtype = ".png"
 
+    # test_local_rotation(visualize=False)
     test_local_rotation(visualize=True)
     print("Tests done")

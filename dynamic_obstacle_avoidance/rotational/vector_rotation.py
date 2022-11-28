@@ -9,8 +9,8 @@ from __future__ import annotations  # Not needed from python 3.10 onwards
 
 import copy
 import warnings
-
 import math
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -31,9 +31,9 @@ def rotate_direction(
     direction: Vector, base: VectorArray, rotation_angle: float
 ) -> Vector:
     """Returns the rotated of the input vector with respect to the base and rotation angle."""
-    # Normalize just to make sure.
     if not (dir_norm := LA.norm(direction)):
-        raise ZeroDivisionError()
+        # Zero vector can not be rotated
+        return direction
 
     direction = direction / dir_norm
 
@@ -46,7 +46,7 @@ def rotate_direction(
 
     # Finally, add the orthogonal part (no effect in 2D, but important for higher dimensions)
     out_direction += direction - np.sum(dot_prods * base, axis=1)
-    return out_direction
+    return out_direction * dir_norm
 
 
 def rotate_array(
@@ -185,7 +185,7 @@ class VectorRotationSequence:
     rotation_angles: The rotation between going from one to the next basis
     """
 
-    def __init__(self, vectors_array: np.array) -> None:
+    def __init__(self, vectors_array: np.ndarray) -> None:
         # Normalize
         self.vectors_array = vectors_array / LA.norm(vectors_array, axis=0)
 
