@@ -66,6 +66,8 @@ def _test_circle_following_rotational_avoidance(visualize=False):
             zorder=5,
         )
 
+    container = RotationContainer()
+
 
 if (__name__) == "__main__":
     figtype = ".png"

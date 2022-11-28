@@ -301,9 +301,7 @@ class PerpendicularDeviatoinOfLinearDS(DirectionalSystem):
             local_predictions[:, dd] = get_angle_space_inverse(
                 angle, null_matrix=self._null_matrices[:, :, dd, ii]
             )
-            # breakpoint()
 
-        # breakpoint()
         weights = self.get_weights(relative_position)
 
         # TODO: transfer of direction would allow for higher directions
