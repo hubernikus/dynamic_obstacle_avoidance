@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 
 from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import LinearSystem, ConstantValue
+from vartools.dynamical_systems import QuadraticAxisConvergence
 from vartools.directional_space import UnitDirection
 
 # DirectionBase
@@ -26,6 +27,9 @@ from vartools.dynamical_systems import plot_vectorfield
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
+
+from dynamic_obstacle_avoidance.visualization import plot_obstacle_dynamics
+from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     get_intersection_with_circle,
@@ -682,6 +686,81 @@ def test_single_perpendicular_ellipse(visualize=False):
     print(modulated_velocity / LA.norm(modulated_velocity))
 
 
+def _test_single_circle_nonlinear(visualize=False, save_figure=False):
+    obstacle_list = RotationContainer()
+    obstacle_list.append(
+        Ellipse(
+            center_position=np.array([-1, 0]),
+            axes_length=np.array([2.5, 2.5]),
+        )
+    )
+
+    # Arbitrary constant velocity
+    initial_dynamics = QuadraticAxisConvergence(attractor_position=np.array([1.5, 0]))
+    convergence_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
+
+    obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
+    # ConvergingDynamics=ConstantValue (initial_velocity)
+
+    main_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        convergence_system=convergence_dynamics,
+        obstacle_environment=obstacle_list,
+    )
+
+    if visualize:
+        x_lim = [-4, 3]
+        y_lim = [-3, 3]
+        n_grid = 30
+        plt.close("all")
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            dynamics=initial_dynamics.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=False,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=0.6,
+        )
+
+        if save_figure:
+            fig_name = "rotation_avoidance_circle_initial"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_list,
+            dynamics=main_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=False,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=1.0,
+        )
+
+        if save_figure:
+            fig_name = "rotation_avoidance_circle"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
+
+
 def test_double_ellipse(visualize=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
@@ -833,7 +912,7 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
 
 
 if (__name__) == "__main__":
-    figtype = ".png"
+    figtype = ".pdf"
     # figtype = ".pdf"
     # test_intersection_with_circle()
 
@@ -843,6 +922,8 @@ if (__name__) == "__main__":
     # test_single_circle_linear(visualize=True)
     # test_single_circle_linear_repulsive(visualize=True)
     # test_single_circle_linear_inverted(visualize=True)
+
+    _test_single_circle_nonlinear(visualize=True, save_figure=False)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

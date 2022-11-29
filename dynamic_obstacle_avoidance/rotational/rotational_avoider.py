@@ -52,7 +52,9 @@ class RotationalAvoider(BaseAvoider):
         tail_rotation: bool = False,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
-        super().__init__(initial_dynamics, obstacle_environment)
+        super().__init__(
+            initial_dynamics=initial_dynamics, obstacle_environment=obstacle_environment
+        )
 
         if convergence_system is None:
             self.convergence_system = self.initial_dynamics
@@ -71,7 +73,7 @@ class RotationalAvoider(BaseAvoider):
         self,
         position: np.ndarray,
         initial_velocity: np.ndarray,
-        obstacle_list: list,
+        obstacle_list: list = None,
         convergence_velocity: np.ndarray = None,
         sticky_surface: bool = True,
         convergence_radius: float = math.pi / 2,
@@ -92,6 +94,11 @@ class RotationalAvoider(BaseAvoider):
         """
         if initial_velocity is None:
             initial_velocity = self.initial_dynamics.evaluate(position)
+
+        if obstacle_list is None:
+            if self.obstacle_environment is None:
+                raise ValueError("Need environment information.")
+            obstacle_list = self.obstacle_environment
 
         norm_initial = LA.norm(initial_velocity)
 

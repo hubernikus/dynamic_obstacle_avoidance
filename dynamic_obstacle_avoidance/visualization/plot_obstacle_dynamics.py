@@ -18,6 +18,8 @@ def plot_obstacle_dynamics(
     n_grid: int = 20,
     ax=None,
     attractor_position=None,
+    do_quiver=True,
+    show_ticks=True,
 ):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -29,8 +31,10 @@ def plot_obstacle_dynamics(
     if len(obstacle_container):
         for pp in range(positions.shape[1]):
             # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
+            # print(f"gamma = {obstacle_container.get_minimum_gamma(positions[:, pp])}")
             if obstacle_container.get_minimum_gamma(positions[:, pp]) <= 1:
                 continue
+            velocities[:, pp] = dynamics(positions[:, pp])
     else:
         for pp in range(positions.shape[1]):
             velocities[:, pp] = dynamics(positions[:, pp])
@@ -40,14 +44,27 @@ def plot_obstacle_dynamics(
     else:
         fig = None
 
-    ax.quiver(
-        positions[0, :],
-        positions[1, :],
-        velocities[0, :],
-        velocities[1, :],
-        # color="red",
-        scale=50,
-    )
+    if do_quiver:
+        ax.quiver(
+            positions[0, :],
+            positions[1, :],
+            velocities[0, :],
+            velocities[1, :],
+            color="blue",
+            # color="red",
+            scale=50,
+        )
+    else:
+        ax.streamplot(
+            positions[0, :].reshape(n_grid, n_grid),
+            positions[1, :].reshape(n_grid, n_grid),
+            velocities[0, :].reshape(n_grid, n_grid),
+            velocities[1, :].reshape(n_grid, n_grid),
+            color="blue",
+            # color="red",
+            # scale=50,
+            zorder=-1,
+        )
     if attractor_position is not None:
         ax.scatter(
             attractor_position[0],
@@ -58,5 +75,14 @@ def plot_obstacle_dynamics(
             zorder=5,
         )
     ax.axis("equal")
+
+    if not show_ticks:
+        ax.tick_params(
+            which="both",
+            bottom=False,
+            top=False,
+            labelbottom=False,
+            labelleft=False,
+        )
 
     return (fig, ax)
