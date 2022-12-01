@@ -52,7 +52,7 @@ def plot_obstacle_dynamics(
             velocities[1, :],
             color="blue",
             # color="red",
-            scale=50,
+            scale=30,
         )
     else:
         ax.streamplot(
@@ -81,6 +81,8 @@ def plot_obstacle_dynamics(
             which="both",
             bottom=False,
             top=False,
+            left=False,
+            right=False,
             labelbottom=False,
             labelleft=False,
         )

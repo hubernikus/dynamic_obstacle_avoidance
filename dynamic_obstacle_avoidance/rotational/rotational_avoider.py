@@ -37,6 +37,10 @@ from dynamic_obstacle_avoidance.avoidance import BaseAvoider
 class RotationalAvoider(BaseAvoider):
     """
     RotationalAvoider -> Obstacle Avoidance based on local avoider.
+
+    Attributes
+    ----------
+
     """
 
     # TODO:
@@ -50,6 +54,7 @@ class RotationalAvoider(BaseAvoider):
         convergence_system: DynamicalSystem = None,
         cut_off_gamma: float = 1e6,
         tail_rotation: bool = False,
+        convergence_radius: float = math.pi / 2.0,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
         super().__init__(
@@ -68,15 +73,16 @@ class RotationalAvoider(BaseAvoider):
         self.smooth_continuation_power = 0.3
 
         self.tail_rotation = tail_rotation
+        self.convergence_radius = convergence_radius
 
     def avoid(
         self,
         position: np.ndarray,
-        initial_velocity: np.ndarray,
+        initial_velocity: np.ndarray = None,
         obstacle_list: list = None,
         convergence_velocity: np.ndarray = None,
         sticky_surface: bool = True,
-        convergence_radius: float = math.pi / 2,
+        convergence_radius: float = None,
     ) -> np.ndarray:
         """Obstacle avoidance based on 'local' rotation and the directional weighted mean.
 
@@ -94,6 +100,9 @@ class RotationalAvoider(BaseAvoider):
         """
         if initial_velocity is None:
             initial_velocity = self.initial_dynamics.evaluate(position)
+
+        if convergence_radius is None:
+            convergence_radius = self.convergence_radius
 
         if obstacle_list is None:
             if self.obstacle_environment is None:

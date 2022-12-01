@@ -491,7 +491,7 @@ def test_single_circle_linear(visualize=False):
     ), " Rotation in the wrong direction to avoid the circle."
 
 
-def test_single_circle_linear_repulsive(visualize=False):
+def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
@@ -501,16 +501,108 @@ def test_single_circle_linear_repulsive(visualize=False):
     )
 
     # Arbitrary constant velocity
-    initial_dynamics = LinearSystem(attractor_position=np.array([1.5, 0]))
+    initial_dynamics = LinearSystem(attractor_position=np.array([2.5, 0]))
     obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
     # ConvergingDynamics=ConstantValue (initial_velocity)
+    main_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+        convergence_radius=math.pi,
+    )
 
-    main_avoider = partial(RotationalAvoider().avoid, convergence_radius=math.pi)
+    # main_avoider = partial(RotationalAvoider().avoid, convergence_radius=math.pi)
+
+    if visualize:
+        # Arbitrary constant velocity
+        tmp_dynamics = LinearSystem(attractor_position=np.array([2.5, 0]))
+        obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
+        # ConvergingDynamics=ConstantValue (initial_velocity)
+        tmp_avoider = RotationalAvoider(
+            initial_dynamics=initial_dynamics,
+            obstacle_environment=obstacle_list,
+            convergence_radius=math.pi,
+        )
+        x_lim = [-3, 3]
+        y_lim = [-3, 3]
+        n_grid = 20
+
+        plt.close("all")
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_list,
+            dynamics=tmp_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=True,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=0.9,
+        )
+
+        if save_figure:
+            fig_name = "circular_repulsion_pi"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
+
+        tmp_avoider.convergence_radius = math.pi * 3.0 / 4.0
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_list,
+            dynamics=tmp_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=True,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=0.9,
+        )
+
+        if save_figure:
+            fig_name = "circular_repulsion_pi_3_4"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
+
+        tmp_avoider.convergence_radius = math.pi * 1.0 / 2.0
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_list,
+            dynamics=tmp_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=True,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=obstacle_list,
+            ax=ax,
+            alpha_obstacle=0.9,
+        )
+
+        if save_figure:
+            fig_name = "circular_repulsion_pi_1_2"
+            fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
 
     # Test that goes below in front
     position = np.array([-1, -1])
     initial_velocity = initial_dynamics.evaluate(position)
-    modulated_velocity = main_avoider(
+    modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
@@ -520,7 +612,7 @@ def test_single_circle_linear_repulsive(visualize=False):
     # Test that goes below in front
     position = np.array([-1, 1])
     initial_velocity = initial_dynamics.evaluate(position)
-    modulated_velocity = main_avoider(
+    modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
@@ -530,7 +622,7 @@ def test_single_circle_linear_repulsive(visualize=False):
     # Pointing away on surface
     position = np.array([1, 1]) * 1.0 / math.sqrt(2)
     initial_velocity = initial_dynamics.evaluate(position)
-    modulated_velocity = main_avoider(
+    modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
@@ -542,7 +634,7 @@ def test_single_circle_linear_repulsive(visualize=False):
     # Pointing away on surface
     position = np.array([1, -1]) * 1.0 / math.sqrt(2)
     initial_velocity = initial_dynamics.evaluate(position)
-    modulated_velocity = main_avoider(
+    modulated_velocity = main_avoider.avoid(
         position=position,
         initial_velocity=initial_velocity,
         obstacle_list=obstacle_list,
@@ -551,25 +643,6 @@ def test_single_circle_linear_repulsive(visualize=False):
     assert np.allclose(
         modulated_velocity / LA.norm(modulated_velocity), position / LA.norm(position)
     ), "Modulated velocity is expected to point away from the obstacle."
-
-    if visualize:
-        # Plot Normals
-        Simulation_vectorFields(
-            x_lim=[-2, 2],
-            y_lim=[-2, 2],
-            n_resolution=20,
-            obstacle_list=obstacle_list,
-            noTicks=False,
-            showLabel=False,
-            draw_vectorField=True,
-            dynamical_system=initial_dynamics.evaluate,
-            obs_avoidance_func=main_avoider,
-            automatic_reference_point=False,
-            pos_attractor=initial_dynamics.attractor_position,
-            # Quiver or stream plot
-            show_streamplot=False,
-            # show_streamplot=False,
-        )
 
 
 def test_single_circle_linear_inverted(visualize=False):
@@ -920,10 +993,10 @@ if (__name__) == "__main__":
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
-    # test_single_circle_linear_repulsive(visualize=True)
     # test_single_circle_linear_inverted(visualize=True)
 
-    _test_single_circle_nonlinear(visualize=True, save_figure=False)
+    # _test_single_circle_nonlinear(visualize=True, save_figure=True)
+    test_single_circle_linear_repulsive(visualize=True, save_figure=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()
