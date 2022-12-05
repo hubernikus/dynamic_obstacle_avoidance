@@ -17,7 +17,7 @@ from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotation
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
-class WavyLinearDynmics(DynamicalSystem):
+class WavyLinearDynamics(DynamicalSystem):
     def __init__(
         self,
         attractor_position: Vector,
@@ -52,7 +52,7 @@ class WavyLinearDynmics(DynamicalSystem):
 
 def test_wavy_dynamics(visualize=False):
     attractor_position = np.array([1, -1])
-    dynamics = WavyLinearDynmics(
+    dynamics = WavyLinearDynamics(
         attractor_position=attractor_position,
         # maximum_deviation=0,
     )

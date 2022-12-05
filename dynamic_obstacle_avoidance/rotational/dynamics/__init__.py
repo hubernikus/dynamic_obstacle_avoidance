@@ -12,6 +12,8 @@ from .nonlinear_deviation import PerpendicularDeviatoinOfLinearDS
 
 from .locally_rotated_linear_dynamics import LocallyRotatedFromObtacle
 
+from .wavy_attractor_dynamics import WavyLinearDynamics
+
 __all__ = [
     "DirectionalSystem",
     "ConstantRegressor",
@@ -20,4 +22,5 @@ __all__ = [
     "DeviationOfLinearDS",
     "PerpendicularDeviatoinOfLinearDS",
     "LocallyRotatedFromObtacle",
+    "WavyLinearDynamics",
 ]
