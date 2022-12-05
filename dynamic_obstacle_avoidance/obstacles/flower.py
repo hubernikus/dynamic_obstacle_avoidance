@@ -110,7 +110,7 @@ class StarshapedFlower(Obstacle):
             )
 
         x_obs = radius_angle * direction
-        x_obs_sf = radius_angle * self.sf * direction
+        x_obs_sf = (radius_angle + self.margin_absolut) * direction
 
         if self.orientation:  # nonzero
             for jj in range(x_obs.shape[1]):
