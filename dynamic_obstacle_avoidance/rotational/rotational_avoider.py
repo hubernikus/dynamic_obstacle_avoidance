@@ -75,6 +75,11 @@ class RotationalAvoider(BaseAvoider):
         self.tail_rotation = tail_rotation
         self.convergence_radius = convergence_radius
 
+    @property
+    def convergence_dynamics(self):
+        # Compatibility
+        return self.convergence_system
+
     def avoid(
         self,
         position: np.ndarray,
@@ -210,9 +215,12 @@ class RotationalAvoider(BaseAvoider):
             # Convergence direcctions can be local for certain obstacles
             # / convergence environments
             if convergence_velocity is None:
-                convergence_velocity = obstacle_list.get_convergence_direction(
-                    position=position, it_obs=it_obs
-                )
+                if self.convergence_dynamics is None:
+                    convergence_velocity = obstacle_list.get_convergence_direction(
+                        position=position, it_obs=it_obs
+                    )
+                else:
+                    convergence_velocity = self.convergence_dynamics.evaluate(position)
 
             if not (conv_vel_norm := LA.norm(convergence_velocity)):
                 # Zero value

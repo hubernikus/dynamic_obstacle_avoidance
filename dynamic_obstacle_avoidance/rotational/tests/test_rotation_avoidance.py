@@ -514,7 +514,8 @@ def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
 
     if visualize:
         # Arbitrary constant velocity
-        tmp_dynamics = LinearSystem(attractor_position=np.array([2.5, 0]))
+        tmp_dynamics = LinearSystem(attractor_position=np.array([2.0, 0]))
+        tmp_dynamics.distance_decrease = 0.1
         obstacle_list.set_convergence_directions(converging_dynamics=initial_dynamics)
         # ConvergingDynamics=ConstantValue (initial_velocity)
         tmp_avoider = RotationalAvoider(
@@ -522,9 +523,10 @@ def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
             obstacle_environment=obstacle_list,
             convergence_radius=math.pi,
         )
-        x_lim = [-3, 3]
-        y_lim = [-3, 3]
-        n_grid = 20
+        x_lim = [-2, 3]
+        y_lim = [-2.2, 2.2]
+        n_grid = 13
+        alpha_obstacle = 1.0
 
         plt.close("all")
 
@@ -544,7 +546,7 @@ def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
         plot_obstacles(
             obstacle_container=obstacle_list,
             ax=ax,
-            alpha_obstacle=0.9,
+            alpha_obstacle=alpha_obstacle,
         )
 
         if save_figure:
@@ -568,7 +570,7 @@ def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
         plot_obstacles(
             obstacle_container=obstacle_list,
             ax=ax,
-            alpha_obstacle=0.9,
+            alpha_obstacle=alpha_obstacle,
         )
 
         if save_figure:
@@ -592,7 +594,7 @@ def test_single_circle_linear_repulsive(visualize=False, save_figure=False):
         plot_obstacles(
             obstacle_container=obstacle_list,
             ax=ax,
-            alpha_obstacle=0.9,
+            alpha_obstacle=alpha_obstacle,
         )
 
         if save_figure:
@@ -928,10 +930,9 @@ def test_stable_linear_avoidance(visualize=False):
 
 
 def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
-    rotation
-    _container = RotationContainer()
+    rotation_container = RotationContainer()
     rotation_container.append(
-        Cuboid(
+        Ellipse(
             center_position=np.array([1, -2]),
             axes_length=np.array([4, 2]),
             orientation=30 / 90.0 * math.pi,
@@ -947,9 +948,9 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
     )
 
     rotation_container.append(
-        Ellipse(
+        Cuboid(
             center_position=np.array([0, 0]),
-            axes_length=np.array([10, 10]),
+            axes_length=np.array([10, 9]),
             is_boundary=True,
         )
     )
@@ -986,17 +987,18 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
 
 if (__name__) == "__main__":
     figtype = ".pdf"
-    # figtype = ".pdf"
+    # figtype = ".png"
+
     # test_intersection_with_circle()
 
     # test_convergence_tangent(visualize=True)
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
-    # test_single_circle_linear_inverted(visualize=True)
+    test_single_circle_linear_inverted(visualize=True)
 
     # _test_single_circle_nonlinear(visualize=True, save_figure=True)
-    test_single_circle_linear_repulsive(visualize=True, save_figure=True)
+    # test_single_circle_linear_repulsive(visualize=True, save_figure=True)
 
     # test_rotated_convergence_direction_circle()
     # test_rotated_convergence_direction_ellipse()

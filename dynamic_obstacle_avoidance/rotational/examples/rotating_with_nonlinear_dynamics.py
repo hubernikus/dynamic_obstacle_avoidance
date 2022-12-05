@@ -61,3 +61,7 @@ def single_ellipse_nonlinear(n_resolution=10, save_figure=False):
 
     if save_figure:
         my_plotter.save(figure_name + "_rotated")
+
+
+if (__name__) == "__main__":
+    single_ellipse_nonlinear()

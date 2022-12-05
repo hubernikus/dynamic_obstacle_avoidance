@@ -155,7 +155,6 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
 
 
 def test_ellipse_ds(visualize=False):
-    # import matplotlib.pyplot as plt
     import math
 
     # fig, ax = plt.subplots()
@@ -207,6 +206,7 @@ def test_ellipse_ds(visualize=False):
     # assert np.allclose(center_ds, reference_velocity)
 
     if visualize:
+        import matplotlib.pyplot as plt
         from vartools.dynamical_systems import plot_dynamical_system_quiver
 
         _, ax = plot_dynamical_system_quiver(

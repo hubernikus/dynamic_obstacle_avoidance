@@ -24,7 +24,9 @@ from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
 )
 
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
-from dynamic_obstacle_avoidance.rotational.rotation import obstacle_avoidance_rotational
+from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+    obstacle_avoidance_rotational,
+)
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
 
 from dynamic_obstacle_avoidance.visualization import (
@@ -749,26 +751,21 @@ def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
     x_lim = [-10, 10]
     y_lim = [-10, 10]
 
-    pos_attractor = np.array([0, -6])
-
-    def initial_ds(position):
-        return evaluate_linear_dynamical_system(position, center_position=pos_attractor)
-
-    def obs_avoidance(*args, **kwargs):
-        def get_convergence_direction(position):
-            return evaluate_linear_dynamical_system(
-                position, center_position=pos_attractor
-            )
-
-        return obstacle_avoidance_rotational(
-            *args, **kwargs, get_convergence_direction=get_convergence_direction
-        )
+    initial_dynamics = LinearSystem(attractor_position=np.array([0, -6]))
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 6))
     # fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     # axs = [None, None, ax]
 
     obstacle_list = starshape_hull()
+
+    # obstacle_avoidance = obstacle_avoidance_rotational()
+    obstacle_avoider = RotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        obstacle_environment=obstacle_list,
+        convergence_system=initial_dynamics,
+    )
+
     Simulation_vectorFields(
         x_lim,
         y_lim,
@@ -778,10 +775,11 @@ def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
         noTicks=True,
         showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
-        obs_avoidance_func=obs_avoidance,
+        # dynamical_system=initial_ds,
+        dynamical_system=initial_dynamics.evaluate,
+        obs_avoidance_func=obstacle_avoider.avoid,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=initial_dynamics.attractor_position,
         fig_and_ax_handle=(fig, axs[2]),
         # Quiver or Streamplot
         show_streamplot=True,
@@ -799,9 +797,10 @@ def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
         noTicks=True,
         showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        # dynamical_system=initial_ds,
+        dynamical_system=initial_dynamics.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=initial_dynamics.attractor_position,
         fig_and_ax_handle=(fig, axs[1]),
     )
 
@@ -815,9 +814,10 @@ def starshape_hull_linear_triple_plot(save_figure=False, n_resolution=20):
         noTicks=True,
         showLabel=False,
         draw_vectorField=True,
-        dynamical_system=initial_ds,
+        # dynamical_system=initial_ds,
+        dynamical_system=initial_dynamics.evaluate,
         automatic_reference_point=False,
-        pos_attractor=pos_attractor,
+        pos_attractor=initial_dynamics.attractor_position,
         fig_and_ax_handle=(fig, axs[0]),
     )
 
@@ -996,7 +996,7 @@ if (__name__) == "__main__":
     plt.ion()
 
     # single_ellipse_linear_triple_plot_quiver(save_figure=True, n_resolution=15)
-    single_ellipse_linear_triple_integration_lines(save_figure=False)
+    # single_ellipse_linear_triple_integration_lines(save_figure=False)
     # single_ellipse_nonlinear_triple_plot(save_figure=True, n_resolution=40)
 
     # single_ellipse_linear_triple_plot(save_figure=True, n_resolution=15)
@@ -1010,7 +1010,7 @@ if (__name__) == "__main__":
     # single_ellipse_multiattractor_analysis(save_figure=False, n_resolution=100)
     # single_ellipse_hull_linear_triple_plot(save_figure=True, n_resolution=100)
     # single_ellipse_hull_nonlinear_triple_plot(save_figure=True, n_resolution=100)
-    # starshape_hull_linear_triple_plot(save_figure=True, n_resolution=100)
+    # starshape_hull_linear_triple_plot(save_figure=False, n_resolution=100)
 
     # starshape_linear_triple_plot(save_figure=False, n_resolution=100)
     # starshape_hull_linear_triple_plot(save_figure=False, n_resolution=100)
