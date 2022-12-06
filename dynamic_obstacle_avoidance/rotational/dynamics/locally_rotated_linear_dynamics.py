@@ -9,6 +9,7 @@ from numpy import linalg as LA
 import warnings
 
 from vartools.dynamical_systems import DynamicalSystem
+from vartools.linalg import get_orthogonal_basis
 
 # from vartools.linalg import get_orthogonal_basis
 # from vartools.directional_space import get_angle_space
@@ -18,50 +19,6 @@ from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
-
-
-def plot_obstacle_of_dynamics(dynamical_system: LocallyRotatedFromObtacle, ax):
-    """2D plotting"""
-        boundary_points = np.array(dynamical_system.obstacle.get_boundary_xy())
-        ax.plot(
-            boundary_points[0, :],
-            boundary_points[1, :],
-            color="black",
-            linestyle="--",
-            zorder=3,
-            linewidth=2,
-        )
-
-        global_ref = dynamical_system.obstacle.get_reference_point(in_global_frame=True)
-        ax.plot(
-            global_ref[0],
-            global_ref[1],
-            "k+",
-            linewidth=12,
-            markeredgewidth=2.4,
-            markersize=8,
-            zorder=3,
-        )
-
-        ax.plot(
-            dynamical_system.obstacle.center_position[0],
-            dynamical_system.obstacle.center_position[1],
-            "ko",
-            linewidth=12,
-            markeredgewidth=2.4,
-            markersize=8,
-            zorder=3,
-        )
-
-        ax.plot(
-            dynamical_system.attractor_position[0],
-            dynamical_system.attractor_position[1],
-            "k*",
-            linewidth=12,
-            markeredgewidth=1.2,
-            markersize=15,
-            zorder=3,
-        )
 
 
 class LocallyRotatedFromObtacle(DynamicalSystem):
@@ -121,29 +78,122 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         gamma = self.obstacle.get_gamma(position, in_global_frame=True)
         if gamma >= self.max_gamma:
             return self.gamma_max
-            
+
         elif gamma >= self.min_gamma:
             # Weight is additionally based on dot-product
             attractor_dir = self.attractor_position - position
-            if (dist_attractor := LA.norm(attractor_dir)):
+            if dist_attractor := LA.norm(attractor_dir):
                 attractor_dir = attractor_dir / dist_attractor
                 dot_product = np.dot(attractor_dir, self.rotation.base0)
-                gamma = gamma ** (2 / (dot_product + 1 ))
+                gamma = gamma ** (2 / (dot_product + 1))
 
                 if dist_obs := LA.norm(self.obstacle.center_position):
-                    dist_stretching = LA.norm(position) / LA.norm(self.obstacle.center_position)
-                    gamma = gamma ** dist_stretching
+                    dist_stretching = LA.norm(position) / LA.norm(
+                        self.obstacle.center_position
+                    )
+                    gamma = gamma**dist_stretching
                 else:
                     gamma = self.gamma_max
-                    
+
             else:
                 gamma = self.gamma_max
-        
+
+    def _get_position_after_shrinking_obstacle(
+        self, relative_position: Vector
+    ) -> Vector:
+        """Returns position in the environment where the obstacle is shrunk."""
+        radius = self.obstacle.get_local_radius(
+            relative_position, in_global_frame=False
+        )
+        pos_norm = LA.norm(relative_position)
+
+        if pos_norm < radius:
+            return np.zeros_like(relative_position)
+
+        return ((pos_norm - radius) / pos_norm) * relative_position
+
+    def _get_position_after_inflating_obstacle(
+        self, relative_position: Vector
+    ) -> Vector:
+        """Returns position in the environment where the obstacle is shrunk."""
+        radius = self.obstacle.get_local_radius(
+            relative_position, in_global_frame=False
+        )
+
+        if not (pos_norm := LA.norm(relative_position)):
+            # Needs a tiny value
+            relative_position[0] = 1e6
+            pos_norm = relative_position[0]
+
+        return ((pos_norm + radius) / pos_norm) * relative_position
+
+    def _get_unfoled_opposite_kernel_point(
+        self, relative_position: Vector, relative_attractor: Vector, basis: np.ndarray
+    ) -> Vector:
+        """Returns the relative_position with respect to the relative center"""
+
+        if not (attr_norm := LA.norm(relative_attractor)):
+            raise NotImplementedError("Implement for position at center.")
+
+        transformed_position = np.zeros_like(relative_position)
+
+        # Stretch x-values along x-axis in order to have a x-weight at the attractor
+        if dist_attractor_to_position := LA.norm(
+            relative_position - relative_attractor
+        ):
+            relative_position[0] = math.log(dist_attractor_to_position / attr_norm)
+
+        else:
+            transformed_position[0] = (-1) * sys.float_info.max
+
+        # 'Unfold' the circular plane into an infinite yy-plane
+        relative_position[1:] = (basis.T @ (relative_position - relative_attractor))[1:]
+        dot_prod = np.dot(relative_position, relative_attractor)
+
+        if dot_prod == -1:
+            relative_position[1:] = relative_position[1:] * sys.float_info.max
+        else:
+            relative_position[1:] = (
+                relative_position[1:]
+                / LA.norm(relative_position[1:])
+                * (2 / (1 + dot_prod) - 1)
+            )
+
+        return relative_position
 
     def get_projected_point(self, position: Vector) -> Vector:
-        """ Projected point in 'linearized' environment"""
+        """Projected point in 'linearized' environment
 
-        
+        Assumption of the point being outside of the obstacle."""
+
+        # Do the evaluation in local frame
+        relative_position = self.obstacle.transform_position_to_relative(position)
+        relative_attractor = self.obstacle.transform_position_to_relative(
+            self.attractor_position
+        )
+
+        if not (pos_norm := LA.norm(relative_position)):
+            raise NotImplementedError()
+
+        basis = get_orthogonal_basis(relative_position / pos_norm)
+
+        # Shrunk position
+        relative_position = self._get_position_after_shrinking_obstacle(
+            relative_position
+        )
+        relative_attractor = self._get_position_after_shrinking_obstacle(
+            relative_attractor
+        )
+
+        relative_position = self._get_unfoled_opposite_kernel_point(
+            relative_position, relative_attractor, basis
+        )
+
+        relative_position = self._get_position_after_inflating_obstacle(
+            relative_position
+        )
+
+        return relative_position
 
     def evaluate(self, position: Vector) -> Vector:
         # Weight is based on gamma
@@ -186,6 +236,50 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         velocity = final_dir * min(dist_attractor, self.maximum_velocity)
 
         return velocity
+
+
+def plot_obstacle_of_dynamics(dynamical_system: LocallyRotatedFromObtacle, ax):
+    """2D plotting"""
+    boundary_points = np.array(dynamical_system.obstacle.get_boundary_xy())
+    ax.plot(
+        boundary_points[0, :],
+        boundary_points[1, :],
+        color="black",
+        linestyle="--",
+        zorder=3,
+        linewidth=2,
+    )
+
+    global_ref = dynamical_system.obstacle.get_reference_point(in_global_frame=True)
+    ax.plot(
+        global_ref[0],
+        global_ref[1],
+        "k+",
+        linewidth=12,
+        markeredgewidth=2.4,
+        markersize=8,
+        zorder=3,
+    )
+
+    ax.plot(
+        dynamical_system.obstacle.center_position[0],
+        dynamical_system.obstacle.center_position[1],
+        "ko",
+        linewidth=12,
+        markeredgewidth=2.4,
+        markersize=8,
+        zorder=3,
+    )
+
+    ax.plot(
+        dynamical_system.attractor_position[0],
+        dynamical_system.attractor_position[1],
+        "k*",
+        linewidth=12,
+        markeredgewidth=1.2,
+        markersize=15,
+        zorder=3,
+    )
 
 
 def test_ellipse_ds(visualize=False):
@@ -248,6 +342,10 @@ def test_ellipse_ds(visualize=False):
         )
 
         plot_obstacle_of_dynamics(local_ds, ax=ax)
+
+
+def test_transformation(visualize=False):
+    pass
 
 
 if (__name__) == "__main__":
