@@ -2,7 +2,9 @@
 Class to Deviate a DS based on an underlying obtacle.
 """
 
-from enum import Enum
+import math
+
+# from enum import Enum
 
 import numpy as np
 from numpy import linalg as LA
@@ -128,7 +130,7 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         return ((pos_norm + radius) / pos_norm) * relative_position
 
     def _get_unfoled_opposite_kernel_point(
-        self, relative_position: Vector, relative_attractor: Vector, basis: np.ndarray
+        self, relative_position: Vector, relative_attractor: Vector
     ) -> Vector:
         """Returns the relative_position with respect to the relative center"""
 
@@ -147,13 +149,15 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
             transformed_position[0] = (-1) * sys.float_info.max
 
         # 'Unfold' the circular plane into an infinite yy-plane
-        relative_position[1:] = (basis.T @ (relative_position - relative_attractor))[1:]
+        # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
+
+        # relative_position[1:] = (basis.T @ (relative_position - relative_attractor))[1:]
         dot_prod = np.dot(relative_position, relative_attractor)
 
         if dot_prod == -1:
-            relative_position[1:] = relative_position[1:] * sys.float_info.max
+            transformed_position[1:] = relative_position[1:] * sys.float_info.max
         else:
-            relative_position[1:] = (
+            transformed_position[1:] = (
                 relative_position[1:]
                 / LA.norm(relative_position[1:])
                 * (2 / (1 + dot_prod) - 1)
@@ -175,8 +179,6 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         if not (pos_norm := LA.norm(relative_position)):
             raise NotImplementedError()
 
-        basis = get_orthogonal_basis(relative_position / pos_norm)
-
         # Shrunk position
         relative_position = self._get_position_after_shrinking_obstacle(
             relative_position
@@ -186,7 +188,7 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         )
 
         relative_position = self._get_unfoled_opposite_kernel_point(
-            relative_position, relative_attractor, basis
+            relative_position, relative_attractor
         )
 
         relative_position = self._get_position_after_inflating_obstacle(
