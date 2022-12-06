@@ -1,6 +1,9 @@
 """
 Class to Deviate a DS based on an underlying obtacle.
 """
+
+from enum import Enum
+
 import numpy as np
 from numpy import linalg as LA
 import warnings
@@ -15,6 +18,50 @@ from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
+
+
+def plot_obstacle_of_dynamics(dynamical_system: LocallyRotatedFromObtacle, ax):
+    """2D plotting"""
+        boundary_points = np.array(dynamical_system.obstacle.get_boundary_xy())
+        ax.plot(
+            boundary_points[0, :],
+            boundary_points[1, :],
+            color="black",
+            linestyle="--",
+            zorder=3,
+            linewidth=2,
+        )
+
+        global_ref = dynamical_system.obstacle.get_reference_point(in_global_frame=True)
+        ax.plot(
+            global_ref[0],
+            global_ref[1],
+            "k+",
+            linewidth=12,
+            markeredgewidth=2.4,
+            markersize=8,
+            zorder=3,
+        )
+
+        ax.plot(
+            dynamical_system.obstacle.center_position[0],
+            dynamical_system.obstacle.center_position[1],
+            "ko",
+            linewidth=12,
+            markeredgewidth=2.4,
+            markersize=8,
+            zorder=3,
+        )
+
+        ax.plot(
+            dynamical_system.attractor_position[0],
+            dynamical_system.attractor_position[1],
+            "k*",
+            linewidth=12,
+            markeredgewidth=1.2,
+            markersize=15,
+            zorder=3,
+        )
 
 
 class LocallyRotatedFromObtacle(DynamicalSystem):
@@ -69,52 +116,39 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         # self.base = get_orthogonal_basis()
         # self.deviation = get_angle_space(reference_velocity, null_matrix=self.base)
 
-    def plot_obstacle(self, ax) -> None:
-        boundary_points = np.array(self.obstacle.get_boundary_xy())
-        ax.plot(
-            boundary_points[0, :],
-            boundary_points[1, :],
-            color="black",
-            linestyle="--",
-            zorder=3,
-            linewidth=2,
-        )
+    def get_projectd_gamma(self, position: Vector) -> float:
+        # Get gamma
+        gamma = self.obstacle.get_gamma(position, in_global_frame=True)
+        if gamma >= self.max_gamma:
+            return self.gamma_max
+            
+        elif gamma >= self.min_gamma:
+            # Weight is additionally based on dot-product
+            attractor_dir = self.attractor_position - position
+            if (dist_attractor := LA.norm(attractor_dir)):
+                attractor_dir = attractor_dir / dist_attractor
+                dot_product = np.dot(attractor_dir, self.rotation.base0)
+                gamma = gamma ** (2 / (dot_product + 1 ))
 
-        global_ref = self.obstacle.get_reference_point(in_global_frame=True)
-        ax.plot(
-            global_ref[0],
-            global_ref[1],
-            "k+",
-            linewidth=12,
-            markeredgewidth=2.4,
-            markersize=8,
-            zorder=3,
-        )
+                if dist_obs := LA.norm(self.obstacle.center_position):
+                    dist_stretching = LA.norm(position) / LA.norm(self.obstacle.center_position)
+                    gamma = gamma ** dist_stretching
+                else:
+                    gamma = self.gamma_max
+                    
+            else:
+                gamma = self.gamma_max
+        
 
-        ax.plot(
-            self.obstacle.center_position[0],
-            self.obstacle.center_position[1],
-            "ko",
-            linewidth=12,
-            markeredgewidth=2.4,
-            markersize=8,
-            zorder=3,
-        )
+    def get_projected_point(self, position: Vector) -> Vector:
+        """ Projected point in 'linearized' environment"""
 
-        ax.plot(
-            self.attractor_position[0],
-            self.attractor_position[1],
-            "k*",
-            linewidth=12,
-            markeredgewidth=1.2,
-            markersize=15,
-            zorder=3,
-        )
+        
 
-    def evaluate(self, position: np.ndarray) -> np.ndarray:
+    def evaluate(self, position: Vector) -> Vector:
         # Weight is based on gamma
         gamma = self.obstacle.get_gamma(position, in_global_frame=True)
-        if gamma < self.min_gamma:
+        if gamma <= self.min_gamma:
             weight = 1
         elif gamma > self.max_gamma:
             weight = 0
@@ -213,7 +247,7 @@ def test_ellipse_ds(visualize=False):
             dynamical_system=local_ds, x_lim=[-10, 10], y_lim=[-9, 9], axes_equal=True
         )
 
-        local_ds.plot_obstacle(ax=ax)
+        plot_obstacle_of_dynamics(local_ds, ax=ax)
 
 
 if (__name__) == "__main__":

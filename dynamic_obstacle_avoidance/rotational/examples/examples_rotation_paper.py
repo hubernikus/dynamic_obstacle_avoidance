@@ -424,6 +424,6 @@ if (__name__) == "__main__":
     # inverted_star_obstacle_avoidance(visualize=True, save_figure=True)
     # visualization_inverted_ellipsoid(visualize=True, save_figure=True)
     # quiver_single_circle_linear_repulsive(visualize=True, save_figure=False)
-    integration_smoothness_around_ellipse(visualize=True, save_figure=True)
+    # integration_smoothness_around_ellipse(visualize=True, save_figure=True)
 
     print("--- done ---")
