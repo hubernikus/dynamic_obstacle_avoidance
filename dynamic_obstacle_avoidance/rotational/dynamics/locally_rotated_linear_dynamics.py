@@ -346,9 +346,5 @@ def test_ellipse_ds(visualize=False):
         plot_obstacle_of_dynamics(local_ds, ax=ax)
 
 
-def test_transformation(visualize=False):
-    pass
-
-
 if (__name__) == "__main__":
     test_ellipse_ds(visualize=True)

@@ -185,13 +185,17 @@ class EllipseWithAxes(obstacles.Obstacle):
         if in_global_frame is not None:
             in_relative_frame = not (in_global_frame)
 
+        if not in_relative_frame:
+            in_relative_frame = True
+            position = self.pose.transform_position_to_relative(position)
+
         surface_point = self.get_point_on_surface(
             position=position,
             in_obstacle_frame=in_relative_frame,
             margin_absolut=margin_absolut,
         )
 
-        return LA.norm(surface_point - self.center_position)
+        return LA.norm(surface_point)
 
     def get_normal_direction(
         self,
