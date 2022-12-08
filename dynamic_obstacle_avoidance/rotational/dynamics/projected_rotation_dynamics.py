@@ -135,41 +135,45 @@ class ProjectedRotationDynamics(DynamicalSystem):
     ) -> Vector:
         """Returns the relative position folded with respect to the dynamics center."""
 
-        if not (attr_norm := LA.norm(relative_attractor)):
-            raise NotImplementedError("Implement for position at center.")
-
-        transformed_position = np.zeros_like(relative_position)
+        # Copy just in case - but probably no needed
         relative_position = np.copy(relative_position)
 
+        # 'Unfold' the circular plane into an infinite yy-plane
+        # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
+        if not (dist_attr_obs := LA.norm(relative_attractor)):
+            raise NotImplementedError("Implement for position at center.")
+        dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
+
+        basis = get_orthogonal_basis(dir_attractor_to_obstacle)
+        # transformed_position = np.zeros_like(relative_position)
+        # transformed_position[1:] = basis[:, 1:].T @ relative_position
+        transformed_position = basis.T @ relative_position
+
         # Stretch x-values along x-axis in order to have a x-weight at the attractor
-        if dist_attractor_to_position := LA.norm(
-            relative_position - relative_attractor
-        ):
-            relative_position[0] = math.log(dist_attractor_to_position / attr_norm)
+        vec_attractor_to_position = relative_position - relative_attractor
+        if dist_attr_pos := LA.norm(vec_attractor_to_position):
+            transformed_position[0] = dist_attr_obs * math.log(
+                dist_attr_pos / dist_attr_obs
+            )
 
         else:
             transformed_position[0] = (-1) * sys.float_info.max
 
-        # 'Unfold' the circular plane into an infinite yy-plane
-        basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
-        relative_position[1:] = basis[:, 1:].T @ (
-            relative_position - relative_attractor
-        )
-
-        dot_prod = np.dot(relative_position, relative_attractor)
+        vec_attractor_to_position = vec_attractor_to_position / dist_attr_pos
+        dot_prod = np.dot(vec_attractor_to_position, dir_attractor_to_obstacle)
 
         if dot_prod <= -1:
-            # Put it very far away
-            relative_position[1] = sys.float_info.max
+            # Put it very far awa
+            transformed_position[1] = sys.float_info.max
+
         elif dot_prod < 1:
-            # Put it very far away
-            relative_position[1:] = (
+            transformed_position[1:] = (
                 relative_position[1:]
                 / LA.norm(relative_position[1:])
                 * (2 / (1 + dot_prod) - 1)
             )
-        transformed_position = basis[1:, :] @ relative_position
-        return relative_position
+        transformed_position[1:] = basis[1:, :] @ transformed_position
+        return transformed_position
 
     def _get_unfolded_position_opposite_kernel_point(
         self, transformed_position: Vector, relative_attractor: Vector
@@ -178,30 +182,41 @@ class ProjectedRotationDynamics(DynamicalSystem):
         # basis = get_orthogonal_basis(
         #     transformed_position / LA.norm(transformed_position)
         # )
-        if not (attr_norm := LA.norm(relative_attractor)):
-            breakpoint()
+
+        if not (dist_attr_obs := LA.norm(relative_attractor)):
             raise NotImplementedError()
 
-        transformed_position = np.copy(transformed_position)
+        dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
+        vec_attractor_to_obstacle = transformed_position - relative_attractor
+        # relative_position = basis @ (-1) * relative_attractor
 
-        relative_attractor = (-1) * relative_attractor / attr_norm
-        radius = np.dot(relative_attractor, transformed_position)
+        # Dot product is sufficient, as we only need first element.
+        # Rotation is performed with VectorRotationXd
+        radius = np.dot(dir_attractor_to_obstacle, transformed_position)
         dot_prod = math.sqrt(1 - radius**2)
 
-        relative_position = np.zeros_like(transformed_position[1:])
+        # relative_position = np.zeros_like(transformed_position[1:])
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
-        # dist_attractor = LA.norm(transformed_position - relative_attractor)
+        if not (dist_attr_obs := LA.norm(vec_attractor_to_obstacle)):
+            breakpoint()
 
         rotation_ = VectorRotationXd.from_directions(
-            vec_init=(-1) * relative_attractor,
-            vec_rot=(transformed_position - relative_attractor),
+            vec_init=vec_attractor_to_obstacle,
+            vec_rot=vec_attractor_to_obstacle / dist_attr_obs,
         )
         rotation_.rotation_angle = math.acos(dot_prod)
 
+        # Initially a unit vector
         relative_position = rotation_.rotate(transformed_position)
-        relative_position = relative_position * math.exp(radius) * attr_norm
-        breakpoin()
+        relative_position = (
+            relative_position * math.exp(dot_prod / dist_attr_obs) * dist_attr_obs
+        )
+
+        # Move from attractor to obstacle frame
+        # breakpoint()
+        # relative_position = relative_position - relative_attractor
+        # relative_position[1:] = basis[1:, :].T @ relative_position
 
         return relative_position
 
@@ -234,6 +249,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
         relative_position = self._get_position_after_inflating_obstacle(
             relative_position
         )
+        breakpoint()
 
         return self.obstacle.transform_position_from_relative(relative_position)
 
@@ -436,18 +452,16 @@ def test_obstacle_on_x_transformation():
         attractor_position
     )
 
-    # print(f"{relative_position=}")
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
         relative_position, relative_attractor=relative_attr_pos
     )
-    assert np.allclose(trafo_pos, [0, -1])
-    # print(f"{relative_position=}")
+    assert np.allclose(trafo_pos, [0, 1])
 
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, relative_attractor=relative_attr_pos
     )
     breakpoint()
-    assert np.allclose(trafo_pos, reconstructed_pos)
+    assert np.allclose(relative_position, reconstructed_pos)
 
 
 if (__name__) == "__main__":
