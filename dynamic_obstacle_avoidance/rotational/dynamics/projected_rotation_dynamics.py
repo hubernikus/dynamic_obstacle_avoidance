@@ -143,14 +143,14 @@ class ProjectedRotationDynamics(DynamicalSystem):
         if not (dist_attr_obs := LA.norm(relative_attractor)):
             raise NotImplementedError("Implement for position at center.")
         dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
+        vec_attractor_to_position = relative_position - relative_attractor
 
         basis = get_orthogonal_basis(dir_attractor_to_obstacle)
         # transformed_position = np.zeros_like(relative_position)
         # transformed_position[1:] = basis[:, 1:].T @ relative_position
-        transformed_position = basis.T @ relative_position
+        transformed_position = basis.T @ vec_attractor_to_position
 
         # Stretch x-values along x-axis in order to have a x-weight at the attractor
-        vec_attractor_to_position = relative_position - relative_attractor
         if dist_attr_pos := LA.norm(vec_attractor_to_position):
             transformed_position[0] = dist_attr_obs * math.log(
                 dist_attr_pos / dist_attr_obs
@@ -168,11 +168,12 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         elif dot_prod < 1:
             transformed_position[1:] = (
-                relative_position[1:]
-                / LA.norm(relative_position[1:])
+                transformed_position[1:]
+                / LA.norm(transformed_position[1:])
                 * (2 / (1 + dot_prod) - 1)
             )
-        transformed_position[1:] = basis[1:, :] @ transformed_position
+        transformed_position = basis @ transformed_position
+
         return transformed_position
 
     def _get_unfolded_position_opposite_kernel_point(
@@ -188,18 +189,17 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
         vec_attractor_to_position = transformed_position - relative_attractor
+        if not (dist_attr_pos := LA.norm(vec_attractor_to_position)):
+            breakpoint()
         # relative_position = basis @ (-1) * relative_attractor
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
-        radius = np.dot(dir_attractor_to_obstacle, transformed_position)
+        radius = np.dot(dir_attractor_to_obstacle, transformed_position) / dist_attr_pos
         dot_prod = math.sqrt(1 - radius**2)
 
         # relative_position = np.zeros_like(transformed_position[1:])
         dot_prod = 2.0 / (dot_prod + 1) - 1
-
-        if not (dist_attr_pos := LA.norm(vec_attractor_to_position)):
-            breakpoint()
 
         rotation_ = VectorRotationXd.from_directions(
             vec_init=dir_attractor_to_obstacle,
@@ -463,8 +463,43 @@ def test_obstacle_on_x_transformation():
     assert np.allclose(relative_position, reconstructed_pos)
 
 
+def test_transformation_bijection_for_rotated():
+    # Rotated obstacle
+    relative_attr_pos = np.array([0.0, -4.0])
+    obstacle = Ellipse(
+        center_position=np.array([0.0, 0.0]),
+        axes_length=np.array([1.0, 2.0]),
+        orientation=30 * math.pi / 180.0,
+    )
+
+    reference_velocity = np.array([0, -1])
+    dynamics = ProjectedRotationDynamics(
+        obstacle=obstacle,
+        attractor_position=np.zeros(2),
+        reference_velocity=reference_velocity,
+    )
+    relative_position = np.array([-4.0, -4.0])
+    # relative_position = dynamics.obstacle.pose.transform_position_to_relative(position)
+    # relative_attr_pos = dynamics.obstacle.pose.transform_position_to_relative(
+    #     attractor_position
+    # )
+
+    trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
+        relative_position, relative_attractor=relative_attr_pos
+    )
+    assert np.allclose(trafo_pos, [-1, 0])
+
+    reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
+        trafo_pos, relative_attractor=relative_attr_pos
+    )
+    assert np.allclose(relative_position, reconstructed_pos)
+
+
 if (__name__) == "__main__":
 
     # test_transformation(visualize=True)
-    test_obstacle_on_x_transformation()
+    # test_obstacle_on_x_transformation()
+    test_transformation_bijection_for_rotated()
     # test_transformation(visualize=False)
+
+    print("Tests done.")

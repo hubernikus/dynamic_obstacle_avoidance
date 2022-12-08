@@ -181,12 +181,6 @@ class Obstacle(ABC):
 
         # Pass as pose-reference to the storer
         if self.dimension == 2:
-            print("")
-            print("")
-            print("Doing it anyway...")
-            print("")
-            print("")
-
             self.shapely = ObstacleHullsStorer(self)
         # => is this shapely really a good option?
 
