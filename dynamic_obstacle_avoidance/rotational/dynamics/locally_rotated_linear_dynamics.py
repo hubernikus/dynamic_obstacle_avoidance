@@ -75,127 +75,127 @@ class LocallyRotatedFromObtacle(DynamicalSystem):
         # self.base = get_orthogonal_basis()
         # self.deviation = get_angle_space(reference_velocity, null_matrix=self.base)
 
-    def get_projectd_gamma(self, position: Vector) -> float:
-        # Get gamma
-        gamma = self.obstacle.get_gamma(position, in_global_frame=True)
-        if gamma >= self.max_gamma:
-            return self.gamma_max
+    # def get_projectd_gamma(self, position: Vector) -> float:
+    #     # Get gamma
+    #     gamma = self.obstacle.get_gamma(position, in_global_frame=True)
+    #     if gamma >= self.max_gamma:
+    #         return self.gamma_max
 
-        elif gamma >= self.min_gamma:
-            # Weight is additionally based on dot-product
-            attractor_dir = self.attractor_position - position
-            if dist_attractor := LA.norm(attractor_dir):
-                attractor_dir = attractor_dir / dist_attractor
-                dot_product = np.dot(attractor_dir, self.rotation.base0)
-                gamma = gamma ** (2 / (dot_product + 1))
+    #     elif gamma >= self.min_gamma:
+    #         # Weight is additionally based on dot-product
+    #         attractor_dir = self.attractor_position - position
+    #         if dist_attractor := LA.norm(attractor_dir):
+    #             attractor_dir = attractor_dir / dist_attractor
+    #             dot_product = np.dot(attractor_dir, self.rotation.base0)
+    #             gamma = gamma ** (2 / (dot_product + 1))
 
-                if dist_obs := LA.norm(self.obstacle.center_position):
-                    dist_stretching = LA.norm(position) / LA.norm(
-                        self.obstacle.center_position
-                    )
-                    gamma = gamma**dist_stretching
-                else:
-                    gamma = self.gamma_max
+    #             if dist_obs := LA.norm(self.obstacle.center_position):
+    #                 dist_stretching = LA.norm(position) / LA.norm(
+    #                     self.obstacle.center_position
+    #                 )
+    #                 gamma = gamma**dist_stretching
+    #             else:
+    #                 gamma = self.gamma_max
 
-            else:
-                gamma = self.gamma_max
+    #         else:
+    #             gamma = self.gamma_max
 
-    def _get_position_after_shrinking_obstacle(
-        self, relative_position: Vector
-    ) -> Vector:
-        """Returns position in the environment where the obstacle is shrunk."""
-        radius = self.obstacle.get_local_radius(
-            relative_position, in_global_frame=False
-        )
-        pos_norm = LA.norm(relative_position)
+    # def _get_position_after_shrinking_obstacle(
+    #     self, relative_position: Vector
+    # ) -> Vector:
+    #     """Returns position in the environment where the obstacle is shrunk."""
+    #     radius = self.obstacle.get_local_radius(
+    #         relative_position, in_global_frame=False
+    #     )
+    #     pos_norm = LA.norm(relative_position)
 
-        if pos_norm < radius:
-            return np.zeros_like(relative_position)
+    #     if pos_norm < radius:
+    #         return np.zeros_like(relative_position)
 
-        return ((pos_norm - radius) / pos_norm) * relative_position
+    #     return ((pos_norm - radius) / pos_norm) * relative_position
 
-    def _get_position_after_inflating_obstacle(
-        self, relative_position: Vector
-    ) -> Vector:
-        """Returns position in the environment where the obstacle is shrunk."""
-        radius = self.obstacle.get_local_radius(
-            relative_position, in_global_frame=False
-        )
+    # def _get_position_after_inflating_obstacle(
+    #     self, relative_position: Vector
+    # ) -> Vector:
+    #     """Returns position in the environment where the obstacle is shrunk."""
+    #     radius = self.obstacle.get_local_radius(
+    #         relative_position, in_global_frame=False
+    #     )
 
-        if not (pos_norm := LA.norm(relative_position)):
-            # Needs a tiny value
-            relative_position[0] = 1e6
-            pos_norm = relative_position[0]
+    #     if not (pos_norm := LA.norm(relative_position)):
+    #         # Needs a tiny value
+    #         relative_position[0] = 1e6
+    #         pos_norm = relative_position[0]
 
-        return ((pos_norm + radius) / pos_norm) * relative_position
+    #     return ((pos_norm + radius) / pos_norm) * relative_position
 
-    def _get_unfoled_opposite_kernel_point(
-        self, relative_position: Vector, relative_attractor: Vector
-    ) -> Vector:
-        """Returns the relative_position with respect to the relative center"""
+    # def _get_unfoled_opposite_kernel_point(
+    #     self, relative_position: Vector, relative_attractor: Vector
+    # ) -> Vector:
+    #     """Returns the relative_position with respect to the relative center"""
 
-        if not (attr_norm := LA.norm(relative_attractor)):
-            raise NotImplementedError("Implement for position at center.")
+    #     if not (attr_norm := LA.norm(relative_attractor)):
+    #         raise NotImplementedError("Implement for position at center.")
 
-        transformed_position = np.zeros_like(relative_position)
+    #     transformed_position = np.zeros_like(relative_position)
 
-        # Stretch x-values along x-axis in order to have a x-weight at the attractor
-        if dist_attractor_to_position := LA.norm(
-            relative_position - relative_attractor
-        ):
-            relative_position[0] = math.log(dist_attractor_to_position / attr_norm)
+    #     # Stretch x-values along x-axis in order to have a x-weight at the attractor
+    #     if dist_attractor_to_position := LA.norm(
+    #         relative_position - relative_attractor
+    #     ):
+    #         relative_position[0] = math.log(dist_attractor_to_position / attr_norm)
 
-        else:
-            transformed_position[0] = (-1) * sys.float_info.max
+    #     else:
+    #         transformed_position[0] = (-1) * sys.float_info.max
 
-        # 'Unfold' the circular plane into an infinite yy-plane
-        # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
+    #     # 'Unfold' the circular plane into an infinite yy-plane
+    #     # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
 
-        # relative_position[1:] = (basis.T @ (relative_position - relative_attractor))[1:]
-        dot_prod = np.dot(relative_position, relative_attractor)
+    #     # relative_position[1:] = (basis.T @ (relative_position - relative_attractor))[1:]
+    #     dot_prod = np.dot(relative_position, relative_attractor)
 
-        if dot_prod == -1:
-            transformed_position[1:] = relative_position[1:] * sys.float_info.max
-        else:
-            transformed_position[1:] = (
-                relative_position[1:]
-                / LA.norm(relative_position[1:])
-                * (2 / (1 + dot_prod) - 1)
-            )
+    #     if dot_prod == -1:
+    #         transformed_position[1:] = relative_position[1:] * sys.float_info.max
+    #     else:
+    #         transformed_position[1:] = (
+    #             relative_position[1:]
+    #             / LA.norm(relative_position[1:])
+    #             * (2 / (1 + dot_prod) - 1)
+    #         )
 
-        return relative_position
+    #     return relative_position
 
-    def get_projected_point(self, position: Vector) -> Vector:
-        """Projected point in 'linearized' environment
+    # def get_projected_point(self, position: Vector) -> Vector:
+    #     """Projected point in 'linearized' environment
 
-        Assumption of the point being outside of the obstacle."""
+    #     Assumption of the point being outside of the obstacle."""
 
-        # Do the evaluation in local frame
-        relative_position = self.obstacle.transform_position_to_relative(position)
-        relative_attractor = self.obstacle.transform_position_to_relative(
-            self.attractor_position
-        )
+    #     # Do the evaluation in local frame
+    #     relative_position = self.obstacle.transform_position_to_relative(position)
+    #     relative_attractor = self.obstacle.transform_position_to_relative(
+    #         self.attractor_position
+    #     )
 
-        if not (pos_norm := LA.norm(relative_position)):
-            raise NotImplementedError()
+    #     if not (pos_norm := LA.norm(relative_position)):
+    #         raise NotImplementedError()
 
-        # Shrunk position
-        relative_position = self._get_position_after_shrinking_obstacle(
-            relative_position
-        )
-        relative_attractor = self._get_position_after_shrinking_obstacle(
-            relative_attractor
-        )
+    #     # Shrunk position
+    #     relative_position = self._get_position_after_shrinking_obstacle(
+    #         relative_position
+    #     )
+    #     relative_attractor = self._get_position_after_shrinking_obstacle(
+    #         relative_attractor
+    #     )
 
-        relative_position = self._get_unfoled_opposite_kernel_point(
-            relative_position, relative_attractor
-        )
+    #     relative_position = self._get_unfoled_opposite_kernel_point(
+    #         relative_position, relative_attractor
+    #     )
 
-        relative_position = self._get_position_after_inflating_obstacle(
-            relative_position
-        )
+    #     relative_position = self._get_position_after_inflating_obstacle(
+    #         relative_position
+    #     )
 
-        return self.obstacle.transform_position_from_relative(relative_position)
+    #     return self.obstacle.transform_position_from_relative(relative_position)
 
     def evaluate(self, position: Vector) -> Vector:
         # Weight is based on gamma
