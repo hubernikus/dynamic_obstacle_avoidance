@@ -180,7 +180,14 @@ class Obstacle(ABC):
         self.obs_polygon = None
 
         # Pass as pose-reference to the storer
-        self.shapely = ObstacleHullsStorer(self)
+        if self.dimension == 2:
+            print("")
+            print("")
+            print("Doing it anyway...")
+            print("")
+            print("")
+
+            self.shapely = ObstacleHullsStorer(self)
         # => is this shapely really a good option?
 
         self._margin_absolut = margin_absolut
