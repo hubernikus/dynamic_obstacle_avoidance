@@ -187,11 +187,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
             raise NotImplementedError()
 
         dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
-<<<<<<< HEAD
         vec_attractor_to_position = transformed_position - relative_attractor
-=======
-        vec_attractor_to_obstacle = transformed_position - relative_attractor
->>>>>>> 1858d7694b6876df120849c34bb331b117f8aab6
         # relative_position = basis @ (-1) * relative_attractor
 
         # Dot product is sufficient, as we only need first element.
@@ -202,26 +198,16 @@ class ProjectedRotationDynamics(DynamicalSystem):
         # relative_position = np.zeros_like(transformed_position[1:])
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
-<<<<<<< HEAD
         if not (dist_attr_pos := LA.norm(vec_attractor_to_position)):
             breakpoint()
 
         rotation_ = VectorRotationXd.from_directions(
             vec_init=dir_attractor_to_obstacle,
             vec_rot=vec_attractor_to_position / dist_attr_pos,
-=======
-        if not (dist_attr_obs := LA.norm(vec_attractor_to_obstacle)):
-            breakpoint()
-
-        rotation_ = VectorRotationXd.from_directions(
-            vec_init=vec_attractor_to_obstacle,
-            vec_rot=vec_attractor_to_obstacle / dist_attr_obs,
->>>>>>> 1858d7694b6876df120849c34bb331b117f8aab6
         )
         rotation_.rotation_angle = math.acos(dot_prod)
 
         # Initially a unit vector
-<<<<<<< HEAD
         relative_position = rotation_.rotate(dir_attractor_to_obstacle)
         relative_position = (
             relative_position * math.exp(radius / dist_attr_obs) * dist_attr_obs
@@ -229,16 +215,6 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         # Move from attractor-frame to obstacle-frame
         relative_position = relative_position + relative_attractor
-=======
-        relative_position = rotation_.rotate(transformed_position)
-        relative_position = (
-            relative_position * math.exp(dot_prod / dist_attr_obs) * dist_attr_obs
-        )
-
-        # Move from attractor to obstacle frame
-        # breakpoint()
-        # relative_position = relative_position - relative_attractor
->>>>>>> 1858d7694b6876df120849c34bb331b117f8aab6
         # relative_position[1:] = basis[1:, :].T @ relative_position
 
         return relative_position
@@ -484,10 +460,6 @@ def test_obstacle_on_x_transformation():
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, relative_attractor=relative_attr_pos
     )
-<<<<<<< HEAD
-=======
-    breakpoint()
->>>>>>> 1858d7694b6876df120849c34bb331b117f8aab6
     assert np.allclose(relative_position, reconstructed_pos)
 
 
