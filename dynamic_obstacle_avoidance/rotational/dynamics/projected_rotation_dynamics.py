@@ -195,7 +195,9 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
-        radius = np.dot(dir_attractor_to_obstacle, transformed_position) / dist_attr_pos
+        radius = (
+            np.dot(dir_attractor_to_obstacle, vec_attractor_to_position) / dist_attr_pos
+        )
         dot_prod = math.sqrt(1 - radius**2)
 
         # relative_position = np.zeros_like(transformed_position[1:])
@@ -302,6 +304,8 @@ def test_transformation(visualize=False):
     if visualize:
         import matplotlib.pyplot as plt
 
+        plt.ion()
+
         plt.close("all")
 
         # x_lim = [-10, 10]
@@ -334,7 +338,6 @@ def test_transformation(visualize=False):
             vmin=1.0,
             levels=np.linspace(1, 10, 9),
         )
-
         cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
         ax.plot(
@@ -359,7 +362,7 @@ def test_transformation(visualize=False):
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
-        # Do before the trafo
+        ### Do before the trafo ###
         gammas_shrink = np.zeros_like(gammas)
         for pp in range(positions.shape[1]):
             # Do the reverse operation to obtain an 'even' grid
@@ -379,6 +382,62 @@ def test_transformation(visualize=False):
         attractor_position = dynamics.obstacle.pose.transform_position_from_relative(
             attractor_position
         )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        cs = ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas_shrink.reshape(nx, ny),
+            cmap="binary_r",
+            vmin=1.0,
+            levels=np.linspace(1, 10, 9),
+        )
+
+        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+
+        ax.plot(
+            attractor_position[0],
+            attractor_position[1],
+            "k*",
+            linewidth=12,
+            markeredgewidth=1.2,
+            markersize=15,
+            zorder=3,
+        )
+
+        ax.plot(
+            dynamics.obstacle.center_position[0],
+            dynamics.obstacle.center_position[1],
+            "k+",
+            linewidth=12,
+            markeredgewidth=3.0,
+            markersize=14,
+            zorder=3,
+        )
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
+
+        ### Do before trafo ###
+        # Transpose attractor
+        attractor_position = dynamics.obstacle.pose.transform_position_to_relative(
+            dynamics.attractor_position
+        )
+        attractor_position = dynamics._get_position_after_deflating_obstacle(
+            attractor_position
+        )
+
+        gammas_shrink = np.zeros_like(gammas)
+        for pp in range(positions.shape[1]):
+            # Do the reverse operation to obtain an 'even' grid
+            pos_shrink = dynamics.obstacle.pose.transform_position_to_relative(
+                positions[:, pp]
+            )
+            pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
+                pos_shrink, attractor_position
+            )
+            pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
+            gammas_shrink[pp] = dynamics.obstacle.get_gamma(pos_shrink)
 
         fig, ax = plt.subplots(figsize=figsize)
         cs = ax.contourf(
@@ -479,10 +538,6 @@ def test_transformation_bijection_for_rotated():
         reference_velocity=reference_velocity,
     )
     relative_position = np.array([-4.0, -4.0])
-    # relative_position = dynamics.obstacle.pose.transform_position_to_relative(position)
-    # relative_attr_pos = dynamics.obstacle.pose.transform_position_to_relative(
-    #     attractor_position
-    # )
 
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
         relative_position, relative_attractor=relative_attr_pos
@@ -497,9 +552,9 @@ def test_transformation_bijection_for_rotated():
 
 if (__name__) == "__main__":
 
-    # test_transformation(visualize=True)
+    test_transformation(visualize=True)
     # test_obstacle_on_x_transformation()
-    test_transformation_bijection_for_rotated()
+    # test_transformation_bijection_for_rotated()
     # test_transformation(visualize=False)
 
     print("Tests done.")
