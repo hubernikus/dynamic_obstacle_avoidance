@@ -463,6 +463,11 @@ def test_obstacle_on_x_transformation():
     assert np.allclose(relative_position, reconstructed_pos)
 
 
+def test_rotated_obstacle():
+    """Tests if the folding / unfolding are bijective, i.e., same start and end point.
+    Rotate 90 Degrees and obtain result."""
+
+
 if (__name__) == "__main__":
 
     # test_transformation(visualize=True)

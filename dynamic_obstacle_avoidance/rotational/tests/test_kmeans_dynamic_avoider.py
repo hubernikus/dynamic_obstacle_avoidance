@@ -415,9 +415,9 @@ if (__name__) == "__main__":
     figtype = ".png"
     # figtype = ".pdf"
 
-    # _test_kmeans_dynamic_avoider(visualize=True, save_figure=False)
+    _test_kmeans_dynamic_avoider(visualize=True, save_figure=False)
     # _test_dynamic_avoidance(visualize=True, save_figure=False)
 
-    run_animator()
+    # run_animator()
 
     print("[Rotational Tests] Done tests")
