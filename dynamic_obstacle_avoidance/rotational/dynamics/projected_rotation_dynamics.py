@@ -102,33 +102,43 @@ class ProjectedRotationDynamics(DynamicalSystem):
                 gamma = self.gamma_max
 
     def _get_position_after_deflating_obstacle(
-        self, relative_position: Vector
+        self, position: Vector, in_attractor_frame: bool = True
     ) -> Vector:
         """Returns position in the environment where the obstacle is shrunk."""
         radius = self.obstacle.get_local_radius(
-            relative_position, in_global_frame=False
+            position, in_global_frame=in_attractor_frame
         )
+        relative_position = position - self.obstacle.center_position
         pos_norm = LA.norm(relative_position)
 
         if pos_norm < radius:
             return np.zeros_like(relative_position)
 
-        return ((pos_norm - radius) / pos_norm) * relative_position
+        deflated_position = ((pos_norm - radius) / pos_norm) * relative_position
+        if in_attractor_frame:
+            return deflated_position + self.obstacle.center_position
+        else:
+            return deflated_position
 
     def _get_position_after_inflating_obstacle(
-        self, relative_position: Vector
+        self, position: Vector, in_attractor_frame: bool = True
     ) -> Vector:
         """Returns position in the environment where the obstacle is shrunk."""
         radius = self.obstacle.get_local_radius(
-            relative_position, in_global_frame=False
+            position, in_global_frame=in_attractor_frame
         )
 
+        relative_position = position - self.obstacle.center_position
         if not (pos_norm := LA.norm(relative_position)):
             # Needs a tiny value
             relative_position[0] = 1e6
             pos_norm = relative_position[0]
 
-        return ((pos_norm + radius) / pos_norm) * relative_position
+        inflated_position = ((pos_norm + radius) / pos_norm) * relative_position
+        if in_attractor_frame:
+            return inflated_position + self.obstacle.center_position
+        else:
+            return inflated_position
 
     def _get_folded_position_opposite_kernel_point(
         self, relative_position: Vector, relative_attractor: Vector
@@ -142,8 +152,8 @@ class ProjectedRotationDynamics(DynamicalSystem):
         # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
         if not (dist_attr_obs := LA.norm(relative_attractor)):
             raise NotImplementedError("Implement for position at center.")
-        dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
-        vec_attractor_to_position = relative_position - relative_attractor
+        dir_attractor_to_obstacle = relative_attractor / dist_attr_obs
+        vec_attractor_to_position = relative_position
 
         basis = get_orthogonal_basis(dir_attractor_to_obstacle)
         # transformed_position = np.zeros_like(relative_position)
@@ -184,40 +194,60 @@ class ProjectedRotationDynamics(DynamicalSystem):
         #     transformed_position / LA.norm(transformed_position)
         # )
 
-        if not (dist_attr_obs := LA.norm(relative_attractor)):
+        dir_attractor_to_obstacle = self.obstacle.center_position - relative_attractor
+        if not (dist_attr_obs := LA.norm(dir_attractor_to_obstacle)):
             raise NotImplementedError()
 
-        dir_attractor_to_obstacle = (-1) * relative_attractor / dist_attr_obs
-        vec_attractor_to_position = transformed_position - relative_attractor
-        if not (dist_attr_pos := LA.norm(vec_attractor_to_position)):
-            breakpoint()
+        dir_attractor_to_obstacle = dir_attractor_to_obstacle / dist_attr_obs
+
+        # Everything with resepect to attractor
+        # vec_obstacle_to_trafopos = self.obstacle.center_position
+        # vec_attractor_to_position = transformed_position
+        # if not (dist_transf_pos := LA.norm(transformed_position)):
+        # breakpoint()
         # relative_position = basis @ (-1) * relative_attractor
+        # dir_transf_pos = transformed_position / dist_transf_pos
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
-        radius = (
-            np.dot(dir_attractor_to_obstacle, vec_attractor_to_position) / dist_attr_pos
-        )
-        dot_prod = math.sqrt(1 - radius**2)
+        vec_attractor_to_position = transformed_position - relative_attractor
+        radius = np.dot(dir_attractor_to_obstacle, vec_attractor_to_position)
+        # breakpoint()
 
-        # relative_position = np.zeros_like(transformed_position[1:])
+        # Ensure that the square root stays positive close to singularities
+        transform_norm = LA.norm(vec_attractor_to_position)
+        dot_prod = math.sqrt(max(transform_norm**2 - radius**2, 0))
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
-        rotation_ = VectorRotationXd.from_directions(
-            vec_init=dir_attractor_to_obstacle,
-            vec_rot=vec_attractor_to_position / dist_attr_pos,
-        )
-        rotation_.rotation_angle = math.acos(dot_prod)
+        if dot_prod < 1:
+            dir_perp = (
+                dir_attractor_to_obstacle
+                - vec_attractor_to_position / transform_norm * dot_prod
+            )
 
-        # Initially a unit vector
-        relative_position = rotation_.rotate(dir_attractor_to_obstacle)
+            # relative_position = np.zeros_like(transformed_position[1:])
+            rotation_ = VectorRotationXd.from_directions(
+                vec_init=dir_attractor_to_obstacle,
+                vec_rot=dir_perp / LA.norm(dir_perp),
+            )
+            rotation_.rotation_angle = math.acos(dot_prod)
+
+            # breakpoint()
+            # Initially a unit vector
+            relative_position = rotation_.rotate(dir_attractor_to_obstacle)
+        else:
+            relative_position = dir_attractor_to_obstacle
+
         relative_position = (
-            relative_position * math.exp(radius / dist_attr_obs) * dist_attr_obs
+            relative_position
+            * math.exp((radius - dist_attr_obs) / dist_attr_obs)
+            * dist_attr_obs
         )
 
         # Move from attractor-frame to obstacle-frame
         relative_position = relative_position + relative_attractor
         # relative_position[1:] = basis[1:, :].T @ relative_position
+        # breakpoint()
 
         return relative_position
 
@@ -285,10 +315,12 @@ class ProjectedRotationDynamics(DynamicalSystem):
         return velocity
 
 
-def test_transformation(visualize=False):
-    attractor_position = np.array([1.0, -1.0])
+def get_environment_obstacle_top_right():
+    # attractor_position = np.array([1.0, -1.0])
+    attractor_position = np.array([0.0, 0.0])
     obstacle = Ellipse(
-        center_position=np.array([-3.0, 2.0]),
+        # center_position=np.array([.0, 0.0]),
+        center_position=np.array([3.0, 0.0]),
         axes_length=np.array([2, 3.0]),
         orientation=0 * math.pi / 180.0,
     )
@@ -301,13 +333,14 @@ def test_transformation(visualize=False):
         reference_velocity=reference_velocity,
     )
 
+    return dynamics
+
+
+def _test_base_gamma(visualize=False):
+    # No explicit test in here, since only getting the gamma value.
+    dynamics = get_environment_obstacle_top_right()
+
     if visualize:
-        import matplotlib.pyplot as plt
-
-        plt.ion()
-
-        plt.close("all")
-
         # x_lim = [-10, 10]
         # y_lim = [-10, 10]
         x_lim = [-6, 6]
@@ -323,8 +356,8 @@ def test_transformation(visualize=False):
         positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
         gammas = np.zeros(positions.shape[1])
 
+        ### Basic Obstacle Transformation ###
         for pp in range(positions.shape[1]):
-            # pos_rot = dynamics._get_position_after_shrinking_obstacle(pos)
             gammas[pp] = dynamics.obstacle.get_gamma(
                 positions[:, pp], in_global_frame=True
             )
@@ -362,25 +395,40 @@ def test_transformation(visualize=False):
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
+
+def test_obstacle_inflation(visualize=False):
+    dynamics = get_environment_obstacle_top_right()
+
+    if visualize:
+        # x_lim = [-10, 10]
+        # y_lim = [-10, 10]
+        x_lim = [-6, 6]
+        y_lim = [-6, 6]
+        n_resolution = 30
+        figsize = (5, 4)
+
+        nx = ny = n_resolution
+
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros(positions.shape[1])
+
         ### Do before the trafo ###
         gammas_shrink = np.zeros_like(gammas)
         for pp in range(positions.shape[1]):
             # Do the reverse operation to obtain an 'even' grid
-            pos_shrink = dynamics.obstacle.pose.transform_position_to_relative(
+            pos_shrink = dynamics._get_position_after_inflating_obstacle(
                 positions[:, pp]
             )
-            pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
-            gammas_shrink[pp] = dynamics.obstacle.get_gamma(pos_shrink)
+            gammas_shrink[pp] = dynamics.obstacle.get_gamma(
+                pos_shrink, in_global_frame=True
+            )
 
         # Transpose attractor
-        attractor_position = dynamics.obstacle.pose.transform_position_to_relative(
-            dynamics.attractor_position
-        )
         attractor_position = dynamics._get_position_after_deflating_obstacle(
-            attractor_position
-        )
-        attractor_position = dynamics.obstacle.pose.transform_position_from_relative(
-            attractor_position
+            dynamics.attractor_position
         )
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -418,26 +466,46 @@ def test_transformation(visualize=False):
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
-        ### Do before trafo ###
-        # Transpose attractor
-        attractor_position = dynamics.obstacle.pose.transform_position_to_relative(
-            dynamics.attractor_position
+    # Attractor is outside the obstacle
+    position = np.array([0, 0])
+    new_position = dynamics._get_position_after_inflating_obstacle(position)
+    assert dynamics.obstacle.get_gamma(new_position, in_global_frame=True) > 1
+
+
+def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
+    dynamics = get_environment_obstacle_top_right()
+
+    if visualize:
+
+        # x_lim = [-10, 10]
+        # y_lim = [-10, 10]
+        x_lim = [-6, 6]
+        y_lim = [-6, 6]
+        figsize = (5, 4)
+
+        nx = ny = n_resolution
+
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
         )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros(positions.shape[1])
+
+        ### Do before trafo ###
         attractor_position = dynamics._get_position_after_deflating_obstacle(
-            attractor_position
+            dynamics.attractor_position
         )
 
         gammas_shrink = np.zeros_like(gammas)
         for pp in range(positions.shape[1]):
             # Do the reverse operation to obtain an 'even' grid
-            pos_shrink = dynamics.obstacle.pose.transform_position_to_relative(
-                positions[:, pp]
-            )
             pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
-                pos_shrink, attractor_position
+                positions[:, pp], attractor_position
             )
             pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
-            gammas_shrink[pp] = dynamics.obstacle.get_gamma(pos_shrink)
+            gammas_shrink[pp] = dynamics.obstacle.get_gamma(
+                pos_shrink, in_global_frame=True
+            )
 
         fig, ax = plt.subplots(figsize=figsize)
         cs = ax.contourf(
@@ -473,16 +541,52 @@ def test_transformation(visualize=False):
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
+
+    attractor_position = dynamics._get_position_after_deflating_obstacle(
+        dynamics.attractor_position
+    )
+
+    # Center of the obstacle is the 'stable' point
+    position = dynamics.obstacle.center_position
+    pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
+        position, attractor_position
+    )
+    assert np.allclose(pos_shrink, position)
+
+    # Position very south of the obstacle gets projected to the attractor (and vice-versa)
+    position_start = (
+        dynamics.obstacle.center_position
+        + (attractor_position - dynamics.obstacle.center_position) * 100
+    )
+    pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
+        position_start, attractor_position
+    )
+    assert np.allclose(pos_shrink, attractor_position)
+
+
+def test_obstacle_partially_rotated():
+    # attractor_position = np.array([1.0, -1.0])
+    attractor_position = np.array([0.0, 0.0])
+    obstacle = Ellipse(
+        center_position=np.array([-5.0, 4.0]),
+        axes_length=np.array([2, 3.0]),
+        orientation=0 * math.pi / 180.0,
+    )
+
+    reference_velocity = np.array([2, 0.1])
+
+    dynamics = ProjectedRotationDynamics(
+        obstacle=obstacle,
+        attractor_position=attractor_position,
+        reference_velocity=reference_velocity,
+    )
 
     # Test Projection
     dist_surf = 1e-6
     pos_close_to_center = copy.deepcopy(dynamics.obstacle.center_position)
     pos_close_to_center[0] = pos_close_to_center[0] + 1 + dist_surf
 
-    pos = dynamics.obstacle.pose.transform_position_to_relative(pos_close_to_center)
-    # assert np.allclose(pos, np.zeros_like(pos))
-    pos = dynamics._get_position_after_deflating_obstacle(pos)
-    pos = dynamics.obstacle.pose.transform_position_from_relative(pos)
+    pos = dynamics._get_position_after_deflating_obstacle(pos_close_to_center)
     assert np.allclose(pos, dynamics.obstacle.center_position, atol=dist_surf / 2.0)
 
 
@@ -516,9 +620,11 @@ def test_obstacle_on_x_transformation():
     )
     assert np.allclose(trafo_pos, [0, 1])
 
+    # breakpoint()
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, relative_attractor=relative_attr_pos
     )
+
     assert np.allclose(relative_position, reconstructed_pos)
 
 
@@ -551,10 +657,19 @@ def test_transformation_bijection_for_rotated():
 
 
 if (__name__) == "__main__":
+    import matplotlib.pyplot as plt
 
-    test_transformation(visualize=True)
+    plt.ion()
+    plt.close("all")
+
+    # _test_base_gamma(visualize=True)
+    test_obstacle_inflation(visualize=True)
+
+    # test_obstacle_partially_rotated()
     # test_obstacle_on_x_transformation()
     # test_transformation_bijection_for_rotated()
     # test_transformation(visualize=False)
 
+    test_inverse_projection_around_obstacle(visualize=False)
+    # test_inverse_projection_around_obstacle(visualize=True, n_resolution=50)
     print("Tests done.")
