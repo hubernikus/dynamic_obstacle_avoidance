@@ -72,6 +72,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
         self.max_gamma = max_gamma
         # Modify if needed
         self.attractor_influence = 3
+        self.dotprod_projection_power = 2
 
         # self.base = get_orthogonal_basis()
         # self.deviation = get_angle_space(reference_velocity, null_matrix=self.base)
@@ -181,10 +182,12 @@ class ProjectedRotationDynamics(DynamicalSystem):
             transformed_position[1] = sys.float_info.max
 
         elif dot_prod < 1:
+            dotprod_factor = 2 / (1 + dot_prod) - 1
+            dotprod_factor = dotprod_factor ** (1.0 / self.dotprod_projection_power)
             transformed_position[1:] = (
                 transformed_position[1:]
                 / LA.norm(transformed_position[1:])
-                * (2 / (1 + dot_prod) - 1)
+                * dotprod_factor
             )
         transformed_position = basis @ transformed_position
 
@@ -205,22 +208,17 @@ class ProjectedRotationDynamics(DynamicalSystem):
         dir_attractor_to_obstacle = dir_attractor_to_obstacle / dist_attr_obs
 
         # Everything with resepect to attractor
-        # vec_obstacle_to_trafopos = self.obstacle.center_position
-        # vec_attractor_to_position = transformed_position
-        # if not (dist_transf_pos := LA.norm(transformed_position)):
-        # breakpoint()
-        # relative_position = basis @ (-1) * relative_attractor
-        # dir_transf_pos = transformed_position / dist_transf_pos
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
         vec_attractor_to_position = transformed_position - relative_attractor
         radius = np.dot(dir_attractor_to_obstacle, vec_attractor_to_position)
-        # breakpoint()
 
         # Ensure that the square root stays positive close to singularities
         transform_norm = LA.norm(vec_attractor_to_position)
         dot_prod = math.sqrt(max(transform_norm**2 - radius**2, 0))
+        dot_prod = dot_prod**self.dotprod_projection_power
+        # dot_prod = dot_prod**2 / dist_attr_obs
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
         if dot_prod < 1:
@@ -229,14 +227,12 @@ class ProjectedRotationDynamics(DynamicalSystem):
                 - vec_attractor_to_position / transform_norm * dot_prod
             )
 
-            # relative_position = np.zeros_like(transformed_position[1:])
             rotation_ = VectorRotationXd.from_directions(
                 vec_init=dir_attractor_to_obstacle,
                 vec_rot=dir_perp / LA.norm(dir_perp),
             )
             rotation_.rotation_angle = math.acos(dot_prod)
 
-            # breakpoint()
             # Initially a unit vector
             relative_position = rotation_.rotate(dir_attractor_to_obstacle)
         else:
@@ -250,9 +246,6 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         # Move from attractor-frame to obstacle-frame
         relative_position = relative_position + relative_attractor
-        # relative_position[1:] = basis[1:, :].T @ relative_position
-        # breakpoint()
-
         return relative_position
 
     def get_projected_point(self, position: Vector) -> Vector:
@@ -340,17 +333,20 @@ def get_environment_obstacle_top_right():
     return dynamics
 
 
-def _test_base_gamma(visualize=False):
+def _test_base_gamma(
+    visualize=False,
+    x_lim=[-6, 6],
+    y_lim=[-6, 6],
+    n_resolution=30,
+    figsize=(5, 4),
+    **kwargs,
+):
     # No explicit test in here, since only getting the gamma value.
     dynamics = get_environment_obstacle_top_right()
 
     if visualize:
         # x_lim = [-10, 10]
         # y_lim = [-10, 10]
-        x_lim = [-6, 6]
-        y_lim = [-6, 6]
-        n_resolution = 30
-        figsize = (5, 4)
 
         nx = ny = n_resolution
 
@@ -380,37 +376,51 @@ def _test_base_gamma(visualize=False):
         ax.plot(
             dynamics.attractor_position[0],
             dynamics.attractor_position[1],
-            "k*",
+            "*",
+            color=kwargs["attractor_color"],
             linewidth=12,
             markeredgewidth=1.2,
             markersize=15,
             zorder=3,
         )
+
+        # Opposite point
         ax.plot(
-            dynamics.obstacle.center_position[0],
-            dynamics.obstacle.center_position[1],
-            "k+",
-            linewidth=12,
-            markeredgewidth=3.0,
-            markersize=14,
-            zorder=3,
+            [dynamics.attractor_position[0], x_lim[0]],
+            [dynamics.attractor_position[1], dynamics.attractor_position[1]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=3,
+            zorder=2,
         )
+        # ax.plot(
+        #     dynamics.obstacle.center_position[0],
+        #     dynamics.obstacle.center_position[1],
+        #     "+",
+        #     color=kwargs[]
+        #     linewidth=12,
+        #     markeredgewidth=3.0,
+        #     markersize=14,
+        #     zorder=3,
+        # )
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
 
-def test_obstacle_inflation(visualize=False):
+def test_obstacle_inflation(
+    visualize=False,
+    x_lim=[-6, 6],
+    y_lim=[-6, 6],
+    n_resolution=30,
+    figsize=(5, 4),
+    **kwargs,
+):
     dynamics = get_environment_obstacle_top_right()
 
     if visualize:
         # x_lim = [-10, 10]
         # y_lim = [-10, 10]
-        x_lim = [-6, 6]
-        y_lim = [-6, 6]
-        n_resolution = 30
-        figsize = (5, 4)
-
         nx = ny = n_resolution
 
         x_vals, y_vals = np.meshgrid(
@@ -450,7 +460,8 @@ def test_obstacle_inflation(visualize=False):
         ax.plot(
             attractor_position[0],
             attractor_position[1],
-            "k*",
+            "*",
+            color=kwargs["attractor_color"],
             linewidth=12,
             markeredgewidth=1.2,
             markersize=15,
@@ -460,11 +471,22 @@ def test_obstacle_inflation(visualize=False):
         ax.plot(
             dynamics.obstacle.center_position[0],
             dynamics.obstacle.center_position[1],
-            "k+",
+            "+",
+            color=kwargs["obstacle_color"],
             linewidth=12,
             markeredgewidth=3.0,
             markersize=14,
             zorder=3,
+        )
+
+        # Opposite point
+        ax.plot(
+            [attractor_position[0], x_lim[0]],
+            [attractor_position[1], dynamics.attractor_position[1]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=3,
+            zorder=2,
         )
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim(x_lim)
@@ -483,18 +505,25 @@ def test_obstacle_inflation(visualize=False):
     deflated_position = dynamics._get_position_after_deflating_obstacle(position)
     assert np.allclose(deflated_position, dynamics.obstacle.center_position)
 
+    # Position relatively close
+    position = np.copy(dynamics.obstacle.center_position)
+    position[0] = position[0] + 4
+    new_position = dynamics._get_position_after_inflating_obstacle(position)
+    restored_position = dynamics._get_position_after_deflating_obstacle(new_position)
+    assert np.allclose(position, restored_position)
 
-def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
+
+def test_inverse_projection_around_obstacle(
+    visualize=False,
+    x_lim=[-6, 6],
+    y_lim=[-6, 6],
+    n_resolution=30,
+    figsize=(5, 4),
+    **kwargs,
+):
     dynamics = get_environment_obstacle_top_right()
 
     if visualize:
-
-        # x_lim = [-10, 10]
-        # y_lim = [-10, 10]
-        x_lim = [-6, 6]
-        y_lim = [-6, 6]
-        figsize = (5, 4)
-
         nx = ny = n_resolution
 
         x_vals, y_vals = np.meshgrid(
@@ -531,20 +560,38 @@ def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
 
         cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
+        # Attractor line
         ax.plot(
-            attractor_position[0],
-            attractor_position[1],
-            "k*",
-            linewidth=12,
-            markeredgewidth=1.2,
-            markersize=15,
+            [x_lim[0], x_lim[0]],
+            y_lim,
+            "--",
+            color=kwargs["attractor_color"],
+            linewidth=7,
+            zorder=3,
+        )
+        # Split lines
+        ax.plot(
+            x_lim,
+            [y_lim[0], y_lim[0]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=7,
+            zorder=3,
+        )
+        ax.plot(
+            x_lim,
+            [y_lim[1], y_lim[1]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=7,
             zorder=3,
         )
 
         ax.plot(
             dynamics.obstacle.center_position[0],
             dynamics.obstacle.center_position[1],
-            "k+",
+            "+",
+            color=kwargs["obstacle_color"],
             linewidth=12,
             markeredgewidth=3.0,
             markersize=14,
@@ -577,17 +624,16 @@ def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
 
 
 def test_inverse_projection_and_deflation_around_obstacle(
-    visualize=False, n_resolution=30
+    visualize=False,
+    x_lim=[-6, 6],
+    y_lim=[-6, 6],
+    n_resolution=30,
+    figsize=(5, 4),
+    **kwargs,
 ):
     dynamics = get_environment_obstacle_top_right()
 
     if visualize:
-
-        # x_lim = [-10, 10]
-        # y_lim = [-10, 10]
-        x_lim = [-6, 6]
-        y_lim = [-6, 6]
-        figsize = (5, 4)
 
         nx = ny = n_resolution
 
@@ -606,16 +652,18 @@ def test_inverse_projection_and_deflation_around_obstacle(
         for pp in range(positions.shape[1]):
             # Do the reverse operation to obtain an 'even' grid
             pos_shrink = positions[:, pp]
+            # pos_shrink = np.array([3.0, 1.0])
             pos_shrink = dynamics._get_position_after_deflating_obstacle(pos_shrink)
 
-            if np.allclose(pos_shrink, attractor_position):
-                breakpoint()
+            if np.allclose(pos_shrink, dynamics.obstacle.center_position):
+                gammas_shrink[pp] = 1
                 continue
 
             pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
-                positions[:, pp], attractor_position
+                pos_shrink, attractor_position
             )
             pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
+
             gammas_shrink[pp] = dynamics.obstacle.get_gamma(
                 pos_shrink, in_global_frame=True
             )
@@ -632,23 +680,30 @@ def test_inverse_projection_and_deflation_around_obstacle(
 
         cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
+        # Attractor line
         ax.plot(
-            attractor_position[0],
-            attractor_position[1],
-            "k*",
-            linewidth=12,
-            markeredgewidth=1.2,
-            markersize=15,
+            [x_lim[0], x_lim[0]],
+            y_lim,
+            "--",
+            color=kwargs["attractor_color"],
+            linewidth=7,
             zorder=3,
         )
-
+        # Split lines
         ax.plot(
-            dynamics.obstacle.center_position[0],
-            dynamics.obstacle.center_position[1],
-            "k+",
-            linewidth=12,
-            markeredgewidth=3.0,
-            markersize=14,
+            x_lim,
+            [y_lim[0], y_lim[0]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=7,
+            zorder=3,
+        )
+        ax.plot(
+            x_lim,
+            [y_lim[1], y_lim[1]],
+            "--",
+            color=kwargs["opposite_color"],
+            linewidth=7,
             zorder=3,
         )
         ax.set_aspect("equal", adjustable="box")
@@ -749,13 +804,25 @@ def test_transformation_bijection_for_rotated():
 
 
 if (__name__) == "__main__":
+    setup = {
+        "attractor_color": "#DB6E14",
+        "opposite_color": "#96A83D",
+        "obstacle_color": "#B35F5B",
+        "initial_color": "#A430B3",
+        "final_colors": "#30A0B3",
+        "figsize": (5, 4),
+        "x_lim": [-6, 6],
+        "y_lim": [-6, 6],
+        "n_resolution": 100,
+    }
+
     import matplotlib.pyplot as plt
 
     plt.ion()
     plt.close("all")
 
-    # _test_base_gamma(visualize=True)
-    test_obstacle_inflation(visualize=True)
+    _test_base_gamma(visualize=True, **setup)
+    # test_obstacle_inflation(visualize=True, **setup)
 
     # test_obstacle_partially_rotated()
     # test_obstacle_on_x_transformation()
@@ -763,6 +830,6 @@ if (__name__) == "__main__":
     # test_transformation(visualize=False)
 
     # test_inverse_projection_around_obstacle(visualize=False)
-    # test_inverse_projection_around_obstacle(visualize=True, n_resolution=50)
-    test_inverse_projection_and_deflation_around_obstacle(visualize=1, n_resolution=50)
+    test_inverse_projection_around_obstacle(visualize=True, **setup)
+    test_inverse_projection_and_deflation_around_obstacle(visualize=1, **setup)
     print("Tests done.")
