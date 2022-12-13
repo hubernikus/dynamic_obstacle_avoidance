@@ -9,3 +9,6 @@ pyqt5 # Allow animation and visualization
 # Graphs [for now use both]
 networkx    # more versatile
 igraph      # faster
+
+# Learning Library
+scikit-learn
