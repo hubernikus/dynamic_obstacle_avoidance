@@ -112,9 +112,13 @@ class ProjectedRotationDynamics(DynamicalSystem):
         pos_norm = LA.norm(relative_position)
 
         if pos_norm < radius:
-            return np.zeros_like(relative_position)
+            if in_attractor_frame:
+                return np.copy(self.obstacle.center_position)
+            else:
+                return np.zeros_like(position)
 
         deflated_position = ((pos_norm - radius) / pos_norm) * relative_position
+
         if in_attractor_frame:
             return deflated_position + self.obstacle.center_position
         else:
@@ -471,6 +475,14 @@ def test_obstacle_inflation(visualize=False):
     new_position = dynamics._get_position_after_inflating_obstacle(position)
     assert dynamics.obstacle.get_gamma(new_position, in_global_frame=True) > 1
 
+    restored_position = dynamics._get_position_after_deflating_obstacle(new_position)
+    assert np.allclose(position, restored_position)
+
+    # Deflating close to the obstacle
+    position = dynamics.obstacle.center_position + 1e-1
+    deflated_position = dynamics._get_position_after_deflating_obstacle(position)
+    assert np.allclose(deflated_position, dynamics.obstacle.center_position)
+
 
 def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
     dynamics = get_environment_obstacle_top_right()
@@ -562,6 +574,86 @@ def test_inverse_projection_around_obstacle(visualize=False, n_resolution=30):
         position_start, attractor_position
     )
     assert np.allclose(pos_shrink, attractor_position)
+
+
+def test_inverse_projection_and_deflation_around_obstacle(
+    visualize=False, n_resolution=30
+):
+    dynamics = get_environment_obstacle_top_right()
+
+    if visualize:
+
+        # x_lim = [-10, 10]
+        # y_lim = [-10, 10]
+        x_lim = [-6, 6]
+        y_lim = [-6, 6]
+        figsize = (5, 4)
+
+        nx = ny = n_resolution
+
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros(positions.shape[1])
+
+        ### Do before trafo ###
+        attractor_position = dynamics._get_position_after_deflating_obstacle(
+            dynamics.attractor_position
+        )
+
+        gammas_shrink = np.zeros_like(gammas)
+        for pp in range(positions.shape[1]):
+            # Do the reverse operation to obtain an 'even' grid
+            pos_shrink = positions[:, pp]
+            pos_shrink = dynamics._get_position_after_deflating_obstacle(pos_shrink)
+
+            if np.allclose(pos_shrink, attractor_position):
+                breakpoint()
+                continue
+
+            pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
+                positions[:, pp], attractor_position
+            )
+            pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
+            gammas_shrink[pp] = dynamics.obstacle.get_gamma(
+                pos_shrink, in_global_frame=True
+            )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        cs = ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas_shrink.reshape(nx, ny),
+            cmap="binary_r",
+            vmin=1.0,
+            levels=np.linspace(1, 10, 9),
+        )
+
+        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+
+        ax.plot(
+            attractor_position[0],
+            attractor_position[1],
+            "k*",
+            linewidth=12,
+            markeredgewidth=1.2,
+            markersize=15,
+            zorder=3,
+        )
+
+        ax.plot(
+            dynamics.obstacle.center_position[0],
+            dynamics.obstacle.center_position[1],
+            "k+",
+            linewidth=12,
+            markeredgewidth=3.0,
+            markersize=14,
+            zorder=3,
+        )
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
 
 
 def test_obstacle_partially_rotated():
@@ -670,6 +762,7 @@ if (__name__) == "__main__":
     # test_transformation_bijection_for_rotated()
     # test_transformation(visualize=False)
 
-    test_inverse_projection_around_obstacle(visualize=False)
+    # test_inverse_projection_around_obstacle(visualize=False)
     # test_inverse_projection_around_obstacle(visualize=True, n_resolution=50)
+    test_inverse_projection_and_deflation_around_obstacle(visualize=1, n_resolution=50)
     print("Tests done.")
