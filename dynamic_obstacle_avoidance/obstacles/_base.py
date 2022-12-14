@@ -16,6 +16,8 @@ from enum import Enum, auto
 import numpy as np
 import numpy.linalg as LA
 
+from scipy.spatial.transform import Rotation
+
 import matplotlib.pyplot as plt
 
 from vartools.angle_math import angle_difference_directional
@@ -307,7 +309,7 @@ class Obstacle(ABC):
     @property
     def orientation_in_degree(self) -> float:
         """Transform the basic rotation to from radian to degree."""
-        if self.orientation is None:
+        if self.orientation is None or isinstance(self.orientation, Rotation):
             return 0
         else:
             return self.orientation * 180 / np.pi
