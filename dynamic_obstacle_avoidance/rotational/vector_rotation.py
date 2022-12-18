@@ -664,3 +664,8 @@ class VectorRotationTree:
     def rotate_weighted(self, node_id_list: list[int], weights: list[float]):
         # For safe rotation at the back
         raise NotImplementedError()
+
+
+def create_zero_vector_rotation(dimension: int) -> VectorRotationXd:
+    """Creates a zero vector rotation object."""
+    return VectorRotationXd(base=np.eye((dimension, 2)), rotation_angle=0.0)

@@ -4,6 +4,7 @@
 import sys
 import math
 import copy
+import os
 
 # from enum import Enum
 
@@ -20,6 +21,10 @@ from vartools.linalg import get_orthogonal_basis
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
+    obstacle_avoidance_rotational,
+)
 
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
@@ -51,6 +56,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
         min_gamma: float = 1,
         max_gamma: float = 10,
     ) -> None:
+        super().__init__(dimension=obstacle.dimension)
 
         self.obstacle = obstacle
         self.attractor_position = attractor_position
@@ -154,16 +160,13 @@ class ProjectedRotationDynamics(DynamicalSystem):
         # Copy just in case - but probably no needed
         relative_position = np.copy(relative_position)
 
-        # 'Unfold' the circular plane into an infinite yy-plane
-        # basis = get_orthogonal_basis(relative_position / LA.norm(relative_position))
+        # 'Unfold' the circular plane into an infinite -y/+y-plane
         if not (dist_attr_obs := LA.norm(relative_attractor)):
             raise NotImplementedError("Implement for position at center.")
         dir_attractor_to_obstacle = relative_attractor / dist_attr_obs
         vec_attractor_to_position = relative_position
 
         basis = get_orthogonal_basis(dir_attractor_to_obstacle)
-        # transformed_position = np.zeros_like(relative_position)
-        # transformed_position[1:] = basis[:, 1:].T @ relative_position
         transformed_position = basis.T @ vec_attractor_to_position
 
         # Stretch x-values along x-axis in order to have a x-weight at the attractor
@@ -198,9 +201,6 @@ class ProjectedRotationDynamics(DynamicalSystem):
         self, transformed_position: Vector, relative_attractor: Vector
     ) -> Vector:
         """Returns UNfolded rleative position folded with respect to the dynamic center."""
-        # basis = get_orthogonal_basis(
-        #     transformed_position / LA.norm(transformed_position)
-        # )
 
         dir_attractor_to_obstacle = self.obstacle.center_position - relative_attractor
         if not (dist_attr_obs := LA.norm(dir_attractor_to_obstacle)):
@@ -219,7 +219,6 @@ class ProjectedRotationDynamics(DynamicalSystem):
         transform_norm = LA.norm(vec_attractor_to_position)
         dot_prod = math.sqrt(max(transform_norm**2 - radius**2, 0))
         dot_prod = dot_prod**self.dotprod_projection_power
-        # dot_prod = dot_prod**2 / dist_attr_obs
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
         if dot_prod < 1:
@@ -294,16 +293,36 @@ class ProjectedRotationDynamics(DynamicalSystem):
         return attractor_dir
 
     def _get_projected_lyapunov_gradient(self, position: Vector) -> Vector:
-        """ Returns projected lyapunov gradient function.
-        
+        """Returns projected lyapunov gradient function.
+
         It is assumed that z-axis is the base gradient."""
         attractor_dir = self.attractor_position - self.obstacle.center_position
 
         if not (dist_attractor := LA.norm(attractor_dir)):
             return np.zeros_like(attractor_dir)
-        
+
         return attractor_dir / dist_attractor
-        
+
+    def _get_vector_rotation_of_modulation(
+        self, position: Vector, velocity: Vector
+    ) -> VectorRotationXd:
+        """Returns the rotation of the modulation close to an obstacle."""
+        if not (vel_norm := LA.norm(velocity)):
+            return VectorRotationXd(np.eye(self.dimension, 2), rotation_angle=0.0)
+
+        modulated_velocity = obstacle_avoidance_rotational(
+            position,
+            velocity,
+            obstacle_list=[self.obstacle],
+            convergence_velocity=velocity,
+        )
+        if not (mod_vel_norm := LA.norm(modulated_velocity)):
+            return VectorRotationXd(np.eye(self.dimension, 2), rotation_angle=0.0)
+
+        return VectorRotationXd.from_directions(
+            velocity / vel_norm, modulated_velocity / mod_vel_norm
+        )
+
     def evaluate(self, position: Vector) -> Vector:
         attractor_dir = self.get_lyapunov_gradient(position)
 
@@ -355,6 +374,7 @@ def _test_base_gamma(
     figsize=(5, 4),
     visualize_vectors: bool = False,
     n_vectors: int = 8,
+    save_figure: bool = False,
     **kwargs,
 ):
     # No explicit test in here, since only getting the gamma value.
@@ -387,7 +407,7 @@ def _test_base_gamma(
             vmin=1.0,
             levels=np.linspace(1, 10, 9),
         )
-        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+        # cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
         ax.plot(
             dynamics.attractor_position[0],
@@ -423,33 +443,61 @@ def _test_base_gamma(
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
-        plot_obstacles(ax=ax, obstacle_container=[dynamics.obstacle], alpha_obstacle=1.0)
- 
-        if not visualize_vectors:
-            return fig, ax
-        
-        # Plot the vectors
-        nx = ny = n_vectors
-
-        x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+        plot_obstacles(
+            ax=ax, obstacle_container=[dynamics.obstacle], alpha_obstacle=1.0
         )
-        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
 
-        for pp in range(positions.shape[1]):
-            pos = dynamics._get_position_after_inflating_obstacle(positions[:, pp]) 
-            velocity = dynamics._get_lyapunov_gradient(pos)
-            ax.quiver(
-                pos[0],
-                pos[1],
-                velocity[0],
-                velocity[1],
-                color=kwargs["initial_color"],
-                scale=10.0,
-                width=0.01,
-                zorder=1,
+        if visualize_vectors:
+            # Plot the vectors
+            nx = ny = n_vectors
+
+            x_vals, y_vals = np.meshgrid(
+                np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
             )
+            positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
 
+            for pp in range(positions.shape[1]):
+                pos = dynamics._get_position_after_inflating_obstacle(positions[:, pp])
+                velocity = dynamics._get_lyapunov_gradient(pos)
+                ax.quiver(
+                    pos[0],
+                    pos[1],
+                    velocity[0],
+                    velocity[1],
+                    color=kwargs["initial_color"],
+                    scale=10.0,
+                    width=0.01,
+                    zorder=1,
+                )
+
+                velocity_rotation = dynamics._get_vector_rotation_of_modulation(
+                    pos, velocity
+                )
+
+                velocity_mod = velocity_rotation.rotate(velocity)
+                ax.quiver(
+                    pos[0],
+                    pos[1],
+                    velocity_mod[0],
+                    velocity_mod[1],
+                    color=kwargs["final_color"],
+                    scale=10.0,
+                    width=0.01,
+                )
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            if save_figure:
+                figure_name = "obstacle_original_space"
+                fig.savefig(
+                    os.path.join(
+                        # os.path.dirname(__file__),
+                        "figures",
+                        figure_name + figtype,
+                    ),
+                    bbox_inches="tight",
+                )
 
 
 def test_obstacle_inflation(
@@ -459,6 +507,7 @@ def test_obstacle_inflation(
     n_resolution=30,
     figsize=(5, 4),
     n_vectors: int = 8,
+    save_figure: bool = False,
     **kwargs,
 ):
     dynamics = get_environment_obstacle_top_right()
@@ -500,7 +549,7 @@ def test_obstacle_inflation(
             levels=np.linspace(1, 10, 9),
         )
 
-        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+        # cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
         ax.plot(
             attractor_position[0],
@@ -537,32 +586,58 @@ def test_obstacle_inflation(
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
-        if not n_vectors:
-            # Zero value
-            return fig, ax
+        if n_vectors:
+            # Plot the vectors
+            nx = ny = n_vectors
 
-        # Plot the vectors
-        nx = ny = n_vectors
+            x_vals, y_vals = np.meshgrid(
+                np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+            )
+            positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
 
-        x_vals, y_vals = np.meshgrid(
-            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
-        )
-        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+            for pp in range(positions.shape[1]):
+                pos = dynamics._get_position_after_inflating_obstacle(positions[:, pp])
+                velocity = dynamics._get_lyapunov_gradient(pos)
+                ax.quiver(
+                    positions[0, pp],
+                    positions[1, pp],
+                    velocity[0],
+                    velocity[1],
+                    color=kwargs["initial_color"],
+                    scale=10.0,
+                    width=0.01,
+                    zorder=1,
+                )
 
-        for pp in range(positions.shape[1]):
-            pos = dynamics._get_position_after_inflating_obstacle(positions[:, pp])
-            velocity = dynamics._get_lyapunov_gradient(pos)
-            ax.quiver(
-                positions[0, pp],
-                positions[1, pp],
-                velocity[0],
-                velocity[1],
-                color=kwargs["initial_color"],
-                scale=10.0,
-                width=0.01,
-                zorder=1,)
+                velocity_rotation = dynamics._get_vector_rotation_of_modulation(
+                    pos, velocity
+                )
+
+                velocity_mod = velocity_rotation.rotate(velocity)
+                ax.quiver(
+                    positions[0, pp],
+                    positions[1, pp],
+                    velocity_mod[0],
+                    velocity_mod[1],
+                    color=kwargs["final_color"],
+                    scale=10.0,
+                    width=0.01,
+                )
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            if save_figure:
+                figure_name = "obstacle_deflated_space"
+                fig.savefig(
+                    os.path.join(
+                        # os.path.dirname(__file__),
+                        "figures",
+                        figure_name + figtype,
+                    ),
+                    bbox_inches="tight",
+                )
         return fig, ax
-
 
     # Attractor is outside the obstacle
     position = np.array([0, 0])
@@ -592,6 +667,7 @@ def test_inverse_projection_around_obstacle(
     n_resolution=30,
     figsize=(5, 4),
     n_vectors=10,
+    save_figure=False,
     **kwargs,
 ):
     dynamics = get_environment_obstacle_top_right()
@@ -631,7 +707,7 @@ def test_inverse_projection_around_obstacle(
             levels=np.linspace(1, 10, 9),
         )
 
-        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+        # cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
         # Attractor line
         ax.plot(
@@ -673,7 +749,7 @@ def test_inverse_projection_around_obstacle(
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
- 
+
         # Plot vectors
         if n_vectors:
             # plot the vectors
@@ -694,8 +770,38 @@ def test_inverse_projection_around_obstacle(
                     color=kwargs["initial_color"],
                     scale=10.0,
                     width=0.01,
-                    zorder=1,)
-        
+                    zorder=1,
+                )
+
+                velocity_rotation = dynamics._get_vector_rotation_of_modulation(
+                    pos, velocity
+                )
+
+                velocity_mod = velocity_rotation.rotate(velocity)
+                ax.quiver(
+                    positions[0, pp],
+                    positions[1, pp],
+                    velocity_mod[0],
+                    velocity_mod[1],
+                    color=kwargs["final_color"],
+                    scale=10.0,
+                    width=0.01,
+                )
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            if save_figure:
+                figure_name = "obstacle_projection_deflation"
+                fig.savefig(
+                    os.path.join(
+                        # os.path.dirname(__file__),
+                        "figures",
+                        figure_name + figtype,
+                    ),
+                    bbox_inches="tight",
+                )
+
     attractor_position = dynamics._get_position_after_deflating_obstacle(
         dynamics.attractor_position
     )
@@ -725,6 +831,7 @@ def test_inverse_projection_and_deflation_around_obstacle(
     n_resolution=30,
     figsize=(5, 4),
     n_vectors=10,
+    save_figure=False,
     **kwargs,
 ):
     dynamics = get_environment_obstacle_top_right()
@@ -771,10 +878,10 @@ def test_inverse_projection_and_deflation_around_obstacle(
             cmap="binary_r",
             vmin=1.0,
             levels=np.linspace(1, 10, 9),
-            zorder=-1
+            zorder=-1,
         )
 
-        cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
+        # cbar = fig.colorbar(cs, ticks=np.linspace(1, 11, 6))
 
         # attractor line
         ax.plot(
@@ -806,8 +913,10 @@ def test_inverse_projection_and_deflation_around_obstacle(
         ax.set_xlim(x_lim)
         ax.set_ylim(y_lim)
 
-        plot_obstacles(ax=ax, obstacle_container=[dynamics.obstacle], alpha_obstacle=1.0)
- 
+        plot_obstacles(
+            ax=ax, obstacle_container=[dynamics.obstacle], alpha_obstacle=1.0
+        )
+
         # Plot vectors
         if n_vectors:
             # plot the vectors
@@ -828,6 +937,35 @@ def test_inverse_projection_and_deflation_around_obstacle(
                     color=kwargs["initial_color"],
                     scale=10.0,
                     width=0.01,
+                )
+
+                velocity_rotation = dynamics._get_vector_rotation_of_modulation(
+                    pos, velocity
+                )
+
+                velocity_mod = velocity_rotation.rotate(velocity)
+                ax.quiver(
+                    pos[0],
+                    pos[1],
+                    velocity_mod[0],
+                    velocity_mod[1],
+                    color=kwargs["final_color"],
+                    scale=10.0,
+                    width=0.01,
+                )
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            if save_figure:
+                figure_name = "obstacle_projection_inflated"
+                fig.savefig(
+                    os.path.join(
+                        # os.path.dirname(__file__),
+                        "figures",
+                        figure_name + figtype,
+                    ),
+                    bbox_inches="tight",
                 )
 
 
@@ -929,21 +1067,22 @@ if (__name__) == "__main__":
         "opposite_color": "#96a83d",
         "obstacle_color": "#b35f5b",
         "initial_color": "#a430b3",
-        "final_colors": "#30a0b3",
+        "final_color": "#30a0b3",
         "figsize": (5, 4),
-        "x_lim": [-6, 6],
+        "x_lim": [-3, 9],
         "y_lim": [-6, 6],
         "n_resolution": 100,
         "n_vectors": 8,
     }
+    figtype = "png"
 
     import matplotlib.pyplot as plt
 
     plt.ion()
     plt.close("all")
 
-    _test_base_gamma(visualize=True, visualize_vectors=True, **setup)
-    # test_obstacle_inflation(visualize=True, **setup)
+    _test_base_gamma(visualize=True, visualize_vectors=True, save_figure=True, **setup)
+    test_obstacle_inflation(visualize=True, **setup, save_figure=True)
 
     # test_obstacle_partially_rotated()
     # test_obstacle_on_x_transformation()
@@ -951,7 +1090,9 @@ if (__name__) == "__main__":
     # test_transformation(visualize=False)
 
     # test_inverse_projection_around_obstacle(visualize=False)
-    # test_inverse_projection_around_obstacle(visualize=True, **setup)
+    test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=True)
 
-    test_inverse_projection_and_deflation_around_obstacle(visualize=1, **setup)
+    test_inverse_projection_and_deflation_around_obstacle(
+        visualize=1, **setup, save_figure=True
+    )
     print("Tests done.")

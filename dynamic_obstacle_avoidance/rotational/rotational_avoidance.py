@@ -7,7 +7,6 @@
 # TODO: Speed up using cython / cpp e.g. eigen?
 # TODO: list / array stack for lru_cache to speed
 
-import warnings
 from .rotational_avoider import RotationalAvoider
 
 
