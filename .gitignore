@@ -19,3 +19,5 @@ venv/*
 # scripts/*.gif
 
 **/.ipynb_checkpoints/*
+
+.vscode
