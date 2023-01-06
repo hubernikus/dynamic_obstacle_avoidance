@@ -157,14 +157,14 @@ class ProjectedRotationDynamics(DynamicalSystem):
     ) -> Vector:
         """Returns the relative position folded with respect to the dynamics center."""
 
-        # Copy just in case - but probably no needed
+        # Copy just in case - but probably not needed
         relative_position = np.copy(relative_position)
 
         # 'Unfold' the circular plane into an infinite -y/+y-plane
         if not (dist_attr_obs := LA.norm(relative_attractor)):
             raise NotImplementedError("Implement for position at center.")
         dir_attractor_to_obstacle = relative_attractor / dist_attr_obs
-        vec_attractor_to_position = relative_position
+        vec_attractor_to_position = relative_position # ?! this is position-obstacle?!
 
         basis = get_orthogonal_basis(dir_attractor_to_obstacle)
         transformed_position = basis.T @ vec_attractor_to_position

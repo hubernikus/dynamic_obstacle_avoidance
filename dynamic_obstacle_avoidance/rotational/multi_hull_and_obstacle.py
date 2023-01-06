@@ -72,6 +72,7 @@ class MultiHullAndObstacle(Obstacle):
         if center_position is None:
             center_position = np.zeros(outer_obstacle.center_position.shape)
 
+        self.outer_obstacle = outer_obstacle
         super().__init__(center_position=center_position, orientation=orientation)
 
         # This obstacle is duality of boundary - obstacle (depending on position)
@@ -81,7 +82,6 @@ class MultiHullAndObstacle(Obstacle):
         self._graph = None
         self.inner_obstacles = inner_obstacles
 
-        self.outer_obstacle = outer_obstacle
         self._local_outside_attractor = None
         self._attractor_is_outside = None
         # Store the entrances and the position seperately
