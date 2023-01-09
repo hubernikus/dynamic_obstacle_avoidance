@@ -141,7 +141,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
                 return np.copy(self.obstacle.center_position)
 
         deflated_position = (
-            (pos_norm - radius) / pos_norm * deflation_weight
+            (pos_norm - radius * deflation_weight) / pos_norm
         ) * relative_position
 
         if in_obstacle_frame:
@@ -174,7 +174,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
             pos_norm = relative_position[0]
 
         inflated_position = (
-            (pos_norm + radius) / pos_norm * deflation_weight
+            (pos_norm + radius * deflation_weight) / pos_norm
         ) * relative_position
 
         if in_obstacle_frame:
@@ -225,17 +225,21 @@ class ProjectedRotationDynamics(DynamicalSystem):
         dot_prod = np.dot(dir_attractor_to_position, dir_attractor_to_obstacle)
 
         if dot_prod <= -1:
-            # Put it very far away
+            # Put it very far away in a random direction
             transformed_position[1] = sys.float_info.max
 
         elif dot_prod < 1:
-            dotprod_factor = 2 / (1 + dot_prod) - 1
-            dotprod_factor = dotprod_factor ** (1.0 / self.dotprod_projection_power)
-            transformed_position[1:] = (
-                transformed_position[1:]
-                / LA.norm(transformed_position[1:])
-                * dotprod_factor
-            )
+            if trafo_norm := LA.norm(transformed_position[1:]):
+                # Numerical error can lead to zero division, even though it should be excluded
+                dotprod_factor = 2 / (1 + dot_prod) - 1
+                dotprod_factor = dotprod_factor ** (1.0 / self.dotprod_projection_power)
+
+                transformed_position[1:] = (
+                    transformed_position[1:]
+                    / LA.norm(transformed_position[1:])
+                    * dotprod_factor
+                )
+
         transformed_position = basis @ transformed_position
 
         return transformed_position
@@ -322,16 +326,18 @@ class ProjectedRotationDynamics(DynamicalSystem):
             self.attractor_position
         )
 
+        gamma = self.obstacle.get_gamma(relative_position, in_obstacle_frame=True)
+        weight = self._get_deflation_weight(gamma)
+
         if not (pos_norm := LA.norm(relative_position)):
             raise NotImplementedError()
 
         # Shrunk position
         relative_position = self._get_position_after_deflating_obstacle(
-            relative_position
+            relative_position, in_obstacle_frame=True, deflation_weight=weight
         )
-
         relative_attractor = self._get_position_after_deflating_obstacle(
-            relative_attractor, in_obstacle_frame=True
+            relative_attractor, in_obstacle_frame=True, deflation_weight=weight
         )
 
         relative_position = self._get_folded_position_opposite_kernel_point(
@@ -339,7 +345,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
         )
 
         relative_position = self._get_position_after_inflating_obstacle(
-            relative_position, in_obstacle_frame=True
+            relative_position, in_obstacle_frame=True, deflation_weight=weight
         )
 
         return self.obstacle.pose.transform_position_from_relative(relative_position)
@@ -1174,13 +1180,6 @@ def test_full_projection_pipeline_challenging():
         reference_velocity=reference_velocity,
     )
 
-    # Point almost at the attractor
-    position = np.copy(position_attractor)
-    position[1] = position[1] + 1e-6
-    projected_position = dynamics.get_projected_point(position)
-    assert math.isclose(projected_position[0], 0, abs_tol=1e-4), "No variation in x..."
-    assert LA.norm(projected_position[1]) > 10, "No variation expected."
-
     # Point almost on the surface of the obstacle
     position = np.copy(obstacle.center_position)
     position[1] = position[1] + obstacle.axes_length[1] / 2.0 + 1e-5
@@ -1188,6 +1187,13 @@ def test_full_projection_pipeline_challenging():
     assert np.allclose(
         position, projected_position
     ), "Projection should have little affect close to the obstacles surface."
+
+    # Point almost at the attractor
+    position = np.copy(position_attractor)
+    position[1] = position[1] + 1e-7
+    projected_position = dynamics.get_projected_point(position)
+    assert math.isclose(projected_position[0], 0, abs_tol=1e-4), "No variation in x..."
+    assert LA.norm(projected_position[1]) > 10, "No variation expected."
 
 
 if (__name__) == "__main__":
