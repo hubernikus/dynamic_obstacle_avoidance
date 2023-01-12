@@ -203,7 +203,6 @@ def test_nonlinear_avoider(visualize: bool = False) -> None:
         y_lim = [-5, 5]
 
         figsize = (12, 6)
-
         from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
             plot_obstacle_dynamics,
         )
