@@ -1,6 +1,6 @@
 #!/USSR/bin/python3.9
 """ Test overrotation for ellipses. """
-# Author: Lukas Huber
+
 # Created: 2021-08-04
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
@@ -8,7 +8,8 @@
 import warnings
 from functools import partial
 import unittest
-from math import pi
+
+# from math import pi
 import math
 
 import numpy as np
@@ -124,7 +125,7 @@ def old_test_rotational_pulling(visualize=False):
     inv_conv_proj = main_avoider._get_projection_of_inverted_convergence_direction(
         inv_conv_rotated=inv_conv_rotated,
         inv_nonlinear=inv_nonlinear,
-        inv_convergence_radius=np.pi / 2,
+        inv_convergence_radius=math.pi / 2,
     )
 
     assert inv_nonlinear.as_angle() < inv_conv_proj.as_angle(), " Not rotated enough."
@@ -134,7 +135,7 @@ def old_test_rotational_pulling(visualize=False):
     nonlinear_conv = main_avoider._get_projected_nonlinear_velocity(
         dir_conv_rotated=convergence_dir,
         dir_nonlinear=dir_nonlinear,
-        convergence_radius=np.pi / 2,
+        convergence_radius=math.pi / 2,
         weight=0.5,
     )
 
@@ -143,9 +144,9 @@ def old_test_rotational_pulling(visualize=False):
         fig, ax = plt.subplots()
         ax.set_title("Inverted Directions")
         ax.plot([-3.5, 3.5], [0, 0], "k--")
-        ax.plot([-np.pi, np.pi], [0, 0], color="red")
-        ax.plot([-np.pi / 2, np.pi / 2], [0, 0], color="green")
-        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], "|", color="black")
+        ax.plot([-math.pi, math.pi], [0, 0], color="red")
+        ax.plot([-math.pi / 2, math.pi / 2], [0, 0], color="green")
+        ax.plot([-math.pi, 0, math.pi], [0, 0, 0], "|", color="black")
 
         ax.plot(inv_nonlinear.as_angle(), 0, "o", color="blue", label="Nonlinear")
         ax.plot(
@@ -159,9 +160,9 @@ def old_test_rotational_pulling(visualize=False):
         fig, ax = plt.subplots()
         ax.set_title("General Directions")
         ax.plot([-3.5, 3.5], [0, 0], "k--")
-        ax.plot([-np.pi, np.pi], [0, 0], color="green")
-        ax.plot([-np.pi / 2, np.pi / 2], [0, 0], color="red")
-        ax.plot([-np.pi, 0, np.pi], [0, 0, 0], "|", color="black")
+        ax.plot([-math.pi, math.pi], [0, 0], color="green")
+        ax.plot([-math.pi / 2, math.pi / 2], [0, 0], color="red")
+        ax.plot([-math.pi, 0, math.pi], [0, 0, 0], "|", color="black")
 
         ax.plot(dir_nonlinear.as_angle(), 0, "o", color="blue", label="Nonlinear")
         ax.plot(
@@ -207,7 +208,7 @@ def test_convergence_tangent(visualize=True):
         dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
         dir_reference=UnitDirection(normal_base).from_vector(delta_pos),
         # base=normal_base,
-        convergence_radius=np.pi / 2,
+        convergence_radius=math.pi / 2,
     )
 
     assert np.allclose(
@@ -244,7 +245,7 @@ def test_convergence_tangent(visualize=True):
                 dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
                 dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
                 # base=normal_base,
-                convergence_radius=np.pi / 2,
+                convergence_radius=math.pi / 2,
             )
 
             vectors[:, it] = unit_tangent.as_vector()
@@ -281,14 +282,14 @@ def test_rotating_towards_tangent():
         dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
         dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
         # base=normal_base,
-        convergence_radius=np.pi / 2,
+        convergence_radius=math.pi / 2,
     )
 
     rotated_velocity = main_avoider._get_projected_velocity(
         dir_convergence_tangent=tangent,
         dir_initial_velocity=UnitDirection(normal_base).from_vector(linear_velocity),
         weight=0.5,
-        convergence_radius=np.pi / 2,
+        convergence_radius=math.pi / 2,
     )
 
     assert (
@@ -320,7 +321,7 @@ def test_rotated_convergence_direction_circle():
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
         weight=weight,
-        convergence_radius=np.pi / 2.0,
+        convergence_radius=math.pi / 2.0,
         convergence_vector=inital_velocity,
         reference_vector=obstacle.get_reference_direction(
             position, in_global_frame=True
@@ -358,7 +359,7 @@ def test_rotated_convergence_direction_ellipse():
     main_avoider = RotationalAvoider()
     convergence_dir = main_avoider._get_rotated_convergence_direction(
         weight=weight,
-        convergence_radius=np.pi / 2.0,
+        convergence_radius=math.pi / 2.0,
         convergence_vector=inital_velocity,
         reference_vector=obstacle.get_reference_direction(
             position, in_global_frame=True
@@ -802,7 +803,7 @@ def test_double_ellipse(visualize=False):
         Ellipse(
             center_position=np.array([1, 0]),
             axes_length=np.array([4, 2]),
-            orientation=30 / 180.0 * pi,
+            orientation=30 / 180.0 * math.pi,
         )
     )
 

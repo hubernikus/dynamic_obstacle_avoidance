@@ -14,19 +14,11 @@ import copy
 import numpy as np
 from math import sqrt
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import (
-    BaseContainer,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import (
-    GradientContainer,
-)
+from dynamic_obstacle_avoidance.obstacles import CircularObstacle
 
-# from dynamic_obstacle_avoidance.obstacle_avoidance.learning_obstacle import RegressionObstacle
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import (
-    CircularObstacle,
-)
+from dynamic_obstacle_avoidance.containers import BaseContainer, GradientContainer
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import (
+from vartools.angle_math import (
     transform_polar2cartesian,
     transform_cartesian2polar,
 )
