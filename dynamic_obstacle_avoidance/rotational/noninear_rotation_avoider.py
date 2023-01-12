@@ -118,7 +118,8 @@ class NonlinearRotationalAvoider(BaseAvoider):
         ind_obs = gamma_array <= gamma_min
         if sum_close := np.sum(ind_obs):
             # Dangerously close..
-            weights = np.zeros(ind_obs) * 1.0 / sum_close
+            weights = np.ones(sum_close) * 1.0 / sum_close
+            weight_sum = 1
 
         else:
             ind_obs = gamma_array < self._rotation_avoider.cut_off_gamma
@@ -280,11 +281,127 @@ def test_nonlinear_avoider(visualize: bool = False) -> None:
     assert rotated_velocity[0] > 0 and rotated_velocity[1] < 0
 
 
+def test_multiobstacle_nonlinear_avoider(visualize=True):
+    # initial dynamics
+    main_direction = np.array([1, 0])
+    convergence_dynamics = ConstantValue(velocity=main_direction)
+    initial_dynamics = AxesFollowingDynamics(
+        center_position=np.zeros(2),
+        maximum_velocity=1.0,
+        main_direction=main_direction,
+    )
+    obstacle_environment = obstacle_list = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([5, 2]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([15, -0.1]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([3, -4]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([10, -3]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    obstacle_avoider = NonlinearRotationalAvoider(
+        initial_dynamics=initial_dynamics,
+        convergence_system=convergence_dynamics,
+        obstacle_environment=obstacle_environment,
+    )
+
+    if visualize:
+        x_lim = [-2, 22]
+        y_lim = [-5, 5]
+
+        figsize = (12, 6)
+        from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
+            plot_obstacle_dynamics,
+        )
+        from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            dynamics=obstacle_avoider.evaluate_convergence_dynamics,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+        plot_obstacles(
+            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+        )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            dynamics=obstacle_avoider.evaluate_initial_dynamics,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+        plot_obstacles(
+            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+        )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            dynamics=lambda x: obstacle_avoider.evaluate_weighted_dynamics(
+                x, initial_dynamics.evaluate(x)
+            ),
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+        plot_obstacles(
+            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+        )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            dynamics=obstacle_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+        plot_obstacles(
+            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+        )
+
+    # Velocity on the surface is perpendicular to circle-center
+    dir_surf = np.array([-1, -1]) / math.sqrt(2)
+    position = obstacle_environment[-1].center_position + dir_surf * 1.001
+    velocity = obstacle_avoider.evaluate(position)
+    assert math.isclose(np.dot(dir_surf, velocity), 0)
+
+
 if (__name__) == "__main__":
     # Import visualization libraries here
     import matplotlib.pyplot as plt  # For debugging only (!)
 
-    plt.close("all")
+    # plt.close("all")
     plt.ion()
 
-    test_nonlinear_avoider(visualize=True)
+    # test_nonlinear_avoider(visualize=True)
+    test_multiobstacle_nonlinear_avoider(visualize=False)
