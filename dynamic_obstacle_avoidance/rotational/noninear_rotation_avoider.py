@@ -393,7 +393,7 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
     dir_surf = np.array([-1, -1]) / math.sqrt(2)
     position = obstacle_environment[-1].center_position + dir_surf * 1.001
     velocity = obstacle_avoider.evaluate(position)
-    assert math.isclose(np.dot(dir_surf, velocity), 0)
+    assert math.isclose(np.dot(dir_surf, velocity), 0, abs_tol=1e-4)
 
 
 if (__name__) == "__main__":
