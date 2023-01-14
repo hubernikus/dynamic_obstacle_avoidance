@@ -246,16 +246,22 @@ class CuboidXd(obstacles.Obstacle):
         position,
         in_obstacle_frame: bool = True,
         in_global_frame: bool = None,
+        margin_absolut: bool = None,
     ):
         if in_global_frame is not None:
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
-            cube_position = self.pose.transform_position_to_relative(position)
+            position = self.pose.transform_position_to_relative(position)
 
-        cube_position = cube_position / self.semiaxes
+        if margin_absolut is None:
+            semiaxes = self.semiaxes_with_magin
+        else:
+            semiaxes = self.semiaxes + margin_absolut
+
+        cube_position = position / semiaxes
 
         ind_max = np.argmax(cube_position)
 
-        return position * self.semiaxes[ind_max] / position[ind_max]
+        return position * semiaxes[ind_max] / position[ind_max]
