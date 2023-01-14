@@ -109,62 +109,105 @@ class ProjectedRotationDynamics(DynamicalSystem):
             else:
                 gamma = self.gamma_max
 
+    def _get_deflation_weight(self, gamma: float) -> float:
+        return 1.0 / gamma
+
     def _get_position_after_deflating_obstacle(
-        self, position: Vector, in_attractor_frame: bool = True
+        self,
+        position: Vector,
+        in_obstacle_frame: bool = True,
+        deflation_weight: float = 1.0,
     ) -> Vector:
-        """Returns position in the environment where the obstacle is shrunk."""
+        """Returns position in the environment where the obstacle is shrunk.
+        (in the obstacle-frame.)
+
+        Due to the orientation the evaluation should be done in the obstacle frame (!)
+        """
         radius = self.obstacle.get_local_radius(
-            position, in_global_frame=in_attractor_frame
+            position, in_global_frame=not (in_obstacle_frame)
         )
-        relative_position = position - self.obstacle.center_position
+
+        if in_obstacle_frame:
+            relative_position = position
+        else:
+            relative_position = position - self.obstacle.center_position
+
         pos_norm = LA.norm(relative_position)
 
         if pos_norm < radius:
-            if in_attractor_frame:
-                return np.copy(self.obstacle.center_position)
-            else:
+            if in_obstacle_frame:
                 return np.zeros_like(position)
+            else:
+                return np.copy(self.obstacle.center_position)
 
-        deflated_position = ((pos_norm - radius) / pos_norm) * relative_position
+        deflated_position = (
+            (pos_norm - radius * deflation_weight) / pos_norm
+        ) * relative_position
 
-        if in_attractor_frame:
-            return deflated_position + self.obstacle.center_position
-        else:
+        if in_obstacle_frame:
             return deflated_position
+        else:
+            return deflated_position + self.obstacle.center_position
 
     def _get_position_after_inflating_obstacle(
-        self, position: Vector, in_attractor_frame: bool = True
+        self,
+        position: Vector,
+        in_obstacle_frame: bool = True,
+        deflation_weight: float = 1.0,
     ) -> Vector:
-        """Returns position in the environment where the obstacle is shrunk."""
+        """Returns position in the environment where the obstacle is shrunk.
+
+        Due to the orientation the evaluation should be done in the obstacle frame (!)
+        """
         radius = self.obstacle.get_local_radius(
-            position, in_global_frame=in_attractor_frame
+            position, in_global_frame=not (in_obstacle_frame)
         )
 
-        relative_position = position - self.obstacle.center_position
+        if in_obstacle_frame:
+            relative_position = position
+        else:
+            relative_position = position - self.obstacle.center_position
+
         if not (pos_norm := LA.norm(relative_position)):
             # Needs a tiny value
             relative_position[0] = 1e6
             pos_norm = relative_position[0]
 
-        inflated_position = ((pos_norm + radius) / pos_norm) * relative_position
-        if in_attractor_frame:
-            return inflated_position + self.obstacle.center_position
-        else:
+        inflated_position = (
+            (pos_norm + radius * deflation_weight) / pos_norm
+        ) * relative_position
+
+        if in_obstacle_frame:
             return inflated_position
+        else:
+            return inflated_position + self.obstacle.center_position
 
     def _get_folded_position_opposite_kernel_point(
-        self, relative_position: Vector, relative_attractor: Vector
+        self,
+        position: Vector,
+        attractor_position: Vector,
+        in_obstacle_frame: bool = True,
     ) -> Vector:
         """Returns the relative position folded with respect to the dynamics center."""
 
-        # Copy just in case - but probably no needed
-        relative_position = np.copy(relative_position)
+        # Copy just in case - but probably not needed
+        # relative_position = np.copy(relative_position)
+
+        if in_obstacle_frame:
+            # If it's in the obstacle-frame => needs to be inverted...
+            vec_attractor_to_obstacle = (-1) * attractor_position
+        else:
+            vec_attractor_to_obstacle = (
+                self.obstacle.center_position - self.attractor_position
+            )
 
         # 'Unfold' the circular plane into an infinite -y/+y-plane
-        if not (dist_attr_obs := LA.norm(relative_attractor)):
+        if not (dist_attr_obs := LA.norm(vec_attractor_to_obstacle)):
             raise NotImplementedError("Implement for position at center.")
-        dir_attractor_to_obstacle = relative_attractor / dist_attr_obs
-        vec_attractor_to_position = relative_position
+        dir_attractor_to_obstacle = vec_attractor_to_obstacle / dist_attr_obs
+
+        # Get values in the attractor frame of reference
+        vec_attractor_to_position = position - attractor_position
 
         basis = get_orthogonal_basis(dir_attractor_to_obstacle)
         transformed_position = basis.T @ vec_attractor_to_position
@@ -178,31 +221,45 @@ class ProjectedRotationDynamics(DynamicalSystem):
         else:
             transformed_position[0] = (-1) * sys.float_info.max
 
-        vec_attractor_to_position = vec_attractor_to_position / dist_attr_pos
-        dot_prod = np.dot(vec_attractor_to_position, dir_attractor_to_obstacle)
+        dir_attractor_to_position = vec_attractor_to_position / dist_attr_pos
+        dot_prod = np.dot(dir_attractor_to_position, dir_attractor_to_obstacle)
 
         if dot_prod <= -1:
-            # Put it very far awa
+            # Put it very far away in a random direction
             transformed_position[1] = sys.float_info.max
 
         elif dot_prod < 1:
-            dotprod_factor = 2 / (1 + dot_prod) - 1
-            dotprod_factor = dotprod_factor ** (1.0 / self.dotprod_projection_power)
-            transformed_position[1:] = (
-                transformed_position[1:]
-                / LA.norm(transformed_position[1:])
-                * dotprod_factor
-            )
+            if trafo_norm := LA.norm(transformed_position[1:]):
+                # Numerical error can lead to zero division, even though it should be excluded
+                dotprod_factor = 2 / (1 + dot_prod) - 1
+                dotprod_factor = dotprod_factor ** (1.0 / self.dotprod_projection_power)
+
+                transformed_position[1:] = (
+                    transformed_position[1:]
+                    / LA.norm(transformed_position[1:])
+                    * dotprod_factor
+                )
+
         transformed_position = basis @ transformed_position
 
         return transformed_position
 
     def _get_unfolded_position_opposite_kernel_point(
-        self, transformed_position: Vector, relative_attractor: Vector
+        self,
+        transformed_position: Vector,
+        attractor_position: Vector,
+        in_obstacle_frame: bool = True,
     ) -> Vector:
-        """Returns UNfolded rleative position folded with respect to the dynamic center."""
+        """Returns UNfolded rleative position folded with respect to the dynamic center.
 
-        dir_attractor_to_obstacle = self.obstacle.center_position - relative_attractor
+        Input and output are in the obstacle frame of reference."""
+        if not in_obstacle_frame:
+            dir_attractor_to_obstacle = (
+                self.obstacle.center_position - attractor_position
+            )
+        else:
+            dir_attractor_to_obstacle = (-1) * attractor_position
+
         if not (dist_attr_obs := LA.norm(dir_attractor_to_obstacle)):
             raise NotImplementedError()
 
@@ -212,7 +269,7 @@ class ProjectedRotationDynamics(DynamicalSystem):
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
-        vec_attractor_to_position = transformed_position - relative_attractor
+        vec_attractor_to_position = transformed_position - attractor_position
         radius = np.dot(dir_attractor_to_obstacle, vec_attractor_to_position)
 
         # Ensure that the square root stays positive close to singularities
@@ -244,8 +301,18 @@ class ProjectedRotationDynamics(DynamicalSystem):
             * dist_attr_obs
         )
 
-        # Move from attractor-frame to obstacle-frame
-        relative_position = relative_position + relative_attractor
+        # Move out-of from attractor-frame
+        relative_position = relative_position + attractor_position
+
+        # if in_obstacle_frame:
+        #     relative_position = self.obstacle.base.transform_position_from_relative(
+        #         relative_position
+        #     )
+
+        # Simplified transform (without rotation), since everything was in obstacle frame
+        if in_obstacle_frame:
+            relative_position = relative_position + self.obstacle.pose.position
+
         return relative_position
 
     def get_projected_point(self, position: Vector) -> Vector:
@@ -254,32 +321,34 @@ class ProjectedRotationDynamics(DynamicalSystem):
         Assumption of the point being outside of the obstacle."""
 
         # Do the evaluation in local frame
-        relative_position = self.obstacle.transform_position_to_relative(position)
-        relative_attractor = self.obstacle.transform_position_to_relative(
+        relative_position = self.obstacle.pose.transform_position_to_relative(position)
+        relative_attractor = self.obstacle.pose.transform_position_to_relative(
             self.attractor_position
         )
+
+        gamma = self.obstacle.get_gamma(relative_position, in_obstacle_frame=True)
+        weight = self._get_deflation_weight(gamma)
 
         if not (pos_norm := LA.norm(relative_position)):
             raise NotImplementedError()
 
         # Shrunk position
         relative_position = self._get_position_after_deflating_obstacle(
-            relative_position
+            relative_position, in_obstacle_frame=True, deflation_weight=weight
         )
         relative_attractor = self._get_position_after_deflating_obstacle(
-            relative_attractor
+            relative_attractor, in_obstacle_frame=True, deflation_weight=weight
         )
 
-        relative_position = self._get_unfoled_opposite_kernel_point(
-            relative_position, relative_attractor
+        relative_position = self._get_folded_position_opposite_kernel_point(
+            relative_position, relative_attractor, in_obstacle_frame=True
         )
 
         relative_position = self._get_position_after_inflating_obstacle(
-            relative_position
+            relative_position, in_obstacle_frame=True, deflation_weight=weight
         )
-        breakpoint()
 
-        return self.obstacle.transform_position_from_relative(relative_position)
+        return self.obstacle.pose.transform_position_from_relative(relative_position)
 
     def _get_lyapunov_gradient(self, position: Vector) -> Vector:
         """Returns the Gradient of the Lyapunov function.
@@ -424,7 +493,7 @@ def _test_base_gamma(
         ax.plot(
             [dynamics.attractor_position[0], x_lim[0]],
             [dynamics.attractor_position[1], dynamics.attractor_position[1]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=3,
             zorder=2,
@@ -474,7 +543,7 @@ def _test_base_gamma(
                     pos, velocity
                 )
 
-                velocity_mod = velocity_rotation.rotate(velocity)
+                velocity_mod = velocity_rotation.rotate(vety)
                 ax.quiver(
                     pos[0],
                     pos[1],
@@ -577,7 +646,7 @@ def test_obstacle_inflation(
         ax.plot(
             [attractor_position[0], x_lim[0]],
             [attractor_position[1], dynamics.attractor_position[1]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=3,
             zorder=2,
@@ -713,7 +782,7 @@ def test_inverse_projection_around_obstacle(
         ax.plot(
             [x_lim[0], x_lim[0]],
             y_lim,
-            "--",
+            kwargs["linestyle"],
             color=kwargs["attractor_color"],
             linewidth=7,
             zorder=3,
@@ -722,7 +791,7 @@ def test_inverse_projection_around_obstacle(
         ax.plot(
             x_lim,
             [y_lim[0], y_lim[0]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=7,
             zorder=3,
@@ -730,7 +799,7 @@ def test_inverse_projection_around_obstacle(
         ax.plot(
             x_lim,
             [y_lim[1], y_lim[1]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=7,
             zorder=3,
@@ -887,7 +956,7 @@ def test_inverse_projection_and_deflation_around_obstacle(
         ax.plot(
             [x_lim[0], x_lim[0]],
             y_lim,
-            "--",
+            kwargs["linestyle"],
             color=kwargs["attractor_color"],
             linewidth=7,
             zorder=3,
@@ -896,7 +965,7 @@ def test_inverse_projection_and_deflation_around_obstacle(
         ax.plot(
             x_lim,
             [y_lim[0], y_lim[0]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=7,
             zorder=3,
@@ -904,7 +973,7 @@ def test_inverse_projection_and_deflation_around_obstacle(
         ax.plot(
             x_lim,
             [y_lim[1], y_lim[1]],
-            "--",
+            kwargs["linestyle"],
             color=kwargs["opposite_color"],
             linewidth=7,
             zorder=3,
@@ -1025,7 +1094,6 @@ def test_obstacle_on_x_transformation():
     )
     assert np.allclose(trafo_pos, [0, 1])
 
-    # breakpoint()
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, relative_attractor=relative_attr_pos
     )
@@ -1061,6 +1129,73 @@ def test_transformation_bijection_for_rotated():
     assert np.allclose(relative_position, reconstructed_pos)
 
 
+def test_full_projection_pipeline():
+    # Simplest version
+    position_attractor = np.array([-2.0, 0])
+    obstacle = Ellipse(
+        center_position=np.array([0.0, 0.0]),
+        axes_length=np.array([1.0, 1.0]),
+        orientation=0,
+    )
+    reference_velocity = np.array([-1.0, 0])
+
+    dynamics = ProjectedRotationDynamics(
+        obstacle=obstacle,
+        attractor_position=position_attractor,
+        reference_velocity=reference_velocity,
+    )
+
+    # Point almost at the attractor
+    position = np.copy(position_attractor)
+    position[0] = position[0] + 1e-8
+    projected_position = dynamics.get_projected_point(position)
+    assert math.isclose(projected_position[1], 0), "No variation in y..."
+    assert projected_position[0] < 10, "Is expected to be projected to large negatives!"
+
+    # Point almost on the surface of the obstacle
+    position = np.copy(obstacle.center_position)
+    position[0] = position[0] + obstacle.axes_length[0] / 2.0 + 1e-5
+    projected_position = dynamics.get_projected_point(position)
+
+    assert np.allclose(
+        position, projected_position
+    ), "Projection should have little affect close to the obstacles surface."
+
+
+def test_full_projection_pipeline_challenging():
+    # And now: we move to a slightly more difficult setup
+    position_attractor = np.array([0.0, 1.0])
+
+    obstacle = Ellipse(
+        center_position=np.array([0.0, 3.0]),
+        # Equal axes length, to easily place a point on surface
+        axes_length=np.array([0.9, 0.9]),
+        orientation=40 / 180.0 * math.pi,
+    )
+
+    reference_velocity = np.array([-1.0, -2.0])
+    dynamics = ProjectedRotationDynamics(
+        obstacle=obstacle,
+        attractor_position=position_attractor,
+        reference_velocity=reference_velocity,
+    )
+
+    # Point almost on the surface of the obstacle
+    position = np.copy(obstacle.center_position)
+    position[1] = position[1] + obstacle.axes_length[1] / 2.0 + 1e-5
+    projected_position = dynamics.get_projected_point(position)
+    assert np.allclose(
+        position, projected_position
+    ), "Projection should have little affect close to the obstacles surface."
+
+    # Point almost at the attractor
+    position = np.copy(position_attractor)
+    position[1] = position[1] + 1e-7
+    projected_position = dynamics.get_projected_point(position)
+    assert math.isclose(projected_position[0], 0, abs_tol=1e-4), "No variation in x..."
+    assert LA.norm(projected_position[1]) > 10, "No variation expected."
+
+
 if (__name__) == "__main__":
     setup = {
         "attractor_color": "#db6e14",
@@ -1073,6 +1208,7 @@ if (__name__) == "__main__":
         "y_lim": [-6, 6],
         "n_resolution": 100,
         "n_vectors": 8,
+        "linestyle": ":",
     }
     figtype = "png"
 
@@ -1081,8 +1217,8 @@ if (__name__) == "__main__":
     plt.ion()
     plt.close("all")
 
-    _test_base_gamma(visualize=True, visualize_vectors=True, save_figure=True, **setup)
-    test_obstacle_inflation(visualize=True, **setup, save_figure=True)
+    # _test_base_gamma(visualize=True, visualize_vectors=True, save_figure=True, **setup)
+    # test_obstacle_inflation(visualize=True, **setup, save_figure=True)
 
     # test_obstacle_partially_rotated()
     # test_obstacle_on_x_transformation()
@@ -1090,9 +1226,12 @@ if (__name__) == "__main__":
     # test_transformation(visualize=False)
 
     # test_inverse_projection_around_obstacle(visualize=False)
-    test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=True)
+    # test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=True)
 
-    test_inverse_projection_and_deflation_around_obstacle(
-        visualize=1, **setup, save_figure=True
-    )
+    # test_inverse_projection_and_deflation_around_obstacle(
+    #     visualize=1, **setup, save_figure=True
+    # )
+
+    test_full_projection_pipeline()
+    test_full_projection_pipeline_challenging()
     print("Tests done.")

@@ -80,6 +80,9 @@ class RotationalAvoider(BaseAvoider):
         # Compatibility
         return self.convergence_system
 
+    def evaluate(self, position):
+        return self.avoid(position)
+
     def avoid(
         self,
         position: np.ndarray,
@@ -442,8 +445,8 @@ class RotationalAvoider(BaseAvoider):
 
         return inv_conv_proj
 
+    @staticmethod
     def _get_projected_nonlinear_velocity(
-        self,
         dir_conv_rotated: UnitDirection,
         dir_nonlinear: UnitDirection,
         weight: float,
@@ -475,7 +478,7 @@ class RotationalAvoider(BaseAvoider):
             return dir_nonlinear
 
         inv_conv_rotated = dir_conv_rotated.invert_normal()
-        weight_nonl = self._get_nonlinear_inverted_weight(
+        weight_nonl = RotationalAvoider._get_nonlinear_inverted_weight(
             inv_conv_rotated.norm(),
             inv_nonlinear.norm(),
             inv_convergence_radius,
@@ -486,10 +489,12 @@ class RotationalAvoider(BaseAvoider):
             return inv_nonlinear.invert_normal()
 
         # TODO: integrate this function here
-        inv_conv_proj = self._get_projection_of_inverted_convergence_direction(
-            inv_conv_rotated=inv_conv_rotated,
-            inv_nonlinear=inv_nonlinear,
-            inv_convergence_radius=inv_convergence_radius,
+        inv_conv_proj = (
+            RotationalAvoider._get_projection_of_inverted_convergence_direction(
+                inv_conv_rotated=inv_conv_rotated,
+                inv_nonlinear=inv_nonlinear,
+                inv_convergence_radius=inv_convergence_radius,
+            )
         )
 
         inv_nonlinear_conv = (
@@ -571,8 +576,8 @@ class RotationalAvoider(BaseAvoider):
 
         return UnitDirection(dir_reference.base).from_angle(surface_angle)
 
+    @staticmethod
     def _get_rotated_convergence_direction(
-        self,
         weight: float,
         convergence_radius: float,
         convergence_vector: np.ndarray,
@@ -609,7 +614,7 @@ class RotationalAvoider(BaseAvoider):
 
         # Weight to ensure that:
         weight_deviation = norm_dir_conv / norm_tangent_dist
-        w_conv = self._get_directional_deviation_weight(
+        w_conv = RotationalAvoider._get_directional_deviation_weight(
             weight, weight_deviation=weight_deviation
         )
 
@@ -671,7 +676,7 @@ class RotationalAvoider(BaseAvoider):
             LA.norm(dir_convergence.as_angle()) < convergence_radius
             or self.tail_rotation
         ):
-            dir_convergence = self._get_tangent_convergence_direction(
+            dir_convergence = RotationalAvoider._get_tangent_convergence_direction(
                 dir_convergence=dir_convergence,
                 dir_reference=dir_reference,
                 # base=base,
