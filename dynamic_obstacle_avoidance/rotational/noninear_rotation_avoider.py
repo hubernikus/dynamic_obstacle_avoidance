@@ -191,7 +191,7 @@ class NonlinearRotationalAvoider(BaseAvoider):
 
 def test_nonlinear_avoider(
     visualize: bool = False,
-    savefig: bool = True,
+    savefig: bool = False,
     n_resolution: int = 20,
 ) -> None:
     # initial dynamics
@@ -521,16 +521,25 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
     assert math.isclose(np.dot(dir_surf, velocity), 0, abs_tol=1e-4)
 
 
-if (__name__) == "__main__":
-    figtype = ".pdf"
-    # figtype = ".png"
+def test_circular_multiple(visualize=False):
 
+    if visualize:
+        pass
+
+
+if (__name__) == "__main__":
     # Import visualization libraries here
     import matplotlib.pyplot as plt  # For debugging only (!)
 
     plt.close("all")
     plt.ion()
 
-    test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
-    # test_nonlinear_avoider(visualize=True, savefig=True)
+    figtype = ".pdf"
+    # figtype = ".png"
+
+    # test_nonlinear_avoider(visualize=True, savefig=False)
+    # test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
     # test_multiobstacle_nonlinear_avoider(visualize=False)
+
+    test_circular_single(visualize=True):
+    
