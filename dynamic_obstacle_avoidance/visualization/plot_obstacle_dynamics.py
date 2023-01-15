@@ -20,6 +20,7 @@ def plot_obstacle_dynamics(
     attractor_position=None,
     do_quiver=True,
     show_ticks=True,
+    vectorfield_color="blue",
 ):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -50,7 +51,7 @@ def plot_obstacle_dynamics(
             positions[1, :],
             velocities[0, :],
             velocities[1, :],
-            color="blue",
+            color=vectorfield_color,
             # color="red",
             scale=50,
             width=0.007,
@@ -62,7 +63,7 @@ def plot_obstacle_dynamics(
             positions[1, :].reshape(n_grid, n_grid),
             velocities[0, :].reshape(n_grid, n_grid),
             velocities[1, :].reshape(n_grid, n_grid),
-            color="blue",
+            color=vectorfield_color,
             # color="red",
             # scale=50,
             zorder=-1,
@@ -76,7 +77,10 @@ def plot_obstacle_dynamics(
             color="black",
             zorder=5,
         )
-    ax.axis("equal")
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    # fig.tight_layout()
 
     if not show_ticks:
         ax.tick_params(

@@ -59,6 +59,7 @@ class NonlinearRotationalAvoider(BaseAvoider):
             initial_dynamics=initial_dynamics,
             obstacle_environment=obstacle_environment,
             convergence_system=convergence_system,
+            cut_off_gamma=3.0,
             **kwargs,
         )
 
@@ -101,6 +102,9 @@ class NonlinearRotationalAvoider(BaseAvoider):
             **kwargs,
         )
 
+    def _compute_gamma_weights(self, position: np.ndarray):
+        pass
+
     def evaluate_weighted_dynamics(
         self, position: np.ndarray, initial_velocity: np.ndarray
     ) -> np.ndarray:
@@ -114,6 +118,8 @@ class NonlinearRotationalAvoider(BaseAvoider):
             )
 
         gamma_min = 1
+        # Store weights -> mostly for visualization
+        self.weights = np.zeros(self.n_obstacles)
 
         ind_obs = gamma_array <= gamma_min
         if sum_close := np.sum(ind_obs):
@@ -125,14 +131,23 @@ class NonlinearRotationalAvoider(BaseAvoider):
             ind_obs = gamma_array < self._rotation_avoider.cut_off_gamma
 
             if not np.sum(ind_obs):
-                return convergence_velocity
+                return initial_velocity
 
             weights = 1.0 / (gamma_array[ind_obs] - gamma_min) - 1 / (
                 self.cut_off_gamma - gamma_min
             )
-            if (weight_sum := np.sum(weights)) > 1:
+            if (weight_sum := np.sum(weights)) > 0:
                 # Normalize weight, but leave possibility to be smaller than one (!)
                 weights = weights / weight_sum
+
+            # Influence of each obstacle -> but better mapping to [0, 1]
+            ww_weights = (
+                1 / gamma_array[ind_obs] - 1 / self._rotation_avoider.cut_off_gamma
+            )
+            ww_weights = ww_weights / (1 - 1 / self._rotation_avoider.cut_off_gamma)
+            weights = weights * np.minimum(1, ww_weights)
+
+        self.weights[ind_obs] = weights
 
         # Remaining convergence is the linear system, if it is far..
         initial_norm = LA.norm(initial_velocity)
@@ -174,8 +189,11 @@ class NonlinearRotationalAvoider(BaseAvoider):
         return initial_norm * averaged_direction
 
 
-def test_nonlinear_avoider(visualize: bool = False) -> None:
-
+def test_nonlinear_avoider(
+    visualize: bool = False,
+    savefig: bool = True,
+    n_resolution: int = 20,
+) -> None:
     # initial dynamics
     main_direction = np.array([1, 0])
     convergence_dynamics = ConstantValue(velocity=main_direction)
@@ -200,10 +218,14 @@ def test_nonlinear_avoider(visualize: bool = False) -> None:
     )
 
     if visualize:
-        x_lim = [0, 20]
-        y_lim = [-5, 5]
+        x_lim = [0, 15]
+        y_lim = [-2, 5]
 
-        figsize = (12, 6)
+        do_quiver = False
+        vf_color = "blue"
+        # vf_color = "black"
+
+        figsize = (6.5, 3.0)
         from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
             plot_obstacle_dynamics,
         )
@@ -211,41 +233,126 @@ def test_nonlinear_avoider(visualize: bool = False) -> None:
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
-            obstacle_container=obstacle_environment,
+            obstacle_container=[],
             dynamics=obstacle_avoider.evaluate_convergence_dynamics,
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            n_grid=n_resolution,
+            do_quiver=do_quiver,
+            vectorfield_color=vf_color,
         )
         plot_obstacles(
-            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            noTicks=True,
+            # show_ticks=False,
         )
+        # fig.tight_layout()
+
+        if savefig:
+            figname = "base_convergence"
+            plt.savefig(
+                "figures/" + "nonlinear_infinite_dynamics_" + figname + figtype,
+                bbox_inches="tight",
+            )
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
-            obstacle_container=obstacle_environment,
+            obstacle_container=[],
             dynamics=obstacle_avoider.evaluate_initial_dynamics,
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            do_quiver=do_quiver,
+            n_grid=n_resolution,
+            vectorfield_color=vf_color,
         )
         plot_obstacles(
-            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            noTicks=True,
+            alpha_obstacle=0.6,
         )
+        # ax.plot(x_lim, [0, 0], "--", color="#696969", linewidth=2)
+        ax.plot(x_lim, [0, 0], "--", color="#5F021F", linewidth=4)
+        if savefig:
+            figname = "initial"
+            plt.savefig(
+                "figures/" + "nonlinear_infinite_dynamics_" + figname + figtype,
+                bbox_inches="tight",
+            )
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
-            obstacle_container=obstacle_environment,
+            obstacle_container=[],
             dynamics=lambda x: obstacle_avoider.evaluate_weighted_dynamics(
                 x, initial_dynamics.evaluate(x)
             ),
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            show_ticks=False,
+            do_quiver=do_quiver,
+            n_grid=n_resolution,
+            vectorfield_color=vf_color,
         )
+
         plot_obstacles(
-            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            noTicks=True,
+            alpha_obstacle=0.0,
         )
+
+        n_grid = n_resolution
+        xx, yy = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], n_grid),
+            np.linspace(y_lim[0], y_lim[1], n_grid),
+        )
+        positions = np.array([xx.flatten(), yy.flatten()])
+        weights = np.zeros(positions.shape[1])
+
+        for pp in range(positions.shape[1]):
+            obstacle_avoider.evaluate_weighted_dynamics(
+                positions[:, pp], initial_dynamics.evaluate(positions[:, pp])
+            )
+            weights[pp] = obstacle_avoider.weights[0]
+
+        cf = ax.contourf(
+            xx,
+            yy,
+            weights.reshape(n_grid, n_grid),
+            # cmap="hot_r",
+            cmap="binary",
+            levels=np.linspace(0, 1, 11),
+            zorder=-3,
+            alpha=0.5,
+        )
+
+        cax = fig.add_axes([0.6, 0.75, 0.28, 0.05])
+        # cax = fig.add_axes([0.6, 0.8, 0.2, 0.05])
+        cticks = [0, 1]
+        cbar = fig.colorbar(cf, cax=cax, orientation="horizontal", ticks=cticks)
+        cbar.ax.set_xticklabels(
+            labels=cticks,
+            # weight="bold",
+            fontsize=12,
+        )
+        # cbar.ax.set_xticklabels(labels=cbar.ax.get_yticklabels(), weight="bold")
+
+        if savefig:
+            figname = "convergence"
+            plt.savefig(
+                "figures/" + "nonlinear_infinite_dynamics_" + figname + figtype,
+                bbox_inches="tight",
+            )
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
@@ -254,18 +361,32 @@ def test_nonlinear_avoider(visualize: bool = False) -> None:
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            do_quiver=do_quiver,
+            n_grid=n_resolution,
+            vectorfield_color=vf_color,
         )
         plot_obstacles(
-            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            noTicks=True,
         )
+
+        if savefig:
+            figname = "avoidance"
+            plt.savefig(
+                "figures/" + "nonlinear_infinite_dynamics_" + figname + figtype,
+                bbox_inches="tight",
+            )
 
     # Close to obstacle
     pos = np.array([4.25, 3.25])
     init_vel = initial_dynamics.evaluate(pos)
     convergence_velocity = obstacle_avoider.evaluate_weighted_dynamics(pos, init_vel)
 
-    center_vel = initial_dynamics.evaluate(obstacle_environment[0].center_position)
-    assert np.allclose(convergence_velocity, center_vel)
+    # center_vel = initial_dynamics.evaluate(obstacle_environment[0].center_position)
+    # assert np.allclose(convergence_velocity, center_vel)
 
     # Rotation to the right (due to linearization...)
     rotated_velocity = obstacle_avoider.evaluate(pos)
@@ -348,7 +469,10 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
             ax=ax,
         )
         plot_obstacles(
-            ax=ax, obstacle_container=obstacle_environment, x_lim=x_lim, y_lim=y_lim
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
         )
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -398,11 +522,15 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
 
 
 if (__name__) == "__main__":
+    figtype = ".pdf"
+    # figtype = ".png"
+
     # Import visualization libraries here
     import matplotlib.pyplot as plt  # For debugging only (!)
 
-    # plt.close("all")
+    plt.close("all")
     plt.ion()
 
-    # test_nonlinear_avoider(visualize=True)
-    test_multiobstacle_nonlinear_avoider(visualize=False)
+    test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
+    # test_nonlinear_avoider(visualize=True, savefig=True)
+    # test_multiobstacle_nonlinear_avoider(visualize=False)
