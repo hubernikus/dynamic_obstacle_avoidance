@@ -15,6 +15,7 @@ import warnings
 
 from vartools.dynamical_systems import DynamicalSystem
 from vartools.linalg import get_orthogonal_basis
+from vartools.dynamical_systems import LinearSystem
 
 # from vartools.linalg import get_orthogonal_basis
 # from vartools.directional_space import get_angle_space
@@ -31,7 +32,7 @@ from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotation
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
-class ProjectedRotationDynamics(DynamicalSystem):
+class ProjectedRotationDynamics:
     """
     A dynamical system which locally modulates
 
@@ -54,12 +55,10 @@ class ProjectedRotationDynamics(DynamicalSystem):
         obstacle: Obstacle,
         attractor_position: np.ndarray,
         reference_velocity: np.ndarray,
-        initial_dynamics: np.ndarray,
+        initial_dynamics: Optional[np.ndarray] = None,
         min_gamma: float = 1,
         max_gamma: float = 10,
     ) -> None:
-        super().__init__(dimension=obstacle.dimension)
-
         self.obstacle = obstacle
         self.attractor_position = attractor_position
 
@@ -82,6 +81,11 @@ class ProjectedRotationDynamics(DynamicalSystem):
         # Modify if needed
         self.attractor_influence = 3
         self.dotprod_projection_power = 2
+
+        if initial_dynamics is None:
+            initial_dynamics = LinearSystem(attractor_position=attractor_position)
+        else:
+            self.initial_dynamics = initial_dynamics
 
         # self.base = get_orthogonal_basis()
         # self.deviation = get_angle_space(reference_velocity, null_matrix=self.base)
