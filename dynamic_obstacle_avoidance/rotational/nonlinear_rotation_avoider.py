@@ -540,6 +540,3 @@ if (__name__) == "__main__":
     # test_nonlinear_avoider(visualize=True, savefig=False)
     # test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
     # test_multiobstacle_nonlinear_avoider(visualize=False)
-
-    test_circular_single(visualize=True):
-    
