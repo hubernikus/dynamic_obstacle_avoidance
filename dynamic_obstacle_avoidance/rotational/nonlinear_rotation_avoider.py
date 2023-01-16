@@ -8,6 +8,7 @@ Library for the Rotation (Modulation Imitation) of Linear Systems
 import warnings
 import copy
 import math
+from functools import partial
 
 import numpy as np
 from numpy import linalg as LA
@@ -37,6 +38,9 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
     RotationalAvoider,
 )
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
+from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics import (
+    ProjectedRotationDynamics,
+)
 
 
 class NonlinearRotationalAvoider(BaseAvoider):
@@ -455,10 +459,6 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
         y_lim = [-5, 5]
 
         figsize = (12, 6)
-        from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
-            plot_obstacle_dynamics,
-        )
-        from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
@@ -521,6 +521,88 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
     assert math.isclose(np.dot(dir_surf, velocity), 0, abs_tol=1e-4)
 
 
+def test_circular_single_obstacle(visualize=False):
+    from vartools.dynamical_systems import CircularStable
+
+    circular_ds = CircularStable(radius=5.0, maximum_velocity=2.0)
+
+    obstacle_environment = obstacle_list = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([5, 0]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    rotation_projector = ProjectedRotationDynamics(
+        attractor_position=circular_ds.pose.position,
+        initial_dynamics=circular_ds,
+        reference_velocity=lambda x: x - self.attractor_position,
+    )
+
+    if visualize:
+        x_lim = [-8, 8]
+        y_lim = [-8, 8]
+
+        figsize = (8, 6)
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            dynamics=circular_ds.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            alpha_obstacle=1.0,
+        )
+        print("done")
+
+        linearised_ds = partial(
+            rotation_projector.get_single_obstacle_convergence_rotation,
+            obstacle=obstacle_environment[0],
+        )
+        # Linearized Dynamics
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            dynamics=linearised_ds,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+        )
+
+        # plot_obstacles(
+        #     ax=ax,
+        #     obstacle_container=obstacle_environment,
+        #     x_lim=x_lim,
+        #     y_lim=y_lim,
+        # )
+
+    # Opposite of attractor
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=np.array([-5, 0]),
+        obstacle=obstacle_environment[0],
+    )
+    initial_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
+    breakpoint()
+    # assert np.allclose(velocity, initial_velocity)
+
+    # Center of obstacle
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=obstacle_environment[0].center_position,
+        obstacle=obstacle_environment[0],
+    )
+    initial_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
+    assert np.allclose(velocity, initial_velocity)
+
+
 def test_circular_multiple(visualize=False):
 
     if visualize:
@@ -530,6 +612,10 @@ def test_circular_multiple(visualize=False):
 if (__name__) == "__main__":
     # Import visualization libraries here
     import matplotlib.pyplot as plt  # For debugging only (!)
+    from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
+        plot_obstacle_dynamics,
+    )
+    from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
     plt.close("all")
     plt.ion()
@@ -540,3 +626,5 @@ if (__name__) == "__main__":
     # test_nonlinear_avoider(visualize=True, savefig=False)
     # test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
     # test_multiobstacle_nonlinear_avoider(visualize=False)
+
+    test_circular_single_obstacle(visualize=False)

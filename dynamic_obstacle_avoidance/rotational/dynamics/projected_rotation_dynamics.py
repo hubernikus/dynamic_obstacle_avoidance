@@ -16,6 +16,7 @@ import warnings
 from vartools.dynamical_systems import DynamicalSystem
 from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import LinearSystem
+from vartools.directional_space import get_directional_weighted_sum
 
 # from vartools.linalg import get_orthogonal_basis
 # from vartools.directional_space import get_angle_space
@@ -52,30 +53,28 @@ class ProjectedRotationDynamics:
 
     def __init__(
         self,
-        obstacle: Obstacle,
         attractor_position: np.ndarray,
         reference_velocity: np.ndarray,
         initial_dynamics: Optional[np.ndarray] = None,
+        obstacle: Optional[Obstacle] = None,
         min_gamma: float = 1,
         max_gamma: float = 10,
     ) -> None:
+
         self.obstacle = obstacle
         self.attractor_position = attractor_position
 
-        self.maximum_velocity = LA.norm(reference_velocity)
-        if not self.maximum_velocity:
-            raise ValueError("Zero velocity was obtained.")
+        # self.maximum_velocity = LA.norm(reference_velocity)
+        # if not self.maximum_velocity:
+        #     raise ValueError("Zero velocity was obtained.")
 
-        reference_velocity = reference_velocity / self.maximum_velocity
+        # reference_velocity = reference_velocity / self.maximum_velocity
 
-        attractor_dir = self.attractor_position - obstacle.center_position
-        if not (attr_norm := LA.norm(attractor_dir)):
-            warnings.warn("Obstacle is at attractor - zero deviation")
-            return
+        # attractor_dir = self.attractor_position - obstacle.center_position
+        # if not (attr_norm := LA.norm(attractor_dir)):
+        #     warnings.warn("Obstacle is at attractor - zero deviation")
+        #     return
 
-        self.rotation = VectorRotationXd.from_directions(
-            vec_init=attractor_dir / attr_norm, vec_rot=reference_velocity
-        )
         self.min_gamma = min_gamma
         self.max_gamma = max_gamma
         # Modify if needed
@@ -83,7 +82,7 @@ class ProjectedRotationDynamics:
         self.dotprod_projection_power = 2
 
         if initial_dynamics is None:
-            initial_dynamics = LinearSystem(attractor_position=attractor_position)
+            self.initial_dynamics = LinearSystem(attractor_position=attractor_position)
         else:
             self.initial_dynamics = initial_dynamics
 
@@ -332,11 +331,11 @@ class ProjectedRotationDynamics:
             self.attractor_position
         )
 
+        if not (pos_norm := LA.norm(relative_position)):
+            return position
+
         gamma = self.obstacle.get_gamma(relative_position, in_obstacle_frame=True)
         weight = self._get_deflation_weight(gamma)
-
-        if not (pos_norm := LA.norm(relative_position)):
-            raise NotImplementedError()
 
         # Shrunk position
         relative_position = self._get_position_after_deflating_obstacle(
@@ -410,8 +409,13 @@ class ProjectedRotationDynamics:
     ) -> Vector:
         """Returns"""
 
-        initial_velocity = self.initial_dynamcis.evaluate(position)
-        obstacle_velocity = self.initial_dynaics.evaluate(obstacle.center_position)
+        print("position", position)
+
+        # Store obstacle -> TODO: this should be done more cleanly
+        self.obstacle = obstacle
+
+        initial_velocity = self.initial_dynamics.evaluate(position)
+        obstacle_velocity = self.initial_dynamics.evaluate(obstacle.center_position)
 
         base_convergence_direction = self.get_base_reference(position)
 
@@ -419,34 +423,46 @@ class ProjectedRotationDynamics:
             base_convergence_direction, obstacle_velocity
         )
 
-        dir_pos_to_attractor = self.initial_velocity - self.attractor_position
-        if not (dir_norm := LA.norm(dir_pos_to_attractor)):
+        dir_attr_to_pos = position - self.attractor_position
+        if not (dir_norm := LA.norm(dir_attr_to_pos)):
             # We're at the attractor -> no / zero velocity
             return np.zeros_like(position)
+        dir_attr_to_pos = dir_attr_to_pos / dir_norm
 
-        dir_pos_to_obstacle = self.obstacle.center_position - self.attractor_position
-        if not (obs_norm := LA.norm(dir_pos_to_obstacle)):
+        # dir_pos_to_obstacle = self.obstacle.center_position - self.attractor_position
+        # if not (obs_norm := LA.norm(dir_pos_to_obstacle)):
+        #     raise NotImplementedError()
+
+        dir_obs_to_pos = self.obstacle.center_position - self.attractor_position
+        if not (dir_norm := LA.norm(dir_obs_to_pos)):
+            # We're at the attractor -> no / zero velocity
             raise NotImplementedError()
 
+        dir_obs_to_pos = dir_obs_to_pos / dir_norm
+
         rotation_pos_to_pos_transform = VectorRotationXd.from_directions(
-            dir_pos_to_attractor, dir_pos_to_obstacle
+            dir_attr_to_pos, dir_obs_to_pos
         )
 
         if rotation_pos_to_pos_transform.rotation_angle >= math.pi:
             # We're the maximum away in the projected space, no linearization
             return initial_velocity
 
-        initial_velocity_transformed = rotation_pos_to_pos_transform.rotat(
+        initial_velocity_transformed = rotation_pos_to_pos_transform.rotate(
             initial_velocity
         )
+        # Obstacle velocity will not change when being transformed..
 
         # Rotate
         projected_position = self.get_projected_position(position)
         proj_gamma = obstacle.get_gamma(projected_position, in_global_frame=True)
-        weight = min(1, 1 / proj_gamma)
+        if proj_gamma <= 1:
+            weight = 1
+        else:
+            weight = 1 / proj_gamma
 
         # TODO: use VectorRotationXd for this...
-        averaged_direction_transformed = directional_weighted_sum(
+        averaged_direction_transformed = get_directional_weighted_sum(
             null_direction=base_convergence_direction,
             directions=np.vstack((obstacle_velocity, initial_velocity_transformed)).T,
             weights=[weight, 1 - weight],
