@@ -328,6 +328,16 @@ def test_obstacle_inflation(
                 )
         return fig, ax
 
+    # # Test point perpendicular
+    # position = np.array([-1.5, -5])
+
+    # Deflating close to the obstacle
+    position = dynamics.obstacle.center_position + 1e-1
+    deflated_position = dynamics._get_position_after_deflating_obstacle(
+        position, in_obstacle_frame=False
+    )
+    assert np.allclose(deflated_position, dynamics.obstacle.center_position)
+
     # Attractor is outside the obstacle
     position = np.array([0, 0])
     new_position = dynamics._get_position_after_inflating_obstacle(position)
@@ -335,11 +345,6 @@ def test_obstacle_inflation(
 
     restored_position = dynamics._get_position_after_deflating_obstacle(new_position)
     assert np.allclose(position, restored_position)
-
-    # Deflating close to the obstacle
-    position = dynamics.obstacle.center_position + 1e-1
-    deflated_position = dynamics._get_position_after_deflating_obstacle(position)
-    assert np.allclose(deflated_position, dynamics.obstacle.center_position)
 
     # Position relatively close
     position = np.copy(dynamics.obstacle.center_position)
@@ -372,16 +377,22 @@ def test_inverse_projection_around_obstacle(
 
         ### Do before trafo ###
         attractor_position = dynamics._get_position_after_deflating_obstacle(
-            dynamics.attractor_position
+            dynamics.attractor_position, in_obstacle_frame=False
         )
 
         gammas_shrink = np.zeros_like(gammas)
         for pp in range(positions.shape[1]):
             # Do the reverse operation to obtain an 'even' grid
             pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
-                positions[:, pp], attractor_position
+                positions[:, pp],
+                attractor_position,
+                in_obstacle_frame=False,
             )
-            pos_shrink = dynamics._get_position_after_inflating_obstacle(pos_shrink)
+            pos_shrink = dynamics._get_position_after_inflating_obstacle(
+                pos_shrink,
+                in_obstacle_frame=False,
+                # in_obstacle_frame=False
+            )
             gammas_shrink[pp] = dynamics.obstacle.get_gamma(
                 pos_shrink, in_global_frame=True
             )
@@ -492,25 +503,49 @@ def test_inverse_projection_around_obstacle(
                 )
 
     attractor_position = dynamics._get_position_after_deflating_obstacle(
-        dynamics.attractor_position
+        dynamics.attractor_position,
+        in_obstacle_frame=False,
     )
 
-    # center of the obstacle is the 'stable' point
-    position = dynamics.obstacle.center_position
+    position = np.array([-1.5, -5])
     pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
-        position, attractor_position
+        position,
+        attractor_position,
+        in_obstacle_frame=False,
     )
-    assert np.allclose(pos_shrink, position)
+    # Due to rotation -> projected to the left of attractor
+    assert pos_shrink[1] < 1
+    assert pos_shrink[0] < attractor_position[0]
 
-    # position very south of the obstacle gets projected to the attractor (and vice-versa)
+    pos_infl = dynamics._get_position_after_inflating_obstacle(
+        pos_shrink,
+        in_obstacle_frame=False,
+    )
+    gammas_shrink = dynamics.obstacle.get_gamma(pos_infl, in_global_frame=True)
+
+    # Un-Projected position is (relatively far) stil
+    assert gammas_shrink > 3
+
+    ## Position very south of the obstacle gets projected to the attractor (and vice-versa)
     position_start = (
         dynamics.obstacle.center_position
         + (attractor_position - dynamics.obstacle.center_position) * 100
     )
     pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
-        position_start, attractor_position
+        position_start,
+        attractor_position,
+        in_obstacle_frame=False,
     )
     assert np.allclose(pos_shrink, attractor_position)
+
+    # center of the obstacle is the 'stable' point
+    position = dynamics.obstacle.center_position
+    pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
+        position,
+        attractor_position,
+        in_obstacle_frame=False,
+    )
+    assert np.allclose(pos_shrink, position)
 
 
 def test_inverse_projection_and_deflation_around_obstacle(
@@ -678,9 +713,12 @@ def test_obstacle_partially_rotated():
     # test projection
     dist_surf = 1e-6
     pos_close_to_center = copy.deepcopy(dynamics.obstacle.center_position)
-    pos_close_to_center[0] = pos_close_to_center[0] + 1 + dist_surf
+    pos_close_to_center[0] = pos_close_to_center[0] + dist_surf
 
-    pos = dynamics._get_position_after_deflating_obstacle(pos_close_to_center)
+    pos = dynamics._get_position_after_deflating_obstacle(
+        pos_close_to_center, in_obstacle_frame=False
+    )
+
     assert np.allclose(pos, dynamics.obstacle.center_position, atol=dist_surf / 2.0)
 
 
@@ -710,12 +748,12 @@ def test_obstacle_on_x_transformation():
     )
 
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
-        relative_position, relative_attractor=relative_attr_pos
+        relative_position, attractor_position=relative_attr_pos
     )
     assert np.allclose(trafo_pos, [0, 1])
 
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
-        trafo_pos, relative_attractor=relative_attr_pos
+        trafo_pos, attractor_position=relative_attr_pos
     )
 
     assert np.allclose(relative_position, reconstructed_pos)
@@ -739,13 +777,14 @@ def test_transformation_bijection_for_rotated():
     relative_position = np.array([-4.0, -4.0])
 
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
-        relative_position, relative_attractor=relative_attr_pos
+        relative_position, attractor_position=relative_attr_pos
     )
     assert np.allclose(trafo_pos, [-1, 0])
 
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
-        trafo_pos, relative_attractor=relative_attr_pos
+        trafo_pos, attractor_position=relative_attr_pos
     )
+
     assert np.allclose(relative_position, reconstructed_pos)
 
 
@@ -848,10 +887,15 @@ if (__name__) == "__main__":
     # test_inverse_projection_around_obstacle(visualize=False)
     # test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=True)
 
+    test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=False)
+    # test_inverse_projection_around_obstacle(visualize=False, **setup, save_figure=False)
+
+    # test_obstacle_inflation()
+
     # test_inverse_projection_and_deflation_around_obstacle(
     #     visualize=1, **setup, save_figure=True
     # )
 
     # test_full_projection_pipeline()
-    test_full_projection_pipeline_challenging()
+    # test_full_projection_pipeline_challenging()
     print("Tests done.")

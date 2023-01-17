@@ -140,6 +140,7 @@ class ProjectedRotationDynamics:
         pos_norm = LA.norm(relative_position)
 
         if pos_norm < radius:
+            # TODO: we could keep partial position (?)
             if in_obstacle_frame:
                 return np.zeros_like(position)
             else:
@@ -258,15 +259,16 @@ class ProjectedRotationDynamics:
         """Returns UNfolded rleative position folded with respect to the dynamic center.
 
         Input and output are in the obstacle frame of reference."""
-        if not in_obstacle_frame:
+        if in_obstacle_frame:
+            dir_attractor_to_obstacle = (-1) * attractor_position
+        else:
             dir_attractor_to_obstacle = (
                 self.obstacle.center_position - attractor_position
             )
-        else:
-            dir_attractor_to_obstacle = (-1) * attractor_position
 
         if not (dist_attr_obs := LA.norm(dir_attractor_to_obstacle)):
-            raise NotImplementedError()
+            # No unfolding possible - TODO: make the 'switch' smoother
+            return transformed_position
 
         dir_attractor_to_obstacle = dir_attractor_to_obstacle / dist_attr_obs
 
@@ -274,20 +276,30 @@ class ProjectedRotationDynamics:
 
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
-        vec_attractor_to_position = transformed_position - attractor_position
-        radius = np.dot(dir_attractor_to_obstacle, vec_attractor_to_position)
+        # vec_attractor_to_position = transformed_position - attractor_position
+        if in_obstacle_frame:
+            dir_obstacle_to_position = transformed_position
+        else:
+            dir_obstacle_to_position = (
+                transformed_position - self.obstacle.center_position
+            )
+
+        if not (pos_norm := LA.norm(dir_obstacle_to_position)):
+            # At the center of the obstacle -> attractor dynamcis
+            return transformed_position
+
+        dir_obstacle_to_position = dir_obstacle_to_position / pos_norm
+
+        # radius = np.dot(dir_attractor_to_obstacle, dir_attractor_to_position)
+        radius = np.dot(dir_attractor_to_obstacle, dir_obstacle_to_position) * pos_norm
 
         # Ensure that the square root stays positive close to singularities
-        transform_norm = LA.norm(vec_attractor_to_position)
-        dot_prod = math.sqrt(max(transform_norm**2 - radius**2, 0))
+        dot_prod = math.sqrt(max(pos_norm**2 - radius**2, 0))
         dot_prod = dot_prod**self.dotprod_projection_power
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
         if dot_prod < 1:
-            dir_perp = (
-                dir_attractor_to_obstacle
-                - vec_attractor_to_position / transform_norm * dot_prod
-            )
+            dir_perp = dir_obstacle_to_position - dir_attractor_to_obstacle * dot_prod
 
             rotation_ = VectorRotationXd.from_directions(
                 vec_init=dir_attractor_to_obstacle,
@@ -296,27 +308,22 @@ class ProjectedRotationDynamics:
             rotation_.rotation_angle = math.acos(dot_prod)
 
             # Initially a unit vector
-            relative_position = rotation_.rotate(dir_attractor_to_obstacle)
+            uniform_position = rotation_.rotate(dir_attractor_to_obstacle)
         else:
-            relative_position = dir_attractor_to_obstacle
+            uniform_position = dir_attractor_to_obstacle
 
         relative_position = (
-            relative_position
-            * math.exp((radius - dist_attr_obs) / dist_attr_obs)
-            * dist_attr_obs
+            uniform_position * math.exp(radius / dist_attr_obs) * dist_attr_obs
         )
 
         # Move out-of from attractor-frame
         relative_position = relative_position + attractor_position
 
-        # if in_obstacle_frame:
-        #     relative_position = self.obstacle.base.transform_position_from_relative(
-        #         relative_position
-        #     )
-
-        # Simplified transform (without rotation), since everything was in obstacle frame
-        if in_obstacle_frame:
-            relative_position = relative_position + self.obstacle.pose.position
+        # # Simplified transform (without rotation), since everything was in obstacle frame
+        # if not in_obstacle_frame:
+        #     relative_position = relative_position + self.obstacle.pose.position
+        # No transform to / from obstacle frame necessary, as attractor_positiion
+        # should contain it
 
         return relative_position
 
