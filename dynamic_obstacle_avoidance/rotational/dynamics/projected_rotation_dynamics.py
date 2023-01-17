@@ -49,6 +49,7 @@ class ProjectedRotationDynamics:
     """
 
     # TODO: include Lyapunov function which checks avoidance.
+    # TODO: should this really be a class or rather refactored (?)
     # this might effect the 'single-saddle point' on the surface'
 
     def __init__(

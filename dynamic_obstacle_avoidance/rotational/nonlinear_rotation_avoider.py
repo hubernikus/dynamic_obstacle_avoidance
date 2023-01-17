@@ -9,9 +9,11 @@ import warnings
 import copy
 import math
 from functools import partial
+from typing import Protocol
 
 import numpy as np
 from numpy import linalg as LA
+import numpy.typing as npt
 
 from vartools.math import get_intersection_with_circle
 from vartools.linalg import get_orthogonal_basis
@@ -41,6 +43,11 @@ from dynamic_obstacle_avoidance.rotational.rotation_container import RotationCon
 from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics import (
     ProjectedRotationDynamics,
 )
+
+
+class ObstacleConvergenceDynamics(Protocol):
+    def evaluate(self, position: npt.ArrayLike, obstacle: Obstacle) -> np.ndarray:
+        ...
 
 
 class NonlinearRotationalAvoider(BaseAvoider):
@@ -524,14 +531,14 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
 def test_circular_single_obstacle(visualize=False):
     from vartools.dynamical_systems import CircularStable
 
-    circular_ds = CircularStable(radius=5.0, maximum_velocity=2.0)
+    circular_ds = CircularStable(radius=2.5, maximum_velocity=2.0)
 
     obstacle_environment = RotationContainer()
     obstacle_environment.append(
         Ellipse(
-            center_position=np.array([5.0, 0.0]),
-            axes_length=np.array([1.1, 1.1]),
-            margin_absolut=0.45,
+            center_position=np.array([2.5, 0.0]),
+            axes_length=np.array([1.4, 1.4]),
+            margin_absolut=0.3,
         )
     )
 
@@ -542,11 +549,11 @@ def test_circular_single_obstacle(visualize=False):
     )
 
     if visualize:
-        x_lim = [-7, 7]
-        y_lim = [-8, 8]
-        n_grid = 36
+        x_lim = [-4, 4]
+        y_lim = [-4, 4]
+        n_grid = 15
 
-        figsize = (14, 10)
+        figsize = (4.0, 3.5)
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
@@ -563,8 +570,8 @@ def test_circular_single_obstacle(visualize=False):
             x_lim=x_lim,
             y_lim=y_lim,
             alpha_obstacle=1.0,
+            noTicks=True,
         )
-        print("done")
 
         linearised_ds = partial(
             rotation_projector.get_single_obstacle_convergence_rotation,
@@ -579,6 +586,15 @@ def test_circular_single_obstacle(visualize=False):
             y_lim=y_lim,
             ax=ax,
             n_grid=n_grid,
+            show_ticks=False,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            alpha_obstacle=0.0,
+            noTicks=True,
         )
 
         # plot_obstacles(
@@ -634,12 +650,15 @@ def test_circular_single_obstacle(visualize=False):
 
     # At the top - since the rotation at the center is equal to the obstacle's
     # the modulated is equal to the initial
-    position = np.array([0, 5])
+    position = obstacle.center_position
+    position = np.array([position[1], position[0]])
+
     initial_velocity = circular_ds.evaluate(position)
     velocity = rotation_projector.get_single_obstacle_convergence_rotation(
         position=position,
         obstacle=obstacle_environment[0],
     )
+
     assert velocity[0] < -1, "Circle value is wrong"
     assert velocity[1] > 0, "The linearization should move outwards."
     assert abs(velocity[0]) > abs(velocity[1]), "Not circling enough"
@@ -668,6 +687,32 @@ def test_circular_single_obstacle(visualize=False):
 
 
 def test_circular_multiple(visualize=False):
+    from vartools.dynamical_systems import CircularStable
+
+    circular_ds = CircularStable(radius=2.5, maximum_velocity=2.0)
+
+    obstacle_environment = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([2.5, 0.0]),
+            axes_length=np.array([1.4, 1.4]),
+            margin_absolut=0.3,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([2.5, 0.0]),
+            axes_length=np.array([1.4, 1.4]),
+            margin_absolut=0.3,
+        )
+    )
+
+    rotation_projector = ProjectedRotationDynamics(
+        attractor_position=circular_ds.pose.position,
+        initial_dynamics=circular_ds,
+        reference_velocity=lambda x: x - center_velocity.center_position,
+    )
 
     if visualize:
         pass
