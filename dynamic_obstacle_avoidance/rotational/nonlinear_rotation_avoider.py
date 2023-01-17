@@ -538,15 +538,15 @@ def test_circular_single_obstacle(visualize=False):
     rotation_projector = ProjectedRotationDynamics(
         attractor_position=circular_ds.pose.position,
         initial_dynamics=circular_ds,
-        reference_velocity=lambda x: x - self.attractor_position,
+        reference_velocity=lambda x: x - center_velocity.center_position,
     )
 
     if visualize:
         x_lim = [-7, 7]
         y_lim = [-8, 8]
-        n_grid = 17
+        n_grid = 36
 
-        figsize = (8, 6)
+        figsize = (14, 10)
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
@@ -590,6 +590,48 @@ def test_circular_single_obstacle(visualize=False):
 
     rotation_projector.obstacle = obstacle_environment[0]
 
+    # Position within obstacle
+    obstacle = obstacle_environment[0]
+    position = obstacle.center_position + obstacle.axes_length * 0.4
+    projected_position = rotation_projector.get_projected_position(position)
+    center_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position, obstacle=obstacle_environment[0]
+    )
+    assert np.allclose(velocity, center_velocity)
+
+    # Position close to opposite
+    position = np.array([-2, 1e-3])
+    projected_position = rotation_projector.get_projected_position(position)
+
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=position,
+        obstacle=obstacle_environment[0],
+    )
+
+    initial_velocity = circular_ds.evaluate(position)
+    assert np.allclose(
+        initial_velocity, velocity, atol=1e-3
+    ), "No influence (close) opposite."
+
+    # There is still some influence at a specific position
+    position = np.array([-1.5, 6])
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=position,
+        obstacle=obstacle_environment[0],
+    )
+    initial_velocity = circular_ds.evaluate(position)
+    assert not np.allclose(initial_velocity, velocity)
+
+    # Opposite of attractor
+    position = np.array([-1, 0])
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=position,
+        obstacle=obstacle_environment[0],
+    )
+    initial_velocity = circular_ds.evaluate(position)
+    assert np.allclose(velocity, initial_velocity)
+
     # At the top - since the rotation at the center is equal to the obstacle's
     # the modulated is equal to the initial
     position = np.array([0, 5])
@@ -598,21 +640,9 @@ def test_circular_single_obstacle(visualize=False):
         position=position,
         obstacle=obstacle_environment[0],
     )
-    # assert np.allclose(velocity, initial_velocity)
     assert velocity[0] < -1, "Circle value is wrong"
     assert velocity[1] > 0, "The linearization should move outwards."
     assert abs(velocity[0]) > abs(velocity[1]), "Not circling enough"
-
-    # Position within obstacle
-    position = (
-        obstacle_environment[0].center_position
-        + obstacle_environment[0].axes_length * 0.4
-    )
-    center_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
-        position, obstacle=obstacle_environment[0]
-    )
-    assert np.allclose(velocity, center_velocity)
 
     # Evaluation at center of obstacle
     velocity = rotation_projector.get_single_obstacle_convergence_rotation(
@@ -635,15 +665,6 @@ def test_circular_single_obstacle(visualize=False):
         obstacle=obstacle_environment[0],
     )
     assert np.allclose(velocity, initial_velocity, atol=1e-2)
-
-    # Opposite of attractor
-    position = np.array([-1, 0])
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
-        position=position,
-        obstacle=obstacle_environment[0],
-    )
-    initial_velocity = circular_ds.evaluate(position)
-    assert np.allclose(velocity, initial_velocity)
 
 
 def test_circular_multiple(visualize=False):
@@ -670,4 +691,4 @@ if (__name__) == "__main__":
     # test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
     # test_multiobstacle_nonlinear_avoider(visualize=False)
 
-    test_circular_single_obstacle(visualize=False)
+    test_circular_single_obstacle(visualize=True)

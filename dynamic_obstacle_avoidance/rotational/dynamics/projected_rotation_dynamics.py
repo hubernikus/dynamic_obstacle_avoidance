@@ -172,13 +172,14 @@ class ProjectedRotationDynamics:
         )
 
         if in_obstacle_frame:
-            relative_position = position
+            # Make sure it is float
+            relative_position = np.copy(position).astype(float)
         else:
             relative_position = position - self.obstacle.center_position
 
         if not (pos_norm := LA.norm(relative_position)):
             # Needs a tiny value
-            relative_position[0] = 1e6
+            relative_position[0] = 1e-6
             pos_norm = relative_position[0]
 
         inflated_position = (
@@ -248,7 +249,6 @@ class ProjectedRotationDynamics:
                     * dotprod_factor
                 )
 
-        # breakpoint()
         transformed_position = basis @ transformed_position
         transformed_position = transformed_position * dist_attr_obs
 
@@ -276,8 +276,6 @@ class ProjectedRotationDynamics:
 
         dir_attractor_to_obstacle = dir_attractor_to_obstacle / dist_attr_obs
 
-        # Everything with resepect to attractor
-
         # Dot product is sufficient, as we only need first element.
         # Rotation is performed with VectorRotationXd
         # vec_attractor_to_position = transformed_position - attractor_position
@@ -288,6 +286,9 @@ class ProjectedRotationDynamics:
                 transformed_position - self.obstacle.center_position
             )
 
+        # The normalization with with attractor distance scales the 'radial' direction
+        dir_obstacle_to_position = dir_obstacle_to_position / dist_attr_obs
+
         if not (pos_norm := LA.norm(dir_obstacle_to_position)):
             # At the center of the obstacle -> attractor dynamcis
             return transformed_position
@@ -297,11 +298,8 @@ class ProjectedRotationDynamics:
         # radius = np.dot(dir_attractor_to_obstacle, dir_attractor_to_position)
         radius = np.dot(dir_attractor_to_obstacle, dir_obstacle_to_position) * pos_norm
 
-        # The normalization with with attractor distance scales the 'radial' direction
-        dist_attr_obs = pos_norm / dist_attr_obs
-
         # Ensure that the square root stays positive close to singularities
-        dot_prod = math.sqrt(max(dist_attr_obs**2 - radius**2, 0))
+        dot_prod = math.sqrt(max(pos_norm**2 - radius**2, 0))
         dot_prod = dot_prod**self.dotprod_projection_power
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
@@ -323,6 +321,7 @@ class ProjectedRotationDynamics:
             uniform_position * math.exp(radius / dist_attr_obs) * dist_attr_obs
         )
 
+        # breakpoint()
         # Move out-of from attractor-frame
         relative_position = relative_position + attractor_position
 
@@ -350,13 +349,13 @@ class ProjectedRotationDynamics:
             self.attractor_position
         )
 
-        if not (pos_norm := LA.norm(relative_position)):
-            return position
-        # , VectorRotationXd(
-        #         base=np.eye(relative_position.shape[0], 2), rotation_angle=0
-        #     )
-
         gamma = self.obstacle.get_gamma(relative_position, in_obstacle_frame=True)
+
+        MIN_GAMMA = 1
+        if gamma <= MIN_GAMMA:
+            # Position in obstacle -> projection does not have an effect
+            return position
+
         weight = self._get_deflation_weight(gamma)
 
         # Shrunk position
@@ -374,10 +373,10 @@ class ProjectedRotationDynamics:
         inflated_position = self._get_position_after_inflating_obstacle(
             folded_position, in_obstacle_frame=True, deflation_weight=weight
         )
-        projected_position = self.obstacle.pose.transform_position_from_relative(
-            relative_position
-        )
 
+        projected_position = self.obstacle.pose.transform_position_from_relative(
+            inflated_position
+        )
         return projected_position
 
     def _get_lyapunov_gradient(self, position: Vector) -> Vector:
@@ -425,7 +424,10 @@ class ProjectedRotationDynamics:
     def get_base_reference(self, position: Vector) -> Vector:
         # This should be either +/- attractor-position
         dist_attr = self.attractor_position - position
-        return dist_attr / LA.norm(dist_attr)
+        if dist_norm := LA.norm(dist_attr):
+            return dist_attr / LA.norm(dist_attr)
+        else:
+            return dist_attr
 
     def get_single_obstacle_convergence_rotation(
         self,
@@ -440,10 +442,6 @@ class ProjectedRotationDynamics:
         obstacle_velocity = self.initial_dynamics.evaluate(obstacle.center_position)
 
         base_convergence_direction = self.get_base_reference(position)
-
-        rotation_conv_to_obs_vel = VectorRotationXd.from_directions(
-            base_convergence_direction, obstacle_velocity
-        )
 
         dir_attr_to_pos = position - self.attractor_position
         if not (dir_norm := LA.norm(dir_attr_to_pos)):
@@ -462,13 +460,20 @@ class ProjectedRotationDynamics:
 
         dir_obs_to_pos = dir_obs_to_pos / dir_norm
 
-        projected_position = self.get_projected_position(position)
-
         dir_attr_to_obs = self.obstacle.center_position - self.attractor_position
+        if not (obs_norm := LA.norm(dir_attr_to_obs)):
+            raise NotImplementedError()
+
+        dir_attr_to_obs = dir_attr_to_obs / obs_norm
+
+        if np.dot(dir_attr_to_pos, dir_attr_to_obs) <= -1:
+            return initial_velocity
+
         rotation_pos_to_transform = VectorRotationXd.from_directions(
             dir_attr_to_pos, dir_attr_to_obs
         )
 
+        projected_position = self.get_projected_position(position)
         proj_gamma = obstacle.get_gamma(projected_position, in_global_frame=True)
 
         if rotation_pos_to_transform.rotation_angle >= math.pi:
@@ -478,8 +483,8 @@ class ProjectedRotationDynamics:
         initial_velocity_transformed = rotation_pos_to_transform.rotate(
             initial_velocity
         )
-        # Obstacle velocity will not change when being transformed, as it's the static point
 
+        # Obstacle velocity will not change when being transformed, as it's the static point
         if proj_gamma <= 1:
             weight = 1
         else:
@@ -500,7 +505,6 @@ class ProjectedRotationDynamics:
         )
 
         averaged_direction = averaged_direction * LA.norm(initial_velocity)
-
         return averaged_direction
 
     def _get_all_obstacle_convergence(self):

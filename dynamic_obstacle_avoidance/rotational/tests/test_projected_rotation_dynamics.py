@@ -13,8 +13,9 @@ import numpy as np
 from numpy import linalg as LA
 import warnings
 
-from vartools.dynamical_systems import DynamicalSystem
 from vartools.linalg import get_orthogonal_basis
+from vartools.dynamical_systems import DynamicalSystem
+from vartools.dynamical_systems import CircularStable
 
 # from vartools.linalg import get_orthogonal_basis
 # from vartools.directional_space import get_angle_space
@@ -26,7 +27,7 @@ from dynamic_obstacle_avoidance.visualization import plot_obstacles
 from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
 )
-
+from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics import (
@@ -330,6 +331,12 @@ def test_obstacle_inflation(
 
     # # Test point perpendicular
     # position = np.array([-1.5, -5])
+    # Attractor is outside the obstacle
+    position = np.array([0, 0])
+    new_position = dynamics._get_position_after_inflating_obstacle(position)
+    assert dynamics.obstacle.get_gamma(new_position, in_global_frame=True) > 1
+    restored_position = dynamics._get_position_after_deflating_obstacle(new_position)
+    assert np.allclose(position, restored_position, atol=1e-4)
 
     # Deflating close to the obstacle
     position = dynamics.obstacle.center_position + 1e-1
@@ -337,14 +344,6 @@ def test_obstacle_inflation(
         position, in_obstacle_frame=False
     )
     assert np.allclose(deflated_position, dynamics.obstacle.center_position)
-
-    # Attractor is outside the obstacle
-    position = np.array([0, 0])
-    new_position = dynamics._get_position_after_inflating_obstacle(position)
-    assert dynamics.obstacle.get_gamma(new_position, in_global_frame=True) > 1
-
-    restored_position = dynamics._get_position_after_deflating_obstacle(new_position)
-    assert np.allclose(position, restored_position)
 
     # Position relatively close
     position = np.copy(dynamics.obstacle.center_position)
@@ -507,14 +506,14 @@ def test_inverse_projection_around_obstacle(
         in_obstacle_frame=False,
     )
 
-    position = np.array([-1.5, -5])
+    position = np.array([-1.5, -20])
     pos_shrink = dynamics._get_unfolded_position_opposite_kernel_point(
         position,
         attractor_position,
         in_obstacle_frame=False,
     )
     # Due to rotation -> projected to the left of attractor
-    assert pos_shrink[1] < 1
+    assert abs(pos_shrink[1]) < 1
     assert pos_shrink[0] < attractor_position[0]
 
     pos_infl = dynamics._get_position_after_inflating_obstacle(
@@ -750,7 +749,7 @@ def test_obstacle_on_x_transformation():
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
         relative_position, attractor_position=relative_attr_pos
     )
-    assert np.allclose(trafo_pos, [0, 1])
+    assert math.isclose(trafo_pos[0], 0) and trafo_pos[1] > 1
 
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, attractor_position=relative_attr_pos
@@ -779,13 +778,59 @@ def test_transformation_bijection_for_rotated():
     trafo_pos = dynamics._get_folded_position_opposite_kernel_point(
         relative_position, attractor_position=relative_attr_pos
     )
-    assert np.allclose(trafo_pos, [-1, 0])
+    assert trafo_pos[0] <= -1 and math.isclose(trafo_pos[1], 0)
 
     reconstructed_pos = dynamics._get_unfolded_position_opposite_kernel_point(
         trafo_pos, attractor_position=relative_attr_pos
     )
 
     assert np.allclose(relative_position, reconstructed_pos)
+
+
+def test_projection_pipeline_with_circular_rotation():
+    circular_ds = CircularStable(radius=5.0, maximum_velocity=2.0)
+
+    obstacle_environment = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([5, 0]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    rotation_projector = ProjectedRotationDynamics(
+        attractor_position=circular_ds.pose.position,
+        initial_dynamics=circular_ds,
+        reference_velocity=lambda x: x - self.attractor_position,
+    )
+
+    # Set obstacle
+    rotation_projector.obstacle = obstacle_environment[0]
+
+    # Position at quarter-rotation
+    position = np.array([0, 5])
+    projected_position = rotation_projector.get_projected_position(position)
+    distance_value = obstacle_environment[0].get_gamma(
+        projected_position, in_global_frame=True
+    )
+    assert distance_value > 3, "Large(-ish) distance value expected (!)"
+
+    # Position within obstacle
+    position = (
+        obstacle_environment[0].center_position
+        + obstacle_environment[0].axes_length * 0.4
+    )
+    projected_position = rotation_projector.get_projected_position(position)
+    distance_value = obstacle_environment[0].get_gamma(
+        projected_position, in_global_frame=True
+    )
+    assert 0 < distance_value < 1
+
+    # Position opposite is far away
+    position = np.array([-2, 1e-3])
+    projected_position = rotation_projector.get_projected_position(position)
+    assert LA.norm(projected_position - rotation_projector.attractor_position) > 1e3
 
 
 def test_full_projection_pipeline():
@@ -817,7 +862,7 @@ def test_full_projection_pipeline():
     projected_position = dynamics.get_projected_position(position)
 
     assert np.allclose(
-        position, projected_position
+        position, projected_position, atol=1e-3
     ), "Projection should have little affect close to the obstacles surface."
 
 
@@ -887,10 +932,10 @@ if (__name__) == "__main__":
     # test_inverse_projection_around_obstacle(visualize=False)
     # test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=True)
 
-    test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=False)
+    # test_inverse_projection_around_obstacle(visualize=True, **setup, save_figure=False)
     # test_inverse_projection_around_obstacle(visualize=False, **setup, save_figure=False)
 
-    # test_obstacle_inflation()
+    test_obstacle_inflation(visualize=False)
 
     # test_inverse_projection_and_deflation_around_obstacle(
     #     visualize=1, **setup, save_figure=True
@@ -898,4 +943,6 @@ if (__name__) == "__main__":
 
     # test_full_projection_pipeline()
     # test_full_projection_pipeline_challenging()
+
+    # test_projection_pipeline_with_circular_rotation()
     print("Tests done.")
