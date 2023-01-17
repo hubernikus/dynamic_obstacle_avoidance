@@ -526,12 +526,12 @@ def test_circular_single_obstacle(visualize=False):
 
     circular_ds = CircularStable(radius=5.0, maximum_velocity=2.0)
 
-    obstacle_environment = obstacle_list = RotationContainer()
+    obstacle_environment = RotationContainer()
     obstacle_environment.append(
         Ellipse(
-            center_position=np.array([5, 0]),
+            center_position=np.array([5.0, 0.0]),
             axes_length=np.array([1.1, 1.1]),
-            margin_absolut=0.9,
+            margin_absolut=0.45,
         )
     )
 
@@ -542,8 +542,9 @@ def test_circular_single_obstacle(visualize=False):
     )
 
     if visualize:
-        x_lim = [-8, 8]
+        x_lim = [-7, 7]
         y_lim = [-8, 8]
+        n_grid = 17
 
         figsize = (8, 6)
 
@@ -554,6 +555,7 @@ def test_circular_single_obstacle(visualize=False):
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            n_grid=n_grid,
         )
         plot_obstacles(
             ax=ax,
@@ -576,6 +578,7 @@ def test_circular_single_obstacle(visualize=False):
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
+            n_grid=n_grid,
         )
 
         # plot_obstacles(
@@ -585,21 +588,61 @@ def test_circular_single_obstacle(visualize=False):
         #     y_lim=y_lim,
         # )
 
-    # Opposite of attractor
+    rotation_projector.obstacle = obstacle_environment[0]
+
+    # At the top - since the rotation at the center is equal to the obstacle's
+    # the modulated is equal to the initial
+    position = np.array([0, 5])
+    initial_velocity = circular_ds.evaluate(position)
     velocity = rotation_projector.get_single_obstacle_convergence_rotation(
-        position=np.array([-5, 0]),
+        position=position,
         obstacle=obstacle_environment[0],
     )
-    initial_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
-    breakpoint()
     # assert np.allclose(velocity, initial_velocity)
+    assert velocity[0] < -1, "Circle value is wrong"
+    assert velocity[1] > 0, "The linearization should move outwards."
+    assert abs(velocity[0]) > abs(velocity[1]), "Not circling enough"
 
-    # Center of obstacle
+    # Position within obstacle
+    position = (
+        obstacle_environment[0].center_position
+        + obstacle_environment[0].axes_length * 0.4
+    )
+    center_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position, obstacle=obstacle_environment[0]
+    )
+    assert np.allclose(velocity, center_velocity)
+
+    # Evaluation at center of obstacle
     velocity = rotation_projector.get_single_obstacle_convergence_rotation(
         position=obstacle_environment[0].center_position,
         obstacle=obstacle_environment[0],
     )
     initial_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
+    assert np.allclose(velocity, initial_velocity)
+
+    # Position just on the surface
+    position = copy.deepcopy(obstacle_environment[0].center_position)
+    position[1] = (
+        position[1]
+        + obstacle_environment[0].axes_length[1] / 2.0
+        + obstacle_environment[0].margin_absolut
+        + 1e-3
+    )
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=position,
+        obstacle=obstacle_environment[0],
+    )
+    assert np.allclose(velocity, initial_velocity, atol=1e-2)
+
+    # Opposite of attractor
+    position = np.array([-1, 0])
+    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+        position=position,
+        obstacle=obstacle_environment[0],
+    )
+    initial_velocity = circular_ds.evaluate(position)
     assert np.allclose(velocity, initial_velocity)
 
 
@@ -617,7 +660,7 @@ if (__name__) == "__main__":
     )
     from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
-    plt.close("all")
+    # plt.close("all")
     plt.ion()
 
     figtype = ".pdf"

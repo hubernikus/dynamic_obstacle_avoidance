@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from vartools.linalg import get_orthogonal_basis
 from vartools.dynamical_systems import LinearSystem, ConstantValue
 from vartools.dynamical_systems import QuadraticAxisConvergence
+from vartools.dynamical_systems import CircularStable
 from vartools.directional_space import UnitDirection
 
 # DirectionBase
@@ -40,6 +41,9 @@ from dynamic_obstacle_avoidance.rotational.rotational_avoidance import (
     obstacle_avoidance_rotational,
 )
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
+from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics import (
+    ProjectedRotationDynamics,
+)
 
 from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields
 
@@ -938,6 +942,50 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight")
 
 
+def test_projection_at_half_circle():
+    circular_ds = CircularStable(radius=5.0, maximum_velocity=2.0)
+
+    obstacle_environment = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([5, 0]),
+            axes_length=np.array([1.1, 1.1]),
+            margin_absolut=0.9,
+        )
+    )
+
+    rotation_projector = ProjectedRotationDynamics(
+        attractor_position=circular_ds.pose.position,
+        initial_dynamics=circular_ds,
+        reference_velocity=lambda x: x - self.attractor_position,
+    )
+
+    # Set obstacle
+    rotation_projector.obstacle = obstacle_environment[0]
+
+    # Position within obstacle
+    position = (
+        obstacle_environment[0].center_position
+        + obstacle_environment[0].axes_length * 0.4
+    )
+    projected_position = rotation_projector.get_projected_position(position)
+    distance_value = obstacle_environment[0].get_gamma(
+        projected_position, in_global_frame=True
+    )
+    assert 0 < distance_value < 1
+
+    # Position at quarter-rotation
+    position = np.array([0, 5])
+    projected_position = rotation_projector.get_projected_position(position)
+    assert math.isclose(projected_position[0], 0)
+    assert projected_position[1] > 3
+
+    distance_value = obstacle_environment[0].get_gamma(
+        projected_position, in_global_frame=True
+    )
+    assert distance_value > 5
+
+
 if (__name__) == "__main__":
     figtype = ".pdf"
     # figtype = ".png"
@@ -962,5 +1010,7 @@ if (__name__) == "__main__":
     # test_stable_linear_avoidance(visualize=True)
 
     # _test_obstacle_and_hull_avoidance(visualize=True)
+
+    test_projection_at_half_circle()
 
     print("[Rotational Tests] Done tests")

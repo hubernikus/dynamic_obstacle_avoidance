@@ -61,6 +61,8 @@ class ProjectedRotationDynamics:
         max_gamma: float = 10,
     ) -> None:
 
+        self.dimension = attractor_position.shape[0]
+
         self.obstacle = obstacle
         self.attractor_position = attractor_position
 
@@ -230,11 +232,11 @@ class ProjectedRotationDynamics:
         dir_attractor_to_position = vec_attractor_to_position / dist_attr_pos
         dot_prod = np.dot(dir_attractor_to_position, dir_attractor_to_obstacle)
 
-        if dot_prod <= -1:
+        if dot_prod <= -1.0:
             # Put it very far away in a random direction
             transformed_position[1] = sys.float_info.max
 
-        elif dot_prod < 1:
+        elif dot_prod < 1.0:
             if trafo_norm := LA.norm(transformed_position[1:]):
                 # Numerical error can lead to zero division, even though it should be excluded
                 dotprod_factor = 2 / (1 + dot_prod) - 1
@@ -246,7 +248,9 @@ class ProjectedRotationDynamics:
                     * dotprod_factor
                 )
 
+        # breakpoint()
         transformed_position = basis @ transformed_position
+        transformed_position = transformed_position * dist_attr_obs
 
         return transformed_position
 
@@ -293,8 +297,11 @@ class ProjectedRotationDynamics:
         # radius = np.dot(dir_attractor_to_obstacle, dir_attractor_to_position)
         radius = np.dot(dir_attractor_to_obstacle, dir_obstacle_to_position) * pos_norm
 
+        # The normalization with with attractor distance scales the 'radial' direction
+        dist_attr_obs = pos_norm / dist_attr_obs
+
         # Ensure that the square root stays positive close to singularities
-        dot_prod = math.sqrt(max(pos_norm**2 - radius**2, 0))
+        dot_prod = math.sqrt(max(dist_attr_obs**2 - radius**2, 0))
         dot_prod = dot_prod**self.dotprod_projection_power
         dot_prod = 2.0 / (dot_prod + 1) - 1
 
@@ -327,6 +334,11 @@ class ProjectedRotationDynamics:
 
         return relative_position
 
+    def get_projected_position_and_rotation(
+        self, position: Vector
+    ) -> tuple[Vector, VectorRotationXd]:
+        pass
+
     def get_projected_position(self, position: Vector) -> Vector:
         """Projected point in 'linearized' environment
 
@@ -340,27 +352,33 @@ class ProjectedRotationDynamics:
 
         if not (pos_norm := LA.norm(relative_position)):
             return position
+        # , VectorRotationXd(
+        #         base=np.eye(relative_position.shape[0], 2), rotation_angle=0
+        #     )
 
         gamma = self.obstacle.get_gamma(relative_position, in_obstacle_frame=True)
         weight = self._get_deflation_weight(gamma)
 
         # Shrunk position
-        relative_position = self._get_position_after_deflating_obstacle(
+        deflated_position = self._get_position_after_deflating_obstacle(
             relative_position, in_obstacle_frame=True, deflation_weight=weight
         )
-        relative_attractor = self._get_position_after_deflating_obstacle(
+        deflated_attractor = self._get_position_after_deflating_obstacle(
             relative_attractor, in_obstacle_frame=True, deflation_weight=weight
         )
 
-        relative_position = self._get_folded_position_opposite_kernel_point(
-            relative_position, relative_attractor, in_obstacle_frame=True
+        folded_position = self._get_folded_position_opposite_kernel_point(
+            deflated_position, deflated_attractor, in_obstacle_frame=True
         )
 
-        relative_position = self._get_position_after_inflating_obstacle(
-            relative_position, in_obstacle_frame=True, deflation_weight=weight
+        inflated_position = self._get_position_after_inflating_obstacle(
+            folded_position, in_obstacle_frame=True, deflation_weight=weight
+        )
+        projected_position = self.obstacle.pose.transform_position_from_relative(
+            relative_position
         )
 
-        return self.obstacle.pose.transform_position_from_relative(relative_position)
+        return projected_position
 
     def _get_lyapunov_gradient(self, position: Vector) -> Vector:
         """Returns the Gradient of the Lyapunov function.
@@ -414,10 +432,7 @@ class ProjectedRotationDynamics:
         position: Vector,
         obstacle: Obstacle,
     ) -> Vector:
-        """Returns"""
-
-        print("position", position)
-
+        """Returns the 'averaged' direction.l"""
         # Store obstacle -> TODO: this should be done more cleanly
         self.obstacle = obstacle
 
@@ -447,22 +462,24 @@ class ProjectedRotationDynamics:
 
         dir_obs_to_pos = dir_obs_to_pos / dir_norm
 
-        rotation_pos_to_pos_transform = VectorRotationXd.from_directions(
-            dir_attr_to_pos, dir_obs_to_pos
+        projected_position = self.get_projected_position(position)
+
+        dir_attr_to_obs = self.obstacle.center_position - self.attractor_position
+        rotation_pos_to_transform = VectorRotationXd.from_directions(
+            dir_attr_to_pos, dir_attr_to_obs
         )
 
-        if rotation_pos_to_pos_transform.rotation_angle >= math.pi:
+        proj_gamma = obstacle.get_gamma(projected_position, in_global_frame=True)
+
+        if rotation_pos_to_transform.rotation_angle >= math.pi:
             # We're the maximum away in the projected space, no linearization
             return initial_velocity
 
-        initial_velocity_transformed = rotation_pos_to_pos_transform.rotate(
+        initial_velocity_transformed = rotation_pos_to_transform.rotate(
             initial_velocity
         )
-        # Obstacle velocity will not change when being transformed..
+        # Obstacle velocity will not change when being transformed, as it's the static point
 
-        # Rotate
-        projected_position = self.get_projected_position(position)
-        proj_gamma = obstacle.get_gamma(projected_position, in_global_frame=True)
         if proj_gamma <= 1:
             weight = 1
         else:
@@ -470,14 +487,19 @@ class ProjectedRotationDynamics:
 
         # TODO: use VectorRotationXd for this...
         averaged_direction_transformed = get_directional_weighted_sum(
-            null_direction=base_convergence_direction,
+            null_direction=initial_velocity_transformed,
             directions=np.vstack((obstacle_velocity, initial_velocity_transformed)).T,
             weights=[weight, 1 - weight],
+            normalize=True,
         )
 
-        averaged_direction = rotation_pos_to_pos_transform.rotate(
-            averaged_direction_transformed, rot_factor=-1
+        # The 'back-rotation' only needs to be applied, when it's not linearized,
+        # we hence have to weight it
+        averaged_direction = rotation_pos_to_transform.rotate(
+            averaged_direction_transformed, rot_factor=(-1) * (1 - weight)
         )
+
+        averaged_direction = averaged_direction * LA.norm(initial_velocity)
 
         return averaged_direction
 
