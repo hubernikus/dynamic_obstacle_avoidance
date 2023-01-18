@@ -9,7 +9,7 @@ import warnings
 import copy
 import math
 from functools import partial
-from typing import Protocol
+from typing import Protocol, Optional
 
 import numpy as np
 from numpy import linalg as LA
@@ -47,16 +47,32 @@ from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics 
 
 
 class ObstacleConvergenceDynamics(Protocol):
-    def evaluate_obstacle_dynamics(
+    def evaluate_convergence_around_obstacle(
         self, position: npt.ArrayLike, obstacle: Obstacle
     ) -> np.ndarray:
         ...
 
-    def evaluate_base_dynamics(self, position: npt.ArrayLike) -> np.ndarray:
+    def get_base_convergence(self, position: npt.ArrayLike) -> np.ndarray:
         ...
 
 
-class CircularConvergenceDynamics(Protocll)
+class LinearConvergenceDynamics:
+    def __init__(
+        self, convergence_dynamics: DynamicalSystem, initial_dynamics: DynamicalSystem
+    ) -> None:
+        self.initial_dynamics = initial_dynamics
+        self.convergence_dynamics = convergence_dynamics
+
+    def evaluate_convergence_around_obstacle(
+        self, position: npt.ArrayLike, obstacle: Obstacle
+    ) -> np.ndarray:
+        return self.initial_dynamics.evaluate(
+            # TODO: could also be reference point...
+            obstacle.center_position
+        )
+
+    def get_base_convergence(self, position: npt.ArrayLike) -> np.ndarray:
+        return self.convergence_dynamics.evaluate(position)
 
 
 class NonlinearRotationalAvoider(BaseAvoider):
@@ -69,19 +85,21 @@ class NonlinearRotationalAvoider(BaseAvoider):
 
     def __init__(
         self,
-        initial_dynamics: DynamicalSystem = None,
-        obstacle_environment=None,
-        convergence_system: DynamicalSystem = None,
+        initial_dynamics: DynamicalSystem,
+        obstacle_environment: RotationContainer,
+        obstacle_convergence: ObstacleConvergenceDynamics,
         **kwargs,
     ) -> None:
         """Initial dynamics, convergence direction and obstacle list are used."""
         self._rotation_avoider = RotationalAvoider(
             initial_dynamics=initial_dynamics,
             obstacle_environment=obstacle_environment,
-            convergence_system=convergence_system,
+            # convergence_system=convergence_system,
             cut_off_gamma=10,
             **kwargs,
         )
+
+        self.obstacle_convergence = obstacle_convergence
 
     @property
     def dimension(self):
@@ -98,8 +116,8 @@ class NonlinearRotationalAvoider(BaseAvoider):
     def evaluate_initial_dynamics(self, position: np.ndarray) -> np.ndarray:
         return self._rotation_avoider.initial_dynamics.evaluate(position)
 
-    def evaluate_convergence_dynamics(self, position: np.ndarray) -> np.ndarray:
-        return self._rotation_avoider.convergence_dynamics.evaluate(position)
+    # def evaluate_convergence_dynamics(self, position: np.ndarray) -> np.ndarray:
+    #     return self._rotation_avoider.convergence_dynamics.evaluate(position)
 
     def avoid(self, position, initial_velocity):
         convergence_velocity = self.evaluate_convergence_dynamics(position)
@@ -128,7 +146,8 @@ class NonlinearRotationalAvoider(BaseAvoider):
     def evaluate_weighted_dynamics(
         self, position: np.ndarray, initial_velocity: np.ndarray
     ) -> np.ndarray:
-        convergence_velocity = self.evaluate_convergence_dynamics(position)
+        # convergence_velocity = self.evaluate_convergence_dynamics(position)
+        convergence_velocity = self.obstacle_convergence.get_base_convergence(position)
 
         # TODO: this gamma/weight calculation could be shared...
         gamma_array = np.zeros((self.n_obstacles))
@@ -186,13 +205,20 @@ class NonlinearRotationalAvoider(BaseAvoider):
 
         # Evaluate center directions for the relevant obstacles
         for ii, it_obs in enumerate(np.arange(self.n_obstacles)[ind_obs]):
-            local_velocities[:, ii] = self.evaluate_initial_dynamics(
-                # TODO: could also be reference point...
-                self._rotation_avoider.obstacle_environment[ii].center_position
+            # local_velocities[:, ii] = self.evaluate_initial_dynamics(
+            #     # TODO: could also be reference point...
+            #     self._rotation_avoider.obstacle_environment[ii].center_position
+            # )
+
+            local_velocities[
+                :, ii
+            ] = self.obstacle_convergence.evaluate_convergence_around_obstacle(
+                position, obstacle=self._rotation_avoider.obstacle_environment[ii]
             )
 
             if not LA.norm(local_velocities[:, ii]):
-                # What should be done here (?) <-> smoothly reduce the weight as we approach the center(?)
+                # What should be done here (?)
+                # <-> smoothly reduce the weight as we approach the center(?)
                 raise NotImplementedError()
 
         if not (convergence_norm := LA.norm(convergence_velocity)):
@@ -231,10 +257,15 @@ def test_nonlinear_avoider(
         )
     )
 
+    obstacle_convergence = LinearConvergenceDynamics(
+        initial_dynamics=initial_dynamics, convergence_dynamics=convergence_dynamics
+    )
+
     obstacle_avoider = NonlinearRotationalAvoider(
         initial_dynamics=initial_dynamics,
-        convergence_system=convergence_dynamics,
+        # convergence_system=convergence_dynamics,
         obstacle_environment=obstacle_environment,
+        obstacle_convergence=obstacle_convergence,
     )
 
     if visualize:
@@ -254,7 +285,8 @@ def test_nonlinear_avoider(
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
             obstacle_container=[],
-            dynamics=obstacle_avoider.evaluate_convergence_dynamics,
+            # dynamics=obstacle_avoider.evaluate_convergence_dynamics,
+            dynamics=convergence_dynamics.evaluate,
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
@@ -583,7 +615,7 @@ def test_circular_single_obstacle(visualize=False):
         )
 
         linearised_ds = partial(
-            rotation_projector.get_single_obstacle_convergence_rotation,
+            rotation_projector.evaluate_convergence_around_obstacle,
             obstacle=obstacle_environment[0],
         )
         # Linearized Dynamics
@@ -620,7 +652,7 @@ def test_circular_single_obstacle(visualize=False):
     position = obstacle.center_position + obstacle.axes_length * 0.4
     projected_position = rotation_projector.get_projected_position(position)
     center_velocity = circular_ds.evaluate(obstacle_environment[0].center_position)
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position, obstacle=obstacle_environment[0]
     )
     assert np.allclose(velocity, center_velocity)
@@ -629,7 +661,7 @@ def test_circular_single_obstacle(visualize=False):
     position = np.array([-2, 1e-3])
     projected_position = rotation_projector.get_projected_position(position)
 
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=position,
         obstacle=obstacle_environment[0],
     )
@@ -641,7 +673,7 @@ def test_circular_single_obstacle(visualize=False):
 
     # There is still some influence at a specific position
     position = np.array([-1.5, 6])
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=position,
         obstacle=obstacle_environment[0],
     )
@@ -650,7 +682,7 @@ def test_circular_single_obstacle(visualize=False):
 
     # Opposite of attractor
     position = np.array([-1, 0])
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=position,
         obstacle=obstacle_environment[0],
     )
@@ -663,7 +695,7 @@ def test_circular_single_obstacle(visualize=False):
     position = np.array([position[1], position[0]])
 
     initial_velocity = circular_ds.evaluate(position)
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=position,
         obstacle=obstacle_environment[0],
     )
@@ -673,7 +705,7 @@ def test_circular_single_obstacle(visualize=False):
     assert abs(velocity[0]) > abs(velocity[1]), "Not circling enough"
 
     # Evaluation at center of obstacle
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=obstacle_environment[0].center_position,
         obstacle=obstacle_environment[0],
     )
@@ -688,14 +720,18 @@ def test_circular_single_obstacle(visualize=False):
         + obstacle_environment[0].margin_absolut
         + 1e-3
     )
-    velocity = rotation_projector.get_single_obstacle_convergence_rotation(
+    velocity = rotation_projector.evaluate_convergence_around_obstacle(
         position=position,
         obstacle=obstacle_environment[0],
     )
     assert np.allclose(velocity, initial_velocity, atol=1e-2)
 
 
-def test_circular_multiple(visualize=False):
+def test_circular_multiple(
+    visualize=False,
+    n_resolution: int = 20,
+    savefig: bool = False,
+):
     from vartools.dynamical_systems import CircularStable
 
     circular_ds = CircularStable(radius=2.5, maximum_velocity=2.0)
@@ -703,17 +739,18 @@ def test_circular_multiple(visualize=False):
     obstacle_environment = RotationContainer()
     obstacle_environment.append(
         Ellipse(
-            center_position=np.array([2.5, 0.0]),
-            axes_length=np.array([1.4, 1.4]),
-            margin_absolut=0.3,
+            center_position=np.array([-1.0, 2.0]),
+            axes_length=np.array([1.0, 1.0]),
+            # margin_absolut=0.3,
         )
     )
 
     obstacle_environment.append(
         Ellipse(
-            center_position=np.array([2.5, 0.0]),
-            axes_length=np.array([1.4, 1.4]),
-            margin_absolut=0.3,
+            center_position=np.array([1.0, 2.0]),
+            # axes_length=np.array([1.4, 1.4]),
+            axes_length=np.array([1.0, 1.0]),
+            # margin_absolut=0.3,
         )
     )
 
@@ -723,8 +760,86 @@ def test_circular_multiple(visualize=False):
         reference_velocity=lambda x: x - center_velocity.center_position,
     )
 
+    obstacle_avoider = NonlinearRotationalAvoider(
+        initial_dynamics=circular_ds,
+        # convergence_system=convergence_dynamics,
+        obstacle_environment=obstacle_environment,
+        obstacle_convergence=rotation_projector,
+    )
+
     if visualize:
-        pass
+        x_lim = [-3.5, 3.5]
+        y_lim = [-2.8, 2.8]
+
+        vf_color = "blue"
+        figname = "nonlinear_infinite_dynamics"
+        # vf_color = "black"
+
+        figsize = (8.0, 8.0)
+
+        from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
+            plot_obstacle_dynamics,
+        )
+        from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            dynamics=lambda x: obstacle_avoider.evaluate_weighted_dynamics(
+                x, circular_ds.evaluate(x)
+            ),
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            n_grid=n_resolution,
+            do_quiver=True,
+            vectorfield_color=vf_color,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            # noTicks=True,
+            # show_ticks=False,
+        )
+        # fig.tight_layout()
+
+        if savefig:
+            figspec = "base_convergence"
+            plt.savefig(
+                "figures/" + figname + "_" + figspec + figtype,
+                bbox_inches="tight",
+            )
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            # dynamics=obstacle_avoider.evaluate_convergence_dynamics,
+            dynamics=obstacle_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            n_grid=n_resolution,
+            do_quiver=True,
+            vectorfield_color=vf_color,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            # noTicks=True,
+            # show_ticks=False,
+        )
+        # fig.tight_layout()
+
+        if savefig:
+            figspec = "full_avoidance"
+            plt.savefig(
+                "figures/" + figname + "_" + figspec + figtype,
+                bbox_inches="tight",
+            )
 
 
 if (__name__) == "__main__":
@@ -742,7 +857,8 @@ if (__name__) == "__main__":
     # figtype = ".png"
 
     # test_nonlinear_avoider(visualize=True, savefig=False)
-    # test_nonlinear_avoider(visualize=True, savefig=True, n_resolution=80)
+    # test_nonlinear_avoider(visualize=True, savefig=False, n_resolution=10)
     # test_multiobstacle_nonlinear_avoider(visualize=False)
 
-    test_circular_single_obstacle(visualize=True)
+    # test_circular_single_obstacle(visualize=True)
+    test_circular_multiple(visualize=True, n_resolution=20)

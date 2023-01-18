@@ -8,6 +8,7 @@ Library for the Rotation (Modulation Imitation) of Linear Systems
 import warnings
 import copy
 import math
+from typing import Optional
 
 # from math import pi
 
@@ -51,7 +52,7 @@ class RotationalAvoider(BaseAvoider):
         self,
         initial_dynamics: DynamicalSystem = None,
         obstacle_environment=None,
-        convergence_system: DynamicalSystem = None,
+        convergence_system: Optional[DynamicalSystem] = None,
         cut_off_gamma: float = 1e6,
         tail_rotation: bool = False,
         convergence_radius: float = math.pi / 2.0,

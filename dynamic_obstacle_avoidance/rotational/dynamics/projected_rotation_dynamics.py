@@ -422,7 +422,7 @@ class ProjectedRotationDynamics:
             velocity / vel_norm, modulated_velocity / mod_vel_norm
         )
 
-    def get_base_reference(self, position: Vector) -> Vector:
+    def get_base_convergence(self, position: Vector) -> Vector:
         # This should be either +/- attractor-position
         dist_attr = self.attractor_position - position
         if dist_norm := LA.norm(dist_attr):
@@ -430,7 +430,7 @@ class ProjectedRotationDynamics:
         else:
             return dist_attr
 
-    def get_single_obstacle_convergence_rotation(
+    def evaluate_convergence_around_obstacle(
         self,
         position: Vector,
         obstacle: Obstacle,
@@ -442,7 +442,7 @@ class ProjectedRotationDynamics:
         initial_velocity = self.initial_dynamics.evaluate(position)
         obstacle_velocity = self.initial_dynamics.evaluate(obstacle.center_position)
 
-        base_convergence_direction = self.get_base_reference(position)
+        base_convergence_direction = self.get_base_convergence(position)
 
         dir_attr_to_pos = position - self.attractor_position
         if not (dir_norm := LA.norm(dir_attr_to_pos)):
