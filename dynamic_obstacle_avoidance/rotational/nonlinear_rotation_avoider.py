@@ -34,6 +34,7 @@ from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 
 from dynamic_obstacle_avoidance.avoidance import BaseAvoider
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import (
@@ -46,8 +47,16 @@ from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics 
 
 
 class ObstacleConvergenceDynamics(Protocol):
-    def evaluate(self, position: npt.ArrayLike, obstacle: Obstacle) -> np.ndarray:
+    def evaluate_obstacle_dynamics(
+        self, position: npt.ArrayLike, obstacle: Obstacle
+    ) -> np.ndarray:
         ...
+
+    def evaluate_base_dynamics(self, position: npt.ArrayLike) -> np.ndarray:
+        ...
+
+
+class CircularConvergenceDynamics(Protocll)
 
 
 class NonlinearRotationalAvoider(BaseAvoider):
