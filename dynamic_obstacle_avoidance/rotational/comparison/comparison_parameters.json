@@ -1,0 +1,5 @@
+{
+	"it_max": 1000,
+	"conv_margin": 1e-3,
+	"delta_time": 0.01
+}

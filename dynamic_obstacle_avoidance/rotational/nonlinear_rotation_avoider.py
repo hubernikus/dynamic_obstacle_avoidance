@@ -46,17 +46,6 @@ from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics 
 )
 
 
-def integrate_trajectory(evaluate_function, start_position, it_max, dt=0.01):
-    positions = np.zeros((start_position.shape[0], it_max))
-    positions[:, 0] = start_position
-
-    for ii in range(1, it_max):
-        velocity = evaluate_function(positions[:, ii - 1])
-        positions[:, ii] = velocity * dt + positions[:, ii - 1]
-
-    return positions
-
-
 class ObstacleConvergenceDynamics(Protocol):
     def evaluate_convergence_around_obstacle(
         self, position: npt.ArrayLike, obstacle: Obstacle
@@ -912,128 +901,6 @@ def _test_circular_dynamics_with_two_circles(
     assert velocity[1] < 0
 
 
-def _test_circular_dynamics_multiobstacle(
-    visualize=False,
-    n_resolution: int = 20,
-    savefig: bool = False,
-):
-    from vartools.dynamical_systems import CircularStable
-
-    circular_ds = CircularStable(radius=2.0, maximum_velocity=2.0)
-
-    obstacle_environment = RotationContainer()
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([-1.0, 2.0]),
-            axes_length=np.array([0.8, 0.8]),
-            # margin_absolut=0.3,
-        )
-    )
-
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([1.0, 2.0]),
-            # axes_length=np.array([1.4, 1.4]),
-            axes_length=np.array([0.8, 0.8]),
-            # margin_absolut=0.3,
-        )
-    )
-
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([-2.6, 0.0]),
-            axes_length=np.array([0.7, 1.4]),
-        )
-    )
-
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([-1.4, 0.0]),
-            axes_length=np.array([0.7, 1.4]),
-        )
-    )
-
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([0.0, -2.0]),
-            axes_length=np.array([0.6, 0.3]),
-        )
-    )
-
-    obstacle_environment.append(
-        Ellipse(
-            center_position=np.array([2.0, 0.0]),
-            axes_length=np.array([1.0, 0.5]),
-            orientation=45.0 / 180 * math.pi,
-        )
-    )
-
-    rotation_projector = ProjectedRotationDynamics(
-        attractor_position=circular_ds.pose.position,
-        initial_dynamics=circular_ds,
-        reference_velocity=lambda x: x - center_velocity.center_position,
-    )
-
-    obstacle_avoider = NonlinearRotationalAvoider(
-        initial_dynamics=circular_ds,
-        # convergence_system=convergence_dynamics,
-        obstacle_environment=obstacle_environment,
-        obstacle_convergence=rotation_projector,
-    )
-
-    if visualize:
-        x_lim = [-3.5, 3.5]
-        y_lim = [-2.8, 2.8]
-
-        vf_color = "blue"
-        figname = "nonlinear_infinite_dynamics"
-        # vf_color = "black"
-
-        figsize = (8.0, 8.0)
-
-        from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
-            plot_obstacle_dynamics,
-        )
-        from dynamic_obstacle_avoidance.visualization import plot_obstacles
-
-        fig, ax = plt.subplots(figsize=figsize)
-        plot_obstacle_dynamics(
-            obstacle_container=obstacle_environment,
-            dynamics=obstacle_avoider.evaluate,
-            x_lim=x_lim,
-            y_lim=y_lim,
-            ax=ax,
-            n_grid=n_resolution,
-            do_quiver=True,
-            vectorfield_color=vf_color,
-        )
-        plot_obstacles(
-            ax=ax,
-            obstacle_container=obstacle_environment,
-            x_lim=x_lim,
-            y_lim=y_lim,
-            # noTicks=True,
-            # show_ticks=False,
-        )
-
-        traj_positions = integrate_trajectory(
-            obstacle_avoider.evaluate,
-            start_position=np.array([-3, 1.5]),
-            it_max=2000,
-            dt=0.01,
-        )
-        ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
-        traj_positions = integrate_trajectory(
-            obstacle_avoider.evaluate,
-            start_position=np.array([-0.5, -0.5]),
-            it_max=2000,
-            dt=0.01,
-        )
-        ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
-
-        breakpoint()
-
-
 if (__name__) == "__main__":
     # Import visualization libraries here
     import matplotlib.pyplot as plt  # For debugging only (!)
@@ -1055,7 +922,5 @@ if (__name__) == "__main__":
 
     # test_circular_single_obstacle(visualize=True)
     # test_circular_dynamics_with_two_circles(visualize=True, n_resolution=20)
-
-    _test_circular_dynamics_multiobstacle(visualize=True)
 
     print("Done")
