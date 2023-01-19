@@ -46,6 +46,17 @@ from dynamic_obstacle_avoidance.rotational.dynamics.projected_rotation_dynamics 
 )
 
 
+def integrate_trajectory(evaluate_function, start_position, it_max, dt=0.01):
+    positions = np.zeros((start_position.shape[0], it_max))
+    positions[:, 0] = start_position
+
+    for ii in range(1, it_max):
+        velocity = evaluate_function(positions[:, ii - 1])
+        positions[:, ii] = velocity * dt + positions[:, ii - 1]
+
+    return positions
+
+
 class ObstacleConvergenceDynamics(Protocol):
     def evaluate_convergence_around_obstacle(
         self, position: npt.ArrayLike, obstacle: Obstacle
@@ -129,10 +140,11 @@ class NonlinearRotationalAvoider(BaseAvoider):
 
     def evaluate(self, position, **kwargs):
         initial_velocity = self.evaluate_initial_dynamics(position)
+        # breakpoint()
         local_convergence_velocity = self.evaluate_weighted_dynamics(
             position, initial_velocity
         )
-
+        # breakpoint()
         return self._rotation_avoider.avoid(
             position=position,
             initial_velocity=initial_velocity,
@@ -146,8 +158,18 @@ class NonlinearRotationalAvoider(BaseAvoider):
     def evaluate_weighted_dynamics(
         self, position: np.ndarray, initial_velocity: np.ndarray
     ) -> np.ndarray:
+        """Returns the weighted-convergence velocity for all obstacles.
+
+        Arguments
+        ---------
+        position: Vector of the array of the position of evaluation
+        initial_velocity: The initial dynamics are used as a 'baseline' for the convergence
+        """
         # convergence_velocity = self.evaluate_convergence_dynamics(position)
-        convergence_velocity = self.obstacle_convergence.get_base_convergence(position)
+        # convergence_velocity = self.obstacle_convergence.get_base_convergence(position)
+        if not (initial_norm := LA.norm(initial_velocity)):
+            return initial_velocity
+        initial_velocity = initial_velocity / initial_norm
 
         # TODO: this gamma/weight calculation could be shared...
         gamma_array = np.zeros((self.n_obstacles))
@@ -189,21 +211,23 @@ class NonlinearRotationalAvoider(BaseAvoider):
         self.weights[ind_obs] = weights
 
         # Remaining convergence is the linear system, if it is far..
-        initial_norm = LA.norm(initial_velocity)
-        if weight_sum < 1:
-            local_velocities = np.zeros((self.dimension, np.sum(ind_obs) + 1))
+        # initial_norm = LA.norm(initial_velocity)
+        # if weight_sum < 1:
+        #     local_velocities = np.zeros((self.dimension, np.sum(ind_obs) + 1))
 
-            weights = np.append(weights, 1 - weight_sum)
+        #     weights = np.append(weights, 1 - weight_sum)
 
-            if not initial_norm:
-                return initial_velocity
+        #     if not initial_norm:
+        #         return initial_velocity
 
-            local_velocities[:, -1] = initial_velocity / initial_norm
+        #     local_velocities[:, -1] = initial_velocity / initial_norm
 
-        else:
-            local_velocities = np.zeros((self.dimension, np.sum(ind_obs)))
+        # else:
 
-        # Evaluate center directions for the relevant obstacles
+        # Initial velocity will be the 'base velocity'
+        local_velocities = np.zeros((self.dimension, np.sum(ind_obs)))
+
+        # Evaluating center directions for the relevant obstacles
         for ii, it_obs in enumerate(np.arange(self.n_obstacles)[ind_obs]):
             # local_velocities[:, ii] = self.evaluate_initial_dynamics(
             #     # TODO: could also be reference point...
@@ -221,16 +245,14 @@ class NonlinearRotationalAvoider(BaseAvoider):
                 # <-> smoothly reduce the weight as we approach the center(?)
                 raise NotImplementedError()
 
-        if not (convergence_norm := LA.norm(convergence_velocity)):
-            return convergence_velocity
-        convergence_velocity = convergence_velocity / convergence_norm
-
-        # Weighted sum -> should have the same result as 'the graph summing' (but current implementation is more stable)
+        # Weighted sum -> should have the same result as 'the graph summing'
+        # (but current implementation of weighted_sum is more stable)
         averaged_direction = get_directional_weighted_sum(
-            null_direction=convergence_velocity,
+            null_direction=initial_velocity,
             weights=weights,
             directions=local_velocities,
         )
+        # breakpoint()
 
         return initial_norm * averaged_direction
 
@@ -496,10 +518,15 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
         )
     )
 
+    obstacle_convergence = LinearConvergenceDynamics(
+        initial_dynamics=initial_dynamics, convergence_dynamics=convergence_dynamics
+    )
+
     obstacle_avoider = NonlinearRotationalAvoider(
         initial_dynamics=initial_dynamics,
-        convergence_system=convergence_dynamics,
+        # convergence_system=convergence_dynamics,
         obstacle_environment=obstacle_environment,
+        obstacle_convergence=obstacle_convergence,
     )
 
     if visualize:
@@ -511,7 +538,9 @@ def test_multiobstacle_nonlinear_avoider(visualize=True):
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
             obstacle_container=obstacle_environment,
-            dynamics=obstacle_avoider.evaluate_convergence_dynamics,
+            dynamics=lambda x: obstacle_avoider.evaluate_weighted_dynamics(
+                x, initial_dynamics.evaluate(x)
+            ),
             x_lim=x_lim,
             y_lim=y_lim,
             ax=ax,
@@ -727,11 +756,12 @@ def test_circular_single_obstacle(visualize=False):
     assert np.allclose(velocity, initial_velocity, atol=1e-2)
 
 
-def test_circular_multiple(
+def _test_circular_dynamics_with_two_circles(
     visualize=False,
     n_resolution: int = 20,
     savefig: bool = False,
 ):
+    """More visualization than test."""
     from vartools.dynamical_systems import CircularStable
 
     circular_ds = CircularStable(radius=2.5, maximum_velocity=2.0)
@@ -781,6 +811,26 @@ def test_circular_multiple(
             plot_obstacle_dynamics,
         )
         from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            dynamics=circular_ds.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            n_grid=n_resolution,
+            do_quiver=True,
+            vectorfield_color=vf_color,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            # noTicks=True,
+            # show_ticks=False,
+        )
 
         fig, ax = plt.subplots(figsize=figsize)
         plot_obstacle_dynamics(
@@ -841,6 +891,148 @@ def test_circular_multiple(
                 bbox_inches="tight",
             )
 
+    # Evaluate points
+    position = np.array([-0.9, 0.1])
+    conv0 = obstacle_avoider.obstacle_convergence.evaluate_convergence_around_obstacle(
+        position, obstacle=obstacle_environment[0]
+    )
+
+    conv1 = obstacle_avoider.obstacle_convergence.evaluate_convergence_around_obstacle(
+        position, obstacle=obstacle_environment[1]
+    )
+
+    initial_velocity = obstacle_avoider.evaluate_initial_dynamics(position)
+    conv_tot = obstacle_avoider.evaluate_weighted_dynamics(position, initial_velocity)
+    # Velocity and convergence direction are expected to point downwards
+    assert conv_tot[1] < 0
+    assert np.dot(conv0, conv_tot) > 0
+    assert np.dot(conv1, conv_tot) > 0
+
+    velocity = obstacle_avoider.evaluate(position)
+    assert velocity[1] < 0
+
+
+def _test_circular_dynamics_multiobstacle(
+    visualize=False,
+    n_resolution: int = 20,
+    savefig: bool = False,
+):
+    from vartools.dynamical_systems import CircularStable
+
+    circular_ds = CircularStable(radius=2.0, maximum_velocity=2.0)
+
+    obstacle_environment = RotationContainer()
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([-1.0, 2.0]),
+            axes_length=np.array([0.8, 0.8]),
+            # margin_absolut=0.3,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([1.0, 2.0]),
+            # axes_length=np.array([1.4, 1.4]),
+            axes_length=np.array([0.8, 0.8]),
+            # margin_absolut=0.3,
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([-2.6, 0.0]),
+            axes_length=np.array([0.7, 1.4]),
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([-1.4, 0.0]),
+            axes_length=np.array([0.7, 1.4]),
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([0.0, -2.0]),
+            axes_length=np.array([0.6, 0.3]),
+        )
+    )
+
+    obstacle_environment.append(
+        Ellipse(
+            center_position=np.array([2.0, 0.0]),
+            axes_length=np.array([1.0, 0.5]),
+            orientation=45.0 / 180 * math.pi,
+        )
+    )
+
+    rotation_projector = ProjectedRotationDynamics(
+        attractor_position=circular_ds.pose.position,
+        initial_dynamics=circular_ds,
+        reference_velocity=lambda x: x - center_velocity.center_position,
+    )
+
+    obstacle_avoider = NonlinearRotationalAvoider(
+        initial_dynamics=circular_ds,
+        # convergence_system=convergence_dynamics,
+        obstacle_environment=obstacle_environment,
+        obstacle_convergence=rotation_projector,
+    )
+
+    if visualize:
+        x_lim = [-3.5, 3.5]
+        y_lim = [-2.8, 2.8]
+
+        vf_color = "blue"
+        figname = "nonlinear_infinite_dynamics"
+        # vf_color = "black"
+
+        figsize = (8.0, 8.0)
+
+        from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
+            plot_obstacle_dynamics,
+        )
+        from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+        fig, ax = plt.subplots(figsize=figsize)
+        plot_obstacle_dynamics(
+            obstacle_container=obstacle_environment,
+            dynamics=obstacle_avoider.evaluate,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            n_grid=n_resolution,
+            do_quiver=True,
+            vectorfield_color=vf_color,
+        )
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=obstacle_environment,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            # noTicks=True,
+            # show_ticks=False,
+        )
+
+        traj_positions = integrate_trajectory(
+            obstacle_avoider.evaluate,
+            start_position=np.array([-3, 1.5]),
+            it_max=2000,
+            dt=0.01,
+        )
+        ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
+        traj_positions = integrate_trajectory(
+            obstacle_avoider.evaluate,
+            start_position=np.array([-0.5, -0.5]),
+            it_max=2000,
+            dt=0.01,
+        )
+        ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
+
+        breakpoint()
+
 
 if (__name__) == "__main__":
     # Import visualization libraries here
@@ -850,7 +1042,7 @@ if (__name__) == "__main__":
     )
     from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
-    # plt.close("all")
+    plt.close("all")
     plt.ion()
 
     figtype = ".pdf"
@@ -858,7 +1050,12 @@ if (__name__) == "__main__":
 
     # test_nonlinear_avoider(visualize=True, savefig=False)
     # test_nonlinear_avoider(visualize=True, savefig=False, n_resolution=10)
-    # test_multiobstacle_nonlinear_avoider(visualize=False)
+
+    # test_multiobstacle_nonlinear_avoider(visualize=True)
 
     # test_circular_single_obstacle(visualize=True)
-    test_circular_multiple(visualize=True, n_resolution=20)
+    # test_circular_dynamics_with_two_circles(visualize=True, n_resolution=20)
+
+    _test_circular_dynamics_multiobstacle(visualize=True)
+
+    print("Done")

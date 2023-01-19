@@ -562,6 +562,10 @@ class RotationalAvoider(BaseAvoider):
             base_angle[0] = convergence_radius
             return UnitDirection(dir_reference.base).from_angle(base_angle)
 
+        # if dir_convergence.norm() > convergence_radius:
+        #     # If on the surface -> no need to 'project'
+        #     return dir_convergence
+
         surface_angle = get_intersection_with_circle(
             start_position=dir_reference.as_angle(),
             direction=(dir_convergence - dir_reference).as_angle(),
@@ -635,8 +639,8 @@ class RotationalAvoider(BaseAvoider):
 
         Parameters
         ---------
-        convergence_vector: a array of floats of size (dimension,)
-        reference_vector: a array of floats of size (dimension,)
+        convergence_vector: vector (often linearized system) which ensures convergence
+        reference_vector: vector towards the center (reference) of an obstacle
         weight: float in the range [0, 1] which gives influence on how important vector 2 is.
         nonlinear_velocity: (optional) the vector-field which converges
 
@@ -720,12 +724,6 @@ class RotationalAvoider(BaseAvoider):
             )
             null_vector = null_direction.as_vector()
 
-            # print(f"{dot_weights=}")
-            # print(f"{conv_vector=}")
-            # print(f"{normal_vector=}")
-            # print(f"{null_vector=}")
-            # breakpoint()
-
         else:
             null_vector = conv_vector
 
@@ -734,11 +732,5 @@ class RotationalAvoider(BaseAvoider):
             weights=np.array([weight, (1 - weight)]),
             directions=np.vstack((conv_vector, dir_initial.as_vector())).T,
         )
-        # print(f"{weight=}")
-        # print(f"{rotated_velocity=}")
-        # print(f"{null_vector=}")
-        # print(f"{conv_vector=}")
-        # print(f"{dir_initial.as_vector()=}")
         # breakpoint()
-
         return rotated_velocity
