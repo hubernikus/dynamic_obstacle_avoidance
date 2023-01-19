@@ -79,12 +79,13 @@ def integrate_trajectory(
     return positions
 
 
-def create_six_obstacle_environment():
+def create_six_obstacle_environment(distance_scaling=0.3) -> RotationContainer:
     obstacle_environment = RotationContainer()
     obstacle_environment.append(
         Ellipse(
             center_position=np.array([-0.9, 2.0]),
             axes_length=np.array([0.9, 0.9]),
+            distance_scaling=distance_scaling,
             # margin_absolut=0.3,
         )
     )
@@ -94,6 +95,7 @@ def create_six_obstacle_environment():
             center_position=np.array([0.9, 2.0]),
             # axes_length=np.array([1.4, 1.4]),
             axes_length=np.array([0.9, 0.9]),
+            distance_scaling=distance_scaling,
             # margin_absolut=0.3,
         )
     )
@@ -102,6 +104,7 @@ def create_six_obstacle_environment():
         Ellipse(
             center_position=np.array([-2.6, 0.0]),
             axes_length=np.array([0.8, 1.8]),
+            distance_scaling=distance_scaling,
         )
     )
 
@@ -109,6 +112,7 @@ def create_six_obstacle_environment():
         Ellipse(
             center_position=np.array([-1.4, 0.0]),
             axes_length=np.array([0.8, 1.8]),
+            distance_scaling=distance_scaling,
         )
     )
 
@@ -116,6 +120,7 @@ def create_six_obstacle_environment():
         Ellipse(
             center_position=np.array([0.0, -2.0]),
             axes_length=np.array([1.0, 0.5]),
+            distance_scaling=distance_scaling,
         )
     )
 
@@ -124,6 +129,7 @@ def create_six_obstacle_environment():
             center_position=np.array([2.0, 0.0]),
             axes_length=np.array([1.0, 0.5]),
             orientation=45.0 / 180 * math.pi,
+            distance_scaling=distance_scaling,
         )
     )
     return obstacle_environment
@@ -133,7 +139,9 @@ def _test_circular_dynamics_multiobstacle(
     visualize=False,
     n_resolution: int = 20,
     savefig: bool = False,
+    traj_integrate: bool = False,
 ):
+    obstacle_environment = create_six_obstacle_environment()
     circular_ds = CircularStable(radius=2.0, maximum_velocity=2.0)
 
     rotation_projector = ProjectedRotationDynamics(
@@ -184,6 +192,7 @@ def _test_circular_dynamics_multiobstacle(
             # show_ticks=False,
         )
 
+    if traj_integrate:
         traj_positions = integrate_trajectory(
             obstacle_avoider.evaluate,
             start_position=np.array([-3, 1.5]),
@@ -319,4 +328,4 @@ if (__name__) == "__main__":
 
     # evaluate_nonlinear_trajectories()
 
-    _test_circular_dynamics_multiobstacle(visualize=True, n_resolution=10)
+    _test_circular_dynamics_multiobstacle(visualize=True, n_resolution=20)

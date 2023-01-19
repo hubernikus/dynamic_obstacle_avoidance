@@ -161,8 +161,8 @@ class EllipseWithAxes(obstacles.Obstacle):
             margin_absolut=margin_absolut,
         )
 
-        distance_surface = LA.norm(surface_point)
-        distance_position = LA.norm(position)
+        distance_surface = LA.norm(surface_point) * self.distance_scaling
+        distance_position = LA.norm(position) * self.distance_scaling
 
         if distance_position > distance_surface:
             distance = LA.norm(position - surface_point)

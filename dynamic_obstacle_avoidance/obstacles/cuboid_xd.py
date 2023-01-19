@@ -220,6 +220,9 @@ class CuboidXd(obstacles.Obstacle):
             margin_absolut=margin_absolut,
         )
 
+        # Allow to have various behavior
+        distance_surface = distance_surface * self.distance_scaling
+
         is_boundary = is_boundary or self.is_boundary
         if distance_surface < 0:
             # or (distance_surface > 0  and not is_boundary)):

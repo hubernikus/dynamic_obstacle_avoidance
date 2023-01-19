@@ -5,6 +5,7 @@ import time
 import warnings
 import sys
 from math import pi
+from typing import Optional
 
 from abc import ABC, abstractmethod
 
@@ -43,6 +44,11 @@ class GammaType(Enum):
 class Obstacle(ABC):
     """(Virtual) base class of obstacles
     This class defines obstacles to modulate the DS around it
+
+    Attributes
+    ----------
+    pose: ObstaclePose
+    distance_scaling: Scales the distance value before calculating the gamma-value.
     """
 
     id_counter = 0
@@ -83,19 +89,20 @@ class Obstacle(ABC):
         orientation=None,
         linear_velocity=None,
         angular_velocity=None,
-        pose=None,
-        twist=None,
-        tail_effect=True,
-        has_sticky_surface=True,
-        repulsion_coeff: float = 1,
-        reactivity: float = 1,
-        name: str = None,
-        is_dynamic=False,
-        is_deforming=False,
-        margin_absolut: float = 0,
-        dimension: int = None,
+        pose: Optional[ObjectPose] = None,
+        twist: Optional[ObjectTwist] = None,
+        tail_effect: bool = True,
+        has_sticky_surface: bool = True,
+        distance_scaling: float = 1.0,
+        repulsion_coeff: float = 1.0,
+        reactivity: float = 1.0,
+        name: Optional[str] = None,
+        is_dynamic: bool = False,
+        is_deforming: bool = False,
+        margin_absolut: float = 0.0,
+        dimension: Optional[int] = None,
         is_boundary: bool = False,
-        relative_hull_extension_margin=0.1,
+        relative_hull_extension_margin: float = 0.1,
     ):
         if name is None:
             self.name = f"obstacle_{Obstacle.id_counter}"
@@ -117,16 +124,11 @@ class Obstacle(ABC):
         else:
             self.twist = twist
 
-        # self.position = center_position
-        # self.center_position = self.position
-
-        # self.orientation = orientation
-
-        # self.linear_velocity = linear_velocity
-        # self.angular_velocity = angular_velocity
-
         # Dimension of space
-        self.dim = len(self.center_position)
+        if dimension is not None:
+            self.dim = dimension
+        else:
+            self.dim = len(self.center_position)
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
@@ -178,7 +180,7 @@ class Obstacle(ABC):
         self._reference_point_is_inside = True
 
         # Scaling of the absolut-ellipse-distances
-        self.distance_scaling = 1
+        self.distance_scaling = distance_scaling
 
     def __del__(self):
         Obstacle.active_counter -= 1
