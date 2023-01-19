@@ -94,10 +94,7 @@ class Obstacle(ABC):
         is_deforming=False,
         margin_absolut: float = 0,
         dimension: int = None,
-        Gamma_ref: float = 0,
         is_boundary: bool = False,
-        gamma_distance=None,
-        sigma=None,
         relative_hull_extension_margin=0.1,
     ):
         if name is None:
@@ -134,11 +131,6 @@ class Obstacle(ABC):
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
 
-        # Margin
-        if sigma is not None:
-            raise Exception("Remove / rename sigma argument.")
-        # self.sigma = 1  # TODO: rename sigma argument
-
         self.relative_hull_extension_margin = relative_hull_extension_margin
 
         self.tail_effect = tail_effect  # Modulation if moving away behind obstacle
@@ -153,8 +145,6 @@ class Obstacle(ABC):
 
         # Set reference point value to None
         self.reset_relative_reference()
-
-        self.Gamma_ref = Gamma_ref
 
         self.is_convex = False  # Needed?
         self.is_non_starshaped = False
@@ -171,9 +161,6 @@ class Obstacle(ABC):
         # Repulsion coefficient to actively move away from obstacles (if possible)
         self.repulsion_coeff = repulsion_coeff
         self.reactivity = reactivity
-
-        # Distance which decides over 'proportional' factor for gamma
-        self.gamma_distance = gamma_distance
 
         Obstacle.id_counter += 1  # New obstacle created
         Obstacle.active_counter += 1
