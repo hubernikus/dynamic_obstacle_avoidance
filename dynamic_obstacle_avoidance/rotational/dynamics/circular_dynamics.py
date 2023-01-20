@@ -1,4 +1,4 @@
-b"""
+"""
 Circular Limit Cycle Field based on VectorRotationXd
 """
 import math

@@ -197,14 +197,14 @@ def _test_circular_dynamics_multiobstacle(
             obstacle_avoider.evaluate,
             start_position=np.array([-3, 1.5]),
             it_max=2000,
-            dt=0.01,
+            delta_time=0.01,
         )
         ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
         traj_positions = integrate_trajectory(
             obstacle_avoider.evaluate,
             start_position=np.array([-0.5, -0.5]),
             it_max=2000,
-            dt=0.01,
+            delta_time=0.01,
         )
         ax.plot(traj_positions[0, :], traj_positions[1, :], color="black")
 
