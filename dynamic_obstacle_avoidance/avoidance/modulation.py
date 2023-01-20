@@ -23,7 +23,7 @@ class ModulationAvoider(BaseAvoider):
     def __init__(
         self,
         initial_dynamics: DynamicalSystem = None,
-        convergence_system: DynamicalSystem = None,
+        # convergence_system: DynamicalSystem = None,
         obstacle_environment=None,
     ):
         """Initial dynamics, convergence direction and obstacle list are used."""
@@ -31,10 +31,10 @@ class ModulationAvoider(BaseAvoider):
             initial_dynamics=initial_dynamics, obstacle_environment=obstacle_environment
         )
 
-        if convergence_system is None:
-            self.convergence_system = self.initial_dynamics
-        else:
-            self.convergence_system = convergence_system
+        # if convergence_system is None:
+        #     self.convergence_system = self.initial_dynamics
+        # else:
+        #     self.convergence_system = convergence_system
 
     def avoid(
         self,

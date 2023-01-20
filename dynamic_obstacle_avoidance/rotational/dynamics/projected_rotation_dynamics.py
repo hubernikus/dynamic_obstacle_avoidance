@@ -55,7 +55,7 @@ class ProjectedRotationDynamics:
     def __init__(
         self,
         attractor_position: np.ndarray,
-        reference_velocity: np.ndarray,
+        reference_velocity: Optional[np.ndarray] = None,  # Probably remove this..
         initial_dynamics: Optional[np.ndarray] = None,
         obstacle: Optional[Obstacle] = None,
         min_gamma: float = 1,
@@ -96,7 +96,7 @@ class ProjectedRotationDynamics:
         # Get gamma
         gamma = self.obstacle.get_gamma(position, in_global_frame=True)
         if gamma >= self.max_gamma:
-            return self.gamma_max
+            return self.max_gamma
 
         elif gamma >= self.min_gamma:
             # Weight is additionally based on dot-product
@@ -112,10 +112,10 @@ class ProjectedRotationDynamics:
                     )
                     gamma = gamma**dist_stretching
                 else:
-                    gamma = self.gamma_max
+                    gamma = self.max_gamma
 
             else:
-                gamma = self.gamma_max
+                gamma = self.max_gamma
 
     def _get_deflation_weight(self, gamma: float) -> float:
         return 1.0 / gamma

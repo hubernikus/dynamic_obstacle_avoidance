@@ -20,9 +20,6 @@ class BaseAvoider(ABC):
         return self.initial_dynamics.attractor
 
     def evaluate(self, position):
-        if self.initial_dynamics is None:
-            raise NotImplementedError("You have to define 'initial_dynamics' first.")
-
         velocity = self.initial_dynamics.evaluate(position)
         return self.avoid(position, velocity)
 
