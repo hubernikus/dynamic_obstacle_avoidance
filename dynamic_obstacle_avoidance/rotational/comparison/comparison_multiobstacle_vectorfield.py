@@ -439,6 +439,12 @@ def visualize_trajectories(datapath, datafolder="modulation_avoidance"):
     plt.ion()
 
 
+def visualize_comparison_of_algorithms():
+    # Draw the three limit cycles + original one
+    # + Selected trajectories
+    pass
+
+
 if (__name__) == "__main__":
     datapath = "/home/lukas/Code/dynamic_obstacle_avoidance/dynamic_obstacle_avoidance/rotational/comparison/data"
 
