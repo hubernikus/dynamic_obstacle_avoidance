@@ -192,7 +192,8 @@ class TrajectoryEvaluator:
 
 
 def print_table(evaluation_list):
-    # print(" & & \\\\ \hline")
+    value = [ee.data_folder for ee in evaluation_list]
+    print(" & ".join(["Name"] + value) + " \\\\ \hline")
 
     value = [
         f"{ee.n_converged / ee.n_runs * 100:.0f}" + "\\%" for ee in evaluation_list
@@ -205,14 +206,14 @@ def print_table(evaluation_list):
     value = [f"{ee.squared_acceleration:.2f}" for ee in evaluation_list]
     print(" & ".join(["$a$"] + value) + " \\\\ \hline")
 
+    value = [f"{ee.dotprod_acceleration * 1e1:.2f}" for ee in evaluation_list]
+    print(" & ".join(["$\\langle a \\rangle [1e1m/s]$"] + value) + " \\\\ \hline")
+
     value = [f"{ee.squared_error_velocity:.2f}" for ee in evaluation_list]
     print(" & ".join(["$\Delta v$"] + value) + " \\\\ \hline")
 
     value = [f"{ee.dotprod_err_velocity * 1e6:.2f}" for ee in evaluation_list]
     print(" & ".join(["$\\langle v \\rangle [1e6]$"] + value) + " \\\\ \hline")
-
-    value = [f"{ee.dotprod_acceleration * 1e1:.2f}" for ee in evaluation_list]
-    print(" & ".join(["$\\langle a \\rangle [1e1m/s]$"] + value) + " \\\\ \hline")
 
 
 if (__name__) == "__main__":
@@ -236,4 +237,21 @@ if (__name__) == "__main__":
         )
         gfield_evaluation.run()
 
-    print_table([nonlinear_evaluation, modulation_evaluation, gfield_evaluation])
+        gfield_evaluation = TrajectoryEvaluator(
+            n_runs=n_runs, data_folder="guiding_field"
+        )
+        gfield_evaluation.run()
+
+        original_evaluation = TrajectoryEvaluator(
+            n_runs=n_runs, data_folder="original_trajectories"
+        )
+        original_evaluation.run()
+
+    print_table(
+        [
+            nonlinear_evaluation,
+            modulation_evaluation,
+            gfield_evaluation,
+            original_evaluation,
+        ]
+    )
