@@ -200,6 +200,11 @@ def print_table(evaluation_list):
     ]
     print(" & ".join(["$N^c$"] + value) + " \\\\ \hline")
 
+    value = [
+        f"{ee.n_local_minima / ee.n_runs * 100:.0f}" + "\\%" for ee in evaluation_list
+    ]
+    print(" & ".join(["$N^m$"] + value) + " \\\\ \hline")
+
     value = [f"{ee.dist_to_path:.2f}" for ee in evaluation_list]
     print(" & ".join(["$\\Delta R^2$"] + value) + " \\\\ \hline")
 
@@ -246,6 +251,8 @@ if (__name__) == "__main__":
             n_runs=n_runs, data_folder="original_trajectories"
         )
         original_evaluation.run()
+    else:
+        print("[INFO] We are currently using the evaluator from the memory.")
 
     print_table(
         [

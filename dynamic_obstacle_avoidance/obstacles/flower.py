@@ -12,6 +12,9 @@ import numpy as np
 from vartools.angle_math import angle_modulo
 from vartools.angle_math import *
 
+from vartools.dynamical_systems import LinearSystem
+
+
 from dynamic_obstacle_avoidance.utils import *
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
@@ -112,15 +115,23 @@ class StarshapedFlower(Obstacle):
         x_obs = radius_angle * direction
         x_obs_sf = (radius_angle + self.margin_absolut) * direction
 
-        if self.orientation:  # nonzero
-            for jj in range(x_obs.shape[1]):
-                x_obs[:, jj] = self.rotMatrix.dot(x_obs[:, jj]) + np.array(
-                    [self.center_position]
-                )
-            for jj in range(x_obs_sf.shape[1]):
-                x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array(
-                    [self.center_position]
-                )
+        if False:
+            if self.orientation:  # nonzero
+                for jj in range(x_obs.shape[1]):
+                    # x_obs[:, jj] = self.rotMatrix.dot(x_obs[:, jj]) + np.array(
+                    #     [self.center_position]
+                    # )
+                    x_obs[:, jj] = self.pose.transform_position_from_relative(
+                        x_obs[:, jj]
+                    )
+
+                    for jj in range(x_obs_sf.shape[1]):
+                        x_obs_sf[:, jj] = self.pose.transform_position_from_relative(
+                            x_obs_sf[:, jj]
+                        )
+                        # x_obs_sf[:, jj] = self.rotMatrix.dot(x_obs_sf[:, jj]) + np.array(
+                        #     [self.center_position]
+                        # )
 
         self.boundary_points_local = x_obs
         self.boundary_points_margin_local = x_obs_sf
@@ -191,7 +202,7 @@ class StarshapedFlower(Obstacle):
             position = np.array(position)
 
         if in_global_frame:
-            position = self.transform_global2relative(position)
+            position = self.pose.transform_position_to_relative(position)
 
         mag_position = np.linalg.norm(position)
         if mag_position == 0:
@@ -215,7 +226,7 @@ class StarshapedFlower(Obstacle):
 
     def get_normal_direction(self, position, in_global_frame=False):
         if in_global_frame:
-            position = self.transform_global2relative(position)
+            position = self.pose.transform_position_to_relative(position)
 
         mag_position = np.linalg.norm(position)
         if not mag_position:
@@ -239,6 +250,63 @@ class StarshapedFlower(Obstacle):
         normal_vector = normal_vector / LA.norm(normal_vector)
 
         if in_global_frame:
-            normal_vector = self.transform_relative2global_dir(normal_vector)
+            normal_vector = self.pose.transform_direction_from_relative(normal_vector)
 
         return normal_vector
+
+
+def test_starshape_flower(visualize=False):
+    flower_obstacle = StarshapedFlower(
+        center_position=np.array([1, -2]),
+        radius_magnitude=0.5,
+        radius_mean=1.5,
+        number_of_edges=3,
+        # axes_length=np.array([4, 2]),
+        orientation=30 / 90.0 * math.pi,
+    )
+
+    initial_dynamics = LinearSystem(attractor_position=np.array([4.0, 0]))
+
+    rotation_container = RotationContainer()
+    rotation_container.set_convergence_directions(converging_dynamics=initial_dynamics)
+    rotation_container.append(flower_obstacle)
+
+    if visualize:
+        import matplotlib.pyplot as plt
+
+        plt.ion()
+
+        x_lim = [-6.5, 6.5]
+        y_lim = [-5.0, 5.0]
+
+        from dynamic_obstacle_avoidance.visualization import plot_obstacle_dynamics
+        from dynamic_obstacle_avoidance.visualization import plot_obstacles
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacles(
+            obstacle_container=rotation_container,
+            ax=ax,
+            alpha_obstacle=1.0,
+        )
+
+        # fig, _ = Simulation_vectorFields(
+        #     x_lim=x_lim,
+        #     y_lim=y_lim,
+        #     n_resolution=110,
+        #     obstacle_list=rotation_container,
+        #     noTicks=True,
+        #     showLabel=False,
+        #     draw_vectorField=True,
+        #     dynamical_system=initial_dynamics.evaluate,
+        #     obs_avoidance_func=obstacle_avoidance_rotational,
+        #     automatic_reference_point=False,
+        #     pos_attractor=initial_dynamics.attractor_position,
+        #     # Quiver or stream-plot
+        #     # show_streamplot=False,
+        #     show_streamplot=True,
+        # )
+
+
+if (__name__) == "__main__":
+    test_starshape_flower(visualize=True)
+    pass

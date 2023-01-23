@@ -27,6 +27,7 @@ from vartools.directional_space import UnitDirection
 from vartools.dynamical_systems import plot_vectorfield
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
@@ -887,18 +888,33 @@ def test_stable_linear_avoidance(visualize=False):
 
 
 def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
+    initial_dynamics = LinearSystem(attractor_position=np.array([4.0, 0]))
+
     rotation_container = RotationContainer()
+    rotation_container.set_convergence_directions(converging_dynamics=initial_dynamics)
+
+    # rotation_container.append(
+    #     Ellipse(
+    #         center_position=np.array([1, -2]),
+    #         axes_length=np.array([4, 2]),
+    #         orientation=30 / 90.0 * math.pi,
+    #     )
+    # )
+
     rotation_container.append(
-        Ellipse(
+        StarshapedFlower(
             center_position=np.array([1, -2]),
-            axes_length=np.array([4, 2]),
+            radius_magnitude=0.5,
+            radius_mean=1.5,
+            number_of_edges=3,
+            # axes_length=np.array([4, 2]),
             orientation=30 / 90.0 * math.pi,
         )
     )
 
     rotation_container.append(
         Cuboid(
-            center_position=np.array([-1.5, 2]),
+            center_position=np.array([-2.5, 2]),
             axes_length=np.array([3, 2.5]),
             orientation=120 / 90.0 * math.pi,
         )
@@ -907,34 +923,41 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
     rotation_container.append(
         Cuboid(
             center_position=np.array([0, 0]),
-            axes_length=np.array([10, 9]),
+            axes_length=np.array([12, 9]),
             is_boundary=True,
         )
     )
 
-    initial_dynamics = LinearSystem(attractor_position=np.array([4.0, 0]))
-    rotation_container.set_convergence_directions(converging_dynamics=initial_dynamics)
+    rotation_avoider = RotationalAvoider(
+        obstacle_environment=rotation_container,
+        # convergence_radius=math.pi / 2.0,
+        initial_dynamics=initial_dynamics,
+    )
 
     if visualize:
-        x_lim = [-5.5, 5.5]
-        y_lim = [-5.1, 5.1]
-        # fig, ax = plt.subplots(figsize=(8, 6))
+        x_lim = [-6.5, 6.5]
+        y_lim = [-5.0, 5.0]
+        n_grid = 120
+        fig, ax = plt.subplots(figsize=(7, 5))
 
-        fig, _ = Simulation_vectorFields(
+        plot_obstacle_dynamics(
+            obstacle_container=rotation_container,
+            dynamics=rotation_avoider.avoid,
             x_lim=x_lim,
             y_lim=y_lim,
-            n_resolution=20,
-            obstacle_list=rotation_container,
-            noTicks=False,
-            showLabel=False,
-            draw_vectorField=True,
-            dynamical_system=initial_dynamics.evaluate,
-            obs_avoidance_func=obstacle_avoidance_rotational,
-            automatic_reference_point=False,
-            pos_attractor=initial_dynamics.attractor_position,
-            # Quiver or stream-plot
-            show_streamplot=False,
-            # show_streamplot=False,
+            n_grid=n_grid,
+            ax=ax,
+            attractor_position=initial_dynamics.attractor_position,
+            do_quiver=False,
+            show_ticks=False,
+        )
+
+        plot_obstacles(
+            obstacle_container=rotation_container,
+            ax=ax,
+            alpha_obstacle=1.0,
+            x_lim=x_lim,
+            y_lim=y_lim,
         )
 
         if save_figure:
@@ -965,6 +988,6 @@ if (__name__) == "__main__":
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=True)
 
-    # _test_obstacle_and_hull_avoidance(visualize=True)
+    _test_obstacle_and_hull_avoidance(visualize=True, save_figure=True)
 
     print("[Rotational Tests] Done tests")

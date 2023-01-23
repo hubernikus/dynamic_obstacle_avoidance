@@ -687,9 +687,9 @@ if (__name__) == "__main__":
     # visualize_circular_dynamics_multiobstacle_nonlinear(n_resolution=20)
     # visualize_circular_dynamics_multiobstacle_modulation(n_resolution=20)
 
-    # evaluate_nonlinear_trajectories()
-    # evaluate_modulated_trajectories()
-    # evaluate_original_trajectories()
+    evaluate_nonlinear_trajectories()
+    evaluate_modulated_trajectories()
+    evaluate_original_trajectories()
 
     # visualize_trajectories(datapath, datafolder="nonlinear_avoidance")
     # visualize_trajectories(datapath, datafolder="modulation_avoidance")
@@ -697,4 +697,4 @@ if (__name__) == "__main__":
     # visualize_trajectories(datapath, datafolder="original_trajectories")
 
     # create_base_circles_to_file(datapath=datapath)
-    plot_trajectory_comparison(datapath=datapath, savefig=False)
+    # plot_trajectory_comparison(datapath=datapath, savefig=False)
