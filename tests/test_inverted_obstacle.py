@@ -5,13 +5,15 @@ import pytest
 
 import numpy as np
 
-from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse, Polygon
+from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
+from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
+from dynamic_obstacle_avoidance.obstacles import Polygon
 
 
 def test_inverted_obstacle_ellipse():
     my_obstacle = Ellipse(
         center_position=np.array([0, 0]),
-        axes_length=np.array([2, 2]),
+        axes_length=np.array([4, 4]),
         is_boundary=True,
     )
 

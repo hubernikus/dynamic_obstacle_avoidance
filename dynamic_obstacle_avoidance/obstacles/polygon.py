@@ -600,11 +600,13 @@ class Polygon(Obstacle):
         if in_global_frame:
             position = self.transform_global2relative(position)
 
-        return LA.norm(
-            self.get_local_radius_point(
-                position, with_reference_point_expansion=with_reference_point_expansion
-            )
+        local_radius_point = self.get_local_radius_point(
+            position, with_reference_point_expansion=with_reference_point_expansion
         )
+        try:
+            return LA.norm(local_radius_point)
+        except:
+            breakpoint()
 
     def get_local_radius_point(
         self,
@@ -652,8 +654,7 @@ class Polygon(Obstacle):
             line_shapely = shapely.geometry.LineString([[0, 0], position])
             intersection = my_shapely.intersection(line_shapely)
 
-        # return LA.norm(intersection[-1])
-        return np.array(intersection)
+        return np.array([intersection.x, intersection.y])
 
     def get_gamma(
         self,

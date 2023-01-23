@@ -451,9 +451,9 @@ if __name__ == "__main__":
 
     visualize = False
     if visualize:
-        # TestMultiBoundary.plottest_list_simple(save_figure=False)
+        TestMultiBoundary.plottest_list_simple(save_figure=False)
         # TestMultiBoundary.plottest_list_advanced(save_figure=True)
         # TestMultiBoundary.plottest_list_intersect(save_figure=True)
         # TestMultiBoundary.plottest_default_direction()
-        TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=False)
+        # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=False)
         # TestMultiBoundary.gamma_test_multi_hull(n_resolution=140, save_figure=True)
