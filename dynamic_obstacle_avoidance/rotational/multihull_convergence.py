@@ -7,6 +7,8 @@ Library for the rotation and summing of linear Systems for learning purposes.
 import warnings
 from math import pi
 
+from typing import Optional
+
 import numpy as np
 from numpy import linalg as LA
 import numpy.typing as npt
@@ -31,18 +33,31 @@ from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 # directional_convergence_summing,
 # )
 from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
+from dynamic_obstacle_avoidance.rotational.multiboundary_container import (
+    MultiBoundaryContainer,
+)
 
-get_directional_weighted_sum_from_unit_directions
+
+def get_weight_gamma_for_hulls(
+    gamma_array: np.ndarray, power_value: float = 1.0
+) -> np.ndarray:
+    """Returns weight-array based on input of gamma_array."""
+    weights = np.maximum(gamma_array - 1, 0)
+
+    if sum_weights := np.sum(weights):
+        # Nonzero
+        weights = weights / sum_weights
+    return weights
 
 
 def get_desired_radius(
     position: np.ndarray,
     gamma_value: float,
     it_obs: int,
-    obstacle_list: list,
-    dotprod_weight: float = 1,
-    gamma_weight: float = 1,
-) -> np.array:
+    obstacle_list: MultiBoundaryContainer,
+    dotprod_weight: float = 1.0,
+    gamma_weight: float = 1.0,
+) -> float:
     """Returns desired radius on which boundary a vector has to lie in direction space.
     e.g. radius=pi/2 for a vector to be tangent or pointing away.
 
@@ -95,11 +110,13 @@ def get_desired_radius(
                 continue
 
             center = obstacle_list[it_obs].center_position
-            dotprod = 1 - np.dot(
-                position - center, intersection_points[ii] - center
-            ) / (
-                np.linalg.norm(position - center)
-                * np.linalg.norm(intersection_points[ii] - center)
+            delta_pos = position - center
+            # if intersection_points[ii] is None:
+            #     breakpoint()
+
+            delta_intersec = intersection_points[ii] - center
+            dotprod = 1 - np.dot(delta_pos, delta_intersec) / (
+                LA.norm(delta_pos) * LA.norm(delta_intersec)
             )
 
             dotprod_hat = dotprod * dotprod_weight
@@ -107,16 +124,17 @@ def get_desired_radius(
 
             new_intersection_weight = dotprod_hat / (dotprod_hat + gamma_hat)
             intersection_weight = min(intersection_weight, new_intersection_weight)
+
     return radius_single_obstacle * intersection_weight
 
 
 def multihull_attraction(
     position: np.ndarray,
     initial_velocity: np.ndarray,
-    obstacle_list: list,
+    obstacle_list: MultiBoundaryContainer,
     cutoff_gamma_high: float = 1e6,
-    cutoff_gamma_low: float = 1e-6,
-    gamma_distance: float = None,
+    cutoff_gamma_low: float = 1e0,  #
+    gamma_distance: Optional[float] = None,
 ) -> np.ndarray:
     """Learned trajectory can be forced to attracto a multi-hull environment.
     Obstacle avoidance is not ensured in order to allow a smooth space
@@ -128,6 +146,7 @@ def multihull_attraction(
         float-array of (dimension,)
     initial_velocity : Initial velocity which is modulated
     obstacle_list : Container which contains obstacles
+    cutoff_gamma_low: Lower than 1 -> inside wall we're currently not considering
 
     Return
     ------
@@ -167,6 +186,13 @@ def multihull_attraction(
             position, in_global_frame=True
         )
 
+        # It seems we only need to switch the normal
+        # -> compare with RotationalAvoider
+        # reference_dir = (-1) * reference_dir
+        # Since the elements are boundary!
+        # if obstacle_list[oo].is_boudary:
+        normal_dir = (-1) * normal_dir
+
         normal_orthogonal_matrix = get_orthogonal_basis(normal_dir)
 
         if obstacle_list[oo].is_boundary:
@@ -203,7 +229,7 @@ def multihull_attraction(
             convergence_radius=convergence_radius,
         )
 
-    gamma_weight = get_weight_gamma(gamma_array)
+    gamma_weight = get_weight_gamma_for_hulls(gamma_array)
 
     # rotated_velocities = np.array([vel.as_vector() for vel in rotated_directions])
     # rotated_velocity = get_directional_weighted_sum(
@@ -215,9 +241,6 @@ def multihull_attraction(
     # base = DirectionBase(vector=initial_velocity)
     base = get_orthogonal_basis(initial_velocity)
 
-    # rotated_velocity = get_directional_weighted_sum_from_unit_directions(
-    #     base=base, weights=gamma_weight, unit_directions=rotated_directions
-    # )
     rotated_velocity = get_directional_weighted_sum(
         null_direction=base[:, 0], weights=gamma_weight, directions=rotated_directions
     )

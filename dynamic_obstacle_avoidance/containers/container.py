@@ -153,10 +153,19 @@ class BaseContainer(ABC):
 
         return np.min(gamma_array, axis=0)
 
-    def get_minimum_gamma(self, position: np.ndarray) -> np.ndarray:
+    def get_minimum_gamma(self, position: np.ndarray) -> float:
         gamma_array = np.zeros((len(self._obstacle_list)))
 
         for ii, obs in enumerate(self._obstacle_list):
             gamma_array[ii] = obs.get_gamma(position, in_global_frame=True)
 
         return np.min(gamma_array)
+
+    def is_collision_free(self, position: np.ndarray) -> bool:
+        """Checks if any of the (normal) obstacles is colliding
+        Note, that this is overwritten for multi-boundary obstacles."""
+        for obs in self._obstacle_list:
+            if obs.get_gamma(position, in_global_frame=True) < 1:
+                return False
+
+        return True

@@ -33,7 +33,8 @@ def plot_obstacle_dynamics(
         for pp in range(positions.shape[1]):
             # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
             # print(f"gamma = {obstacle_container.get_minimum_gamma(positions[:, pp])}")
-            if obstacle_container.get_minimum_gamma(positions[:, pp]) <= 1:
+            # if obstacle_container.get_minimum_gamma(positions[:, pp]) <= 1:
+            if not obstacle_container.is_collision_free(positions[:, pp]):
                 continue
             velocities[:, pp] = dynamics(positions[:, pp])
     else:

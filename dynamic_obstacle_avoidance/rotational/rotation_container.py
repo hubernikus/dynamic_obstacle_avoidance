@@ -112,9 +112,12 @@ class RotationContainer(BaseContainer):
                 attractor_position=attractor,
             )
 
-    def get_convergence_direction(self, position, it_obs):
+    def get_convergence_direction(self, position, it_obs: int) -> np.ndarray:
         """Return 'convergence direction' at input 'position'."""
+        # if self._convergence_dynamics[it_obs] is not None:
         return self._convergence_dynamics[it_obs].evaluate(position)
+        # else:
+        #     return self.attractor_position - position
 
     def get_intersection_position(self, it_obs):
         """Get the position where two boundary-obstacles intersect."""

@@ -6,11 +6,37 @@ Container for Obstacle to treat the intersction (and exiting) between different 
 # License: BSD (c) 2021
 
 import warnings
+import math
+
 import numpy as np
 
+from shapely import affinity
+from shapely.geometry.point import Point
+
 from dynamic_obstacle_avoidance.rotational.rotation_container import RotationContainer
+from dynamic_obstacle_avoidance.obstacles import Ellipse
 
 from vartools.dynamical_systems import LinearSystem
+
+
+def create_shapely_ellipse(ellipse):
+    """Create object (shape) based on the shapely library."""
+    if ellipse.dim != 2:
+        raise NotImplementedError("Shapely object only existing for 2D")
+
+    # Point is set at zero, and only moved when needed
+    if ellipse.dimension != 2:
+        raise NotImplementedError()
+
+    shapely_ellipse = Point(np.zeros(ellipse.dimension)).buffer(1)
+
+    axes = ellipse.axes_length + ellipse.margin_absolut
+    shapely_ellipse = affinity.scale(shapely_ellipse, axes[0], axes[1])
+    shapely_ellipse = affinity.rotate(
+        shapely_ellipse, ellipse.orientation * 180 / math.pi
+    )
+
+    return shapely_ellipse
 
 
 class MultiBoundaryContainer(RotationContainer):
@@ -53,6 +79,14 @@ class MultiBoundaryContainer(RotationContainer):
         self._parent_array = np.delete(self._parent_array, key)
 
         del self._parent_intersection_point[key]
+
+    def is_collision_free(self, position):
+        """Check if any of the (boundary)-obstacles is collision free"""
+        for obs in self._obstacle_list:
+            if obs.get_gamma(position, in_global_frame=True) > 1:
+                return True
+
+        return False
 
     def get_parent(self, it):
         """Returns parent (int) of the Node [it] as input (int)"""
@@ -104,12 +138,22 @@ class MultiBoundaryContainer(RotationContainer):
             ind_parents = ind_children
         return level_value
 
-    def _get_intersection(self, it_obs1, it_obs2):
+    def _get_intersection(self, it_obs1: int, it_obs2: int) -> np.ndarray:
         """Get the intersection betweeen two obstacles contained in the list.
         The intersection is numerically based on the drawn points."""
-        self[it_obs1].create_shape()
-        self[it_obs2].create_shape()
-        intersect = self[it_obs1].shape.intersection(self[it_obs2].shape)
+        if isinstance(self[it_obs1], Ellipse):
+            shape1 = create_shapely_ellipse(self[it_obs1])
+        else:
+            self[it_obs1].create_shape()
+            shape1 = self[it_obs1].shape
+
+        if isinstance(self[it_obs2], Ellipse):
+            shape2 = create_shapely_ellipse(self[it_obs2])
+        else:
+            self[it_obs2].create_shape()
+            shape2 = self[it_obs2].shape
+
+        intersect = shape1.intersection(shape2)
         intersections = np.array(intersect.exterior.coords.xy)
         intersection = np.mean(intersections, axis=1)
 
@@ -127,6 +171,10 @@ class MultiBoundaryContainer(RotationContainer):
     # def update_convergence_attractor_tree(self):
     def update_intersection_graph(self, attractor_position=None):
         """Caclulate the intersection with each of the children."""
+
+        if attractor_position is not None:
+            self._attractor_position = attractor_position
+
         for ii in range(self.n_obstacles):
             if self.get_parent(ii) < 0:  # Root element
                 self._parent_intersection_point[ii] = None
@@ -134,8 +182,6 @@ class MultiBoundaryContainer(RotationContainer):
                 self._parent_intersection_point[ii] = self._get_intersection(
                     it_obs1=ii, it_obs2=self.get_parent(ii)
                 )
-
-                self._attractor_position = attractor_position
 
     def update_convergence_direction(self, dynamical_system):
         """Set the convergence direction to the evaluated 'convergence' DS."""

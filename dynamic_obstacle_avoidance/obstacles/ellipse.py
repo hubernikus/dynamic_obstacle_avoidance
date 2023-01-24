@@ -206,7 +206,7 @@ class Ellipse(Obstacle):
 
     def get_distance_to_hullEdge(self, position, hull_edge=None, in_global_frame=False):
         if in_global_frame:
-            position = self.transform_global2relative(position)
+            position = self.pose.transform_position_to_relative(position)
 
         if hull_edge is None:
             hull_edge = self.hull_edge
@@ -305,7 +305,7 @@ class Ellipse(Obstacle):
             return Gamma
 
         if in_global_frame:
-            position = self.transform_global2relative(position)
+            position = self.pose.transform_position_to_relative(position)
 
         if gamma_type is not None:
             if (
