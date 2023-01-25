@@ -16,20 +16,27 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 class DynamicDynamics:
     """
+    Dynamically Moving the Dynamical System Dynamics
 
     Attributes
     ----------
     decent_factor: Radius at which it stops: influence_radius*decent_factor
         -> centeral dynamics are not moving
+
+    main_dynamics: The dynamics which are evaluated - however, it's (relative) base
+        changes based on the the 'dynamics_of_base
+    dynamics_of_base: This system moves the basis of the dynamical system around
+        this could a simple trajectory, as it is an idealized trajectory, only the evolution
+        is depend on the robot state, but not the form
     """
 
     def __init__(
         self,
-        dynamics_local: DynamicalSystem,
+        main_dynamics: DynamicalSystem,
         dynamics_of_base: DynamicalSystem,
         influence_radius: float = 2.0,
     ) -> None:
-        self.dynamics_local = dynamics_local
+        self.main_dynamics = main_dynamics
         self.dynamics_of_base = dynamics_of_base
 
         self.influence_radius = influence_radius
@@ -39,11 +46,11 @@ class DynamicDynamics:
 
     @property
     def position(self) -> Vector:
-        return self.dynamics_local.pose.position
+        return self.main_dynamics.pose.position
 
     @position.setter
     def position(self, value: Vector) -> None:
-        self.dynamics_local.pose.position = value
+        self.main_dynamics.pose.position = value
 
     def update_base(self, position: Vector) -> None:
         dist_center = LA.norm(position - self.position)
@@ -51,21 +58,25 @@ class DynamicDynamics:
             weight = 1
         elif dist_center < self.influence_radius * self.decent_factor:
             max_radius = self.influence_radius * self.decent_factor
-            weight = (dist_center - self.influence_radius) / (
-                (self.decent_factor - 1) * self.influence_radius
+            weight = (self.decent_factor * self.influence_radius - dist_center) / (
+                ((self.decent_factor - 1) * self.influence_radius)
             )
         else:
             return
 
-        base_velocity = self.dynamics_of_base.evaluate(position)
+        base_velocity = self.dynamics_of_base.evaluate(self.position)
 
         self.position = (
             base_velocity * weight * self.time_step_of_base_movement + self.position
         )
 
     def evaluate(self, position: Vector) -> Vector:
+        """Updates the main_dynamics pose with as proposed in dynamics_of_base
+        and then returns the velocity vector in the from main_dynamics"""
+        # TODO: decide which center to move / how to ensure the evaluation of a local system
+        #     should a dynamical system even have a reference frame (i.e. pose?)
         self.update_base(position)
-        return self.dynamics_local.evaluate(position)
+        return self.main_dynamics.evaluate(position)
 
 
 class CircularRotationDynamics(DynamicalSystem):
@@ -172,7 +183,11 @@ class SimpleCircularDynamics(DynamicalSystem):
     """Creates circular 2D or 3D dynamics."""
 
     def __init__(
-        self, base_matrix: Optional[np.ndarray] = None, dimension: int = 2, **kwargs
+        self,
+        base_matrix: Optional[np.ndarray] = None,
+        dimension: int = 2,
+        radius: float = 2.0,
+        **kwargs,
     ):
         if base_matrix is None:
             self.base_matrix = np.eye(dimension)
@@ -186,7 +201,7 @@ class SimpleCircularDynamics(DynamicalSystem):
         self.k2 = 1.0
 
         self._E = np.array([[0, -1], [1, 0]])
-        self.radius = 2.0
+        self.radius = radius
 
     def transform_position_to_relative(self, position: Vector) -> Vector:
         return self.base_matrix.T @ (position - self.pose.position)
@@ -359,8 +374,104 @@ def test_3d_simple_dynamics(visualize=False):
     assert np.allclose(velocity, np.zeros_like(velocity))
 
 
+def _animation_of_circular_subdynamics(visualize=False):
+
+    if visualize:
+        import matplotlib.pyplot as plt
+        from vartools.dynamical_systems import LinearSystem
+
+        from vartools.animator import Animator
+
+        class DynamicDynamicsAnimator(Animator):
+            def setup(self):
+                pose = ObjectPose(position=np.array([-3, 0]))
+                main_ds = SimpleCircularDynamics(
+                    # base_matrix=base_matrix,
+                    pose=pose
+                )
+
+                ds_of_base = SimpleCircularDynamics(
+                    # base_matrix=base_matrix,
+                    radius=4,
+                )
+                dimension = main_ds.dimension
+
+                self.dynamic_dynamics = DynamicDynamics(
+                    main_dynamics=main_ds, dynamics_of_base=ds_of_base
+                )
+
+                self.system_positions = np.zeros((dimension, self.it_max + 1))
+                self.positions = np.zeros((dimension, self.it_max + 1))
+
+                self.positions[:, 0] = [4, 0]
+                self.system_positions[:, 0] = self.dynamic_dynamics.position
+                self.fig, self.ax = plt.subplots(figsize=(8, 6))
+
+                self.x_lim = [-7, 7]
+                self.y_lim = [-7, 7]
+
+            def update_step(self, ii):
+                # print("ii", ii)
+                velocity = self.dynamic_dynamics.evaluate(self.positions[:, ii])
+                self.positions[:, ii + 1] = (
+                    self.positions[:, ii] + velocity * self.dt_simulation
+                )
+                self.system_positions[:, ii + 1] = self.dynamic_dynamics.position
+
+                self.ax.clear()
+
+                color = "blue"
+                self.ax.plot(
+                    self.positions[0, : ii + 2],
+                    self.positions[1, : ii + 2],
+                    color=color,
+                    label="Positions",
+                )
+                self.ax.plot(
+                    self.positions[0, ii + 1],
+                    self.positions[1, ii + 1],
+                    ".",
+                    color=color,
+                )
+
+                color = "red"
+                self.ax.plot(
+                    self.system_positions[0, : ii + 2],
+                    self.system_positions[1, : ii + 2],
+                    "--",
+                    color=color,
+                    label="Positions",
+                )
+                self.ax.plot(
+                    self.system_positions[0, ii + 1],
+                    self.system_positions[1, ii + 1],
+                    ".",
+                    color=color,
+                )
+
+                self.ax.set_xlim(self.x_lim)
+                self.ax.set_ylim(self.y_lim)
+                self.ax.set_aspect("equal", "box")
+
+                if not ii % 10:
+                    print(f"it: {ii}")
+
+        my_animation = DynamicDynamicsAnimator(
+            it_max=10000,
+            dt_simulation=0.1,
+            dt_sleep=1e-5,
+            # dt_simulation=0.05,
+            # dt_sleep=0.01,
+        )
+
+        my_animation.setup()
+        my_animation.run()
+
+
 if (__name__) == "__main__":
     # test_rotation_circle(visualize=True)
     # _test_simple_dynamcis(visualize=True)
-    test_3d_simple_dynamics(visualize=True)
+    # test_3d_simple_dynamics(visualize=True)
+
+    _animation_of_circular_subdynamics(visualize=True)
     print("Done tests")
