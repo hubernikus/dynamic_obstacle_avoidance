@@ -723,8 +723,9 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
     obstacle_list = RotationContainer()
     obstacle_list.append(
         Ellipse(
-            center_position=np.array([-1, 0]),
-            axes_length=np.array([2.5, 2.5]),
+            center_position=np.array([-4, 0]),
+            axes_length=np.array([6, 9]),
+            distance_scaling=0.5,
         )
     )
 
@@ -742,9 +743,13 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
     )
 
     if visualize:
-        x_lim = [-4, 3]
-        y_lim = [-3, 3]
-        n_grid = 30
+        # x_lim = [-4, 3]
+        # y_lim = [-3, 3]
+
+        x_lim = [-15, 3]
+        y_lim = [-6, 9]
+
+        n_grid = 50
         plt.close("all")
 
         fig, ax = plt.subplots(figsize=(5, 4))
@@ -758,6 +763,7 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
             attractor_position=initial_dynamics.attractor_position,
             do_quiver=False,
             show_ticks=False,
+            vectorfield_color="black",
         )
 
         plot_obstacles(
@@ -767,7 +773,7 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
         )
 
         if save_figure:
-            fig_name = "rotation_avoidance_circle_initial"
+            fig_name = "rotation_avoidance_ellipse_initial"
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
 
         fig, ax = plt.subplots(figsize=(5, 4))
@@ -781,6 +787,7 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
             attractor_position=initial_dynamics.attractor_position,
             do_quiver=False,
             show_ticks=False,
+            vectorfield_color="blue",
         )
 
         plot_obstacles(
@@ -790,7 +797,7 @@ def _test_single_circle_nonlinear(visualize=False, save_figure=False):
         )
 
         if save_figure:
-            fig_name = "rotation_avoidance_circle"
+            fig_name = "rotation_avoidance_ellipse"
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight", dpi=300)
 
 
@@ -977,7 +984,7 @@ if (__name__) == "__main__":
     # test_single_circle_linear(visualize=True)
     # test_single_circle_linear_inverted(visualize=True)
 
-    # _test_single_circle_nonlinear(visualize=True, save_figure=True)
+    _test_single_circle_nonlinear(visualize=True, save_figure=True)
     # test_single_circle_linear_repulsive(visualize=True, save_figure=False)
 
     # test_rotated_convergence_direction_circle()
@@ -988,6 +995,6 @@ if (__name__) == "__main__":
     # test_double_ellipse(visualize=True)
     # test_stable_linear_avoidance(visualize=True)
 
-    _test_obstacle_and_hull_avoidance(visualize=True, save_figure=True)
+    # _test_obstacle_and_hull_avoidance(visualize=True, save_figure=True)
 
     print("[Rotational Tests] Done tests")

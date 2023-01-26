@@ -49,6 +49,7 @@ class Obstacle(ABC):
     ----------
     pose: ObstaclePose
     distance_scaling: Scales the distance value before calculating the gamma-value.
+        the smaller -> the bigger the influence of gamma
     """
 
     id_counter = 0
