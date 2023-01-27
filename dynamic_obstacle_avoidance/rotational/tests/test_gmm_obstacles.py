@@ -676,15 +676,15 @@ if (__name__) == "__main__":
     plt.ion()
 
     # test_uniradius_obstacle_from_gmm(visualize=True)
-    # test_obstacle_with_radius_3_from_gmm(visualize=True)
-    test_obstacle_gradient_descent(visualize=True, savefig=True)
+    test_obstacle_with_radius_3_from_gmm(visualize=True)
+    # test_obstacle_gradient_descent(visualize=True, savefig=True)
     # test_normal_direction(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface(visualize=True)
     # test_project_point_on_surface_with_offset_center(visualize=True)
     # test_relative_weights(visualize=True)
 
-    # test_reference_and_normal(visualize=True)
+    test_reference_and_normal(visualize=True)
 
     print("Tests executed successfully.")
     pass
