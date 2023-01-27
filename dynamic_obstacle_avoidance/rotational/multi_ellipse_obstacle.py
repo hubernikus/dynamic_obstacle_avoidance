@@ -13,8 +13,9 @@ from numpy import linalg as LA
 
 from vartools.math import get_intersection_with_circle
 
+from dynamic_obstacle_avoidance.utils import compute_weights
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
-from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
@@ -25,30 +26,30 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
 
 def get_intersection_with_ellipse(
-    position, direction, obstacle: Ellipse, in_global_frame: bool = False
+    position, direction, ellipse: Ellipse, in_global_frame: bool = False
 ) -> Optional[np.ndarray]:
     if in_global_frame:
         # Currently only implemented with ellipse
-        position = obstacle.pose.transform_position_to_relative(position)
-        direction = obstacle.pose.transform_direction_to_relative(direction)
+        position = ellipse.pose.transform_position_to_relative(position)
+        direction = ellipse.pose.transform_direction_to_relative(direction)
 
     # Stretch according to ellipse axes (radius)
-    rel_pos = position / ellipse.axes_length * 2
-    rel_dir = direction / ellipse.axes_length * 2
+    rel_pos = position / ellipse.axes_length
+    rel_dir = direction / ellipse.axes_length
 
     # Intersection with unit circle
     surface_rel_pos = get_intersection_with_circle(
-        start_position=rel_pos_stretch, direction=rel_dir_stretch, radius=1.0
+        start_position=rel_pos, direction=rel_dir, radius=0.5
     )
 
     if surface_rel_pos is None:
         return None
 
     # Relative
-    surface_pos = surface_rel_pos * ellipse.axes_length * 0.5
+    surface_pos = surface_rel_pos * ellipse.axes_length
 
     if in_global_frame:
-        return obstacle.pose.transform_position_from_relative(surface_pos)
+        return ellipse.pose.transform_position_from_relative(surface_pos)
 
     else:
         return surface_pos
@@ -61,7 +62,12 @@ class MultiEllipseObstacle(Obstacle):
         self._root_id: Optional[int] = None
         self._parent_list: list[Optional[int]] = []
         self._children_list: list[list[int]] = []
-        pass
+
+        self.gamma_power_scaling = 0.5
+
+    @property
+    def n_components(self) -> int:
+        return len(self._obstacle_list)
 
     def set_root(self, obs_id: int):
         if self._root_id:
@@ -94,15 +100,26 @@ class MultiEllipseObstacle(Obstacle):
     def delete_item(self, obs_id: int):
         raise NotImplementedError()
 
-    def get_tangent_direction(self, position, velocity):
-        base_velocity = self.get_linearized_velocity(
-            self._obstacle_list[self._root_id].center_position
-        )
+    def get_tangent_direction(
+        self,
+        position: Vector,
+        velocity: Vector,
+        linearized_velocity: Optional[Vector] = None,
+    ):
+
+        if linearized_velocity is None:
+            base_velocity = self.get_linearized_velocity(
+                self._obstacle_list[self._root_id].get_reference_point(
+                    in_global_frame=True
+                )
+            )
+        else:
+            base_velocity = linearized_velocity
 
         gamma_values = np.zeros(self.n_components)
         for ii, obs in enumerate(self._obstacle_list):
             gamma_values[ii] = obs.get_gamma(position, in_global_frame=True)
-        gamma_weights = self.get_gamma_weights(gamma_values)
+        gamma_weights = compute_weights(gamma_values)
 
         lambda_values = np.zeros(self.n_components)
 
@@ -112,48 +129,63 @@ class MultiEllipseObstacle(Obstacle):
             direction=velocity,
         )
         self._tangent_tree.add_node(
+            parent_id=-1,
             node_id=self._root_id,
             direction=base_velocity,
         )
 
-        node_list = []
+        # The base node (initial velocity)
+        node_list = [-1]
         # for obs_id in it.filterfalse(lambda x: x <= 0, range(len(self._obstacle_list))):
         for obs_id in range(len(self._obstacle_list)):
-            node_list.append((obs_id, self._root_id))
-
             if gamma_weights[obs_id] <= 0:
                 continue
 
-            # TODO: What about filtertrue(?)
-            self._update_tangent_branch(obs_id, base_velocity)
+            node_list.append((obs_id, obs_id))
+            self._update_tangent_branch(position, obs_id, base_velocity)
 
-        weighted_mean = self._tangent_tree.get_weighted_mean(
-            node_list=node_list, weights=gamma_weights
+        weights = (
+            gamma_weights[gamma_weights > 0]
+            * (1 / np.min(gamma_values)) ** self.gamma_power_scaling
         )
 
-        return weighted_mean
+        # Remaining weight to the initial velocity
+        weights = np.hstack(([1 - np.sum(weights)], weights))
 
-    def _update_tangent_branch(self, obs_id: int, base_velocity: np.ndarray) -> None:
+        weighted_tangent = self._tangent_tree.get_weighted_mean(
+            node_list=node_list, weights=weights
+        )
+
+        return weighted_tangent
+
+    def _update_tangent_branch(
+        self, position: Vector, obs_id: int, base_velocity: np.ndarray
+    ) -> None:
         surface_points: list(Vector) = [position]
         normal_directions: List(Vector) = []
         parents_tree: List(int) = [obs_id]
 
-        obs = self._parent_list[parents_tree[-1]]
+        obs = self._obstacle_list[obs_id]
         normal_directions = [obs.get_normal_direction(position, in_global_frame=True)]
 
         while parents_tree[-1] != self._root_id:
-            parents_tree.append(self._parent_list[parents_tree[-1]])
+            obs = self._obstacle_list[parents_tree[-1]]
+
+            new_id = self._parent_list[parents_tree[-1]]
+            if new_id is None:
+                # TODO: We should not reach this?! -> remove(?)
+                break
 
             if len(parents_tree) > 10:
                 # TODO: remove this debug check
                 raise Exception()
 
-            obs_parent = self._parent_list[parents_tree[-1]]
-            ref_dir = (
-                obs_parent.get_reference_point(in_global_frame=True) - surface_points
-            )
+            parents_tree.append(new_id)
+
+            obs_parent = self._obstacle_list[new_id]
+            ref_dir = obs.get_reference_point(in_global_frame=True) - surface_points[-1]
             intersection = get_intersection_with_ellipse(
-                position, ref_dir, obs, in_global_frame=True
+                position, ref_dir, obs_parent, in_global_frame=True
             )
 
             if intersection is None:
@@ -161,21 +193,24 @@ class MultiEllipseObstacle(Obstacle):
 
             surface_points.append(intersection)
 
-            normal_directions = obs.get_normal_direction(
-                intersection, in_global_frame=True
+            normal_directions.append(
+                obs_parent.get_normal_direction(intersection, in_global_frame=True)
             )
 
         # Reversely traverse the parent tree - to project tangents
+        # First node is connecting to the center-velocity
         self._tangent_tree.add_node(
             node_id=(obs_id, self._root_id),
             parent_id=self._root_id,
             direction=base_velocity,
         )
 
-        breakpoint()
         # Iterate over all but last one
         tangent = base_velocity
-        for ii, rel_id in reversed(enumerate(parents_tree[:-1])):
+        for ii in reversed(range(len(parents_tree) - 1)):
+            rel_id = parents_tree[ii]
+
+            # Re-project tangent
             tangent = self._get_normalized_tangent_component(
                 tangent, normal_directions[ii]
             )
@@ -183,15 +218,18 @@ class MultiEllipseObstacle(Obstacle):
             self._tangent_tree.add_node(
                 node_id=(obs_id, rel_id),
                 parent_id=(obs_id, parents_tree[ii + 1]),
-                direction=base_velocity,
+                direction=tangent,
             )
+
+    def get_linearized_velocity(self, position):
+        raise NotImplementedError()
 
     def _get_normalized_tangent_component(
         self, vector: Vector, normal: Vector
     ) -> Vector:
-        rotation_xd = VectorRotationXd.from_directions(vector, normal)
+        rotation_xd = VectorRotationXd.from_directions(normal, vector)
 
-        if math.isclose(rotation_xd, math.pi):
+        if math.isclose(rotation_xd.rotation_angle, math.pi):
             raise NotImplementedError()
 
         # rotation_xd.rotation_angle = math.pi / 2.0
@@ -204,9 +242,6 @@ class MultiEllipseObstacle(Obstacle):
         pass
 
     def get_normal_direction(self, position):
-        pass
-
-    def get_tangent_direction(self, position):
         pass
 
     def weights(self):
@@ -252,17 +287,51 @@ def _test_triple_ellipse_environment(visualize=False):
     triple_ellipses.set_parent(obs_id=2, parent_id=0)
 
     if visualize:
+        x_lim = [-14, 14]
+        y_lim = [-8, 16]
+        fig, ax = plt.subplots(figsize=(8, 5))
+
         plot_obstacles(
             obstacle_container=triple_ellipses._obstacle_list,
-            # ax=ax,
-            x_lim=[-6, 6],
-            y_lim=[-3, 9],
+            ax=ax,
+            x_lim=x_lim,
+            y_lim=y_lim,
             draw_reference=True,
             # ** kwargs,
         )
+
+        # Example position
+        position = np.array([2.0, 6])
+        velocity = np.array([1.0, 0])
+        linearized_velociy = np.array([1.0, 0])
+
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            # obstacle_container=triple_ellipses._obstacle_list,
+            dynamics=lambda x: triple_ellipses.get_tangent_direction(
+                x, velocity, linearized_velociy
+            ),
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            do_quiver=True,
+            n_grid=30,
+            # vectorfield_color=vf_color,
+        )
+
+    averaged_direction = triple_ellipses.get_tangent_direction(
+        position, velocity, linearized_velociy
+    )
+    print(averaged_direction)
 
     position = np.array([])
 
 
 if (__name__) == "__main__":
+    import matplotlib.pyplot as plt
+    from dynamic_obstacle_avoidance.visualization import plot_obstacles
+    from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
+        plot_obstacle_dynamics,
+    )
+
     _test_triple_ellipse_environment(visualize=True)
