@@ -30,37 +30,6 @@ from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 #   - use reference direction to do correct decomposition of reference matrix
 
 
-def get_intersection_with_circle_entry(
-    start_position: np.ndarray,
-    direction: np.ndarray,
-    radius: float,
-) -> Optional[np.ndarray]:
-    """Returns intersection with circle with center at 0
-    of of radius 'radius' and the line defined as 'start_position + x * direction'
-
-    only intersection at closest distance to start_point is returned.
-    """
-    if not radius:  # Zero radius
-        return None
-
-    # Binomial Formula to solve for x in:
-    # || dir_reference + x * (delta_dir_conv) || = radius
-    AA = np.sum(direction**2)
-    BB = 2 * np.dot(direction, start_position)
-    CC = np.sum(start_position**2) - radius**2
-    DD = BB**2 - 4 * AA * CC
-
-    if DD < 0:
-        # No intersection with circle
-        return None
-
-    # if only_positive:
-    # Only positive direction due to expected negative A (?!) [returns min-distance]..b
-    fac_direction = (-BB - np.sqrt(DD)) / (2 * AA)
-    point = start_position + fac_direction * direction
-    return point
-
-
 def get_intersection_with_ellipse(
     position, direction, ellipse: Ellipse, in_global_frame: bool = False
 ) -> Optional[np.ndarray]:
@@ -198,13 +167,13 @@ class MultiEllipseObstacle(Obstacle):
         weighted_tangent = self._tangent_tree.get_weighted_mean(
             node_list=node_list, weights=weights
         )
-        # breakpoint()
 
         return weighted_tangent
 
     def _update_tangent_branch(
         self, position: Vector, obs_id: int, base_velocity: np.ndarray
     ) -> None:
+        # TODO: predict at start the size (slight speed up)
         surface_points: list(Vector) = [position]
         # normal_directions: List(Vector) = []
         # reference_directions: List(Vector) = []
@@ -253,7 +222,6 @@ class MultiEllipseObstacle(Obstacle):
 
         # Reversely traverse the parent tree - to project tangents
         # First node is connecting to the center-velocity
-
         tangent = self._get_normalized_tangent_component(
             base_velocity,
             normal=normal_directions[-1],
@@ -265,7 +233,6 @@ class MultiEllipseObstacle(Obstacle):
             direction=tangent,
         )
 
-        # tangent = base_velocity
         # Iterate over all but last one
         for ii in reversed(range(len(parents_tree) - 1)):
             rel_id = parents_tree[ii]
@@ -282,8 +249,6 @@ class MultiEllipseObstacle(Obstacle):
                 parent_id=(obs_id, parents_tree[ii + 1]),
                 direction=tangent,
             )
-
-            # breakpoint()
 
     def get_linearized_velocity(self, position):
         raise NotImplementedError()
