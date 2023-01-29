@@ -354,8 +354,6 @@ def test_triple_ellipse_environment(visualize=False):
     triple_ellipses.set_parent(obs_id=1, parent_id=0)
     triple_ellipses.set_parent(obs_id=2, parent_id=0)
 
-    # Example position
-    position = np.array([2.0, 6])
     velocity = np.array([1.0, 0])
     linearized_velociy = np.array([1.0, 0])
 
@@ -415,6 +413,71 @@ def test_triple_ellipse_environment(visualize=False):
     assert averaged_direction[0] > 0 and averaged_direction[1] < 0
 
 
+def test_tripple_ellipse_in_the_face(visualize=False):
+    triple_ellipses = MultiEllipseObstacle()
+
+    triple_ellipses.append(
+        Ellipse(
+            center_position=np.array([3.4, 4.0]),
+            axes_length=np.array([9.0, 3.0]),
+            orientation=90 * math.pi / 180.0,
+        )
+    )
+
+    triple_ellipses.append(
+        Ellipse(
+            center_position=np.array([0, 7.8]),
+            axes_length=np.array([8, 3.0]),
+            orientation=0 * math.pi / 180.0,
+        )
+    )
+
+    triple_ellipses.append(
+        Ellipse(
+            center_position=np.array([0, 0]),
+            axes_length=np.array([8, 3.0]),
+            orientation=0,
+        )
+    )
+
+    triple_ellipses.set_root(obs_id=0)
+    triple_ellipses.set_parent(obs_id=1, parent_id=0)
+    triple_ellipses.set_parent(obs_id=2, parent_id=0)
+
+    velocity = np.array([1.0, 0.0])
+    linearized_velociy = np.array([0, 1.0])
+
+    if visualize:
+        x_lim = [-14, 14]
+        y_lim = [-12, 18]
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        plot_obstacles(
+            obstacle_container=triple_ellipses._obstacle_list,
+            ax=ax,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            draw_reference=True,
+            # reference_point_number=True,
+            show_obstacle_number=True,
+            # ** kwargs,
+        )
+
+        plot_obstacle_dynamics(
+            obstacle_container=[],
+            # obstacle_container=triple_ellipses._obstacle_list,
+            dynamics=lambda x: triple_ellipses.get_tangent_direction(
+                x, velocity, linearized_velociy
+            ),
+            x_lim=x_lim,
+            y_lim=y_lim,
+            ax=ax,
+            do_quiver=True,
+            n_grid=30,
+            # vectorfield_color=vf_color,
+        )
+
+
 if (__name__) == "__main__":
     import matplotlib.pyplot as plt
     from dynamic_obstacle_avoidance.visualization import plot_obstacles
@@ -425,4 +488,5 @@ if (__name__) == "__main__":
     # plt.close("all")
     plt.ion()
 
-    test_triple_ellipse_environment(visualize=True)
+    test_triple_ellipse_environment(visualize=False)
+    test_tripple_ellipse_in_the_face(visualize=True)
