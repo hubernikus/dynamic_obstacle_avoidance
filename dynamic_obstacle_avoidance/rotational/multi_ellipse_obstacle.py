@@ -104,6 +104,9 @@ class MultiEllipseObstacle(Obstacle):
 
         self.gamma_power_scaling = 0.5
 
+        # An ID number which does not co-inside with the obstacle
+        self._BASE_VEL_ID = -1
+
     @property
     def n_components(self) -> int:
         return len(self._obstacle_list)
@@ -164,17 +167,17 @@ class MultiEllipseObstacle(Obstacle):
 
         self._tangent_tree = VectorRotationTree()
         self._tangent_tree.set_root(
-            root_id=-1,
+            root_id=self._BASE_VEL_ID,
             direction=velocity,
         )
         self._tangent_tree.add_node(
-            parent_id=-1,
+            parent_id=self._BASE_VEL_ID,
             node_id=self._root_id,
             direction=base_velocity,
         )
 
         # The base node (initial velocity)
-        node_list = [-1]
+        node_list = [self._BASE_VEL_ID]
 
         # for obs_id in it.filterfalse(lambda x: x <= 0, range(len(self._obstacle_list))):
         for obs_id in range(len(self._obstacle_list)):
@@ -250,18 +253,23 @@ class MultiEllipseObstacle(Obstacle):
 
         # Reversely traverse the parent tree - to project tangents
         # First node is connecting to the center-velocity
+
+        tangent = self._get_normalized_tangent_component(
+            base_velocity,
+            normal=normal_directions[-1],
+            reference=reference_directions[-1],
+        )
         self._tangent_tree.add_node(
-            node_id=(obs_id, self._root_id),
-            parent_id=self._root_id,
-            direction=base_velocity,
+            node_id=(obs_id, parents_tree[-1]),
+            parent_id=self._BASE_VEL_ID,
+            direction=tangent,
         )
 
+        # tangent = base_velocity
         # Iterate over all but last one
-        tangent = base_velocity
         for ii in reversed(range(len(parents_tree) - 1)):
             rel_id = parents_tree[ii]
 
-            # breakpoint()
             # Re-project tangent
             tangent = self._get_normalized_tangent_component(
                 tangent,
@@ -275,13 +283,15 @@ class MultiEllipseObstacle(Obstacle):
                 direction=tangent,
             )
 
+            # breakpoint()
+
     def get_linearized_velocity(self, position):
         raise NotImplementedError()
 
     def _get_normalized_tangent_component(
         self, vector: Vector, normal: Vector, reference: Vector
     ) -> Vector:
-        # TODO: use circular-intersection
+        # TODO: use direction-space circle intersection
         basis = get_orthogonal_basis(normal)
         basis[:, 0] = reference
 
@@ -426,17 +436,17 @@ def test_tripple_ellipse_in_the_face(visualize=False):
 
     triple_ellipses.append(
         Ellipse(
-            center_position=np.array([0, 7.8]),
+            center_position=np.array([0, 0]),
             axes_length=np.array([8, 3.0]),
-            orientation=0 * math.pi / 180.0,
+            orientation=0,
         )
     )
 
     triple_ellipses.append(
         Ellipse(
-            center_position=np.array([0, 0]),
+            center_position=np.array([0, 7.8]),
             axes_length=np.array([8, 3.0]),
-            orientation=0,
+            orientation=0 * math.pi / 180.0,
         )
     )
 
@@ -445,12 +455,12 @@ def test_tripple_ellipse_in_the_face(visualize=False):
     triple_ellipses.set_parent(obs_id=2, parent_id=0)
 
     velocity = np.array([1.0, 0.0])
-    linearized_velociy = np.array([0, 1.0])
+    linearized_velociy = np.array([1.0, 0.0])
 
     if visualize:
         x_lim = [-14, 14]
         y_lim = [-12, 18]
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(8, 8))
 
         plot_obstacles(
             obstacle_container=triple_ellipses._obstacle_list,
@@ -477,6 +487,24 @@ def test_tripple_ellipse_in_the_face(visualize=False):
             # vectorfield_color=vf_color,
         )
 
+    position = np.array([-5.0, 0.5])
+    averaged_direction = triple_ellipses.get_tangent_direction(
+        position, velocity, linearized_velociy
+    )
+    assert averaged_direction[0] > 0 and averaged_direction[1] < 0
+
+    position = np.array([6.0, 6.0])
+    averaged_direction = triple_ellipses.get_tangent_direction(
+        position, velocity, linearized_velociy
+    )
+    assert averaged_direction[0] > 0 and averaged_direction[1] < 0
+
+    position = np.array([-5.0, 9.0])
+    averaged_direction = triple_ellipses.get_tangent_direction(
+        position, velocity, linearized_velociy
+    )
+    assert averaged_direction[0] > 0 and averaged_direction[1] > 0
+
 
 if (__name__) == "__main__":
     import matplotlib.pyplot as plt
@@ -485,8 +513,8 @@ if (__name__) == "__main__":
         plot_obstacle_dynamics,
     )
 
-    # plt.close("all")
+    plt.close("all")
     plt.ion()
 
-    test_triple_ellipse_environment(visualize=False)
     test_tripple_ellipse_in_the_face(visualize=True)
+    # test_triple_ellipse_environment(visualize=True)
