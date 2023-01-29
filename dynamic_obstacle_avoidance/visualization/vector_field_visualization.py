@@ -354,7 +354,7 @@ def plot_obstacles(
 
         if show_obstacle_number:
             ax.annotate(
-                "{}".format(n + 1),
+                "{}".format(n),
                 xy=np.array(obs.center_position) + 0.16,
                 textcoords="data",
                 size=16,

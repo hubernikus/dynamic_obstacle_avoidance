@@ -292,15 +292,25 @@ class VectorRotationTree:
             orientation=VectorRotationXd.from_directions(direction, direction),
         )
 
+        self._dimension = direction.shape[0]
         # To easier find the root again (!)
         self._root_id = root_id
 
     @property
-    def root(self, root_id: int, direction: Vector) -> NodeType:
+    def root(self) -> NodeType:
         return self._graph.nodes(self._root_id)
 
     @property
-    def Graph(self):
+    def dimension(self) -> int:
+        return self._dimension
+        # try:
+        #     breakpoint()
+        #     return self._graph.nodes[0]["direction"].shape[0]
+        # except AttributeError:
+        #     raise Exception("base or property has not been defined")
+
+    @property
+    def graph(self):
         # rename to _G (?)
         return self._graph
 
@@ -390,7 +400,8 @@ class VectorRotationTree:
                     and self._graph.nodes[c_id]["orientation"].rotation_angle
                     > pi_margin
                 ):
-                    breakpoint()
+                    warnings.warn("Breakpoint deactivatet -- check 'vector_rotation'")
+                    # breakpoint()
                     weight = self._graph.nodes[c_id]["orientation"].rotation_angle
                     weight = (math.pi - abs(weight)) / (math.pi - pi_margin)
                     self._graph.nodes[c_id]["orientation"].rotation_angle *= weight
@@ -414,14 +425,6 @@ class VectorRotationTree:
         # TODO: implement such that it updates lower and higher nodes (!)
         raise NotImplementedError()
 
-    @property
-    def dimension(self) -> int:
-        try:
-            return self._graph.nodes[0]["direction"].shape[0]
-        except AttributeError:
-            warnings.warn("base or property has not been defined")
-            return None
-
     def get_nodes_ascending(self) -> list[NodeType]:
         # Ascending sorted node-list
         level_list = [self._graph.nodes[node]["level"] for node in self._graph.nodes]
@@ -443,7 +446,7 @@ class VectorRotationTree:
     def get_weighted_mean(self, node_list: list[int], weights: list[float]) -> Vector:
         """Evaluate the weighted mean of the graph."""
 
-        if (weight_sum := np.sum(weights)) != 1:
+        if not math.isclose((weight_sum := np.sum(weights)), 1.0, rel_tol=1e-4):
             warnings.warn(f"Sum of weights {weight_sum} is not equal to one.")
 
         self.reset_node_weights()
@@ -669,3 +672,27 @@ class VectorRotationTree:
 def create_zero_vector_rotation(dimension: int) -> VectorRotationXd:
     """Creates a zero vector rotation object."""
     return VectorRotationXd(base=np.eye((dimension, 2)), rotation_angle=0.0)
+
+
+def test_simple_triple_branch():
+    new_tree = VectorRotationTree()
+
+    # Simplified node
+    new_tree.set_root(-1, direction=np.array([1, 0]))
+
+    # Add three specific nodes
+    new_tree.add_node((0, 0), direction=np.array([1, 0]), parent_id=-1)
+    new_tree.add_node((1, 1), direction=np.array([0, 1]), parent_id=-1)
+    new_tree.add_node((2, 2), direction=np.array([0, -1]), parent_id=-1)
+
+    node_list = [-1, (0, 0), (1, 1), (2, 2)]
+    weights = np.array([0.2128574, 0.02090366, 0.74444571, 0.02179324])
+
+    averaged_dir = new_tree.get_weighted_mean(node_list=node_list, weights=weights)
+
+    # Main weight on up-direction -> go right-up
+    assert averaged_dir[0] > 0 and averaged_dir[1] > 0
+
+
+if (__name__) == "__main__":
+    test_simple_triple_branch()
