@@ -11,7 +11,7 @@ import itertools as it
 import numpy as np
 from numpy import linalg as LA
 
-from vartools.math import get_intersection_with_circle
+from vartools.math import get_intersection_with_circle, CircleIntersectionType
 from vartools.linalg import get_orthogonal_basis
 
 from dynamic_obstacle_avoidance.utils import compute_weights
@@ -74,8 +74,11 @@ def get_intersection_with_ellipse(
     rel_dir = direction / ellipse.axes_length
 
     # Intersection with unit circle
-    surface_rel_pos = get_intersection_with_circle_entry(
-        start_position=rel_pos, direction=rel_dir, radius=0.5
+    surface_rel_pos = get_intersection_with_circle(
+        start_position=rel_pos,
+        direction=rel_dir,
+        radius=0.5,
+        intersection_type=CircleIntersectionType.CLOSE,
     )
 
     if surface_rel_pos is None:
