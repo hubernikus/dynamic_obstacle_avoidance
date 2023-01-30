@@ -16,6 +16,7 @@ from enum import Enum, auto
 
 import numpy as np
 import numpy.linalg as LA
+import numpy.typing as npt
 
 from scipy.spatial.transform import Rotation
 
@@ -28,6 +29,9 @@ from vartools.states import ObjectPose, ObjectTwist
 from vartools.directional_space import get_angle_space_inverse
 
 from .hull_storer import ObstacleHullsStorer
+
+# Type definition
+Vector = np.ndarray
 
 
 class GammaType(Enum):
@@ -86,7 +90,7 @@ class Obstacle(ABC):
 
     def __init__(
         self,
-        center_position=None,
+        center_position: npt.ArrayLike,
         orientation=None,
         linear_velocity=None,
         angular_velocity=None,
@@ -240,15 +244,19 @@ class Obstacle(ABC):
         return reference_point_temp
 
     def is_reference_point_inside(self):
-        ref_extended = self.get_reference_point_with_margin()
-        return (
-            self.get_gamma(
-                ref_extended,
-                in_global_frame=False,
-                with_reference_point_expansion=False,
+        try:
+            # Some legacy code which can not easily be adapted..
+            ref_extended = self.get_reference_point_with_margin()
+            return (
+                self.get_gamma(
+                    ref_extended,
+                    in_global_frame=False,
+                    with_reference_point_expansion=False,
+                )
+                < 1
             )
-            < 1
-        )
+        except:
+            return self.get_gamma(ref_extended, in_global_frame=False) < 1
 
     @property
     def reference_point_is_inside(self):
@@ -534,7 +542,10 @@ class Obstacle(ABC):
         self._margin_absolut = value
 
         if not self.is_reference_point_inside():
-            self.extend_hull_around_reference()
+            try:
+                self.extend_hull_around_reference()
+            except:
+                warnings.warn("We're not automatically extending the reference-hull.")
 
     def mirror_local_position_on_boundary(
         self,
@@ -1066,7 +1077,12 @@ class Obstacle(ABC):
     ):
         raise NotImplementedError()
 
-    def is_inside(self, position, in_global_frame=True):
+    def is_inside(
+        self,
+        position: Vector,
+        in_global_frame: bool = True,
+        # margin_absolut: Optional[float] = None,
+    ) -> bool:
         """Checks if a global point is within the obstacle (or hull) boundary.
         If local point should be considered it is advised to use the gamma-function instead."""
         return self.get_gamma(position, in_global_frame=in_global_frame) < 1

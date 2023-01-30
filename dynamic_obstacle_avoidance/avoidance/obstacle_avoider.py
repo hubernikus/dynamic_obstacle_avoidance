@@ -48,7 +48,6 @@ class ObstacleAvoiderWithInitialDynamcis:
         # Take root of order 'n_obs' to make up for the obstacle multiple
         if any(gamma_list < 1):
             warnings.warn("Collision detected.")
-            # breakpoint()
             return 0
 
         # gamma = np.prod(gamma_list-1)**(1.0/n_obs) + 1

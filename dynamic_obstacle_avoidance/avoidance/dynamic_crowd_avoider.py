@@ -6,28 +6,40 @@
 
 from abc import ABC, abstractmethod
 import warnings
+from typing import Optional
 
 import numpy as np
 from numpy import linalg as LA
 
 from vartools.dynamical_systems import DynamicalSystem
 
-from dynamic_obstacle_avoidance.containers import BaseContainer
+from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import GammaType
+from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
 from .obstacle_avoider import ObstacleAvoiderWithInitialDynamcis
+
+
+def obstacle_environment_slicer(
+    environment: BaseContainer, obs_index: int
+) -> list[Obstacle]:
+    return environment[0:obs_index] + environment[obs_index + 1 :]
 
 
 class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
     def __init__(
         self,
         initial_dynamics: DynamicalSystem,
-        obstalce_environment: BaseContainer,
-        maximum_speed: float = None,
+        obstacle_environment: BaseContainer,
+        maximum_speed: Optional[float] = None,
         obs_multi_agent=None,
     ):
-        super().__init__(initial_dynamics, obstalce_environment, maximum_speed)
+        super().__init__(
+            initial_dynamics=initial_dynamics,
+            obstacle_environment=obstacle_environment,
+            maximum_speed=maximum_speed,
+        )
         self.obs = None
         self.obs_multi_agent = obs_multi_agent
 
@@ -39,26 +51,25 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         return temp_env
 
     @staticmethod
-    def get_gamma_product_crowd(position, env, gamma_type=GammaType.EUCLEDIAN):
+    def get_gamma_product_crowd(
+        position, env: BaseContainer, gamma_type=GammaType.EUCLEDIAN
+    ):
         if not len(env):
             # Very large number
             return 1e20
 
         gamma_list = np.zeros(len(env))
         for ii, obs in enumerate(env):
-            # gamma_type needs to be implemented for all obstacles
-            gamma_list[ii] = obs.get_gamma(
-                position,
-                in_global_frame=True
-                # , gamma_type=gamma_type
-            )
+            # if not isinstance(obs, Obstacle):
+            #     # TODO: remove... This is only for debugging purposes
+            #     breakpoint()
+            gamma_list[ii] = obs.get_gamma(position, in_global_frame=True)
 
         n_obs = len(gamma_list)
         # Total gamma [1, infinity]
         # Take root of order 'n_obs' to make up for the obstacle multiple
         if any(gamma_list < 1):
             warnings.warn("Collision detected.")
-            # breakpoint()
             return 0
 
         # gamma = np.prod(gamma_list-1)**(1.0/n_obs) + 1
@@ -68,12 +79,15 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             breakpoint()
         return gamma
 
-    def get_gamma_at_control_point(self, control_points, obs_eval, env):
-        # TODO
+    def get_gamma_at_control_point(
+        self, control_points: np.ndarray, obs_eval: Obstacle, env: BaseContainer
+    ):
         gamma_values = np.zeros(len(control_points))
 
         for cp in range(len(self.obs_multi_agent[obs_eval])):
-            gamma_values[cp] = self.get_gamma_product_crowd(control_points[cp, :], env)
+            gamma_values[cp] = self.get_gamma_product_crowd(
+                control_points[cp, :], env=env
+            )
 
         return gamma_values
 
@@ -98,9 +112,14 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
         for obs in self.obs_multi_agent:
             if not self.obs_multi_agent[obs]:
                 break
-            temp_env = self.env_slicer(obs)
+            # temp_env = self.env_slicer(obs)
+            temp_env = obstacle_environment_slicer(
+                self.obstacle_environment, obs_index=obs
+            )
             gamma_values = self.get_gamma_at_control_point(
-                control_points[self.obs_multi_agent[obs]], obs, temp_env
+                control_points[self.obs_multi_agent[obs]],
+                obs_eval=obs,
+                env=temp_env,
             )
 
             ctl_point_weight = np.zeros(gamma_values.shape)

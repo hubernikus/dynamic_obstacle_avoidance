@@ -540,4 +540,4 @@ if (__name__) == "__main__":
     test_tripple_ellipse_in_the_face(visualize=False)
     test_triple_ellipse_environment(visualize=False)
 
-    print("tests done.")
+    print("Tests done.")

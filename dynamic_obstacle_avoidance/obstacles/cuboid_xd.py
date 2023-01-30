@@ -22,7 +22,7 @@ class CuboidXd(obstacles.Obstacle):
     def __init__(self, axes_length: np.ndarray, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.axes_length = axes_length
+        self.axes_length = np.array(axes_length)
 
     @property
     def axes_length(self) -> np.ndarray:
