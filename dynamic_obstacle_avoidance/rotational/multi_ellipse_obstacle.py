@@ -18,10 +18,12 @@ from dynamic_obstacle_avoidance.utils import compute_weights
 from dynamic_obstacle_avoidance.obstacles import Obstacle
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 
+from dynamic_obstacle_avoidance.rotational.rotational_avoider import RotationalAvoider
+
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationXd
 from dynamic_obstacle_avoidance.rotational.vector_rotation import VectorRotationTree
 
-from dynamic_obstacle_avoidance.rotational.geometry import get_intersection
+from dynamic_obstacle_avoidance.rotational.geometry import get_intersection_of_obstacles
 
 from dynamic_obstacle_avoidance.rotational.datatypes import Vector
 
@@ -95,7 +97,7 @@ class MultiEllipseObstacle(Obstacle):
         self._children_list[parent_id].append(obs_id)
 
         # Set reference point
-        intersection = get_intersection(
+        intersection = get_intersection_of_obstacles(
             self._obstacle_list[obs_id], self._obstacle_list[parent_id]
         )
 
@@ -222,7 +224,7 @@ class MultiEllipseObstacle(Obstacle):
 
         # Reversely traverse the parent tree - to project tangents
         # First node is connecting to the center-velocity
-        tangent = self._get_normalized_tangent_component(
+        tangent = self.get_normalized_tangent_component(
             base_velocity,
             normal=normal_directions[-1],
             reference=reference_directions[-1],
@@ -238,11 +240,28 @@ class MultiEllipseObstacle(Obstacle):
             rel_id = parents_tree[ii]
 
             # Re-project tangent
-            tangent = self._get_normalized_tangent_component(
+            tangent2 = RotationalAvoider.get_projected_tangent_from_vectors(
+                initial_vector=tangent,
+                normal=normal_directions[ii],
+                reference=reference_directions[ii],
+            )
+            print(tangent)
+
+            tangent = self.get_normalized_tangent_component(
                 tangent,
                 normal=normal_directions[ii],
                 reference=reference_directions[ii],
             )
+
+            if np.dot(reference_directions[ii], normal_directions[ii]) > 0:
+                # For debugging
+                breakpoint()
+                raise ValueError()
+
+            if not np.allclose(tangent, tangent2, rtol=1e-3):
+                # For debugging
+                breakpoint()
+                raise ValueError()
 
             self._tangent_tree.add_node(
                 node_id=(obs_id, rel_id),
@@ -253,8 +272,9 @@ class MultiEllipseObstacle(Obstacle):
     def get_linearized_velocity(self, position):
         raise NotImplementedError()
 
-    def _get_normalized_tangent_component(
-        self, vector: Vector, normal: Vector, reference: Vector
+    @staticmethod
+    def get_normalized_tangent_component(
+        vector: Vector, normal: Vector, reference: Vector
     ) -> Vector:
         # TODO: use direction-space circle intersection
         basis = get_orthogonal_basis(normal)
@@ -361,6 +381,13 @@ def test_triple_ellipse_environment(visualize=False):
             n_grid=30,
             # vectorfield_color=vf_color,
         )
+
+    position = np.array([0.48275862, 0.4137931])
+    averaged_direction = triple_ellipses.get_tangent_direction(
+        position, velocity, linearized_velociy
+    )
+    breakpoint()
+    assert 
 
     # Testing various position around the obstacle
     position = np.array([-1.5, 5])
@@ -471,8 +498,57 @@ def test_tripple_ellipse_in_the_face(visualize=False):
     assert averaged_direction[0] > 0 and averaged_direction[1] > 0
 
 
+def test_orthonormal_tangent_finding():
+    # Do we really want this test (?!) ->  maybe remove or make it better
+    initial = np.array([0.43238593, -0.90168864])
+    normal = np.array([0.1618981, 0.98680748])
+    reference = np.array([0.99861021, -0.05270331])
+
+    tangent_rot = RotationalAvoider.get_projected_tangent_from_vectors(
+        initial,
+        normal=normal,
+        reference=reference,
+    )
+
+    tangent_matr = MultiEllipseObstacle.get_normalized_tangent_component(
+        initial, normal=normal, reference=reference
+    )
+    breakpoint()
+    assert np.allclose(tangent_rot, tangent_matr)
+
+    normal = np.array([0.99306112, 0.11759934])
+    reference = np.array([-0.32339489, -0.9462641])
+
+    initial = np.array([0.93462702, 0.35562949])
+    tangent_rot = RotationalAvoider.get_projected_tangent_from_vectors(
+        initial,
+        normal=normal,
+        reference=reference,
+    )
+
+    tangent_matr = MultiEllipseObstacle.get_normalized_tangent_component(
+        initial, normal=normal, reference=reference
+    )
+    assert np.allclose(tangent_rot, tangent_matr)
+
+    normal = np.array([0.99306112, 0.11759934])
+    reference = np.array([-0.32339489, -0.9462641])
+    initial = np.array([0.11759934, -0.99306112])
+    tangent_rot = RotationalAvoider.get_projected_tangent_from_vectors(
+        initial,
+        normal=normal,
+        reference=reference,
+    )
+
+    tangent_matr = MultiEllipseObstacle.get_normalized_tangent_component(
+        initial, normal=normal, reference=reference
+    )
+    assert np.allclose(tangent_rot, tangent_matr)
+
+
 if (__name__) == "__main__":
     import matplotlib.pyplot as plt
+
     from dynamic_obstacle_avoidance.visualization import plot_obstacles
     from dynamic_obstacle_avoidance.visualization.plot_obstacle_dynamics import (
         plot_obstacle_dynamics,
@@ -481,5 +557,7 @@ if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
+    # test_orthonormal_tangent_finding()
+
     test_tripple_ellipse_in_the_face(visualize=True)
-    # test_triple_ellipse_environment(visualize=True)
+    # test_triple_ellipse_environment(visualize=False)

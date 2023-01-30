@@ -16,13 +16,15 @@ import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt  # For debugging only (!)
 
-from vartools.math import get_intersection_with_circle
+from vartools.math import get_intersection_with_circle, CircleIntersectionType
 from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.directional_space import (
     get_directional_weighted_sum_from_unit_directions,
 )
 from vartools.directional_space import get_angle_space, get_angle_space_inverse
+from vartools.directional_space import get_angle_from_vector
+from vartools.directional_space import get_vector_from_angle
 from vartools.directional_space import UnitDirection
 
 # from vartools.directional_space DirectionBase
@@ -33,6 +35,9 @@ from dynamic_obstacle_avoidance.utils import get_weight_from_inv_of_gamma
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 
 from dynamic_obstacle_avoidance.avoidance import BaseAvoider
+
+# Type definition
+Vector = np.ndarray
 
 
 class RotationalAvoider(BaseAvoider):
@@ -549,12 +554,48 @@ class RotationalAvoider(BaseAvoider):
         return dir_convergence
 
     @staticmethod
-    def _get_tangent_convergence_direction(
+    def get_projected_tangent_from_vectors(
+        initial_vector: Vector,
+        normal: Vector,
+        reference: Vector,
+        convergence_radius: float = math.pi / 2,
+    ) -> Vector:
+        if np.dot(initial_vector, normal) > 0:
+            base = get_orthogonal_basis(normal)
+            angle_ref = get_angle_from_vector((-1) * reference, base=base)
+        else:
+            base = get_orthogonal_basis((-1) * normal)
+            angle_ref = get_angle_from_vector(reference, base=base)
+
+        angle_init = get_angle_from_vector(initial_vector, base=base)
+
+        if not LA.norm(angle_init - angle_ref):
+            return initial_vector
+
+        surface_angle = get_intersection_with_circle(
+            start_position=angle_ref,
+            direction=(angle_init - angle_ref),
+            radius=convergence_radius,
+            intersection_type=CircleIntersectionType.FAR,
+        )
+
+        if surface_angle is None:
+            raise ValueError("No tangent found.")
+
+        return get_vector_from_angle(surface_angle, base=base)
+
+    @staticmethod
+    def get_tangent_convergence_direction(
         dir_convergence: UnitDirection,
         dir_reference: UnitDirection,
         convergence_radius: float = math.pi / 2,
     ) -> UnitDirection:
-        """Projects the reference direction onto the surface"""
+        """Projects the reference direction onto the surface
+
+        Similar behavior as 'get_projected_tangent_from_vectors' but angle/unit direction input.
+        This function may be removed in the future (!).
+
+        """
 
         if not (dir_convergence - dir_reference).norm():
             # What if they are aligned -> for now return default vector
@@ -681,7 +722,7 @@ class RotationalAvoider(BaseAvoider):
             LA.norm(dir_convergence.as_angle()) < convergence_radius
             or self.tail_rotation
         ):
-            dir_convergence = RotationalAvoider._get_tangent_convergence_direction(
+            dir_convergence = RotationalAvoider.get_tangent_convergence_direction(
                 dir_convergence=dir_convergence,
                 dir_reference=dir_reference,
                 # base=base,

@@ -46,7 +46,9 @@ def create_shapely_ellipse(ellipse: Obstacle):
     return shapely_ellipse
 
 
-def get_intersection(obstacle1: Obstacle, obstacle2: Obstacle) -> Optional[np.ndarray]:
+def get_intersection_of_obstacles(
+    obstacle1: Obstacle, obstacle2: Obstacle
+) -> Optional[np.ndarray]:
     """Get the intersection betweeen two obstacles contained in the list.
     The intersection is numerically based on the drawn points."""
     if isinstance(obstacle1, Ellipse) or isinstance(obstacle1, EllipseWithAxes):

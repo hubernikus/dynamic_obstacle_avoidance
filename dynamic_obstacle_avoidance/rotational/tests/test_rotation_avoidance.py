@@ -207,17 +207,28 @@ def test_convergence_tangent(visualize=True):
     normal_base = get_orthogonal_basis(normal * (-1))
 
     delta_pos = obstacle.center_position - position
-
+    convergence_radius = math.pi / 2.0
     main_avoider = RotationalAvoider()
-    tangent = main_avoider._get_tangent_convergence_direction(
+    tangent = main_avoider.get_tangent_convergence_direction(
         dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
         dir_reference=UnitDirection(normal_base).from_vector(delta_pos),
         # base=normal_base,
-        convergence_radius=math.pi / 2,
+        convergence_radius=convergence_radius,
     )
 
     assert np.allclose(
         tangent.as_vector(), np.sqrt(2) / 2 * np.array([1, 1])
+    ), " Not rotated enough."
+
+    # Same thing for alternative tangent
+    tangent_vector = RotationalAvoider.get_projected_tangent_from_vectors(
+        initial_vector=linear_velocity,
+        normal=normal,
+        reference=delta_pos,
+        convergence_radius=convergence_radius,
+    )
+    assert np.allclose(
+        tangent_vector, np.sqrt(2) / 2 * np.array([1, 1])
     ), " Not rotated enough."
 
     if visualize:
@@ -246,7 +257,7 @@ def test_convergence_tangent(visualize=True):
             )
             normal_base = get_orthogonal_basis(normal * (-1))
             delta_dir = obstacle.center_position - positions[:, it]
-            unit_tangent = main_avoider._get_tangent_convergence_direction(
+            unit_tangent = main_avoider.get_tangent_convergence_direction(
                 dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
                 dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
                 # base=normal_base,
@@ -283,7 +294,7 @@ def test_rotating_towards_tangent():
 
     delta_dir = obstacle.center_position - position
     main_avoider = RotationalAvoider()
-    tangent = main_avoider._get_tangent_convergence_direction(
+    tangent = main_avoider.get_tangent_convergence_direction(
         dir_convergence=UnitDirection(normal_base).from_vector(linear_velocity),
         dir_reference=UnitDirection(normal_base).from_vector(delta_dir),
         # base=normal_base,
@@ -972,19 +983,34 @@ def _test_obstacle_and_hull_avoidance(visualize=False, save_figure=False):
             fig.savefig("figures/" + fig_name + figtype, bbox_inches="tight")
 
 
+def test_tangent_finding():
+    normal = np.array([-0.1618981, -0.98680748])
+    reference = np.array([0.81478719, 0.57976015])
+
+    initial = np.array([0.98680748, -0.1618981])
+
+    projected = RotationalAvoider.get_projected_tangent_from_vectors(
+        initial,
+        normal=normal,
+        reference=reference,
+    )
+
+    assert projected[0] > 0 and projected[1] < 0
+
+
 if (__name__) == "__main__":
     figtype = ".pdf"
     # figtype = ".png"
 
     # test_intersection_with_circle()
 
-    # test_convergence_tangent(visualize=True)
+    test_convergence_tangent(visualize=False)
     # test_rotating_towards_tangent()
 
     # test_single_circle_linear(visualize=True)
     # test_single_circle_linear_inverted(visualize=True)
 
-    _test_single_circle_nonlinear(visualize=True, save_figure=True)
+    # _test_single_circle_nonlinear(visualize=True, save_figure=True)
     # test_single_circle_linear_repulsive(visualize=True, save_figure=False)
 
     # test_rotated_convergence_direction_circle()
