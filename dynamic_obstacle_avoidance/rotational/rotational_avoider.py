@@ -560,7 +560,10 @@ class RotationalAvoider(BaseAvoider):
         reference: Vector,
         convergence_radius: float = math.pi / 2,
     ) -> Vector:
-        if np.dot(initial_vector, normal) > 0:
+
+        if np.dot(initial_vector, normal) > np.cos(convergence_radius):
+            # This if switch is continuous as it happens when the initial_vector
+            # is on the surface of the circle
             base = get_orthogonal_basis(normal)
             angle_ref = get_angle_from_vector((-1) * reference, base=base)
         else:

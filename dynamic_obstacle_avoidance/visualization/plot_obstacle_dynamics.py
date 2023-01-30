@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -21,6 +21,7 @@ def plot_obstacle_dynamics(
     do_quiver=True,
     show_ticks=True,
     vectorfield_color="blue",
+    collision_check_functor: Optional[Callable[[Vector], float]] = None,
 ):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -29,11 +30,14 @@ def plot_obstacle_dynamics(
     positions = np.array([xx.flatten(), yy.flatten()])
     velocities = np.zeros_like(positions)
 
-    if len(obstacle_container):
+    if collision_check_functor is not None:
         for pp in range(positions.shape[1]):
-            # print(f"{positions[:, pp]=} | {velocities[:, pp]=}")
-            # print(f"gamma = {obstacle_container.get_minimum_gamma(positions[:, pp])}")
-            # if obstacle_container.get_minimum_gamma(positions[:, pp]) <= 1:
+            if collision_check_functor(positions[:, pp]):
+                continue
+            velocities[:, pp] = dynamics(positions[:, pp])
+
+    elif len(obstacle_container):
+        for pp in range(positions.shape[1]):
             if not obstacle_container.is_collision_free(positions[:, pp]):
                 continue
             velocities[:, pp] = dynamics(positions[:, pp])

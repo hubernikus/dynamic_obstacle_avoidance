@@ -224,11 +224,12 @@ class MultiEllipseObstacle(Obstacle):
 
         # Reversely traverse the parent tree - to project tangents
         # First node is connecting to the center-velocity
-        tangent = self.get_normalized_tangent_component(
+        tangent = RotationalAvoider.get_projected_tangent_from_vectors(
             base_velocity,
             normal=normal_directions[-1],
             reference=reference_directions[-1],
         )
+
         self._tangent_tree.add_node(
             node_id=(obs_id, parents_tree[-1]),
             parent_id=self._BASE_VEL_ID,
@@ -240,28 +241,16 @@ class MultiEllipseObstacle(Obstacle):
             rel_id = parents_tree[ii]
 
             # Re-project tangent
-            tangent2 = RotationalAvoider.get_projected_tangent_from_vectors(
-                initial_vector=tangent,
-                normal=normal_directions[ii],
-                reference=reference_directions[ii],
-            )
-            print(tangent)
-
-            tangent = self.get_normalized_tangent_component(
+            tangent = RotationalAvoider.get_projected_tangent_from_vectors(
                 tangent,
                 normal=normal_directions[ii],
                 reference=reference_directions[ii],
             )
-
-            if np.dot(reference_directions[ii], normal_directions[ii]) > 0:
-                # For debugging
-                breakpoint()
-                raise ValueError()
-
-            if not np.allclose(tangent, tangent2, rtol=1e-3):
-                # For debugging
-                breakpoint()
-                raise ValueError()
+            # tangent = self.get_normalized_tangent_component(
+            #     tangent,
+            #     normal=normal_directions[ii],
+            #     reference=reference_directions[ii],
+            # )
 
             self._tangent_tree.add_node(
                 node_id=(obs_id, rel_id),
@@ -276,7 +265,9 @@ class MultiEllipseObstacle(Obstacle):
     def get_normalized_tangent_component(
         vector: Vector, normal: Vector, reference: Vector
     ) -> Vector:
-        # TODO: use direction-space circle intersection
+        """This function has similar properties as the
+        'RotationalAvoider.get_projected_tangent_from_vectors'
+        but is limited to a convergence-circle radius of pi/2."""
         basis = get_orthogonal_basis(normal)
         basis[:, 0] = reference
 
@@ -287,22 +278,23 @@ class MultiEllipseObstacle(Obstacle):
         if not (norm_tangent := LA.norm(tangent)):
             raise Exception()
 
-        # rotation_xd = VectorRotationXd.from_directions(normal, vector)
-        # if math.isclose(rotation_xd.rotation_angle, math.pi):
-        #     raise NotImplementedError()
-
-        # old_tangent = rotation_xd.base[:, 1]
-        # # return old_tangent
-
-        # breakpoint()
-        # rotation_xd.rotation_angle = math.pi / 2.0
         return tangent / norm_tangent
 
     def _get_tangent_tree(self):
         pass
 
-    def get_gamma(self, position):
-        pass
+    def get_gamma(self, position: Vector, in_global_frame: bool = True) -> float:
+        if not in_global_frame:
+            raise NotImplementedError("For now we expect global frame..")
+
+        gamma_values = np.zeros(self.n_components)
+        for ii, obs in enumerate(self._obstacle_list):
+            gamma_values[ii] = obs.get_gamma(position, in_global_frame=True)
+
+        return min(gamma_values)
+
+    def is_inside(self, position: Vector, in_global_frame: bool = True) -> bool:
+        return self.get_gamma(position, in_global_frame) <= 1
 
     def get_normal_direction(self, position):
         pass
@@ -370,7 +362,9 @@ def test_triple_ellipse_environment(visualize=False):
 
         plot_obstacle_dynamics(
             obstacle_container=[],
-            # obstacle_container=triple_ellipses._obstacle_list,
+            collision_check_functor=lambda x: (
+                triple_ellipses.get_gamma(x, in_global_frame=True) <= 1
+            ),
             dynamics=lambda x: triple_ellipses.get_tangent_direction(
                 x, velocity, linearized_velociy
             ),
@@ -382,12 +376,9 @@ def test_triple_ellipse_environment(visualize=False):
             # vectorfield_color=vf_color,
         )
 
-    position = np.array([0.48275862, 0.4137931])
-    averaged_direction = triple_ellipses.get_tangent_direction(
-        position, velocity, linearized_velociy
-    )
-    breakpoint()
-    assert 
+    position = np.array([-3.37931034, 0.27586207])
+    gamma_value = triple_ellipses.get_gamma(position, in_global_frame=True)
+    assert gamma_value <= 1, "Is in one of the obstacles"
 
     # Testing various position around the obstacle
     position = np.array([-1.5, 5])
@@ -466,7 +457,10 @@ def test_tripple_ellipse_in_the_face(visualize=False):
         )
 
         plot_obstacle_dynamics(
-            obstacle_container=[],
+            # obstacle_container=[],
+            collision_check_functor=lambda x: (
+                triple_ellipses.get_gamma(x, in_global_frame=True) <= 1
+            ),
             # obstacle_container=triple_ellipses._obstacle_list,
             dynamics=lambda x: triple_ellipses.get_tangent_direction(
                 x, velocity, linearized_velociy
@@ -500,22 +494,6 @@ def test_tripple_ellipse_in_the_face(visualize=False):
 
 def test_orthonormal_tangent_finding():
     # Do we really want this test (?!) ->  maybe remove or make it better
-    initial = np.array([0.43238593, -0.90168864])
-    normal = np.array([0.1618981, 0.98680748])
-    reference = np.array([0.99861021, -0.05270331])
-
-    tangent_rot = RotationalAvoider.get_projected_tangent_from_vectors(
-        initial,
-        normal=normal,
-        reference=reference,
-    )
-
-    tangent_matr = MultiEllipseObstacle.get_normalized_tangent_component(
-        initial, normal=normal, reference=reference
-    )
-    breakpoint()
-    assert np.allclose(tangent_rot, tangent_matr)
-
     normal = np.array([0.99306112, 0.11759934])
     reference = np.array([-0.32339489, -0.9462641])
 
@@ -557,7 +535,9 @@ if (__name__) == "__main__":
     plt.close("all")
     plt.ion()
 
-    # test_orthonormal_tangent_finding()
+    test_orthonormal_tangent_finding()
 
-    test_tripple_ellipse_in_the_face(visualize=True)
-    # test_triple_ellipse_environment(visualize=False)
+    test_tripple_ellipse_in_the_face(visualize=False)
+    test_triple_ellipse_environment(visualize=False)
+
+    print("tests done.")
