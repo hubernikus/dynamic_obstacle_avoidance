@@ -507,6 +507,3 @@ class ProjectedRotationDynamics:
 
         averaged_direction = averaged_direction * LA.norm(initial_velocity)
         return averaged_direction
-
-    def _get_all_obstacle_convergence(self):
-        pass
