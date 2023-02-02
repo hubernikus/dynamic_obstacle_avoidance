@@ -8,6 +8,7 @@ Obstacle based on a kmeans-clustering
 import sys
 import warnings
 import math
+from typing import Optional
 
 import numpy as np
 from numpy import linalg as LA
@@ -29,13 +30,19 @@ class KMeansObstacle(Obstacle):
         radius: float,
         index: int,
         is_boundary: bool = True,
+        center_position: Optional[Vector] = None,
         **kwargs,
     ):
         self.kmeans = kmeans
         self.radius = radius
         self._index = index
 
-        super().__init__(is_boundary=is_boundary, **kwargs)
+        if center_position is None:
+            center_position = np.zeros(self.dimension)
+
+        super().__init__(
+            is_boundary=is_boundary, center_position=center_position, **kwargs
+        )
 
         # Only calculate the normal direction between obstacles once (!)
         # and the ones which are interesting

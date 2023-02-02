@@ -457,7 +457,7 @@ def test_tripple_ellipse_in_the_face(visualize=False):
         )
 
         plot_obstacle_dynamics(
-            # obstacle_container=[],
+            obstacle_container=[],
             collision_check_functor=lambda x: (
                 triple_ellipses.get_gamma(x, in_global_frame=True) <= 1
             ),

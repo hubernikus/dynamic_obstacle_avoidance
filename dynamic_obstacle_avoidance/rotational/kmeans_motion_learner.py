@@ -1,6 +1,6 @@
 """
 Class which allows learning of transition regions / funnels for locally stable regions which ensure
-global attraction to final goal
+Ptionglobal attraction to final goal
 
 TODO / method:
 > K-means learning of transition; ensure that
