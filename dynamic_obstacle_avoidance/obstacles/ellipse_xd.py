@@ -181,7 +181,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         in_relative_frame: bool = True,
         in_global_frame: Optional[bool] = None,
         margin_absolut: Optional[float] = None,
-    ):
+    ) -> float:
         if in_global_frame is not None:
             in_relative_frame = not (in_global_frame)
 
@@ -294,7 +294,6 @@ class EllipseWithAxes(obstacles.Obstacle):
 class HyperSphere(obstacles.Obstacle):
     # TODO: is this really worth it? Speed up towards ellipse is minimal...
     def __init__(self, radius: float, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         self.radius = radius
@@ -315,7 +314,6 @@ class HyperSphere(obstacles.Obstacle):
     def get_normal_direction(
         self, position: np.ndarray, in_obstacle_frame: bool = True
     ):
-
         if not in_obstacle_frame:
             position = self.pose.transform_position_to_relative(position)
 

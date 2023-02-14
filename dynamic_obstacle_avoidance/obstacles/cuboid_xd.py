@@ -4,6 +4,7 @@
 # License BSD
 
 # import warnings
+from typing import Optional
 
 import numpy as np
 from numpy import linalg as LA
@@ -127,7 +128,6 @@ class CuboidXd(obstacles.Obstacle):
     def get_normal_direction(
         self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None
     ):
-
         if in_global_frame is not None:
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
@@ -210,7 +210,6 @@ class CuboidXd(obstacles.Obstacle):
         margin_absolut=None,
         is_boundary=None,
     ):
-
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
 
@@ -268,3 +267,25 @@ class CuboidXd(obstacles.Obstacle):
         ind_max = np.argmax(cube_position)
 
         return position * semiaxes[ind_max] / position[ind_max]
+
+    def get_local_radius(
+        self,
+        position: np.ndarray,
+        in_relative_frame: bool = True,
+        in_global_frame: Optional[bool] = None,
+        margin_absolut: Optional[float] = None,
+    ) -> float:
+        if in_global_frame is not None:
+            in_relative_frame = not (in_global_frame)
+
+        if not in_relative_frame:
+            in_relative_frame = True
+            position = self.pose.transform_position_to_relative(position)
+
+        surface_point = self.get_point_on_surface(
+            position=position,
+            in_obstacle_frame=in_relative_frame,
+            margin_absolut=margin_absolut,
+        )
+
+        return LA.norm(surface_point)
