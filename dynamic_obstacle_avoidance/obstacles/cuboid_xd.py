@@ -314,19 +314,20 @@ class CuboidXd(obstacles.Obstacle):
                 positive_plane_intersect = (-1) * positive_plane_intersect
                 negative_plane_intersect = (-1) * negative_plane_intersect
 
-            breakpoint()
-            if not np.all(positive_plane_intersect > negative_plane_intersect):
-                return None
-            all_intersections = np.hstack(
+            all_intersections = np.vstack(
                 (negative_plane_intersect, positive_plane_intersect)
             )
             # Is outside of the obstacle - we neglect the direction
             # all_intersects = np.abs(all_intersect)
             if intersection_type == IntersectionType.BOTH:
-                min_dist = np.max(np.min(negative_plane_intersect, axis=0))
-                max_dist = np.min(np.max(negative_plane_intersect, axis=0))
-
+                min_dist = np.max(np.min(all_intersections, axis=0))
                 pos_min = start_position + min_dist * direction
+
+                if np.any(pos_min > 0.5 * self.axes_with_margin):
+                    return None
+
+                max_dist = np.min(np.max(all_intersections, axis=0))
+
                 pos_max = start_position + max_dist * direction
                 if in_global_frame:
                     pos_min = self.pose.transform_position_from_relative(pos_min)
@@ -334,12 +335,15 @@ class CuboidXd(obstacles.Obstacle):
                 return np.hstack((pos_min, pos_max)).T
 
             if intersection_type == IntersectionType.CLOSE:
-                distance = np.max(np.min(negative_plane_intersect, axis=0))
+                distance = np.max(np.min(all_intersections, axis=0))
 
             elif intersection_type == IntersectionType.FAR:
-                distance = np.min(np.max(negative_plane_intersect, axis=0))
+                distance = np.min(np.max(all_intersections, axis=0))
 
             position = start_position + distance * direction
+            if np.any(position > 0.5 * self.axes_with_margin):
+                return None
+
             if in_global_frame:
                 return self.pose.transform_position_from_relative(position)
             return position
@@ -409,7 +413,6 @@ def test_cube_intersection():
         intersection_type=IntersectionType.CLOSE,
     )
 
-    # assert intersection[1] == 0.5
     assert intersection[1] == 0.5
 
     intersection = cube.get_intersection_with_surface(
