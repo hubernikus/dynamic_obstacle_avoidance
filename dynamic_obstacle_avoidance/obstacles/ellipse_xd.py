@@ -12,7 +12,7 @@ from numpy import linalg as LA
 import shapely
 
 from vartools import linalg
-from vartools.math import get_intersection_with_circle
+from vartools.math import get_intersection_with_circle, CircleIntersectionType
 
 from dynamic_obstacle_avoidance import obstacles
 
@@ -289,6 +289,41 @@ class EllipseWithAxes(obstacles.Obstacle):
             surface_point = self.pose.transform_position_from_relative(surface_point)
 
         return surface_point
+
+    def get_intersection_with_surface(
+        self,
+        start_position: np.ndarray,
+        direction: np.ndarray,
+        in_global_frame: bool = False,
+        intersection_type=CircleIntersectionType.CLOSE,
+    ) -> Optional[np.ndarray]:
+        if in_global_frame:
+            # Currently only implemented for ellipse
+            start_position = self.pose.transform_position_to_relative(start_position)
+            direction = self.pose.transform_direction_to_relative(direction)
+
+        # Stretch according to ellipse axes (radius)
+        rel_pos = start_position / self.axes_with_margin
+        rel_dir = direction / self.axes_with_margin
+
+        # Intersection with unit circle
+        surface_rel_pos = get_intersection_with_circle(
+            start_position=rel_pos,
+            direction=rel_dir,
+            radius=0.5,
+            intersection_type=intersection_type,
+        )
+
+        if surface_rel_pos is None:
+            return None
+
+        # Relative
+        surface_pos = surface_rel_pos * self.axes_with_margin
+
+        if in_global_frame:
+            return self.pose.transform_position_from_relative(surface_pos)
+        else:
+            return surface_pos
 
 
 class HyperSphere(obstacles.Obstacle):
