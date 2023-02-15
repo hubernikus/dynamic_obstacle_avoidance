@@ -203,7 +203,7 @@ class CuboidXd(obstacles.Obstacle):
         self,
         position,
         in_obstacle_frame: bool = True,
-        in_global_frame: bool = None,
+        in_global_frame: Optional[bool] = None,
         margin_absolut=None,
         is_boundary=None,
     ):
@@ -226,17 +226,17 @@ class CuboidXd(obstacles.Obstacle):
             distance_center = LA.norm(position)
             gamma = distance_center / (distance_center - distance_surface)
 
-            # print("gamma boundary", gamma)
-            gamma = (1 - gamma) ** self.boundary_power_factor
+            # gamma = distance_center / (distance_center - distance_surface)
 
             # print("gamma boundary", gamma)
-            # breakpoint()
+            # gamma = (1 - gamma) ** self.boundary_power_factor
+            gamma = gamma**self.boundary_power_factor
 
         else:
             gamma = distance_surface * self.distance_scaling + 1
 
         if is_boundary:
-            gamma = 1 / gamma
+            return 1 / gamma
 
         return gamma
 
@@ -326,7 +326,7 @@ class CuboidXd(obstacles.Obstacle):
                 min_dist = np.max(np.min(all_intersections, axis=0))
                 pos_min = start_position + min_dist * direction
 
-                if np.any(pos_min > 0.5 * self.axes_with_margin):
+                if self.get_gamma(pos_min, in_global_frame=False) < 1:
                     return None
 
                 max_dist = np.min(np.max(all_intersections, axis=0))
@@ -344,7 +344,8 @@ class CuboidXd(obstacles.Obstacle):
                 distance = np.min(np.max(all_intersections, axis=0))
 
             position = start_position + distance * direction
-            if np.any(position > 0.5 * self.axes_with_margin):
+            if self.get_gamma(position, in_global_frame=False) < 1:
+                breakpoint()
                 return None
 
             if in_global_frame:
@@ -444,6 +445,26 @@ def test_cube_outside_position():
     assert (
         intersection[1] < position[1] and intersection[1] > -0.5 * cube.axes_length[1]
     )
+
+    position = np.array([2.2413793103448283, -5.0])
+    direction = np.array([-2.2413793103448283, 6.5])
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.CLOSE,
+    )
+    assert np.isclose(intersection[0], 0.5)
+
+    position = np.array([-0.5172413793103443, -3.9655172413793105])
+    direction = np.array([0.5172413793103443, 5.4655172413793105])
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.CLOSE,
+    )
+    assert np.isclose(intersection[1], -2)
 
 
 if (__name__) == "__main__":
