@@ -61,30 +61,26 @@ class CuboidXd(obstacles.Obstacle):
         For an ellipse obstacle,the longest axes."""
         return np.prod(self.semiaxes + self.margin_absolut) ** (1 / self.dimension)
 
-    def set_reference_point(self, position: np.ndarray, in_obstacle_frame=True) -> None:
+    def set_reference_point(
+        self,
+        position: np.ndarray,
+        in_global_frame: bool = False,
+        in_obstacle_frame: Optional[bool] = None,
+    ) -> None:
         """Set the reference point"""
         # TODO: this can be portet to the `_base` class
+        if in_obstacle_frame is None:
+            in_obstacle_frame = not in_global_frame
+
         if self.get_gamma(position=position, in_obstacle_frame=in_obstacle_frame) >= 1:
             raise NotImplementedError(
                 "Automatic reference point extension is not implemented."
             )
 
-        if not in_obstacle_frame:
+        if in_global_frame:
             position = self.pose.transform_position_to_relative(position)
 
         self._reference_point = position
-
-    def get_reference_point(
-        self, in_obstacle_frame: bool = False, in_global_frame: bool = None
-    ) -> np.ndarray:
-        if in_global_frame is not None:
-            # Legacy value
-            in_obstacle_frame = not (in_global_frame)
-
-        if not in_obstacle_frame:
-            return self.pose.transform_position_from_relative(self._reference_point)
-        else:
-            return self._reference_point
 
     def get_shapely(self, semiaxes=None):
         """Get shapely of a standard ellipse."""
@@ -310,7 +306,14 @@ class CuboidXd(obstacles.Obstacle):
         ) / direction
 
         if self.get_gamma(start_position, in_global_frame=False) > 1:
-            if np.dot(direction, start_position) > 0:
+            if (
+                np.dot(
+                    direction / self.axes_with_margin,
+                    start_position / self.axes_with_margin,
+                )
+                > 0
+            ):
+                direction = (-1) * direction
                 positive_plane_intersect = (-1) * positive_plane_intersect
                 negative_plane_intersect = (-1) * negative_plane_intersect
 
@@ -424,5 +427,25 @@ def test_cube_intersection():
     assert intersection[1] == -0.5
 
 
+def test_cube_outside_position():
+    position = np.array([0.55555556, -0.55555556])
+    direction = np.array([-0.55555556, -0.94444444])
+
+    cube = CuboidXd(center_position=np.array([0, 0]), axes_length=np.array([1.0, 4.0]))
+
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.CLOSE,
+    )
+
+    assert intersection[0] == 0.5
+    assert (
+        intersection[1] < position[1] and intersection[1] > -0.5 * cube.axes_length[1]
+    )
+
+
 if (__name__) == "__main__":
-    test_cube_intersection()
+    # test_cube_intersection()
+    test_cube_outside_position()
