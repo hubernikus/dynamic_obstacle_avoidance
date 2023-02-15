@@ -16,6 +16,7 @@ from .double_blob_obstacle import DoubleBlob
 # Multidimensional Obstacles
 from .cuboid_xd import CuboidXd
 from .ellipse_xd import EllipseWithAxes
+from .hyper_shpere import HyperSphere
 
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "GammaType",
     "CuboidXd",
     "EllipseWithAxes",
+    "HyperSphere",
 ]
