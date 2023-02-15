@@ -134,6 +134,14 @@ class CuboidXd(obstacles.Obstacle):
 
         ind_relevant = np.abs(position) > self.semiaxes
 
+        if np.isclose(self.get_gamma(position, in_global_frame=False), 1.0):
+            ind_close = np.isclose(np.abs(position), self.axes_with_margin * 0.5)
+            normal = np.copysign((ind_close / LA.norm(ind_close)), position)
+
+            if self.is_boundary:
+                return (-1) * normal
+            return normal
+
         if not any(ind_relevant):
             # Mirror at the boundary (Take the inverse)
             minimum_factor = max(np.abs(position) / self.semiaxes)
@@ -152,18 +160,16 @@ class CuboidXd(obstacles.Obstacle):
 
         normal_norm = LA.norm(normal)
         if not normal_norm:
-            normal[0] = 1
-            normal_norm = 1
-
-        # No normalization chack needed, since at least one axes was relevatn
-        normal = normal / LA.norm(normal)
+            normal[0] = 1.0
+        else:
+            # No normalization chack needed, since at least one axes was relevatn
+            normal = normal / normal_norm
 
         if not in_obstacle_frame:
             normal = self.pose.transform_direction_from_relative(normal)
 
         if self.is_boundary:
-            normal = (-1) * normal
-
+            return (-1) * normal
         return normal
 
     def get_distance_to_surface(
@@ -326,7 +332,8 @@ class CuboidXd(obstacles.Obstacle):
                 min_dist = np.max(np.min(all_intersections, axis=0))
                 pos_min = start_position + min_dist * direction
 
-                if self.get_gamma(pos_min, in_global_frame=False) < 1:
+                if self.get_gamma(pos_min, in_global_frame=False) < (1 - 1e-6):
+                    # Include numerical errors => set Gamma slightly lower than 1
                     return None
 
                 max_dist = np.min(np.max(all_intersections, axis=0))
@@ -344,8 +351,8 @@ class CuboidXd(obstacles.Obstacle):
                 distance = np.min(np.max(all_intersections, axis=0))
 
             position = start_position + distance * direction
-            if self.get_gamma(position, in_global_frame=False) < 1:
-                breakpoint()
+            if self.get_gamma(position, in_global_frame=False) < (1 - 1e-6):
+                # Include numerical errors => set Gamma slightly lower than 1
                 return None
 
             if in_global_frame:
@@ -467,6 +474,25 @@ def test_cube_outside_position():
     assert np.isclose(intersection[1], -2)
 
 
+def test_normal_direction():
+    # Evaluate surface point just on boundary
+    cube = CuboidXd(center_position=np.array([0, 0]), axes_length=np.array([1.0, 4.0]))
+    position = np.array([-0.5, 1.513157894736842])
+    normal = cube.get_normal_direction(position, in_global_frame=True)
+    reference = cube.get_reference_direction(position, in_global_frame=True)
+    assert np.dot(normal, reference) < 0.0  # Redundant but nice to understand
+
+    # Simple cubic-cube
+    cube = CuboidXd(center_position=np.array([0, 0]), axes_length=np.array([1.0, 1.0]))
+    position = np.array([2, 0])
+    normal = cube.get_normal_direction(position, in_global_frame=True)
+    reference = cube.get_reference_direction(position, in_global_frame=True)
+    assert np.allclose(normal, [1.0, 0])
+    assert np.allclose(reference, [-1.0, 0])
+    assert np.dot(normal, reference) < 0.0  # Redundant but nice to understand
+
+
 if (__name__) == "__main__":
     # test_cube_intersection()
     test_cube_outside_position()
+    test_normal_direction()
