@@ -12,6 +12,7 @@ from numpy import linalg as LA
 import shapely
 
 from vartools import linalg
+from vartools.math import get_intersection_with_circle, IntersectionType
 
 from dynamic_obstacle_avoidance import obstacles
 
@@ -289,3 +290,135 @@ class CuboidXd(obstacles.Obstacle):
         )
 
         return LA.norm(surface_point)
+
+    def get_intersection_with_surface(
+        self,
+        start_position: np.ndarray,
+        direction: np.ndarray,
+        in_global_frame: bool = False,
+        intersection_type=IntersectionType.CLOSE,
+    ) -> Optional[np.ndarray]:
+        if in_global_frame:
+            start_position = self.pose.transform_position_to_relative(start_position)
+            direction = self.pose.transform_direction_to_relative(direction)
+
+        positive_plane_intersect = (
+            0.5 * self.axes_with_margin - start_position
+        ) / direction
+        negative_plane_intersect = (
+            -0.5 * self.axes_with_margin - start_position
+        ) / direction
+
+        if self.get_gamma(start_position, in_global_frame=False) > 1:
+            if np.dot(direction, start_position) > 0:
+                positive_plane_intersect = (-1) * positive_plane_intersect
+                negative_plane_intersect = (-1) * negative_plane_intersect
+
+            breakpoint()
+            if not np.all(positive_plane_intersect > negative_plane_intersect):
+                return None
+            all_intersections = np.hstack(
+                (negative_plane_intersect, positive_plane_intersect)
+            )
+            # Is outside of the obstacle - we neglect the direction
+            # all_intersects = np.abs(all_intersect)
+            if intersection_type == IntersectionType.BOTH:
+                min_dist = np.max(np.min(negative_plane_intersect, axis=0))
+                max_dist = np.min(np.max(negative_plane_intersect, axis=0))
+
+                pos_min = start_position + min_dist * direction
+                pos_max = start_position + max_dist * direction
+                if in_global_frame:
+                    pos_min = self.pose.transform_position_from_relative(pos_min)
+                    pos_max = self.pose.transform_position_from_relative(pos_max)
+                return np.hstack((pos_min, pos_max)).T
+
+            if intersection_type == IntersectionType.CLOSE:
+                distance = np.max(np.min(negative_plane_intersect, axis=0))
+
+            elif intersection_type == IntersectionType.FAR:
+                distance = np.min(np.max(negative_plane_intersect, axis=0))
+
+            position = start_position + distance * direction
+            if in_global_frame:
+                return self.pose.transform_position_from_relative(position)
+            return position
+
+        all_intersections = np.vstack(
+            (negative_plane_intersect, positive_plane_intersect)
+        )
+        pos_ind = all_intersections >= 0
+        positive_intersect = all_intersections[pos_ind]
+        negative_intersect = all_intersections[np.logical_not(pos_ind)]
+        # Else: we are inside the obstacle
+        if intersection_type == IntersectionType.BOTH:
+            min_dist = np.min(negative_intersect)
+            max_dist = np.max(positive_intersect)
+
+            pos_min = start_position + min_dist * direction
+            pos_max = start_position + max_dist * direction
+            if in_global_frame:
+                pos_min = self.pose.transform_position_from_relative(pos_min)
+                pos_max = self.pose.transform_position_from_relative(pos_max)
+            return np.hstack((pos_min, pos_max)).T
+
+        if intersection_type == IntersectionType.FAR:
+            distance = np.max(negative_intersect)
+
+        elif intersection_type == IntersectionType.CLOSE:
+            distance = np.min(positive_intersect)
+
+        position = start_position + distance * direction
+        if in_global_frame:
+            return self.pose.transform_position_from_relative(position)
+        return position
+
+
+def test_cube_intersection():
+    """Intersection test in 2D"""
+    cube = CuboidXd(center_position=np.array([0, 0]), axes_length=np.array([5.0, 1]))
+
+    # Position 1
+    position = np.array([1.0, 0])
+    direction = np.array([-1.0, -1])
+
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.CLOSE,
+    )
+    assert intersection[1] == -0.5
+
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.FAR,
+    )
+    assert intersection[1] == 0.5
+
+    # Position 2
+    position = np.array([0.0, 1.0])
+    direction = np.array([-1, -1])
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.CLOSE,
+    )
+    breakpoint()
+    # assert intersection[1] == 0.5
+
+    intersection = cube.get_intersection_with_surface(
+        start_position=position,
+        direction=direction,
+        in_global_frame=True,
+        intersection_type=IntersectionType.FAR,
+    )
+    breakpoint()
+    assert intersection[1] == -0.5
+
+
+if (__name__) == "__main__":
+    test_cube_intersection()
