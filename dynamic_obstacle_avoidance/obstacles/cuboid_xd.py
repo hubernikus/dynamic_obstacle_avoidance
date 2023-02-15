@@ -350,6 +350,7 @@ class CuboidXd(obstacles.Obstacle):
         pos_ind = all_intersections >= 0
         positive_intersect = all_intersections[pos_ind]
         negative_intersect = all_intersections[np.logical_not(pos_ind)]
+
         # Else: we are inside the obstacle
         if intersection_type == IntersectionType.BOTH:
             min_dist = np.min(negative_intersect)
@@ -407,8 +408,9 @@ def test_cube_intersection():
         in_global_frame=True,
         intersection_type=IntersectionType.CLOSE,
     )
-    breakpoint()
+
     # assert intersection[1] == 0.5
+    assert intersection[1] == 0.5
 
     intersection = cube.get_intersection_with_surface(
         start_position=position,
@@ -416,7 +418,6 @@ def test_cube_intersection():
         in_global_frame=True,
         intersection_type=IntersectionType.FAR,
     )
-    breakpoint()
     assert intersection[1] == -0.5
 
 
