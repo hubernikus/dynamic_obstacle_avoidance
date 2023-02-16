@@ -248,11 +248,11 @@ class CuboidXd(obstacles.Obstacle):
 
     def get_point_on_surface(
         self,
-        position,
+        position: np.ndarray,
         in_obstacle_frame: bool = True,
-        in_global_frame: bool = None,
-        margin_absolut: bool = None,
-    ):
+        in_global_frame: Optional[bool] = None,
+        margin_absolut: Optional[float] = None,
+    ) -> np.ndarray:
         if in_global_frame is not None:
             # Legacy value
             in_obstacle_frame = not (in_global_frame)
@@ -265,11 +265,21 @@ class CuboidXd(obstacles.Obstacle):
         else:
             semiaxes = self.semiaxes + margin_absolut
 
+        if not LA.norm(position):
+            # At the center
+            surface_point = np.zeros(self.dimension)
+            surface_point[0] = semiaxes[0]
+            if not in_obstacle_frame:
+                return self.pose.transform_position_from_relative(surface_point)
+            return surface_point
+
         cube_position = position / semiaxes
+        ind_max = np.argmax(np.abs(cube_position))
 
-        ind_max = np.argmax(cube_position)
-
-        return position * semiaxes[ind_max] / position[ind_max]
+        surface_point = position * semiaxes[ind_max] / position[ind_max]
+        if not in_obstacle_frame:
+            return self.pose.transform_position_from_relative(surface_point)
+        return surface_point
 
     def get_local_radius(
         self,
@@ -290,7 +300,8 @@ class CuboidXd(obstacles.Obstacle):
             in_obstacle_frame=in_relative_frame,
             margin_absolut=margin_absolut,
         )
-
+        # if np.isnan(LA.norm(surface_point)):
+        #     breakpoint()
         return LA.norm(surface_point)
 
     def get_intersection_with_surface(
@@ -492,7 +503,21 @@ def test_normal_direction():
     assert np.dot(normal, reference) < 0.0  # Redundant but nice to understand
 
 
+def test_surface_position():
+    position = np.array([-1.0, 0])
+
+    cube = CuboidXd(
+        center_position=np.array([0.0, 0.0]),
+        orientation=0.0,
+        axes_length=np.array([0.4, 0.7]),
+    )
+
+    surf_point = cube.get_point_on_surface(position, in_obstacle_frame=True)
+    assert np.allclose(surf_point, [0.2, 0])
+
+
 if (__name__) == "__main__":
-    # test_cube_intersection()
+    test_cube_intersection()
     test_cube_outside_position()
     test_normal_direction()
+    test_surface_position()
