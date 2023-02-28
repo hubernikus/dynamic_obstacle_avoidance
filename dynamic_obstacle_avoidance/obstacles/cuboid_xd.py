@@ -7,7 +7,9 @@
 from typing import Optional
 
 import numpy as np
+from numpy import linalg
 from numpy import linalg as LA
+
 
 import shapely
 
@@ -130,13 +132,20 @@ class CuboidXd(obstacles.Obstacle):
             in_obstacle_frame = not (in_global_frame)
 
         if not in_obstacle_frame:
+            # Do everything in local frame
             position = self.pose.transform_position_to_relative(position)
 
         ind_relevant = np.abs(position) > self.semiaxes
 
         if np.isclose(self.get_gamma(position, in_global_frame=False), 1.0):
             ind_close = np.isclose(np.abs(position), self.axes_with_margin * 0.5)
-            normal = np.copysign((ind_close / LA.norm(ind_close)), position)
+
+            if not np.any(ind_close):
+                normal = np.abs(position) - self.axes_with_margin * 0.5
+                normal = np.copysign(normal / linalg.norm(normal), normal, position)
+                breakpoint()
+            else:
+                normal = np.copysign((ind_close / LA.norm(ind_close)), position)
 
             if self.is_boundary:
                 return (-1) * normal
@@ -168,8 +177,12 @@ class CuboidXd(obstacles.Obstacle):
         if not in_obstacle_frame:
             normal = self.pose.transform_direction_from_relative(normal)
 
+        if np.any(np.isnan(normal)):
+            breakpoint()
+
         if self.is_boundary:
             return (-1) * normal
+
         return normal
 
     def get_distance_to_surface(
@@ -516,8 +529,38 @@ def test_surface_position():
     assert np.allclose(surf_point, [0.2, 0])
 
 
+def test_normal_direction():
+    position = np.array([-4.239800261245738, -2.5311849573737155])
+    cube = CuboidXd(
+        center_position=np.array([-4.906512403591768, -1.8412917602246444]),
+        axes_length=np.array([0.7, 0.6]),
+        margin_absolut=0.5,
+    )
+
+    normal = cube.get_normal_direction(position, in_global_frame=True)
+    assert not np.any(np.isnan(normal))
+
+    position = np.array([-0.6898931971490712, -0.6667121423460305])
+    gamma = cube.get_gamma(position, in_global_frame=False)
+    assert math.isclose(gamma, 1, abs_tol=1e-3)
+
+
+def test_simple_cuboid_with_margin():
+    cube = CuboidXd(
+        center_position=np.array([0.0, 0]),
+        axes_length=np.array([2.0, 2.0]),
+        margin_absolut=1.0,
+    )
+
+    position = np.array([1.9, -1.9])
+    normal = cube.get_normal_direction(position, in_global_frame=True)
+    assert np.all(np.isclose(normal, np.array([1, -1]) / np.sqrt(2)))
+
+
 if (__name__) == "__main__":
     test_cube_intersection()
     test_cube_outside_position()
     test_normal_direction()
     test_surface_position()
+    test_normal_direction()
+    test_simple_cuboid_with_margin()

@@ -252,6 +252,7 @@ def plot_obstacles(
     x_range=None,
     y_range=None,
     obs=None,
+    set_axes: bool = True,
 ):
     """Plot all obstacles & attractors"""
     if x_range is not None:
@@ -413,10 +414,10 @@ def plot_obstacles(
                 zorder=3,
             )
 
-    ax.set_aspect("equal", adjustable="box")
-
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
+    if set_axes:
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(x_lim)
+        ax.set_ylim(y_lim)
 
     if noTicks:
         ax.tick_params(

@@ -197,6 +197,7 @@ def run_stationary_point_avoiding_dynamic_robot():
     my_animation = DynamicalSystemAnimation(
         dt_simulation=0.05,
         dt_sleep=0.01,
+        file_type=".gif",
     )
 
     my_animation.setup(
@@ -207,7 +208,7 @@ def run_stationary_point_avoiding_dynamic_robot():
         y_lim=[-2.1, 2.1],
     )
 
-    my_animation.run(save_animation=False)
+    my_animation.run(save_animation=True)
 
 
 if (__name__) == "__main__":
