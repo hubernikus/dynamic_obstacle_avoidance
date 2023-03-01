@@ -53,7 +53,8 @@ class Obstacle(ABC):
     ----------
     pose: ObstaclePose
     distance_scaling: Scales the distance value before calculating the gamma-value.
-        the smaller -> the bigger the influence of gamma
+        the smaller -> the bigger the influence of gamma [the closer it thinks the world is]
+        the larger -> the faster the influence of gamma decreases [we're zoomed in(!)]
     """
 
     id_counter = 0
@@ -897,7 +898,6 @@ class Obstacle(ABC):
                 if direction_factors[1] >= 0 and LA.norm(
                     direction_factors[1] * connection_passive
                 ) <= LA.norm(connection_passive):
-
                     return True, LA.norm(direction_factors[0] * connection_direction)
         return False, -1
 
@@ -1084,7 +1084,8 @@ class Obstacle(ABC):
         # margin_absolut: Optional[float] = None,
     ) -> bool:
         """Checks if a global point is within the obstacle (or hull) boundary.
-        If local point should be considered it is advised to use the gamma-function instead."""
+        If local point should be considered it is advised to use the gamma-function instead.
+        """
         return self.get_gamma(position, in_global_frame=in_global_frame) < 1
 
     def get_distance_to_hullEdge(self, position, hull_edge=None):
