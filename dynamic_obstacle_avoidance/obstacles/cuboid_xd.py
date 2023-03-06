@@ -6,6 +6,8 @@
 # import warnings
 from typing import Optional
 
+import math
+
 import numpy as np
 from numpy import linalg as LA
 
@@ -558,6 +560,23 @@ def test_simple_cuboid_with_margin():
     assert np.all(np.isclose(normal, np.array([1, -1]) / np.sqrt(2)))
 
 
+def test_3d_cube_far_away():
+    cube = CuboidXd(
+        center_position=np.zeros(3),
+        axes_length=np.array([0.19] * 3),
+        linear_velocity=np.zeros(3),
+        margin_absolut=0.12,
+        distance_scaling=10.0,
+    )
+
+    position = np.array([2.3, -1.8, 2.4])
+    normal = cube.get_normal_direction(position)
+    gamma = cube.get_gamma(position)
+
+    assert gamma > 10
+    assert normal[0] > 0 and normal[1] < 1 and normal[2] > 0
+
+
 if (__name__) == "__main__":
     test_cube_intersection()
     test_cube_outside_position()
@@ -565,3 +584,4 @@ if (__name__) == "__main__":
     test_surface_position()
     test_normal_direction()
     test_simple_cuboid_with_margin()
+    test_3d_cube_far_away()
