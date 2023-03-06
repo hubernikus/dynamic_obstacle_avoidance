@@ -7,9 +7,7 @@
 from typing import Optional
 
 import numpy as np
-from numpy import linalg
 from numpy import linalg as LA
-
 
 import shapely
 
@@ -142,14 +140,18 @@ class CuboidXd(obstacles.Obstacle):
 
             if not np.any(ind_close):
                 normal = np.abs(position) - self.axes_with_margin * 0.5
-                normal = np.copysign(normal / linalg.norm(normal), normal, position)
-                breakpoint()
+                normal = np.copysign(normal / LA.norm(normal), normal, position)
+
             else:
                 normal = np.copysign((ind_close / LA.norm(ind_close)), position)
 
             if self.is_boundary:
-                return (-1) * normal
-            return normal
+                normal = (-1) * normal
+
+            if in_obstacle_frame:
+                return normal
+            else:
+                return self.pose.transform_direction_from_relative(normal)
 
         if not any(ind_relevant):
             # Mirror at the boundary (Take the inverse)
@@ -524,7 +526,6 @@ def test_surface_position():
         orientation=0.0,
         axes_length=np.array([0.4, 0.7]),
     )
-
     surf_point = cube.get_point_on_surface(position, in_obstacle_frame=True)
     assert np.allclose(surf_point, [0.2, 0])
 
