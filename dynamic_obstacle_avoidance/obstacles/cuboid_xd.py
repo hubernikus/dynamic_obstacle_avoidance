@@ -9,13 +9,14 @@ from typing import Optional
 import math
 
 import numpy as np
-from numpy import linalg
+
+# from numpy import linalg
 from numpy import linalg as LA
 
 
 import shapely
 
-from vartools import linalg
+# from vartools import linalg
 from vartools.math import get_intersection_with_circle, IntersectionType
 
 from dynamic_obstacle_avoidance import obstacles
@@ -144,7 +145,7 @@ class CuboidXd(obstacles.Obstacle):
 
             if not np.any(ind_close):
                 normal = np.abs(position) - self.axes_with_margin * 0.5
-                normal = np.copysign(normal / linalg.norm(normal), normal, position)
+                normal = np.copysign(normal / LA.norm(normal), normal, position)
                 breakpoint()
             else:
                 normal = np.copysign((ind_close / LA.norm(ind_close)), position)
