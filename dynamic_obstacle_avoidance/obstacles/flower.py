@@ -6,6 +6,7 @@ import time
 import warnings
 import sys
 import copy
+from typing import Optional
 
 import numpy as np
 
@@ -136,7 +137,16 @@ class StarshapedFlower(Obstacle):
         self.boundary_points_local = x_obs
         self.boundary_points_margin_local = x_obs_sf
 
-    def get_local_radius_point(self, position, in_global_frame=False):
+    def get_local_radius(self, position, in_global_frame: bool = False) -> float:
+        if in_global_frame:
+            position = self.transform_global2relative(position)
+        return float(
+            np.linalg.norm(self.get_local_radius_point(position, in_global_frame=False))
+        )
+
+    def get_local_radius_point(
+        self, position, in_global_frame: bool = False
+    ) -> np.ndarray:
         """Get radius from local radius point."""
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -194,12 +204,16 @@ class StarshapedFlower(Obstacle):
         self,
         position,
         in_global_frame=False,
+        in_obstacle_frame: Optional[bool] = None,
         norm_order=2,
         gamma_distance=None,
     ):
         """Calculate gamma-distance function."""
         if not type(position) == np.ndarray:
             position = np.array(position)
+
+        if in_obstacle_frame is not None:
+            in_global_frame = not (in_obstacle_frame)
 
         if in_global_frame:
             position = self.pose.transform_position_to_relative(position)
@@ -307,6 +321,28 @@ def test_starshape_flower(visualize=False):
         # )
 
 
+def test_gamma_value():
+    center = np.array([2.0, 1])
+    obstacle = StarshapedFlower(
+        center_position=center,
+        radius_magnitude=0.2,
+        number_of_edges=5,
+        radius_mean=0.75,
+        orientation=33 / 180 * pi,
+        distance_scaling=1,
+        # tail_effect=False,
+        # is_boundary=True,
+    )
+
+    # Test gamma a bit away from the center
+    gamma_value = obstacle.get_gamma(center + 0.1, in_global_frame=True)
+    assert not np.isnan(gamma_value)
+
+    # Test at the center
+    gamma_value = obstacle.get_gamma(center, in_global_frame=True)
+    assert not np.isnan(gamma_value)
+
+
 if (__name__) == "__main__":
-    test_starshape_flower(visualize=True)
-    pass
+    # test_starshape_flower(visualize=True)
+    test_gamma_value()
