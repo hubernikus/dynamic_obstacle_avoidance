@@ -32,7 +32,7 @@ class StarshapedFlower(Obstacle):
         time_now=None,
         property_functions={},
         *args,
-        **kwargs
+        **kwargs,
     ):
         if sys.version_info > (3, 0):
             super().__init__(*args, **kwargs)
@@ -140,9 +140,9 @@ class StarshapedFlower(Obstacle):
     def get_local_radius(self, position, in_global_frame: bool = False) -> float:
         if in_global_frame:
             position = self.transform_global2relative(position)
-        return float(
-            np.linalg.norm(self.get_local_radius_point(position, in_global_frame=False))
-        )
+
+        direction = np.arctan2(position[1], position[0])
+        return self.get_radius_of_angle(direction)
 
     def get_local_radius_point(
         self, position, in_global_frame: bool = False
@@ -154,7 +154,11 @@ class StarshapedFlower(Obstacle):
         direction = np.arctan2(position[1], position[0])
         radius = self.get_radius_of_angle(direction)
 
-        surface_point = 1.0 * radius / np.linalg.norm(position) * position
+        if pos_norm := np.linalg.norm(position):
+            surface_point = radius / pos_norm * position
+        else:
+            surface_point = np.zeros_like(position)
+            surface_point[0] = radius
 
         if in_global_frame:
             surface_point = self.transform_relative2global(surface_point)
@@ -218,25 +222,27 @@ class StarshapedFlower(Obstacle):
         if in_global_frame:
             position = self.pose.transform_position_to_relative(position)
 
-        mag_position = np.linalg.norm(position)
-        if mag_position == 0:
+        if not (mag_position := np.linalg.norm(position)):
             if self.is_boundary:
                 return sys.float_info.max
             else:
                 return 0
 
-        direction = np.arctan2(position[1], position[0])
-
-        Gamma = mag_position / self.get_radius_of_angle(direction)
+        radius = self.get_radius_of_angle(np.arctan2(position[1], position[0]))
 
         # TODO extend rule to include points with Gamma < 1 for both cases
         if self.is_boundary:
-            Gamma = 1 / Gamma
+            # Gamma = 1 / Gamma
+            return radius / mag_position
+        elif mag_position < radius:
+            return mag_position / radius
+        else:
+            return mag_position - radius + 1
 
-        if gamma_distance is not None:
-            warnings.warn("Implement linear gamma type.")
+        # if gamma_distance is not None:
+        #     warnings.warn("Implement linear gamma type.")
 
-        return Gamma
+        # return Gamma
 
     def get_normal_direction(self, position, in_global_frame=False):
         if in_global_frame:
@@ -322,7 +328,7 @@ def test_starshape_flower(visualize=False):
 
 
 def test_gamma_value():
-    center = np.array([2.0, 1])
+    center = np.array([2.2, 0.0])
     obstacle = StarshapedFlower(
         center_position=center,
         radius_magnitude=0.2,
@@ -336,13 +342,32 @@ def test_gamma_value():
 
     # Test gamma a bit away from the center
     gamma_value = obstacle.get_gamma(center + 0.1, in_global_frame=True)
-    assert not np.isnan(gamma_value)
+    assert 0 < gamma_value < 1
 
     # Test at the center
     gamma_value = obstacle.get_gamma(center, in_global_frame=True)
-    assert not np.isnan(gamma_value)
+    assert np.isclose(0, gamma_value)
+
+
+def test_radius_computation():
+    center = np.array([2.2, 0.0])
+    obstacle = StarshapedFlower(
+        center_position=center,
+        radius_magnitude=0.2,
+        number_of_edges=5,
+        radius_mean=0.75,
+        orientation=33 / 180 * pi,
+        distance_scaling=1,
+    )
+
+    # Test gamma a bit away from the center
+    radius = obstacle.get_gamma(center, in_global_frame=True)
+    assert not np.isnan(radius)
 
 
 if (__name__) == "__main__":
     # test_starshape_flower(visualize=True)
     test_gamma_value()
+    # test_radius_computation()
+
+    print("Tests done.")
