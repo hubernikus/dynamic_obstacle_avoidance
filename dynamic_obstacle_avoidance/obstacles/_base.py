@@ -122,19 +122,22 @@ class Obstacle(ABC):
         else:
             self.pose = pose
 
-        if twist is None:
-            self.twist = ObjectTwist(
-                linear=linear_velocity,
-                angular=angular_velocity,
-            )
-        else:
-            self.twist = twist
-
         # Dimension of space
         if dimension is not None:
             self.dim = dimension
         else:
             self.dim = len(self.center_position)
+
+        if twist is None:
+            if linear_velocity is None:
+                self.twist = ObjectTwist.create_trivial(self.dimension)
+            else:
+                self.twist = ObjectTwist(
+                    linear=linear_velocity,
+                    angular=angular_velocity,
+                )
+        else:
+            self.twist = twist
 
         # Relative Reference point // Dyanmic center
         self.reference_point = np.zeros(self.dim)  # TODO remove and rename
