@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from vartools.angle_math import angle_difference_directional
 from vartools.linalg import get_orthogonal_basis
 from vartools.angle_math import periodic_weighted_sum
-from vartools.states import ObjectPose, ObjectTwist
+from vartools.states import ObjectPose, Twist
 from vartools.directional_space import get_angle_space_inverse
 
 from .hull_storer import ObstacleHullsStorer
@@ -96,7 +96,7 @@ class Obstacle(ABC):
         linear_velocity=None,
         angular_velocity=None,
         pose: Optional[ObjectPose] = None,
-        twist: Optional[ObjectTwist] = None,
+        twist: Optional[Twist] = None,
         tail_effect: bool = True,
         has_sticky_surface: bool = True,
         distance_scaling: float = 1.0,
@@ -130,9 +130,9 @@ class Obstacle(ABC):
 
         if twist is None:
             if linear_velocity is None:
-                self.twist = ObjectTwist.create_trivial(self.dimension)
+                self.twist = Twist.create_trivial(self.dimension)
             else:
-                self.twist = ObjectTwist(
+                self.twist = Twist(
                     linear=linear_velocity,
                     angular=angular_velocity,
                 )
