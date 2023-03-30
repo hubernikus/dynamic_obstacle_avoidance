@@ -91,7 +91,7 @@ class Obstacle(ABC):
 
     def __init__(
         self,
-        center_position: npt.ArrayLike,
+        center_position: Optional[npt.ArrayLike] = None,
         orientation=None,
         linear_velocity=None,
         angular_velocity=None,

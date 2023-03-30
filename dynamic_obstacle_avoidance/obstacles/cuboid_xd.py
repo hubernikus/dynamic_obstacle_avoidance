@@ -225,12 +225,12 @@ class CuboidXd(obstacles.Obstacle):
 
     def get_gamma(
         self,
-        position,
+        position: np.ndarray,
         in_obstacle_frame: bool = True,
         in_global_frame: Optional[bool] = None,
-        margin_absolut=None,
+        margin_absolut: Optional[float] = None,
         is_boundary=None,
-    ):
+    ) -> float:
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
 
