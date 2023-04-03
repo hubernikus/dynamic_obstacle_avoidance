@@ -34,6 +34,13 @@ from .hull_storer import ObstacleHullsStorer
 Vector = np.ndarray
 
 
+def do_velocity_step(obstacle, delta_time) -> None:
+    obstacle.pose.position = delta_time * obstacle.twist.linear + obstacle.pose.position
+    obstacle.pose.orientation = (
+        delta_time * obstacle.twist.angular + obstacle.pose.orientation
+    )
+
+
 class GammaType(Enum):
     """Different gamma-types for caclulation of 'distance' / barrier-measure.
     The gamma value is given in [1 - infinity] outside the obstacle
@@ -131,6 +138,8 @@ class Obstacle(ABC):
         if twist is None:
             if linear_velocity is None:
                 self.twist = Twist.create_trivial(self.dimension)
+                if angular_velocity is not None:
+                    self.twist.angular = angular_velocity
             else:
                 self.twist = Twist(
                     linear=linear_velocity,

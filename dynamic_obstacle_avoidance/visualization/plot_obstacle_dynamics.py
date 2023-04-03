@@ -22,6 +22,7 @@ def plot_obstacle_dynamics(
     show_ticks=True,
     vectorfield_color="blue",
     collision_check_functor: Optional[Callable[[Vector], float]] = None,
+    quiver_scale: int = 50,
 ):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -58,7 +59,7 @@ def plot_obstacle_dynamics(
             velocities[1, :],
             color=vectorfield_color,
             # color="red",
-            scale=50,
+            scale=quiver_scale,
             width=0.007,
             zorder=-1,
         )
@@ -71,7 +72,7 @@ def plot_obstacle_dynamics(
             color=vectorfield_color,
             # color="red",
             # scale=50,
-            zorder=-1,
+            zorder=-2,
         )
     if attractor_position is not None:
         ax.scatter(

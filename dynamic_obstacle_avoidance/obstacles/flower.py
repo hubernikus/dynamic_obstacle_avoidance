@@ -86,6 +86,9 @@ class StarshapedFlower(Obstacle):
     def number_of_edges(self, value):
         self.property_dict["number_of_edges"] = value
 
+    def get_characteristic_length(self):
+        return self.radius_mean + self.radius_magnitude
+
     def get_radius_of_angle(self, angle, in_global_frame=False):
         if in_global_frame:
             angle -= self.orientation
@@ -227,6 +230,8 @@ class StarshapedFlower(Obstacle):
                 return sys.float_info.max
             else:
                 return 0
+
+        mag_position *= self.distance_scaling
 
         radius = self.get_radius_of_angle(np.arctan2(position[1], position[0]))
 
