@@ -23,6 +23,7 @@ def plot_obstacle_dynamics(
     vectorfield_color="blue",
     collision_check_functor: Optional[Callable[[Vector], float]] = None,
     quiver_scale: int = 50,
+    quiver_alpha: float = 1,
 ):
     xx, yy = np.meshgrid(
         np.linspace(x_lim[0], x_lim[1], n_grid),
@@ -60,6 +61,7 @@ def plot_obstacle_dynamics(
             color=vectorfield_color,
             # color="red",
             scale=quiver_scale,
+            alpha=quiver_alpha,
             width=0.007,
             zorder=-1,
         )
