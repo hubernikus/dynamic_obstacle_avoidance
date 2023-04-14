@@ -12,6 +12,7 @@ import math
 import numpy as np
 from numpy import linalg as LA
 
+from vartools.states import Pose
 from vartools.dynamical_systems import plot_dynamical_system_quiver
 import matplotlib.pyplot as plt
 
@@ -225,6 +226,52 @@ def test_normal_inverted(visualize=False):
     ), "For a circle-boundary, we expect opposite normal and reference."
 
 
+def test_gamma_for_general_ellipse(visualize=False):
+    obstacle = EllipseWithAxes(
+        pose=Pose(position=np.array([2.0, 0.8])),
+        axes_length=np.array([2, 1.0]),
+    )
+
+    if visualize:
+        x_lim = [-0.1, 7]
+        y_lim = [-0.1, 4]
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        n_resolution = 100
+
+        pos_x_lim = x_lim
+        pos_y_lim = y_lim
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(pos_x_lim[0], pos_x_lim[1], nx),
+            np.linspace(pos_y_lim[0], pos_y_lim[1], ny),
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros((positions.shape[1]))
+
+        for ii in range(positions.shape[1]):
+            gammas[ii] = obstacle.get_gamma(positions[:, ii], in_global_frame=True)
+
+        cont = ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas.reshape(nx, ny),
+            levels=np.arange(0.0, 10, 1.0),
+            zorder=-2,
+            alpha=0.4,
+        )
+
+    # Two positiosn test_gamma_and_normal
+    position = np.array([2.0, 0.95])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 0 < gamma < 1, "Gamma below 1 inside the obstacle"
+
+    position = np.array([5, 3.0])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 1 < gamma < 10, "Unexpected value outside the obstacle"
+
+
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
@@ -232,6 +279,8 @@ if (__name__) == "__main__":
     # test_gamma_and_normal(visualize=True, n_resolution=20)
     # test_normal_and_reference_directions(visualize=True)
 
-    test_normal_inverted(visualize=True)
+    # test_normal_inverted(visualize=True)
+
+    test_gamma_for_general_ellipse(visualize=True)
 
     # print("Tests done.")

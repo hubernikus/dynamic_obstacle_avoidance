@@ -7,16 +7,16 @@ import math
 import numpy as np
 from numpy import linalg as LA
 
-import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as Rotation
+
+from vartools.states import Pose
+from vartools.math import get_intersection_with_circle, IntersectionType
 
 from dynamic_obstacle_avoidance.obstacles import CuboidXd
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,
     plot_obstacles,
 )
-
-from scipy.spatial.transform import Rotation as Rotation
-from vartools.math import get_intersection_with_circle, IntersectionType
 
 
 def test_gamma_function(n_resolution=10, visualize=False):
@@ -235,8 +235,57 @@ def test_3d_cube_far_away():
     assert normal[0] > 0 and normal[1] < 1 and normal[2] > 0
 
 
+def test_gamma(visualize=False):
+    obstacle = CuboidXd(
+        pose=Pose(position=np.array([5.0, 2.0]), orientation=-10 / 180.0 * math.pi),
+        axes_length=np.array([1.0, 2]),
+    )
+
+    if visualize:
+        x_lim = [-0.1, 7]
+        y_lim = [-0.1, 4]
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        n_resolution = 100
+
+        pos_x_lim = x_lim
+        pos_y_lim = y_lim
+
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(pos_x_lim[0], pos_x_lim[1], nx),
+            np.linspace(pos_y_lim[0], pos_y_lim[1], ny),
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros((positions.shape[1]))
+
+        for ii in range(positions.shape[1]):
+            gammas[ii] = obstacle.get_gamma(positions[:, ii], in_global_frame=True)
+
+        cont = ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas.reshape(nx, ny),
+            levels=np.arange(0.0, 10, 1.0),
+            zorder=-2,
+            alpha=0.4,
+        )
+
+    position = np.array([4.95, 2.22])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 0 < gamma < 1, "Gamma below 1 inside the obstacle"
+
+    position = np.array([2.8, 0.8])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 1 < gamma < 10, "Unexpected value outside the obstacle"
+
+
 if (__name__) == "__main__":
-    test_gamma_function(visualize=True, n_resolution=30)
+    import matplotlib.pyplot as plt
+
+    test_gamma(visualize=True)
+
+    test_gamma_function(visualize=False, n_resolution=30)
 
     test_cube_intersection()
     test_cube_outside_position()

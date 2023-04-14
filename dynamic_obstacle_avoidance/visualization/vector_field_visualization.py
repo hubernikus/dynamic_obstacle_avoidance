@@ -252,6 +252,7 @@ def plot_obstacles(
     x_range=None,
     y_range=None,
     obs=None,
+    zorder_obs=1,
     set_axes: bool = True,
 ):
     """Plot all obstacles & attractors"""
@@ -309,7 +310,7 @@ def plot_obstacles(
             color=linecolor,
             linestyle=border_linestyle,
             alpha=linealpha,
-            zorder=3,
+            zorder=zorder_obs + 1,
         )
 
         if obs.is_boundary:
@@ -340,14 +341,16 @@ def plot_obstacles(
             obs_polygon[n].set_color(np.array([1.0, 1.0, 1.0]))
 
         else:
-            obs_polygon.append(plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=0))
+            obs_polygon.append(
+                plt.Polygon(x_obs, alpha=alpha_obstacle, zorder=zorder_obs)
+            )
 
             # if obstacle_color is None:
             # obs_polygon[n].set_color(np.array([176,124,124])/255)
             # else:
             obs_polygon[n].set_color(obstacle_color)
 
-        obs_polygon_sf.append(plt.Polygon(x_obs_sf, zorder=1, alpha=0.2))
+        obs_polygon_sf.append(plt.Polygon(x_obs_sf, zorder=zorder_obs, alpha=0.2))
         obs_polygon_sf[n].set_color([1, 1, 1])
 
         ax.add_patch(obs_polygon_sf[n])
