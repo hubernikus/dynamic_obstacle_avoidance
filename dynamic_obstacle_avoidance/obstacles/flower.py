@@ -332,7 +332,7 @@ def test_starshape_flower(visualize=False):
         # )
 
 
-def test_gamma_value():
+def test_gamma_value(visualize=False):
     center = np.array([2.2, 0.0])
     obstacle = StarshapedFlower(
         center_position=center,
@@ -344,6 +344,35 @@ def test_gamma_value():
         # tail_effect=False,
         # is_boundary=True,
     )
+
+    if visualize:
+        x_lim = [-1, 5]
+        y_lim = [-3, 3]
+        n_grid = 100
+
+        nx = ny = n_grid
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx),
+            np.linspace(y_lim[0], y_lim[1], ny),
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros(positions.shape[1])
+
+        for pp in range(positions.shape[1]):
+            gammas[pp] = obstacle.get_gamma(positions[:, pp], in_global_frame=True)
+
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacles(obstacle_container=[obstacle], ax=ax, x_lim=x_lim, y_lim=y_lim)
+
+        ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas.reshape(nx, ny),
+            levels=np.linspace(1, 10.0, 19),
+            extend="both",
+            zorder=-2,
+            cmap="Blues",
+        )
 
     # Test gamma a bit away from the center
     gamma_value = obstacle.get_gamma(center + 0.1, in_global_frame=True)
@@ -372,7 +401,7 @@ def test_radius_computation():
 
 if (__name__) == "__main__":
     # test_starshape_flower(visualize=True)
-    test_gamma_value()
+    test_gamma_value(visualize=True)
     # test_radius_computation()
 
     print("Tests done.")

@@ -36,6 +36,7 @@ def plot_obstacle_dynamics(
         for pp in range(positions.shape[1]):
             if collision_check_functor(positions[:, pp]):
                 continue
+
             velocities[:, pp] = dynamics(positions[:, pp])
 
     elif len(obstacle_container):
