@@ -257,9 +257,9 @@ class Obstacle(ABC):
         return reference_point_temp
 
     def is_reference_point_inside(self):
+        ref_extended = self.get_reference_point_with_margin()
         try:
             # Some legacy code which can not easily be adapted..
-            ref_extended = self.get_reference_point_with_margin()
             return (
                 self.get_gamma(
                     ref_extended,
@@ -554,11 +554,11 @@ class Obstacle(ABC):
     def margin_absolut(self, value):
         self._margin_absolut = value
 
-        if not self.is_reference_point_inside():
-            try:
+        try:
+            if not self.is_reference_point_inside():
                 self.extend_hull_around_reference()
-            except:
-                warnings.warn("We're not automatically extending the reference-hull.")
+        except:
+            warnings.warn("We're not automatically extending the reference-hull.")
 
     def mirror_local_position_on_boundary(
         self,

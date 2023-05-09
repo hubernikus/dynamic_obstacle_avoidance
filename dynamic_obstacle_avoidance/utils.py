@@ -5,6 +5,7 @@ Varios tools and uitls for advanced obstacle-avoidance-library
 # Date 2018-02-15
 
 import warnings
+from typing import Optional
 
 import numpy as np
 import numpy.linalg as LA
@@ -31,8 +32,8 @@ def get_relative_obstacle_velocity(
     obstacle_list,
     E_orth: np.ndarray,
     weights: list,
-    ind_obstacles: int = None,
-    gamma_list: list = None,
+    ind_obstacles: Optional[int] = None,
+    gamma_list: Optional[list] = None,
     cut_off_gamma: float = 1e4,
     velocity_only_in_positive_normal_direction: bool = True,
     normal_weight_factor: float = 1.3,
