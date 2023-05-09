@@ -151,7 +151,7 @@ def compute_decomposition_matrix(obs, x_t, in_global_frame=False, dot_margin=0.0
 
 
 def compute_modulation_matrix(
-    x_t, obs, matrix_singularity_margin=pi / 2.0 * 1.05, angular_vel_weight=0
+    x_t, obs, matrix_singularity_margin=np.pi / 2.0 * 1.05, angular_vel_weight=0
 ):
     # TODO: depreciated remove
     """

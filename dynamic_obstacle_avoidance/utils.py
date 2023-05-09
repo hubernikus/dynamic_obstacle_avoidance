@@ -8,7 +8,7 @@ import warnings
 
 import numpy as np
 import numpy.linalg as LA
-from numpy import pi
+import numpy.typing as npt
 
 from vartools.angle_math import *
 from vartools.linalg import get_orthogonal_basis
@@ -176,8 +176,8 @@ def get_radius_ellipsoid(x_t, a=[], ob=[]):
 
     if x_t[0]:  # nonzero value
         rat_x1_x2 = x_t[1] / x_t[0]
-        x_1_val = np.sqrt(1.0 / (1.0 / a[0] ** 2 + 1.0 * rat_x1_x2**2 / a[1] ** 2))
-        return x_1_val * np.sqrt(1 + rat_x1_x2**2)
+        x_1_val = np.sqrt(1.0 / (1.0 / a[0] ** 2 + 1.0 * rat_x1_x2 ** 2 / a[1] ** 2))
+        return x_1_val * np.sqrt(1 + rat_x1_x2 ** 2)
     else:
         return a[1]
 
@@ -230,7 +230,7 @@ def get_radius(vec_point2ref, vec_cent2ref=[], a=[], obs=[]):
     # plt.plot([obs.center_dyn[0], obs.center_dyn[0]+dir_surf_cone[0,i]], [obs.center_dyn[1], obs.center_dyn[1]+dir_surf_cone[1,i]], color_set[i])
     # plt.show()
 
-    ang_tot = pi / 2
+    ang_tot = np.pi / 2
     for ii in range(12):  # n_iter
         rotMat = np.array(
             [
@@ -331,12 +331,11 @@ def compute_eigenvalueMatrix(Gamma, rho=1, dim=2, radialContuinity=True):
 
 
 def compute_weights(
-    distMeas,
-    N=0,
-    distMeas_lowerLimit=1,
-    weightType="inverseGamma",
-    weightPow=2,
-):
+    distMeas: npt.ArrayLike,
+    # N=0,
+    distMeas_lowerLimit: float = 1,
+    weightPow: float = 1,
+) -> np.ndarray:
     """Compute weights based on a distance measure (with no upper limit)"""
     distMeas = np.array(distMeas)
     n_points = distMeas.shape[0]
@@ -353,14 +352,13 @@ def compute_weights(
             w = critical_points * 1.0 / np.sum(critical_points)
             return w
 
-    if weightType == "inverseGamma":
-        distMeas = distMeas - distMeas_lowerLimit
-        w = (1 / distMeas) ** weightPow
-        if np.sum(w) == 0:
-            return w
-        w = w / np.sum(w)  # Normalization
-    else:
-        warnings.warn("Unkown weighting method.")
+    distMeas = distMeas - distMeas_lowerLimit
+    w = (1 / distMeas) ** weightPow
+    if np.sum(w) == 0:
+        return w
+
+    w = w / np.sum(w)  # Normalization
+
     return w
 
 
@@ -514,7 +512,7 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
     A_ = edge_point[0] ** 2 - axes[0] ** 2
     B_ = -2 * edge_point[0] * edge_point[1]
     C_ = edge_point[1] ** 2 - axes[1] ** 2
-    D_ = B_**2 - 4 * A_ * C_
+    D_ = B_ ** 2 - 4 * A_ * C_
 
     if D_ < 0:
         # print(edge_point)
@@ -591,7 +589,7 @@ def get_reference_weight(
 
     dist_temp = distance[ind_range]
     weights = 1 / (dist_temp - distance_min) - 1 / (distance_max - distance_min)
-    weights = weights**weight_pow
+    weights = weights ** weight_pow
 
     # Normalize
     weights = weights / np.sum(weights)
