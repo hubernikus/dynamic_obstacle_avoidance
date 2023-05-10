@@ -18,6 +18,7 @@ import numpy as np
 import numpy.linalg as LA
 import numpy.typing as npt
 
+import shapely
 from scipy.spatial.transform import Rotation
 
 import matplotlib.pyplot as plt
@@ -1102,3 +1103,19 @@ class Obstacle(ABC):
 
     def get_distance_to_hullEdge(self, position, hull_edge=None):
         raise NotImplementedError()
+
+
+def get_intersection_position(
+    obstacle1: Obstacle, obstacle2: Obstacle
+) -> Optional[np.ndarray]:
+    # xy = obstacle1.get_boundary_with_margin_xy()
+    # breakpoint()
+    polygon1 = shapely.Polygon(obstacle1.get_boundary_with_margin_xy().T)
+    polygon2 = shapely.Polygon(obstacle2.get_boundary_with_margin_xy().T)
+    intersection = shapely.intersection(polygon1, polygon2)
+
+    if intersection.is_empty:
+        return None
+
+    center = intersection.centroid
+    return np.array([center.x, center.y])

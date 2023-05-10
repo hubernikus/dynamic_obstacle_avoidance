@@ -3,6 +3,7 @@ The :mod:`obstacles` module implements various types of obstacles.
 """
 # Various Obstacle Descriptions
 from ._base import Obstacle, GammaType
+from ._base import get_intersection_position
 from .ellipse import Ellipse, Sphere, CircularObstacle
 from .polygon import Polygon
 from .cuboid import Cuboid
@@ -34,4 +35,5 @@ __all__ = [
     "CuboidXd",
     "EllipseWithAxes",
     "HyperSphere",
+    "get_intersection_position",
 ]

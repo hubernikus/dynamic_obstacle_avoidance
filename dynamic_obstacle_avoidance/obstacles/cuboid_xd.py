@@ -114,7 +114,9 @@ class CuboidXd(obstacles.Obstacle):
         cuboid = self.get_shapely()
         return cuboid.exterior.xy
 
-    def get_boundary_with_margin_xy(self, in_obstacle_frame: bool = False):
+    def get_boundary_with_margin_xy(
+        self, in_obstacle_frame: bool = False
+    ) -> np.ndarray:
         if in_obstacle_frame:
             raise NotImplementedError()
 
@@ -124,7 +126,8 @@ class CuboidXd(obstacles.Obstacle):
         else:
             cuboid = cuboid.buffer(self.margin_absolut)
 
-        return cuboid.exterior.xy
+        # return cuboid.exterior.xy
+        return np.array([cuboid.exterior.xy[0], cuboid.exterior.xy[1]])
 
     def get_normal_direction(
         self, position, in_obstacle_frame: bool = True, in_global_frame: bool = None

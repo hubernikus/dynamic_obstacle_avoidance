@@ -14,7 +14,7 @@ from vartools.dynamical_systems import DynamicalSystem
 
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
 from dynamic_obstacle_avoidance.utils import get_orthogonal_basis
-from dynamic_obstacle_avoidance.utils import *
+from dynamic_obstacle_avoidance.utils import compute_weights
 
 from .base_avoider import BaseAvoider
 
@@ -86,7 +86,8 @@ def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):
             relative_velocity_hat[:, n] * relative_velocity_norm * eigenvalue_magnitude
         )
 
-        if not evaluate_in_global_frame:
+        # if not evaluate_in_global_frame:
+        if False:
             relative_velocity_hat[:, n] = obs[n].transform_relative2global_dir(
                 relative_velocity_hat[:, n]
             )
@@ -177,17 +178,14 @@ def compute_modulation_matrix(
     warnings.warn("Depreciated ---- remove")
     dim = obs.dim
 
-    if hasattr(obs, "rho"):
-        rho = np.array(obs.rho)
-    else:
-        rho = 1
+    # if hasattr(obs, "rho"):
+    #     rho = np.array(obs.rho)
+    # else:
+    #     rho = 1
 
     Gamma = obs.get_gamma(x_t, in_global_frame=False)  # function for ellipsoids
 
     E, E_orth = compute_decomposition_matrix(obs, x_t, dim)
-    import pdb
-
-    pbd.set_trace()
     D = compute_diagonal_matrix(
         Gamma,
         dim=dim,
@@ -273,7 +271,7 @@ def obs_avoidance_interpolation_moving(
     if any(~ind_obs):
         return initial_velocity
 
-    weight = compute_weights(Gamma, N_obs)
+    weight = compute_weights(Gamma)
 
     # Modulation matrices
     E = np.zeros((dim, dim, N_obs))
