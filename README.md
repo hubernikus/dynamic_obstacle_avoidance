@@ -1,7 +1,7 @@
 # ObstacleAvoidance Algorithm
 ---
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
-
 ---
 This package contains a dynamic obstacle avoidance algorithm for concave and convex obstacles as developped in [1] and [2]. The Code is still in alpha version.
 ---
