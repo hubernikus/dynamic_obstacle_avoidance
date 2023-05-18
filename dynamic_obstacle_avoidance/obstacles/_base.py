@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 from vartools.angle_math import angle_difference_directional
 from vartools.linalg import get_orthogonal_basis
 from vartools.angle_math import periodic_weighted_sum
-from vartools.states import ObjectPose, Twist
+from vartools.states import Pose, Twist
 from vartools.directional_space import get_angle_space_inverse
 
 from .hull_storer import ObstacleHullsStorer
@@ -103,7 +103,7 @@ class Obstacle(ABC):
         orientation=None,
         linear_velocity=None,
         angular_velocity=None,
-        pose: Optional[ObjectPose] = None,
+        pose: Optional[Pose] = None,
         twist: Optional[Twist] = None,
         tail_effect: bool = True,
         has_sticky_surface: bool = True,
@@ -126,7 +126,7 @@ class Obstacle(ABC):
         self.is_boundary = is_boundary
 
         if pose is None:
-            self.pose = ObjectPose(position=center_position, orientation=orientation)
+            self.pose = Pose(position=center_position, orientation=orientation)
         else:
             self.pose = pose
 
@@ -200,6 +200,8 @@ class Obstacle(ABC):
 
         # Scaling of the absolut-ellipse-distances
         self.distance_scaling = distance_scaling
+
+        # breakpoint()
 
     def __del__(self):
         Obstacle.active_counter -= 1
@@ -307,15 +309,18 @@ class Obstacle(ABC):
         self._reference_point = value
 
     @property
-    def orientation(self) -> float:
+    def orientation(self) -> float | Rotation:
         """Returns the basic orientation"""
         if self.pose.orientation is None:
-            return 0
-        else:
-            return self.pose.orientation
+            if self.dimension == 2:
+                return 0.0
+            elif self.dimension == 3:
+                return Rotation.from_euler("x", 0.0)
+
+        return self.pose.orientation
 
     @orientation.setter
-    def orientation(self, value: float) -> None:
+    def orientation(self, value: float | Rotation) -> None:
         self.pose.orientation = value
 
     @property
