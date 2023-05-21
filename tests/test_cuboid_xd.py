@@ -280,11 +280,38 @@ def test_gamma(visualize=False):
     assert 1 < gamma < 10, "Unexpected value outside the obstacle"
 
 
+def test_normal_with_margin(visualize=False):
+    obstacle = CuboidXd(
+        pose=Pose(np.array([1.55, -1.45]), orientation=1.5707963267948966),
+        axes_length=np.array([4.5, 0.4]),
+        margin_absolut=0.5,
+    )
+    obstacle.set_reference_point(np.array([1.55, -3.5]), in_global_frame=True)
+    position = np.array([0.8499904639878112, -0.03889134570119339])
+
+    if visualize:
+        fig, ax = plt.subplots(figsize=(5, 4))
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=[obstacle],
+            x_lim=[-6.5, 6.5],
+            y_lim=[-5.5, 5.5],
+        )
+        # Check all normal directions
+        ax.plot(position[0], position[1], "ok")
+        normal = obstacle.get_normal_direction(position, in_global_frame=True)
+        ax.arrow(position[0], position[1], normal[0], normal[1], color=colors[ii])
+
+    normal = obstacle.get_normal_direction(position, in_global_frame=True)
+    assert np.allclose(normal, [-1, 0], atol=1e-3)
+
+
 if (__name__) == "__main__":
     import matplotlib.pyplot as plt
 
-    test_gamma(visualize=True)
+    test_normal_with_margin(visualize=False)
 
+    test_gamma(visualize=False)
     test_gamma_function(visualize=False, n_resolution=30)
 
     test_cube_intersection()

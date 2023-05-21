@@ -144,10 +144,10 @@ class CuboidXd(obstacles.Obstacle):
 
         if np.isclose(self.get_gamma(position, in_global_frame=False), 1.0):
             ind_close = np.isclose(np.abs(position), self.axes_with_margin * 0.5)
-
             if not np.any(ind_close):
-                normal = np.abs(position) - self.axes_with_margin * 0.5
-                normal = np.copysign(normal / LA.norm(normal), normal, position)
+                normal = 1 / (np.abs(position) - self.axes_with_margin * 0.5)
+                # normal = np.copysign(normal / LA.norm(normal), normal, position)
+                normal = np.copysign(normal / LA.norm(normal), position)
             else:
                 normal = np.copysign((ind_close / LA.norm(ind_close)), position)
 
