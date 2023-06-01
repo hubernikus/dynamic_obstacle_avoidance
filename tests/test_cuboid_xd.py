@@ -306,8 +306,18 @@ def test_normal_with_margin(visualize=False):
     assert np.allclose(normal, [-1, 0], atol=1e-3)
 
 
+def test_cube_3d_creation():
+    cube = CuboidXd(
+        center_position=np.array([0.5, 0.0, -1.0]),
+        axes_length=np.array([0.5, 2.5, 1.0]),
+    )
+    assert np.allclose(cube.orientation.as_euler("xyz"), [0, 0, 0])
+
+
 if (__name__) == "__main__":
     import matplotlib.pyplot as plt
+
+    test_cube_3d_creation()
 
     test_normal_with_margin(visualize=False)
 
