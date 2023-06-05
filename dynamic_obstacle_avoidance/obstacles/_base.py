@@ -200,6 +200,8 @@ class Obstacle(ABC):
 
         # Scaling of the absolut-ellipse-distances
         self.distance_scaling = distance_scaling
+        if distance_scaling <= 0:
+            raise ValueError("Distance scaling needs to be positive.")
 
         # breakpoint()
 

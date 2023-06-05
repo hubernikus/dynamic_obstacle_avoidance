@@ -7,6 +7,7 @@ Test normal formation
 # Email: lukas.huber@epfl.ch
 
 import unittest
+import pytest
 import math
 
 import numpy as np
@@ -272,6 +273,16 @@ def test_gamma_for_general_ellipse(visualize=False):
     assert 1 < gamma < 10, "Unexpected value outside the obstacle"
 
 
+def test_zero_scaling():
+    with pytest.raises(Exception) as e_info:
+        obstacle = EllipseWithAxes(
+            center_position=np.array([-1.0, 0]),
+            axes_length=np.array([1.0, 1.0]),
+            margin_absolut=0.0,
+            distance_scaling=0,
+        )
+
+
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
@@ -281,6 +292,7 @@ if (__name__) == "__main__":
 
     # test_normal_inverted(visualize=True)
 
-    test_gamma_for_general_ellipse(visualize=True)
+    # test_gamma_for_general_ellipse(visualize=True)
+    test_zero_scaling()
 
     # print("Tests done.")
