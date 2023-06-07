@@ -173,8 +173,8 @@ class EllipseWithAxes(obstacles.Obstacle):
         if self.is_boundary:
             gamma = 1 / gamma
 
-        if np.any(np.isnan(gamma)):
-            breakpoint()
+        # if np.any(np.isnan(gamma)):
+        #     breakpoint()
         return gamma
 
     def get_local_radius(

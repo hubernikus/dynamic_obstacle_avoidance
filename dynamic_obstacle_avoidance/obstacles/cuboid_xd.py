@@ -3,21 +3,16 @@
 # Email lukas.huber@epfl.ch
 # License BSD
 
-# import warnings
+import warnings
 from typing import Optional
-
 import math
 
 import numpy as np
-
-# from numpy import linalg
 from numpy import linalg as LA
 
 import shapely
 
-# from vartools import linalg
 from vartools.math import get_intersection_with_circle, IntersectionType
-
 from dynamic_obstacle_avoidance import obstacles
 
 
@@ -234,6 +229,11 @@ class CuboidXd(obstacles.Obstacle):
         margin_absolut: Optional[float] = None,
         is_boundary=None,
     ) -> float:
+        if np.linalg.norm(position) > 1e100:
+            # If it's too far away -> just zero to avoid numerical errors
+            warnings.warn("Far away position set to zero.")
+            return 1e100
+
         if in_global_frame is not None:
             in_obstacle_frame = not (in_global_frame)
 
