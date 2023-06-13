@@ -283,6 +283,29 @@ def test_zero_scaling():
         )
 
 
+def test_surface_intersection():
+    obs_parent = EllipseWithAxes(
+        center_position=np.array([0.0, 0.0]),
+        axes_length=np.array([8.0, 3.0]),
+        margin_absolut=0.0,
+    )
+    # New point
+    ref_point = np.array([3.14870718, 0.22619749])
+    ref_dir = np.array([0.12995589, 0.69484013])
+    intersection = obs_parent.get_intersection_with_surface(
+        ref_point, ref_dir, in_global_frame=True
+    )
+    assert intersection[1] > 0, "Intersection from top."
+
+    # Another point
+    ref_dir = np.array([-0.9687606225511964, 5.500795175825852])
+    ref_point = np.array([3.148707177499165, 0.2261974908738309])
+    intersection = obs_parent.get_intersection_with_surface(
+        ref_point, ref_dir, in_global_frame=True
+    )
+    assert intersection[1] > 0, "Intersection from top."
+
+
 if (__name__) == "__main__":
     # test_surface_point_for_equal_axes()
     # test_gamma_for_circular_ellipse()
@@ -293,6 +316,7 @@ if (__name__) == "__main__":
     # test_normal_inverted(visualize=True)
 
     # test_gamma_for_general_ellipse(visualize=True)
-    test_zero_scaling()
+    # test_zero_scaling()
 
-    # print("Tests done.")
+    test_surface_intersection()
+    print("Tests done.")

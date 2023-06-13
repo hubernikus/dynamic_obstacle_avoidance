@@ -297,7 +297,7 @@ class EllipseWithAxes(obstacles.Obstacle):
         start_position: np.ndarray,
         direction: np.ndarray,
         in_global_frame: bool = False,
-        intersection_type=CircleIntersectionType.CLOSE,
+        intersection_type: Optional[CircleIntersectionType] = None,
     ) -> Optional[np.ndarray]:
         if in_global_frame:
             # Currently only implemented for ellipse
@@ -309,12 +309,36 @@ class EllipseWithAxes(obstacles.Obstacle):
         rel_dir = direction / self.axes_with_margin
 
         # Intersection with unit circle
-        surface_rel_pos = get_intersection_with_circle(
-            start_position=rel_pos,
-            direction=rel_dir,
-            radius=0.5,
-            intersection_type=intersection_type,
-        )
+        if intersection_type is not None:
+            surface_rel_pos = get_intersection_with_circle(
+                start_position=rel_pos,
+                direction=rel_dir,
+                radius=0.5,
+                intersection_type=intersection_type,
+            )
+
+        elif np.linalg.norm(rel_pos) < 1.0:
+            # Get positive direction [FAR == CLOSE]
+            surface_rel_pos = get_intersection_with_circle(
+                start_position=rel_pos,
+                direction=rel_dir,
+                radius=0.5,
+                intersection_type=CircleIntersectionType.FAR,
+            )
+
+            # if np.dot(surface_rel_positions[:, 0] - rel_pos, rel_dir) >= 0:
+            #     surface_rel_pos = surface_rel_positions[:, 0]
+            # else:
+            #     surface_rel_pos = surface_rel_positions[:, 1]
+
+        else:
+            # Outside
+            surface_rel_pos = get_intersection_with_circle(
+                start_position=rel_pos,
+                direction=rel_dir,
+                radius=0.5,
+                intersection_type=CircleIntersectionType.CLOSE,
+            )
 
         if surface_rel_pos is None:
             return None
