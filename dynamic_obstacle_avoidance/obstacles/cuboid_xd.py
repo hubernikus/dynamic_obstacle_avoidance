@@ -228,6 +228,7 @@ class CuboidXd(obstacles.Obstacle):
         in_global_frame: Optional[bool] = None,
         margin_absolut: Optional[float] = None,
         is_boundary=None,
+        boundary_power_factor: int | float = 1,
     ) -> float:
         if np.linalg.norm(position) > 1e100:
             # If it's too far away -> just zero to avoid numerical errors
@@ -243,24 +244,18 @@ class CuboidXd(obstacles.Obstacle):
             margin_absolut=margin_absolut,
         )
 
-        # Allow to have various behavior
+        # Apply distance scaling beforehand
         distance_surface = distance_surface * self.distance_scaling
 
         is_boundary = is_boundary or self.is_boundary
         if distance_surface < 0:
-            # or (distance_surface > 0  and not is_boundary)):
-            self.boundary_power_factor = 1
+            # or (distance_surface > 0 and not is_boundary)):
             distance_center = LA.norm(position)
             gamma = distance_center / (distance_center - distance_surface)
-
-            # gamma = distance_center / (distance_center - distance_surface)
-
-            # print("gamma boundary", gamma)
-            # gamma = (1 - gamma) ** self.boundary_power_factor
-            gamma = gamma**self.boundary_power_factor
+            gamma = gamma**boundary_power_factor
 
         else:
-            gamma = distance_surface * self.distance_scaling + 1
+            gamma = distance_surface + 1
 
         if is_boundary:
             return 1 / gamma

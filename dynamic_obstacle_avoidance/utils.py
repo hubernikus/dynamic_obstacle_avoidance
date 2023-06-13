@@ -357,6 +357,7 @@ def compute_weights(
         return w
 
     w = w / np.sum(w)  # Normalization
+    breakpoint()
 
     return w
 
