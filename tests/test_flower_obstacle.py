@@ -24,7 +24,6 @@ from vartools.dynamical_systems import LinearSystem
 from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
 
 
-
 def test_gamma_value(visualize=False):
     center = np.array([2.2, 0.0])
     obstacle = StarshapedFlower(
@@ -55,17 +54,24 @@ def test_gamma_value(visualize=False):
             gammas[pp] = obstacle.get_gamma(positions[:, pp], in_global_frame=True)
 
         fig, ax = plt.subplots(figsize=(5, 4))
-        plot_obstacles(obstacle_container=[obstacle], ax=ax, x_lim=x_lim, y_lim=y_lim)
+        plot_obstacles(
+            obstacle_container=[obstacle],
+            ax=ax,
+            x_lim=x_lim,
+            y_lim=y_lim,
+            alpha_obstacle=0.0,
+        )
 
-        ax.contourf(
+        cs = ax.contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
             gammas.reshape(nx, ny),
-            levels=np.linspace(1, 10.0, 19),
+            levels=np.linspace(0, 10.0, 21),
             extend="both",
             zorder=-2,
-            cmap="Blues",
+            # cmap="Blues",
         )
+        cbar = fig.colorbar(cs)
 
     # Test gamma a bit away from the center
     gamma_value = obstacle.get_gamma(center + 0.1, in_global_frame=True)
@@ -156,12 +162,75 @@ def test_normal_direction(visualize=False):
     assert np.dot(reference, normal) < 0, " Normal opposing the reference."
 
 
+def test_gamma_with_scaling(visualize=False):
+    attractor_position = np.array([0.0, 0.0])
+
+    obstacle = StarshapedFlower(
+        center_position=np.array([2.2, 0.0]),
+        radius_magnitude=0.3,
+        number_of_edges=4,
+        radius_mean=0.75,
+        orientation=33 / 180 * math.pi,
+        # distance_scaling=0.5,
+        distance_scaling=2.0,
+        # tail_effect=False,
+        # is_boundary=True,
+    )
+
+    if visualize:
+        x_lim = [-0.1, 3.5]
+        y_lim = [-1.5, 1.5]
+        figsize = (10, 8)
+        n_resolution = 100
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Create points
+        nx = ny = n_resolution
+        x_vals, y_vals = np.meshgrid(
+            np.linspace(x_lim[0], x_lim[1], nx), np.linspace(y_lim[0], y_lim[1], ny)
+        )
+        positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
+        gammas = np.zeros(positions.shape[1])
+
+        for pp in range(positions.shape[1]):
+            gammas[pp] = obstacle.get_gamma(positions[:, pp], in_global_frame=True)
+
+        cs = ax.contourf(
+            positions[0, :].reshape(nx, ny),
+            positions[1, :].reshape(nx, ny),
+            gammas.reshape(nx, ny),
+            levels=np.linspace(0, 10, 21),
+            extend="max",
+            zorder=-1,
+        )
+        cbar = fig.colorbar(cs)
+
+        plot_obstacles(
+            ax=ax,
+            obstacle_container=[obstacle],
+            alpha_obstacle=0.0,
+            draw_reference=True,
+            draw_center=False,
+        )
+
+    position = np.array([2.0, 0.18])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 0 < gamma < 1, "Inside obstacle gamma-value < 1."
+
+    position = np.array([1.7, 0.8])
+    gamma = obstacle.get_gamma(position, in_global_frame=True)
+    assert 0 < gamma < 1, "Inside obstacle gamma-value < 1."
+
+
 if (__name__) == "__main__":
     # test_starshape_flower(visualize=True)
-    # test_gamma_value(visualize=True)
+    # test_gamma_value(visualize=False)
     # test_radius_computation()
 
     # test_surface_intersection(visualize=False)
-    test_normal_direction(visualize=True)
+    # test_normal_direction(visualize=True)
+
+    test_gamma_with_scaling(visualize=False)
 
     print("Tests done.")

@@ -111,7 +111,6 @@ class StarshapedFlower(Obstacle):
         direction: np.ndarray,
         in_global_frame: bool = False,
     ) -> Optional[np.ndarray]:
-
         # Make sure it's normalized
         direction = direction / np.linalg.norm(direction)
 
@@ -259,23 +258,26 @@ class StarshapedFlower(Obstacle):
             else:
                 return 0
 
-        mag_position *= self.distance_scaling
-
         radius = self.get_radius_of_angle(np.arctan2(position[1], position[0]))
 
         # TODO extend rule to include points with Gamma < 1 for both cases
         if self.is_boundary:
             # Gamma = 1 / Gamma
-            return radius / mag_position
+            gamma = radius / mag_position
+            gamma = gamma**self.distance_scaling
+
         elif mag_position < radius:
-            return mag_position / radius
+            # Inside & no boundary
+            gamma = mag_position / radius
+            # TODO: is this scaling really the best thing / corresponding to the outside(?)
+            gamma = gamma**self.distance_scaling
+
         else:
-            return mag_position - radius + 1
+            # Outside & no boundary
+            delta_dist = mag_position - radius
+            gamma = delta_dist * self.distance_scaling + 1
 
-        # if gamma_distance is not None:
-        #     warnings.warn("Implement linear gamma type.")
-
-        # return Gamma
+        return gamma
 
     def get_normal_direction(self, position, in_global_frame=False):
         if in_global_frame:
