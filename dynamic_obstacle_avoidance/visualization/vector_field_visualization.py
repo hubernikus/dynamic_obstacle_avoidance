@@ -441,10 +441,15 @@ def plot_obstacles(
     return ax
 
 
-def Simulation_vectorFields(
+def Simulation_vectorFields(*args, **kwargs):
+    return visualize_vectorfield(*args, **kwargs)
+
+
+def visualize_vectorfield(
     x_range=[0, 10],
     y_range=[0, 10],
     point_grid=10,
+    environment=None,
     obstacle_list=None,
     x_lim=None,  # For future replacement
     y_lim=None,  # For future replacement
@@ -488,8 +493,9 @@ def Simulation_vectorFields(
     """
     # TODO: gamma ditance does not fit as paramtere here (since not visual)...
     if obs is not None:
-        warnings.warn("'obs' argument is depreciated.")
-        obstacle_list = obs
+        raise ValueError("'obs' argument is depreciated use 'environment' instead.")
+    elif environment is not None:
+        obs = environment
     else:
         obs = obstacle_list
 
