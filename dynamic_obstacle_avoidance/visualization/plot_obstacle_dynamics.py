@@ -37,7 +37,6 @@ def plot_obstacle_dynamics(
         for pp in range(positions.shape[1]):
             if collision_check_functor(positions[:, pp]):
                 continue
-
             velocities[:, pp] = dynamics(positions[:, pp])
 
     elif len(obstacle_container):
@@ -77,7 +76,8 @@ def plot_obstacle_dynamics(
             color=vectorfield_color,
             # color="red",
             # scale=50,
-            zorder=-2,
+            zorder=-3,
+            **kwargs_quiver,
         )
     if attractor_position is not None:
         ax.scatter(
