@@ -117,6 +117,7 @@ class Obstacle(ABC):
         dimension: Optional[int] = None,
         is_boundary: bool = False,
         relative_hull_extension_margin: float = 0.1,
+        relative_reference_point: Optional[np.ndarray] = None,
     ):
         if name is None:
             self.name = f"obstacle_{Obstacle.id_counter}"
@@ -150,7 +151,10 @@ class Obstacle(ABC):
             self.twist = twist
 
         # Relative Reference point // Dyanmic center
-        self.reference_point = np.zeros(self.dim)  # TODO remove and rename
+        if relative_reference_point is None:
+            self.reference_point = np.zeros(self.dim)  # TODO remove and rename
+        else:
+            self.reference_point = relative_reference_point
 
         self.relative_hull_extension_margin = relative_hull_extension_margin
 
