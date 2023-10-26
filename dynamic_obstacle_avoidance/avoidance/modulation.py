@@ -46,6 +46,17 @@ class ModulationAvoider(BaseAvoider):
             position, velocity, self.obstacle_environment
         )
 
+    def evaluate_normalized(self, position: np.ndarray) -> np.ndarray:
+        """Obstacle avoidance based on 'local' rotation and the directional weighted mean."""
+        velocity = self.initial_dynamics.evaluate(position)
+
+        avoidance_velocity = self.avoid(position, velocity)
+        avoidance_norm = np.linalg.norm(avoidance_velocity)
+        if avoidance_norm <= 0:
+            return avoidance_velocity
+
+        return avoidance_velocity / avoidance_norm * np.linalg.norm(velocity)
+
 
 def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):
     # TODO: test & review sticky surface feature [!]
