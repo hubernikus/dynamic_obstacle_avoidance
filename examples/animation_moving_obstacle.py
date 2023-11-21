@@ -208,7 +208,7 @@ def run_stationary_point_avoiding_dynamic_robot():
         y_lim=[-2.1, 2.1],
     )
 
-    my_animation.run(save_animation=True)
+    my_animation.run(save_animation=False)
 
 
 if (__name__) == "__main__":

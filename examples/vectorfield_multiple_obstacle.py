@@ -59,7 +59,7 @@ def simple_vectorfield():
         x_lim,
         y_lim,
         point_grid=100,
-        obs=obstacle_environment,
+        environment=obstacle_environment,
         pos_attractor=initial_dynamics.attractor_position,
         dynamical_system=initial_dynamics.evaluate,
         noTicks=True,

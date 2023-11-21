@@ -53,7 +53,7 @@ def multiple_cross_vectorfiel():
         x_lim,
         y_lim,
         point_grid=100,
-        obs=environment,
+        environment=environment,
         pos_attractor=initial_dynamics.attractor_position,
         dynamical_system=initial_dynamics.evaluate,
         noTicks=True,

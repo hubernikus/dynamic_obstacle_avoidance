@@ -124,7 +124,7 @@ def vectorfield_single_obstacle():
         x_lim,
         y_lim,
         point_grid=n_resolution,
-        obs=obstacle_environment,
+        environment=obstacle_environment,
         pos_attractor=initial_dynamics.attractor_position,
         dynamical_system=initial_dynamics.evaluate,
         noTicks=True,
