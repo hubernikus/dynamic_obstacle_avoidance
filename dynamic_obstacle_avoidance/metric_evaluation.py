@@ -8,7 +8,6 @@ import numpy as np
 
 # Only one should be relevant
 import json
-import yaml
 
 import warnings
 
@@ -300,11 +299,9 @@ class MetricEvaluator:
 
             # Dialog input libraries
             if sys.version_info > (3, 0):  # TODO: remove in future
-                import tkinter as tk
-                from tkinter import simpledialog
+                pass
             else:
-                import Tkinter as tk
-                from Tkinter import simpledialog
+                pass
             # Self converged
 
             # ROOT = tk.Tk()
@@ -318,4 +315,4 @@ class MetricEvaluator:
         # documents = yaml.dump(value, file)
 
         with open(file_name + ".json", "w") as file:
-            documents = json.dump(value, file)
+            json.dump(value, file)

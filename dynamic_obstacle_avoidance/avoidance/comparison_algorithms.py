@@ -9,7 +9,6 @@ Obstacle avoidance for star-shaped obstacle in linear DS
 import warnings
 
 import numpy as np
-import matplotlib.pyplot as plt  # TODO: remove for production
 
 from .modulation import compute_diagonal_matrix, compute_decomposition_matrix
 from dynamic_obstacle_avoidance.utils import compute_weights
@@ -143,7 +142,7 @@ def obs_avoidance_orthogonal_moving(
 
     xd_norm = np.linalg.norm(xd)
     if xd_norm:
-        xd_normalized = xd / xd_norm
+        xd / xd_norm
     else:
         return xd  # Trivial solution
 

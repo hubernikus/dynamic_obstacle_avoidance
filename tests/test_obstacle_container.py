@@ -9,7 +9,6 @@ from math import pi
 from dynamic_obstacle_avoidance.obstacles import Ellipse, Cuboid
 from dynamic_obstacle_avoidance.containers import GradientContainer
 
-import pytest
 
 
 def test_obstacle_container_appending():

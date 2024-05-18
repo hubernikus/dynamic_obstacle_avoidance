@@ -3,18 +3,12 @@
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
-import time
-import os
-import datetime
 from math import pi
 
 import numpy as np
 
 import matplotlib.pyplot as plt
-import matplotlib
-from matplotlib import animation
 
-from dynamic_obstacle_avoidance.obstacles import Polygon
 
 # from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
@@ -136,7 +130,7 @@ def simple_point_robot():
         )
     )
 
-    initial_dynamics = LinearSystem(
+    LinearSystem(
         attractor_position=np.array([2.0, 1.8]),
         maximum_velocity=1,
         distance_decrease=0.3,

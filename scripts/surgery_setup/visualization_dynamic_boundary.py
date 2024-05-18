@@ -20,7 +20,7 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon im
 
 def test_obstacle_list_creation():
     """Create obstacle list"""
-    obs = GradientContainer()  # create empty obstacle list
+    GradientContainer()  # create empty obstacle list
 
     pass
 
@@ -81,7 +81,7 @@ def visualization_gamma(z_val=None):
         alpha=0.6,
         zorder=-3,
     )
-    cbar = fig.colorbar(cs)
+    fig.colorbar(cs)
 
 
 def visualization_angle_weight(z_val=None):
@@ -190,14 +190,14 @@ def visualization_indivdual_normal_vector(z_val=None):
 
     obs.draw_obstacle(num_points=40, z_val=z_val, in_global_frame=False)
 
-    fig = plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(10, 8))
 
     print("Evaluation height (global) z={}".format(z_val))
     print("Inflation param", obs.inflation_percentage)
 
     it_plane = 0
     pos = np.array([-0.08, -0.05, z_val])
-    normal = obs._get_normal_direction_numerical_to_plane(pos, plane_index=it_plane)
+    obs._get_normal_direction_numerical_to_plane(pos, plane_index=it_plane)
 
     for it_plane in range(obs.n_planes):
         plt.subplot(2, 2, it_plane + 1)
@@ -257,7 +257,7 @@ def visualization_normal_vector(z_val=None):
 
     obs.draw_obstacle(num_points=40, z_val=z_val, in_global_frame=False)
 
-    fig = plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(10, 8))
 
     print("Evaluation height (global) z={}".format(z_val))
     print("Inflation param", obs.inflation_percentage)

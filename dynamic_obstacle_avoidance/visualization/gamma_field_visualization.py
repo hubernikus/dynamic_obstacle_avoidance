@@ -59,7 +59,7 @@ def gamma_field_visualization(
         alpha=0.6,
         zorder=-3,
     )
-    cbar = fig.colorbar(cs)
+    fig.colorbar(cs)
 
 
 def gamma_field_multihull(
@@ -111,7 +111,7 @@ def gamma_field_multihull(
                 positions[:, ix, iy], in_global_frame=True
             )
 
-    cs = ax.contourf(
+    ax.contourf(
         positions[0, :, :],
         positions[1, :, :],
         gamma_values,

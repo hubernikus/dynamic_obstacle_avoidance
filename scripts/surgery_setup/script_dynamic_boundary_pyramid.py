@@ -12,7 +12,6 @@ import numpy as np
 from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import (
     DynamicBoundariesPolygon,
 )
-from dynamic_obstacle_avoidance.container import GradientContainer
 
 
 def test_obstacle_list_creation():

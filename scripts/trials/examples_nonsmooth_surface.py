@@ -9,7 +9,6 @@ __date__ = "2020-02-15"
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -17,10 +16,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 
 # from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.visualization.animated_simulation import (
-    run_animation,
-    samplePointsAtBorder,
-)
 
 ########################################################################
 options = [0]

@@ -10,7 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-import time
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system import *
@@ -121,9 +120,9 @@ def VectorFields_nonlinear(
 
     # Adjust dynamic center
     if nonlinear:
-        intersection_obs = obs_common_section_hirarchy(obs)
+        obs_common_section_hirarchy(obs)
     else:
-        intersection_obs = obs_common_section(obs)
+        obs_common_section(obs)
 
     # Create meshrgrid of points
     if type(point_grid) == int:
@@ -223,7 +222,7 @@ def VectorFields_nonlinear(
 
     if sysDyn_init:
         fig_init, ax_init = plt.subplots(figsize=(5, 2.5))
-        res_init = ax_init.streamplot(
+        ax_init.streamplot(
             XX, YY, xd_init[0, :, :], xd_init[1, :, :], color=[(0.3, 0.3, 0.3)]
         )
 
@@ -284,7 +283,7 @@ def VectorFields_nonlinear(
                     * 100
                 )
 
-                strm = res_ifd = ax_ifd.streamplot(
+                ax_ifd.streamplot(
                     XX,
                     YY,
                     dx1_noColl,
@@ -304,7 +303,7 @@ def VectorFields_nonlinear(
                 dx2_noColl[nonZeroInd] = dx2_noColl[nonZeroInd] / normVel[nonZeroInd]
 
                 # gi res_ifd = ax_ifd.streamplot(XX, YY,dx1_noColl, dx2_noColl, color=streamColor)
-                res_ifd = ax_ifd.quiver(
+                ax_ifd.quiver(
                     XX, YY, dx1_noColl, dx2_noColl, color=streamColor, zorder=0
                 )
 

@@ -6,8 +6,6 @@ Copyright (c) 2019 under GPU license.
 """
 
 import warnings
-import copy
-import sys
 
 import numpy as np
 import numpy.linalg as LA
@@ -33,7 +31,7 @@ def obs_avoidance_nonlinear_hirarchy(
         return ds_init(x), x
 
     d = position_absolut.shape[0]  # TODO remove
-    dim = position_absolut.shape[0]
+    position_absolut.shape[0]
     Gamma = np.zeros((N_obs))
 
     max_hirarchy = 0
@@ -58,8 +56,8 @@ def obs_avoidance_nonlinear_hirarchy(
         N_attr = attractor.shape[1]
 
     # Linear and angular roation of velocity
-    xd_dx_obs = np.zeros((d, N_obs))
-    xd_w_obs = np.zeros((d, N_obs))  # velocity due to the rotation of the obstacle
+    np.zeros((d, N_obs))
+    np.zeros((d, N_obs))  # velocity due to the rotation of the obstacle
 
     R = np.zeros((d, d, N_obs))
     E = np.zeros((d, d, N_obs))
@@ -94,7 +92,7 @@ def obs_avoidance_nonlinear_hirarchy(
 
     weights_hirarchy = np.zeros((N_obs + N_attr, max_hirarchy + 1))
     Gammas_hirarchy = np.zeros((N_obs, max_hirarchy + 1))
-    radius_hirarchy = np.zeros((N_obs, max_hirarchy + 1))  # TODO -- remove
+    np.zeros((N_obs, max_hirarchy + 1))  # TODO -- remove
 
     for hh in range(max_hirarchy, -1, -1):  # backward loop
         ind_hirarchy = hirarchy_array == hh
@@ -387,11 +385,11 @@ def obs_avoidance_nonlinear_hirarchy(
 
         # Weighted interpolation
         weightPow = 1  # Hyperparameter for several obstacles !!!!
-        weight_hirarchy = weight**weightPow
+        weight**weightPow
         if not LA.norm(weight, 2):
             warnings.warn("trivial weight.")
 
-        weight_hirarchy = weight / LA.norm(weight, 2)
+        weight / LA.norm(weight, 2)
 
         xd_mag = np.sum(xd_mags * weight)
         k_d = np.sum(k_ds * np.tile(weight, (d - 1, 1)), axis=1)

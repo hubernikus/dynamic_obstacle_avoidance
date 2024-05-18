@@ -5,10 +5,9 @@ Container to describe obstacles & wall environemnt.
 # Mail lukas.huber@epfl.ch
 # Created 2021-06-22
 # License: BSD (c) 2021
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import numpy as np
-import warnings
 
 from dynamic_obstacle_avoidance.utils import *
 

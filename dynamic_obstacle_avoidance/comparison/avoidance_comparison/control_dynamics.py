@@ -5,7 +5,6 @@ Control dynamics for static case
 from abc import ABC
 
 import numpy as np
-from numpy import linalg as LA
 
 
 class ControlDynamics(ABC):

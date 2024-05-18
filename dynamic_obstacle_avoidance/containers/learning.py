@@ -3,20 +3,14 @@
 # Created 2021-06-22
 # License: BSD (c) 2021
 
-import time
 import numpy as np
-import copy
-from math import pi
-import warnings, sys
+import sys
 
 import matplotlib.pyplot as plt
 
 from vartools.angle_math import *
 
 from dynamic_obstacle_avoidance.utils import *
-from dynamic_obstacle_avoidance.avoidance.obs_common_section import (
-    Intersection_matrix,
-)
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import *
 

@@ -21,10 +21,8 @@ def weight_dist(dist, inv_gamma, pow_fac):
 class TestRotational(unittest.TestCase):
     def rotation_weight(self, save_figure=True):
         import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
         from matplotlib import cm
 
-        import numpy as np
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
@@ -33,12 +31,12 @@ class TestRotational(unittest.TestCase):
         dist0 = np.linspace(1e-6, 1 - 1e-6, n_grid)
         weight = np.linspace(1e-6, 1 - 1e-6, n_grid)
         weight, dist0 = np.meshgrid(weight, dist0)
-        gamma = 1.0 / weight
+        1.0 / weight
 
         # Make data.
         pow_factor = 3.0
         val = weight ** (1.0 / (pow_factor * dist0))
-        surf = ax.plot_surface(
+        ax.plot_surface(
             dist0, weight, val, cmap=cm.YlGnBu, linewidth=0.2, edgecolors="k"
         )
         # antialiased=False)

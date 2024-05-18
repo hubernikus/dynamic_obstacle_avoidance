@@ -6,12 +6,11 @@ Gradient container finds the dynamic reference point through gradient descent.
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import warnings, sys
+import sys
 import numpy as np
 import copy
 import time
 
-from shapely.ops import nearest_points
 
 from dynamic_obstacle_avoidance.utils import get_reference_weight
 
@@ -182,7 +181,7 @@ class GradientContainer(ObstacleContainer):
         self.reset_reference_points()
         now = time.time()
         self.update_boundary_reference_points()
-        delta_t = time.time() - now
+        time.time() - now
 
         obs_reference_size = np.zeros(len(self))
 
@@ -308,7 +307,7 @@ class GradientContainer(ObstacleContainer):
 
                     self.set_distance(ii, jj, dist)
                     self.set_boundary_reference_point(ii, jj, ref_point1)
-                    if not ref_point2 is None:
+                    if ref_point2 is not None:
                         # Is a boundary with 'static reference point'
                         self.set_boundary_reference_point(jj, ii, ref_point2)
 
@@ -405,7 +404,7 @@ class GradientContainer(ObstacleContainer):
                             ):
                                 angles[kk * (dim - 1) : (kk + 1)(dim - 1)] = 0
 
-                    cent_points = np.zeros((dim, 2))
+                    np.zeros((dim, 2))
 
                     dist, ref_point1, ref_point2 = self.angle_gradient_descent(
                         self[ii],

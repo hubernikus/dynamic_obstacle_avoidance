@@ -5,11 +5,9 @@
 @date 2019-05-24
 """
 
-import sys
 import numpy as np
 from numpy import pi
 
-import svmpy
 
 import matplotlib.pyplot as plt
 
@@ -68,8 +66,7 @@ def kernel_rbf(XX, YY, gamma=20):
 def kernel_polynomial(XX, YY, poly_power=1, center=0):
     XX, YY = reshape(XX, YY)
     # Polynomial Kernel
-    dot_prod = np.sum((XX * YY) ** poly_power, axis=2)
-    kk = dot_prod
+    np.sum((XX * YY) ** poly_power, axis=2)
 
 
 function_kernel = kernel_radial_mag

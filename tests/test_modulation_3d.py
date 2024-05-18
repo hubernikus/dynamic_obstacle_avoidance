@@ -2,14 +2,13 @@
 Test script for obstacle avoidance algorithm
 Test normal formation
 """
+
 # Author: Lukas Huber
 # Created: 2022-05-19
 # Email: lukas.huber@epfl.ch
 
 import numpy as np
-from numpy import linalg as LA
 
-import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
@@ -70,9 +69,8 @@ def test_triple_obstacles():
     avoider = ModulationAvoider(obstacle_environment=obstacle_environment)
 
     init_vel = initial_dynamics.evaluate(eval_position)
-    mod_vel = avoider.avoid(eval_position, velocity=init_vel)
+    avoider.avoid(eval_position, velocity=init_vel)
 
-    # breakpoint()
     print("Done")
 
 

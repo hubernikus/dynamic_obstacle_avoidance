@@ -25,7 +25,6 @@ class SphereWorldOptimizer(BaseContainer):
 
     def __init__(self, lambda_constant=None, attractor_position=None, *args, **kwargs):
         # TODO: put outside
-        from cvxopt import solvers, matrix
 
         super().__init__(*args, **kwargs)
 

@@ -9,8 +9,6 @@ __email__ = "lukas.huber@epfl.ch"
 
 import sys
 import os
-import yaml
-import copy
 import time
 from datetime import datetime
 
@@ -25,24 +23,21 @@ import matplotlib.image as mpimg
 from scipy import ndimage
 
 # from matplotlib.offsetbox import TextArea, DrawingArea, OffsetImage, AnnotationBbox
-import matplotlib.animation as animation
 
 # Writer = animation.writers['ffmpeg']
 # witer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 
 # import rospy
-import rosbag
 
 from threading import Lock
 
 lock = Lock()
 
 if sys.version_info < (3, 0):
-    from itertools import izip as zip
+    pass
 
     # from __future__ import izip
 
-import sensor_msgs.point_cloud2 as pc2
 
 # import rospkg
 # rospack = rospkg.RosPack()
@@ -52,35 +47,19 @@ import sensor_msgs.point_cloud2 as pc2
 # directory_path = rospack.get_path('qolo_modulation')
 path_avoidance = os.path.join("/home/lukas/catkin_ws/src/qolo_modulation", "scripts")
 
-if not path_avoidance in sys.path:
+if path_avoidance not in sys.path:
     sys.path.append(path_avoidance)
     # pass
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import (
-    get_linear_ds,
-    make_velocity_constant,
     linear_ds_max_vel,
-    linearAttractor_const,
 )
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import (
-    get_linear_ds,
-    make_velocity_constant,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import (
-    GradientContainer,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.human_ellipse import (
-    TrackedPedestrian,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Polygon
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (
     obs_avoidance_interpolation_moving,
 )
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import (
-    angle_difference_directional,
     transform_polar2cartesian,
 )
 from dynamic_obstacle_avoidance.obstacle_avoidance.crowd_learning_container import (
@@ -201,10 +180,8 @@ class QoloAnimator:
             date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
             name_ani_figs = "fig_temp_" + date_time + "_"
 
-            img_list = []
 
         self.modulated_vel_real = np.array([0, 0])
-        t_start = 0
 
         # t_start = 169710.300005
         # t_start = 169712.400005
@@ -237,7 +214,6 @@ class QoloAnimator:
 
             # print('time', t.to_sec())
             # crowd_message = msg.crowd
-            crowd_message = None
 
             # LocalCrowd.update_step(crowd_message, agent_position=self.agent.position, num_crowd_close=num_crowd_close)
             # self.obstacle_list.update_step(
@@ -262,7 +238,7 @@ class QoloAnimator:
                 #     else:
                 #         del LocalCrowd[it]
 
-                line = plt_speed_line_and_qolo(
+                plt_speed_line_and_qolo(
                     # points_init=self.agent.position,
                     points_init=np.array([-5.0, 1.5]),
                     attractorPos=self.attractor_position,
@@ -635,7 +611,7 @@ class QoloAnimator:
 
         # Test
         for topic, msg, t in self.bag.read_messages("/crowdbot"):
-            crowd_message = msg.crowd
+            pass
 
         eval_msg_tag = 30
 

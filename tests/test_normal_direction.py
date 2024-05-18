@@ -3,7 +3,6 @@
 Test script for obstacle avoidance algorithm - specifically the normal function evaluation
 """
 import warnings
-import copy
 import sys
 import os
 
@@ -106,7 +105,7 @@ class TestRotational(unittest.TestCase):
 
     def test_obstacle_list_creation(self):
         """Create empty obstacle list."""
-        obs = GradientContainer()
+        GradientContainer()
 
     def test_normal_circle(self, n_testpoints=5):
         """Normal has to point alongside reference"""

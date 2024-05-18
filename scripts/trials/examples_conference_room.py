@@ -9,7 +9,6 @@ from math import pi
 
 if (__name__) == "__main__":
     import sys
-    import os
 
     # import os
     # os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +16,7 @@ if (__name__) == "__main__":
     # path_avoidance = "/home/lukas/catkin_ws/src/qolo_modulation/scripts/dynamic_obstacle_avoidance/src"
     # path_avoidance = "/home/qolo/autonomy_ws/src/qolo_modulation/scripts/dynamic_obstacle_avoidance/src"
 
-    if not path_avoidance in sys.path:
+    if path_avoidance not in sys.path:
         sys.path.append(path_avoidance)
 
 # Custom libraries
@@ -39,7 +38,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 def get_conference_room_setup(robot_margin=0.6):
     obstacle_list = GradientContainer()  # create empty obstacle list
 
-    xAttractor = [6, 7]
 
     obstacle_list.append(
         Polygon(
@@ -92,7 +90,6 @@ def get_conference_room_setup(robot_margin=0.6):
 def get_conference_room_setup_old(robot_margin=0.6):
     obstacle_list = GradientContainer()  # create empty obstacle list
 
-    xAttractor = [6, 7]
 
     # obs.append(Cuboid(
     # axes_length=[8, 7],

@@ -4,7 +4,6 @@ Testing script to ensure that
 """
 from math import pi
 
-import pytest
 
 import matplotlib.pyplot as plt
 
@@ -224,7 +223,7 @@ def test_automated_reference_point(visualize=False):
         )
     )
 
-    attractor_position = np.array([7.5, 1.7])
+    np.array([7.5, 1.7])
 
     obs_list.append(
         Cuboid(
@@ -270,14 +269,13 @@ def test_automated_reference_point(visualize=False):
     # First ellipse is connected to the wall
     assert (
         obs_list[0].get_gamma(obs_list[1].reference_point, in_global_frame=True) < 1
-    ), f"Reference point ought be inside the wall."
+    ), "Reference point ought be inside the wall."
 
     ii = 1
     assert LA.norm(obs_list[ii].local_reference_point) < np.max(
         obs_list[ii].axes_length
     ), f"Reference point is expected close to the ellipse {ii}."
 
-    i = 2
     assert LA.norm(obs_list[ii].local_reference_point) < np.max(
         obs_list[ii].axes_length
     ), f"Reference point is expected close to the ellipse {ii}."
@@ -328,12 +326,12 @@ def ellipses_and_wall_intersection(visualize=True):
     assert (
         obs_list[0].get_gamma(obs_list[1].global_reference_point, in_global_frame=True)
         < 1
-    ), f"Reference point ought to be inside the wall."
+    ), "Reference point ought to be inside the wall."
 
     assert (
         obs_list[1].get_gamma(obs_list[1].global_reference_point, in_global_frame=True)
         < 1
-    ), f"Reference point to be inside the obstacle."
+    ), "Reference point to be inside the obstacle."
 
     if visualize:
         fig, ax = plt.subplots()
@@ -382,12 +380,12 @@ def two_ellipses_and_wall_intersection(visualize=True):
     assert (
         obs_list[0].get_gamma(obs_list[1].global_reference_point, in_global_frame=True)
         < 1
-    ), f"Reference point ought to be inside the wall."
+    ), "Reference point ought to be inside the wall."
 
     assert (
         obs_list[0].get_gamma(obs_list[2].global_reference_point, in_global_frame=True)
         < 1
-    ), f"Reference point ought to be inside the wall."
+    ), "Reference point ought to be inside the wall."
 
 
 def two_ellipses_and_wall_partial_intersection(visualize=True):
@@ -424,12 +422,12 @@ def two_ellipses_and_wall_partial_intersection(visualize=True):
     assert (
         obs_list[0].get_gamma(obs_list[1].global_reference_point, in_global_frame=True)
         < 1
-    ), f"Reference point ought to be inside the wall."
+    ), "Reference point ought to be inside the wall."
 
     assert (
         obs_list[0].get_gamma(obs_list[2].global_reference_point, in_global_frame=True)
         > 1
-    ), f"Reference point ought to be inside the wall."
+    ), "Reference point ought to be inside the wall."
 
 
 if (__name__) == "__main__":

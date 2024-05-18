@@ -1,7 +1,6 @@
 """
 Testing script to ensure that 
 """
-import pytest
 
 import numpy as np
 

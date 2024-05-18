@@ -176,7 +176,7 @@ class ReferencePointSequence:
 
             # Move & update obstacle
             for obstacle in self.obs_list:
-                updated_pos = obstacle.update_position(dt=dt, t=ii * dt)
+                obstacle.update_position(dt=dt, t=ii * dt)
 
     def create_gif(self, file_name=None, show_gif=True, duration=800):
         """Create GIF from PNG images"""

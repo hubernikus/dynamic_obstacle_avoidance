@@ -9,35 +9,28 @@ __email__ = "lukas.huber@epfl.ch"
 
 import sys
 import os
-import yaml
-import copy
-import time
-from datetime import datetime
 
 # from PIL import Image
-import glob
 
 import numpy as np
 from math import pi
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import matplotlib.animation as animation
 
 from scipy import ndimage
-from scipy.spatial.transform import Rotation
 
 from threading import Lock
 
 lock = Lock()
 
 if sys.version_info < (3, 0):
-    from itertools import izip as zip
+    pass
 
 
 # Check if obstacle avoidance library is installed
 try:
-    import dynamic_obstacle_avoidance
+    pass
 except:
     print("Importing path to obstacle avoidance library")
 
@@ -45,43 +38,17 @@ except:
     path_avoidance = os.path.join(
         directory_path, "scripts", "dynamic_obstacle_avoidance", "src"
     )
-    if not path_avoidance in sys.path:
+    if path_avoidance not in sys.path:
         sys.path.append(path_avoidance)
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import (
-    get_linear_ds,
     make_velocity_constant,
     linear_ds_max_vel,
-    linearAttractor_const,
 )
 
-from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import (
-    get_linear_ds,
-    make_velocity_constant,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import (
-    GradientContainer,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.human_ellipse import (
-    TrackedPedestrian,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
-from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import (
-    Ellipse,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import (
-    Polygon,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (
     obs_avoidance_interpolation_moving,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import (
-    angle_difference_directional,
-    transform_polar2cartesian,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.crowd_learning_container import (
-    CrowdLearningContainer,
-    CrowdCircleContainer,
 )
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import (
     CircularObstacle,
@@ -89,8 +56,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import (
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,
-    plot_obstacles,
-    plt_speed_line_and_qolo,
 )
 
 plt.ion()
@@ -177,7 +142,6 @@ class DynamicAnimationQOLO:
                 ax_vec.set_ylim(self.y_lim)
 
         # Create all Lines
-        max_ii = 1
 
         self.agent = ObjectQOLO(
             center_position=self.position_init,
@@ -263,7 +227,7 @@ class DynamicAnimationQOLO:
                 break
 
             if not plt.fignum_exists(fig_num):
-                print(f"Simulation ended with closing of figure")
+                print("Simulation ended with closing of figure")
                 break
 
             if self.agent.check_if_converged():
@@ -481,7 +445,7 @@ class LineObject(CircularObstacle):
 
     @property
     def is_active(self):
-        if self.frame_list_it is None or self.frame_list_it is 0:
+        if self.frame_list_it is None or self.frame_list_it == 0:
             return False
         else:
             return True
@@ -490,7 +454,7 @@ class LineObject(CircularObstacle):
         """Update the plto library."""
         self.update_velocity_orientation(current_frame)
 
-        if self.frame_list_it is None or self.frame_list_it is 0:
+        if self.frame_list_it is None or self.frame_list_it == 0:
             return
 
         self.position = self.position + self.linear_velocity * dt
@@ -506,7 +470,7 @@ class LineObject(CircularObstacle):
         # return
 
     def update_velocity_orientation(self, current_frame):
-        if self.frame_list_it is 0:
+        if self.frame_list_it == 0:
             if current_frame < self.frame_list[0]:
                 return
 

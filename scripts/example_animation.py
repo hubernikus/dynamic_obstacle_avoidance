@@ -4,23 +4,15 @@
 ## General classes
 import numpy as np
 from numpy import pi
-import copy
 
-from ipywidgets import interact, interactive, fixed, interact_manual
-from ipywidgets import FloatSlider, IntSlider
-import ipywidgets as widgetsb
 
 # Unocmment in case of error
-import sys
 
 # sys.path.append('/home/jovyan/src/')
 # sys.path.append('/home/lukas/Code/ObstacleAvoidance/dynamic_obstacle_avoidance_python_linear/src/')
 
 from dynamic_obstacle_avoidance.dynamical_system import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import Obstacle
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    Simulation_vectorFields,
-)
 from dynamic_obstacle_avoidance.visualization.animated_simulation import *
 from dynamic_obstacle_avoidance.visualization.widget_function_vectorfield import *
 

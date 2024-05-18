@@ -11,7 +11,6 @@ import numpy as np
 from math import pi
 
 from dynamic_obstacle_avoidance.obstacles.ellipse import Ellipse, CircularObstacle
-from dynamic_obstacle_avoidance.obstacles.polygon import Cuboid
 from dynamic_obstacle_avoidance.containers.gradient_container import GradientContainer
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (

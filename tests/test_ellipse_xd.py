@@ -6,7 +6,6 @@ Test normal formation
 # Created: 2021-03-11
 # Email: lukas.huber@epfl.ch
 
-import unittest
 import pytest
 import math
 
@@ -18,10 +17,6 @@ from vartools.dynamical_systems import plot_dynamical_system_quiver
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    Simulation_vectorFields,
-    plot_obstacles,
-)
 
 from scipy.spatial.transform import Rotation as Rotation
 
@@ -62,7 +57,7 @@ def test_gamma_and_normal(n_resolution=10, visualize=False):
         #     position=positions[:, ii], in_obstacle_frame=True
         #     )
 
-        surf_point = obstacle.get_point_on_surface(
+        obstacle.get_point_on_surface(
             positions[:, ii], in_obstacle_frame=True
         )
 
@@ -196,8 +191,6 @@ def test_normal_and_reference_directions(visualize=False):
 
 
 def test_normal_inverted(visualize=False):
-    x_lim = [-10, 10]
-    y_lim = [-10, 10]
 
     obstacle = EllipseWithAxes(
         center_position=np.array([0, 0]),
@@ -254,7 +247,7 @@ def test_gamma_for_general_ellipse(visualize=False):
         for ii in range(positions.shape[1]):
             gammas[ii] = obstacle.get_gamma(positions[:, ii], in_global_frame=True)
 
-        cont = ax.contourf(
+        ax.contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
             gammas.reshape(nx, ny),
@@ -274,8 +267,8 @@ def test_gamma_for_general_ellipse(visualize=False):
 
 
 def test_zero_scaling():
-    with pytest.raises(Exception) as e_info:
-        obstacle = EllipseWithAxes(
+    with pytest.raises(Exception):
+        EllipseWithAxes(
             center_position=np.array([-1.0, 0]),
             axes_length=np.array([1.0, 1.0]),
             margin_absolut=0.0,

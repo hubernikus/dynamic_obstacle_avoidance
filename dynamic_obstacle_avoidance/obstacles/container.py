@@ -4,11 +4,9 @@
 @mail lukas.huber@epfl.ch
 """
 
-import time
 import numpy as np
 import copy
-from math import pi
-import warnings, sys
+import sys
 
 import matplotlib.pyplot as plt
 
@@ -343,7 +341,7 @@ class ObstacleContainer(BaseContainer):
     def get_distance(self, index1=None, index2=None):
         if index1 is None:
             return self._distance_matrix
-        elif not index2 is None:
+        elif index2 is not None:
             return self._distance_matrix[index1, index2]
         else:
             raise ValueError("Wrong number of arguments.")
@@ -373,7 +371,6 @@ class ObstacleContainer(BaseContainer):
         if True:
             self._family_label = np.ones(len(self)) * (-1)
 
-            it_lablel = 0
             for ii in range(len(intersecting_obs)):
                 self._family_label[intersecting_obs[ii]] = ii
 
@@ -505,8 +502,7 @@ class ObstacleContainer(BaseContainer):
                 basis_direction, transform_direction
             )
 
-            basis_direction_ = transform_direction
-            transform_dir = (
+            (
                 self[ind_short_connection[ii]].global_reference_point
                 - self.intersection_points[
                     ind_short_connection[ii + 1], ind_short_connection[ii]
@@ -533,7 +529,6 @@ class ObstacleContainer(BaseContainer):
         increment_level = -1
 
         while path_not_found:
-            increment_in_process = True
             # while(increment_in_process):
 
             eval_list = siblings_list[-2]

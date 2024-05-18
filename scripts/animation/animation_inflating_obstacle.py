@@ -1,8 +1,6 @@
 #!/USSR/bin/python3
 """ Script to show lab environment on computer """
 
-import warnings
-import copy
 import sys
 import os
 
@@ -21,19 +19,13 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 )
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import Ellipse
-from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_polygon import Cuboid
 from dynamic_obstacle_avoidance.obstacle_description.boundary_cuboid_with_gap import (
     BoundaryCuboidWithGaps,
 )
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.comparison_algorithms import (
-    obs_avoidance_potential_field,
-    obs_avoidance_orthogonal_moving,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (
     obs_avoidance_interpolation_moving,
-    obs_check_collision_2d,
 )
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import (
     GradientContainer,
@@ -41,19 +33,12 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import (
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import (
     linear_ds_max_vel,
 )
-from dynamic_obstacle_avoidance.obstacle_avoidance.metric_evaluation import (
-    MetricEvaluator,
-)
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import (
-    angle_is_in_between,
-    angle_difference_directional,
-)
 
 # from dynamic_obstacle_avoidance.lru_chached_property import lru_cached_property
 # from dynamic_obstacle_avoidance.lru_chached_property import cached_property
 
 rel_path = os.path.join(".", "scripts")
-if not rel_path in sys.path:
+if rel_path not in sys.path:
     sys.path.append(rel_path)
 
 from comparison_algorithms import ObstacleAvoidanceAgent, position_is_in_free_space
@@ -489,7 +474,7 @@ def animation_wall_with_door(
         plt.pause(0.01)
 
         if visualize_scene and not plt.fignum_exists(fig_num):
-            print(f"Simulation ended with closing of figure")
+            print("Simulation ended with closing of figure")
             plt.pause(0.01)
             plt.close("all")
             break
@@ -595,7 +580,7 @@ def animation_ellipse(
         plt.pause(0.01)
 
         if visualize_scene and not plt.fignum_exists(fig_num):
-            print(f"Simulation ended with closing of figure")
+            print("Simulation ended with closing of figure")
             plt.pause(0.01)
             plt.close("all")
             break

@@ -4,7 +4,6 @@
 # Created 2022-05-20
 # License: BSD (c) 2022
 
-from abc import ABC, abstractmethod
 import warnings
 from typing import Optional
 
@@ -65,7 +64,7 @@ class DynamicCrowdAvoider(ObstacleAvoiderWithInitialDynamcis):
             #     breakpoint()
             gamma_list[ii] = obs.get_gamma(position, in_global_frame=True)
 
-        n_obs = len(gamma_list)
+        len(gamma_list)
         # Total gamma [1, infinity]
         # Take root of order 'n_obs' to make up for the obstacle multiple
         if any(gamma_list < 1):

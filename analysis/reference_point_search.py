@@ -8,10 +8,8 @@ Reference Point Search
 @conact Lukas.huber@epfl.ch
 """
 
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 import numpy as np
 from numpy import pi
@@ -46,8 +44,6 @@ def main(save_figure=False, n_points=100):
         center_2 = np.array([0.0, 0])
         radius_2 = 1
 
-        x_lim = [-4, 4]
-        y_lim = [-3, 3]
 
         center_dir = center_2 - center_1
 
@@ -126,7 +122,7 @@ def main(save_figure=False, n_points=100):
                 distance[ii, jj] = np.linalg.norm(dist_dir, axis=0)
                 dist_proj[ii, jj] = dist_dir.T.dot(center_dir)
 
-                dist_dir_local = obs_orientation.transform_global2relative_dir(dist_dir)
+                obs_orientation.transform_global2relative_dir(dist_dir)
 
                 # dist_norm1[ii, jj] = dist_dir_local[0] + np.sum(np.abs(dist_dir_local[1:]))
                 dist_norm[ii, jj] = -dist_dir.T.dot(normal_vectors_1[:, ii])

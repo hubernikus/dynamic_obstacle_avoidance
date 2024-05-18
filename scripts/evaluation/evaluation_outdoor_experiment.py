@@ -5,11 +5,9 @@ __author__ = "Lukas Huber"
 __date__ = "2021-02-01"
 __email__ = "lukas.huber@epfl.ch"
 
-import json
 
 # import yaml
 
-import sys
 import os
 
 import numpy as np

@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 
 import pandas as pd  # pd is not necessarily needed. only for importing data.
 
-import copy
-import json  # store/load data
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
@@ -53,7 +51,7 @@ def create_obstacle_from_data(file_in_path, file_in_name, save_data=True):
 def read_obstacle_from_file(file_in_path, file_name):
     # TODO: make it work
     file_type = ".txt"
-    file_name = file_in_path + file_in_name + file_type
+    file_in_path + file_in_name + file_type
 
 
 def create_normal_vector_field(
@@ -148,7 +146,7 @@ def create_modulated_vector_field(
         ax = plt.subplot(1, 2, 1)
         for oo in range(len(Obstacles)):
             Obstacles[oo].draw_obstacle(show_contour=False, fig=fig, ax=ax)
-        qv1 = ax.quiver(
+        ax.quiver(
             XX.flatten(),
             YY.flatten(),
             ds_initial[0, :, :].flatten(),
@@ -162,7 +160,7 @@ def create_modulated_vector_field(
         for oo in range(len(Obstacles)):
             Obstacles[oo].draw_obstacle(show_contour=False, fig=fig, ax=ax)
 
-        qv2 = ax.quiver(
+        ax.quiver(
             XX.flatten(),
             YY.flatten(),
             ds_modulated[0, :, :].flatten(),
@@ -178,7 +176,7 @@ def create_modulated_vector_field(
         ax = plt.subplot(1, 2, 1)
         for oo in range(len(Obstacles)):
             Obstacles[oo].draw_obstacle(show_contour=False, fig=fig, ax=ax)
-        str1 = plt.streamplot(
+        plt.streamplot(
             XX, YY, ds_initial[0, :, :], ds_initial[1, :, :], color="#A22828"
         )
         plt.title("Initial DS")
@@ -188,7 +186,7 @@ def create_modulated_vector_field(
         for oo in range(len(Obstacles)):
             Obstacles[oo].draw_obstacle(show_contour=False, fig=fig, ax=ax)
 
-        str2 = plt.streamplot(
+        plt.streamplot(
             XX, YY, ds_modulated[0, :, :], ds_modulated[1, :, :], color="#0C537C"
         )
         plt.title("Modulated DS")
@@ -209,7 +207,7 @@ if (__name__) == "__main__":
 
     # del Obstacles
 
-    if not ("Obstacles" in locals()):
+    if "Obstacles" not in locals():
         print("Imported obstacles")
         Obstacles = create_obstacle_from_data(data_set_path, file_name_in)
 

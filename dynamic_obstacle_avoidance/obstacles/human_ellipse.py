@@ -5,13 +5,9 @@ __date__ = "2019-10-15"
 __author__ = "Lukas Huber"
 __mail__ = "lukas.huber@epfl.ch"
 
-import time
-from math import sin, cos, pi, ceil
-import warnings
 import sys
 
 import numpy as np
-import numpy.linalg as LA
 
 from vartools.angle_math import *
 from dynamic_obstacle_avoidance.obstacles import Ellipse

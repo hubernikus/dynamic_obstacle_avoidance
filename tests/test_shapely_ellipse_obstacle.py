@@ -2,7 +2,6 @@
 Test script for obstacle avoidance algorithm
 Test normal formation
 """
-import unittest
 
 import numpy as np
 from math import pi

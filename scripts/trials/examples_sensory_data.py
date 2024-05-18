@@ -31,7 +31,7 @@ def main():
     ObstaclesScanned.get_obstacle_from_scan(sensor_data=sensor_data)
 
     # plt.figure()
-    data_cartesian = ObstacleFromLaser.transform_polar2cartesian(
+    ObstacleFromLaser.transform_polar2cartesian(
         self=None, magnitude=sensor_data["magnitude"], angle=sensor_data["angle"]
     )
     # plt.plot(data_cartesian[0,:], data_cartesian[1,:], '.')
@@ -174,10 +174,9 @@ def plot_streamlines_sensory(
     print("Number of points: {}".format(it_count * n_points))
     print(
         "Average time: {} ms".format(
-            np.round((time_tot) / (it_count * n_points) * 1000), 5
-        )
+            np.round((time_tot) / (it_count * n_points) * 1000), )
     )
-    print("Modulation calculation total: {} s".format(np.round(time_tot), 4))
+    print("Modulation calculation total: {} s".format(np.round(time_tot), ))
 
     percentage_times = np.round(
         np.array(

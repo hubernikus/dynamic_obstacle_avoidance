@@ -2,26 +2,18 @@
 """
 Script which creates a variety of examples of local modulation of a vector field with obstacle avoidance. 
 """
-import sys
-import os
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    plot_obstacles,
     Simulation_vectorFields,
 )  #
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.flower_shape import StarshapedFlower
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (
-    obs_avoidance_interpolation_moving,
-)
 
 __author__ = "LukasHuber"
 __email__ = "lukas.huber@epfl.ch"
@@ -47,12 +39,12 @@ def test_get_relative_speed_around(n_grid_num=40):
     x_range = [-10, 10]
     y_range = [-10, 10]
 
-    x_vals = np.linspace(x_range[0], x_range[1], n_grid_num)
-    y_vals = np.linspace(y_range[0], y_range[1], n_grid_num)
+    np.linspace(x_range[0], x_range[1], n_grid_num)
+    np.linspace(y_range[0], y_range[1], n_grid_num)
 
     dim = 2
-    pos = np.zeros((dim, n_grid_num, n_grid_num))
-    rel_vel = np.zeros((dim, n_grid_num, n_grid_num))
+    np.zeros((dim, n_grid_num, n_grid_num))
+    np.zeros((dim, n_grid_num, n_grid_num))
 
     # for ix in range(n_grid_num):
     # for iy in range(n_grid_num):

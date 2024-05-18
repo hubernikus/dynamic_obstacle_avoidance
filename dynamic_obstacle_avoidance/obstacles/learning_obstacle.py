@@ -7,7 +7,7 @@ Learn obstacles with different methods.
 
 import sys
 import warnings
-from math import sin, cos, pi, ceil
+from math import pi
 import time
 
 import numpy as np
@@ -195,13 +195,13 @@ class RegressionObstacle(ObstacleFromData):
         in_global_frame=True,
     ):
         """Set surface angles&magnitude as either points OR angles&magnitudes."""
-        if not surface_points is None:
+        if surface_points is not None:
             if in_global_frame:
                 surface_points = self.transform_global2relative(surface_points)
             self.surface_magnitudes = np.linalg.norm(surface_points, axis=0)
             self.surface_angles = np.arctan2(surface_points[1, :], surface_points[0, :])
 
-        elif not surface_points is None:
+        elif surface_points is not None:
             if in_global_frame:
                 raise ValueError("Angles can not be inputet in global frame")
             self.surface_angles = angles
@@ -212,7 +212,7 @@ class RegressionObstacle(ObstacleFromData):
 
     def reduce_angle_resolution(self, angular_resolution=1000):
         """Down-sample points (check if not doubling at 2*pi)"""
-        int_angles = np.round(
+        np.round(
             self.surface_angles / (2 * pi) * angular_resolution
             + angular_resolution / 2.0,
             0,
@@ -384,7 +384,7 @@ class RegressionObstacle(ObstacleFromData):
         relative_derivative_increment=1e-3,
         in_global_frame=False,
     ):
-        position_abs = np.copy(position)
+        np.copy(position)
 
         if in_global_frame:
             position = self.transform_global2relative(position)
@@ -644,7 +644,7 @@ class PolygonWithLearnedSurface(Polygon):
                 label="normal",
             )
 
-            norm_poly_abs = self.transform_relative2global_dir(normal_vector_poly)
+            self.transform_relative2global_dir(normal_vector_poly)
             # plt.quiver(pos_abs[0], pos_abs[1], norm_poly_abs[0], norm_poly_abs[1], color='b', label='polygon')
 
             # plt.quiver(pos_abs_temp[0], pos_abs_temp[1], norm_abs[0], norm_abs[1], color='m')
@@ -655,7 +655,7 @@ class PolygonWithLearnedSurface(Polygon):
             # plt.quiver(pos_abs[0], pos_abs[1], ref_abs[0], ref_abs[1], color='k', label='reference')
 
             for ii in range(pseudo_normal_surfaces.shape[1]):
-                pseudo_norm_trans = self.transform_relative2global_dir(
+                self.transform_relative2global_dir(
                     pseudo_normal_surfaces[:, ii]
                 )
                 # plt.quiver(pos_abs[0], pos_abs[1], pseudo_norm_trans[0],  pseudo_norm_trans[1], color='r', label='surfaces')
@@ -668,7 +668,7 @@ class PolygonWithLearnedSurface(Polygon):
     def get_gamma(self, position, in_global_frame=False):
         if in_global_frame:
             position = self.transform_global2relative(position)
-        angle2surfaces = self.get_angles_to_specialSurfaces(position)
+        self.get_angles_to_specialSurfaces(position)
 
         Gammas_special = self.get_gammas_specialSurface(position, in_global_frame=False)
         Gammas_special = np.array(Gammas_special)

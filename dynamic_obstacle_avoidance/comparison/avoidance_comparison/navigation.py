@@ -3,7 +3,6 @@ Navigation Function & Sphere-Starshape Trafo according to Rimon & Koditscheck
 """
 # Author: Lukas Huber
 # License: BSD (c) 2021
-from math import pi
 
 import numpy as np
 from numpy import linalg as LA

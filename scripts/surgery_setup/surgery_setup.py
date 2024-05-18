@@ -7,8 +7,6 @@ __author__ = "LukasHuber"
 __date__ = "2020-07-21"
 
 import numpy as np
-from numpy import pi
-import time
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle_container import (
@@ -45,10 +43,10 @@ def main(simulationNumber=0, saveFigures=False):
         obs = []
         a1 = 0.05
         a2 = 0.20
-        d_a = (a2 - a1) / 2
+        (a2 - a1) / 2
 
         l = 0.30
-        points = np.array(
+        np.array(
             [
                 [-a1, -a1, 0],
                 [a1, -a1, 0],
@@ -61,7 +59,7 @@ def main(simulationNumber=0, saveFigures=False):
             ]
         ).T
 
-        indeces_of_tiles = np.array(
+        np.array(
             [
                 # [0,1,2,3], # Bottom Part
                 # [4,5,6,7], # Lid
@@ -79,7 +77,6 @@ def main(simulationNumber=0, saveFigures=False):
         z_range = [-a2, a2 * 2]
 
         attractorPos = np.array([0, 0, 0])
-        eanimationName = "surgery_simulation.mp4"
 
         inflation_parameter = np.ones(4) * 0.00
         # inflation_parameter = [0, 0.02, 0.02, 0.02]

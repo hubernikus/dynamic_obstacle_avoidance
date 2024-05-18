@@ -13,7 +13,7 @@ from matplotlib import animation
 # import matplotlib.cm as cm
 # colors = cm.rainbow(np.linspace(0, 1, 10))
 
-from pylab import imread, subplot, imshow, show
+from pylab import imread
 
 dim = 2  # two dimensional movement
 fig = plt.figure(figsize=(14, 9))

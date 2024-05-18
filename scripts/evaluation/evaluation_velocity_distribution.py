@@ -5,18 +5,14 @@ __author__ = "Lukas Huber"
 __date__ = "2021-02-01"
 __email__ = "lukas.huber@epfl.ch"
 
-import json
 
 # import yaml
 
-import sys
 import os
 
 import numpy as np
-import scipy
 
 import matplotlib.pyplot as plt
-import matplotlib
 
 
 # Import custom libraries
@@ -38,19 +34,10 @@ def import_data_raw(metric_key="linear_velocity"):
 
     all_recordings = os.listdir(import_directory)
 
-    data = MainEvaluator.import_data_from_file(
+    MainEvaluator.import_data_from_file(
         filename=os.path.join(import_directory, all_recordings[1])
     )
 
-    density_key_dict = {
-        "1": "g",
-        "5": "g",
-        "10": "g",
-        "20": "g",
-        "30": "g",
-        "50": "g",
-        "100": "g",
-    }
 
     for ii in range(10):
         filename = copy.deepcopy(all_recordings[ii])

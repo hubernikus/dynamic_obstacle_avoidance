@@ -5,7 +5,6 @@
 @date 2019-05-24
 """
 
-import sys
 import numpy as np
 from numpy import pi
 
@@ -15,7 +14,6 @@ plt.close("all")
 plt.ion()
 
 from sklearn import svm
-from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 
 
@@ -66,8 +64,7 @@ def kernel_rbf(XX, YY, gamma=20):
 def kernel_polynomial(XX, YY, poly_power=1, center=0):
     XX, YY = reshape(XX, YY)
     # Polynomial Kernel
-    dot_prod = np.sum((XX * YY) ** poly_power, axis=2)
-    kk = dot_prod
+    np.sum((XX * YY) ** poly_power, axis=2)
 
 
 def kernel_spherical(XX, YY, sigma=10):
@@ -128,8 +125,8 @@ def kernel_radial2(XX, YY, gamma=20):
 
 
 def kernel_radial_mag(XX, YY, gamma=10):
-    x_mean = np.mean(XX[:, 1])
-    y_mean = np.mean(YY[:, 1])
+    np.mean(XX[:, 1])
+    np.mean(YY[:, 1])
 
     XX, YY = reshape(XX, YY)
     rad_diff = angle_difference_abs(XX[:, :, 0], YY[:, :, 0])

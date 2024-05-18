@@ -4,7 +4,6 @@ Double Blob Obstacle Test
 import unittest
 
 import numpy as np
-from numpy import linalg as LA
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
@@ -14,7 +13,7 @@ from dynamic_obstacle_avoidance.obstacles import DoubleBlob
 
 class TestDoubleBlob(unittest.TestCase):
     def test_double_blob_creation(self):
-        double_blob = DoubleBlob(a_value=1, b_value=1.1, center_position=[0, 3])
+        DoubleBlob(a_value=1, b_value=1.1, center_position=[0, 3])
 
         # Test draw obstacle function
         # double_blob.draw_obstacle()
@@ -110,7 +109,6 @@ class TestDoubleBlob(unittest.TestCase):
 
 def draw_double_blob():
     import matplotlib.pyplot as plt
-    from matplotlib import cm
 
     x_lim = [-2, 2]
     y_lim = [-0.5, 6]

@@ -6,15 +6,9 @@ Polygon Obstacle for Avoidance Calculations
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import sys
-import warnings
-import copy
-import time
 
-from math import pi
 
 import numpy as np
-from numpy import linalg as LA
 
 import shapely
 
@@ -22,7 +16,6 @@ import shapely
 
 from vartools.angle_math import *
 
-from ._base import GammaType
 from .polygon import Polygon
 
 

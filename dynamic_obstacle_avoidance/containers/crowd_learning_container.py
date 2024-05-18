@@ -10,7 +10,6 @@ __email__ = "lukas.huber@epfl.ch"
 
 import warnings
 import sys
-import copy
 import numpy as np
 from math import sqrt
 
@@ -18,10 +17,6 @@ from dynamic_obstacle_avoidance.obstacles import CircularObstacle
 
 from dynamic_obstacle_avoidance.containers import BaseContainer, GradientContainer
 
-from vartools.angle_math import (
-    transform_polar2cartesian,
-    transform_cartesian2polar,
-)
 
 
 def findCircle(pos_array):

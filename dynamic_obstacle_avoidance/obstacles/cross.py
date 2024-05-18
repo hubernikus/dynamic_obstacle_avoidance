@@ -7,13 +7,11 @@ Cross-Like Obstacle
 # License: BSD (c) 2021
 
 import numpy as np
-from numpy import linalg as LA
 
 # import shapely
 
 from vartools.angle_math import *
 
-from ._base import GammaType
 from .polygon import Polygon
 
 

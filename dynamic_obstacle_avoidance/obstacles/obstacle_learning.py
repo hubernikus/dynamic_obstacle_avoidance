@@ -5,20 +5,13 @@
 @email lukas.huber@epfl.ch
 """
 
-import time
 import numpy as np
-from math import sin, cos, pi, ceil
-import warnings, sys
+import sys
 
-import numpy.linalg as LA
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.state import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.angle_math import (
-    angle_modulo,
-    angle_difference_directional_2pi,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
@@ -158,7 +151,6 @@ class LearningObstacle(Obstacle):
             norm = colors.BoundaryNorm(bounds, my_cmap.N)
             # alphas = np.ones((2,2))
             # alphas = np.array([0., 0., 1., 1.])
-            alphas = 0.5
 
             cs = ax.contourf(
                 xx, yy, predict_score, origin="lower", cmap=my_cmap, norm=norm

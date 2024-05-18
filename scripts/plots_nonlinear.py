@@ -33,11 +33,10 @@ def main(n_resol=90, *args, **kwargs):
     x_lim = [-5.4, 5.4]
     y_lim = [-5.1, 5.1]
 
-    pos_attractor = [-1.5, 1.0]
 
     obs = ObstacleContainer()
 
-    edge_points = np.array(
+    np.array(
         (
             [4.0, 1.0, 1.0, 0.0, 0.0, -4.0, -4.0, -2.5, -2.5, 0.0, 0.0, 4.0],
             [0.0, 0.0, 1.0, 1.0, 1.5, 1.5, -2.0, -2.0, -3.6, -3.6, -3.0, -3.0],
@@ -47,11 +46,9 @@ def main(n_resol=90, *args, **kwargs):
     # edge_points = np.array([[ 4, 4, 3, 1, -1, -3, -4, -4],
     # [-4, 4, 4, 2, 2, 4,  4, -4]])
 
-    case_list = {"lab": 0, "one_square": 1, "one_ellipse": 2}
 
     # case = "lab"
     # case = "one_square"
-    case = "one_ellipse"
 
     cases = [3]
 
@@ -78,8 +75,8 @@ def main(n_resol=90, *args, **kwargs):
         )
 
     pos = np.array([-0.150, -2.7])
-    normal0 = obs[0].get_normal_direction(pos, in_global_frame=True)
-    gamma0 = obs[0].get_gamma(pos, in_global_frame=True)
+    obs[0].get_normal_direction(pos, in_global_frame=True)
+    obs[0].get_gamma(pos, in_global_frame=True)
 
     n_resolution = 100
     x_grid = np.linspace(x_lim[0], x_lim[1], n_resolution)
@@ -87,7 +84,7 @@ def main(n_resol=90, *args, **kwargs):
 
     n_obs = len(obs)
     Gamma_vals = np.zeros((n_resolution, n_resolution, n_obs))
-    normals = np.zeros((obs[0].dim, n_resolution, n_resolution, n_obs))
+    np.zeros((obs[0].dim, n_resolution, n_resolution, n_obs))
     positions = np.zeros((obs[0].dim, n_resolution, n_resolution))
 
     for it_obs in range(n_obs):
@@ -190,7 +187,7 @@ def main(n_resol=90, *args, **kwargs):
     plt.yticks([])
 
     cb_ax = fig.add_axes([0.83, 0.1, 0.02, 0.8])
-    cbar = fig.colorbar(im, cax=cb_ax)
+    fig.colorbar(im, cax=cb_ax)
 
     # cbar = ax.cax.colorbar(im)
     # cbar = grid.cbar_axes[0].colorbar(im)

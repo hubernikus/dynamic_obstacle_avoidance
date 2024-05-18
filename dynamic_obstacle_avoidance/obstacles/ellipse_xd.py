@@ -11,7 +11,6 @@ from numpy import linalg as LA
 
 import shapely
 
-from vartools import linalg
 from vartools.math import get_intersection_with_circle, CircleIntersectionType
 
 from dynamic_obstacle_avoidance import obstacles

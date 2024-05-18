@@ -4,7 +4,6 @@
 # Date: 2018-02-15
 # Email: lukas.huber@epfl.ch
 
-import copy
 import os
 import warnings
 from timeit import default_timer as timer
@@ -15,7 +14,6 @@ import numpy as np
 from numpy import pi
 
 import matplotlib.pyplot as plt
-import matplotlib
 from matplotlib.collections import LineCollection
 import matplotlib.image as mpimg
 
@@ -29,9 +27,6 @@ from dynamic_obstacle_avoidance.avoidance import (
 from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
 
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import *
-from dynamic_obstacle_avoidance.avoidance.obs_dynamic_center_3d import (
-    get_dynamic_center_obstacles,
-)
 
 from dynamic_obstacle_avoidance.avoidance import obs_avoidance_rk4
 
@@ -634,13 +629,11 @@ def visualize_vectorfield(
         print("Number of free points: {}".format(n_calculations))
         print(
             "Average time: {} ms".format(
-                np.round((end_time - start_time) / (n_calculations) * 1000), 5
-            )
+                np.round((end_time - start_time) / (n_calculations) * 1000), )
         )
         print(
             "Modulation calulcation total: {} s".format(
-                np.round(end_time - start_time), 4
-            )
+                np.round(end_time - start_time), )
         )
 
     if plotStream and point_grid:
@@ -650,13 +643,12 @@ def visualize_vectorfield(
             if normalize_vectors:
                 normVel = np.sqrt(dx1_noColl**2 + dx2_noColl**2)
 
-                max_vel = 0.3
                 ind_nonZero = normVel > 0
                 dx1_noColl[ind_nonZero] = dx1_noColl[ind_nonZero] / normVel[ind_nonZero]
                 dx2_noColl[ind_nonZero] = dx2_noColl[ind_nonZero] / normVel[ind_nonZero]
 
             if show_streamplot:
-                res_ifd = ax.streamplot(
+                ax.streamplot(
                     XX[0, :],
                     YY[:, 0],
                     dx1_noColl,

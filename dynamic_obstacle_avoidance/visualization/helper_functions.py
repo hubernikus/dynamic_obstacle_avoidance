@@ -5,30 +5,25 @@ Vector fields of different setups
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
-import time
-from math import pi
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.avoidance import DynamicModulationAvoider
-from dynamic_obstacle_avoidance.visualization import plot_obstacles
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
     Simulation_vectorFields,
 )
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 
 
 def vectorfield(
     obstacle_environment, x_lim=[-3.2, 3.2], y_lim=[-1.4, 4.4], n_resolution=30
 ):
-    dim = 2
     nx = n_resolution
     ny = n_resolution
     x_vals, y_vals = np.meshgrid(
@@ -39,9 +34,9 @@ def vectorfield(
 
     positions = np.vstack((x_vals.reshape(1, -1), y_vals.reshape(1, -1)))
 
-    n_obs = len(obstacle_environment)
+    len(obstacle_environment)
 
-    vel_init = np.zeros((positions.shape))
+    np.zeros((positions.shape))
     vel_mod = np.zeros((positions.shape))
 
     initial_dynamics = LinearSystem(

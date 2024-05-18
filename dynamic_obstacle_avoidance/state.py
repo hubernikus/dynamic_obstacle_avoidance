@@ -9,7 +9,6 @@ import time
 
 # from dynamic_obstacle_avoidance.avoidance.utils import *
 
-import matplotlib.pyplot as plt  # Only for debugging
 
 
 class State(object):
@@ -25,7 +24,7 @@ class State(object):
         # Decode input
         if len(args):  # Nonzero
             if isinstance(args[0], State):
-                state = args[0]
+                args[0]
             elif isinstance(args[0], str):
                 typename = args[0]
                 if len(args) > 1:

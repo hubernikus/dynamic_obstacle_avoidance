@@ -1,7 +1,6 @@
 """
 Dummy robot models for cluttered obstacle environment + testing
 """
-from math import pi
 
 import numpy as np
 from numpy import linalg as LA

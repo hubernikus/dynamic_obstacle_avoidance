@@ -1,13 +1,11 @@
 """ Visual of 'weighting' function to help with debugging."""
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import matplotlib as mpl
 
 from math import pi
 
 import numpy as np
-from numpy import linalg as LA
 
 from vartools.directional_space import UnitDirection, DirectionBase
 from vartools.directional_space.visualization import circular_space_setup
@@ -26,7 +24,7 @@ def visualize_combined_nonlinear_weight_nonl_outside(save_figure=False):
     n_grid = 100
     dim = 3
 
-    inv_conv_radius = pi / 2.0
+    pi / 2.0
     base0 = DirectionBase(matrix=np.eye(dim))
 
     inv_conv_rotated = UnitDirection(base0)
@@ -72,7 +70,7 @@ def visualize_combined_nonlinear_weight_nonl_outside(save_figure=False):
         linewidth=0.2,
         edgecolors="k",
     )
-    cbar = fig.colorbar(
+    fig.colorbar(
         cs,
         # cax=cbar_ax, ticks=np.linspace(0, np.pi, 5)
     )
@@ -101,7 +99,7 @@ def visualize_combined_nonlinear_weight_nonl_inside(save_figure=False):
     n_grid = 20
     dim = 3
 
-    inv_conv_radius = pi / 2.0
+    pi / 2.0
     base0 = DirectionBase(matrix=np.eye(dim))
 
     inv_conv_rotated = UnitDirection(base0)
@@ -147,7 +145,7 @@ def visualize_combined_nonlinear_weight_nonl_inside(save_figure=False):
         linewidth=0.2,
         edgecolors="k",
     )
-    cbar = fig.colorbar(
+    fig.colorbar(
         cs,
         # cax=cbar_ax, ticks=np.linspace(0, np.pi, 5)
     )
@@ -177,7 +175,7 @@ def visualize_combined_nonlinear_weight_rot_inside(save_figure=False):
     n_grid = 20
     dim = 3
 
-    inv_conv_radius = pi / 2.0
+    pi / 2.0
     base0 = DirectionBase(matrix=np.eye(dim))
 
     inv_nonlinear = UnitDirection(base0)
@@ -223,7 +221,7 @@ def visualize_combined_nonlinear_weight_rot_inside(save_figure=False):
         linewidth=0.2,
         edgecolors="k",
     )
-    cbar = fig.colorbar(
+    fig.colorbar(
         cs,
         # cax=cbar_ax, ticks=np.linspace(0, np.pi, 5)
     )
@@ -252,7 +250,7 @@ def visualize_combined_nonlinear_weight_rot_outside(save_figure=False):
     n_grid = 20
     dim = 3
 
-    inv_conv_radius = pi / 2.0
+    pi / 2.0
     base0 = DirectionBase(matrix=np.eye(dim))
 
     inv_nonlinear = UnitDirection(base0)
@@ -298,7 +296,7 @@ def visualize_combined_nonlinear_weight_rot_outside(save_figure=False):
         linewidth=0.2,
         edgecolors="k",
     )
-    cbar = fig.colorbar(
+    fig.colorbar(
         cs,
         # cax=cbar_ax, ticks=np.linspace(0, np.pi, 5)
     )

@@ -3,7 +3,6 @@
 
 import sys
 import time
-import copy
 
 from math import pi
 import numpy as np
@@ -96,7 +95,7 @@ class DynamicBoundariesPolygon(Polygon):
 
         self._inflation_parameter = np.zeros((self.num_planes, 2))
         self.inflation_parameter_old = np.zeros((self.num_planes, 2))
-        if not inflation_parameter is None:
+        if inflation_parameter is not None:
             self.set_inflation_parameter(inflation_parameter)
 
         self.time = time.time()
@@ -240,7 +239,7 @@ class DynamicBoundariesPolygon(Polygon):
         self.boundary_points_local = np.zeros((self.dim, num_points))
 
         # Assume symmetric setup
-        xy_max = self.get_flat_wall_value(z_val)
+        self.get_flat_wall_value(z_val)
 
         # Iterator of the boundary point-list
         it_xobs = 0

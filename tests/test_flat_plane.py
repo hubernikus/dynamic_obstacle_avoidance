@@ -4,8 +4,6 @@ Test normal formation
 """
 import unittest
 
-import numpy as np
-from math import pi
 
 import matplotlib.pyplot as plt
 

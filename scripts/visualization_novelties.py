@@ -6,15 +6,12 @@ Script which creates a variety of examples of local modulation of a vector field
 # Email: lukas.huber@epfl.ch
 # Created: 2018-02-15
 
-import sys
-import os
 import warnings
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 
 from vartools.dynamical_systems import LinearSystem
 
@@ -289,7 +286,7 @@ def visualize_repulsive_cube(
     # ax = axes.flat[1]
     fig = plt.figure(figsize=figsize)
     ax = plt.subplot(2, 1, 1)
-    line = plt_speed_line_and_qolo(
+    plt_speed_line_and_qolo(
         points_init=point_init,
         attractorPos=pos_attractor,
         obs=obs,
@@ -323,7 +320,7 @@ def visualize_repulsive_cube(
     # fig, ax = plt.subplots(figsize=figsize)
     # ax = axes.flat[1]
     ax = plt.subplot(2, 1, 2)
-    line = plt_speed_line_and_qolo(
+    plt_speed_line_and_qolo(
         points_init=point_init,
         attractorPos=pos_attractor,
         obs=obs,
@@ -390,7 +387,7 @@ def visualize_circular_boundary(
     fig = plt.figure(figsize=figsize)
     ax = plt.subplot(1, 1, 1)
 
-    line = plt_speed_line_and_qolo(
+    plt_speed_line_and_qolo(
         points_init=point_init,
         attractorPos=pos_attractor,
         obs=obs,
@@ -457,7 +454,7 @@ def visualize_starshaped_boundary(
     fig = plt.figure(figsize=figsize)
     ax = plt.subplot(1, 1, 1)
 
-    line = plt_speed_line_and_qolo(
+    plt_speed_line_and_qolo(
         points_init=point_init,
         attractorPos=pos_attractor,
         obs=obs,
@@ -537,7 +534,7 @@ def visualize_edge_obstacle(
         fig = plt.figure(figsize=figsize)
         ax = plt.subplot(1, 1, 1)
 
-        line = plt_speed_line_and_qolo(
+        plt_speed_line_and_qolo(
             points_init=point_init,
             attractorPos=pos_attractor,
             obs=obs,
@@ -631,7 +628,7 @@ def visualize_edge_boundary(
         fig = plt.figure(figsize=figsize)
         ax = plt.subplot(1, 1, 1)
 
-        line = plt_speed_line_and_qolo(
+        plt_speed_line_and_qolo(
             points_init=point_init,
             attractorPos=dynamical_system.attractor_position,
             obs=obs,

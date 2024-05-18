@@ -2,19 +2,18 @@
 Test script for obstacle avoidance algorithm
 Test normal formation
 """
+
 import math
 
 import numpy as np
-from numpy import linalg as LA
 
 from scipy.spatial.transform import Rotation as Rotation
 
 from vartools.states import Pose
-from vartools.math import get_intersection_with_circle, IntersectionType
+from vartools.math import IntersectionType
 
 from dynamic_obstacle_avoidance.obstacles import CuboidXd
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    Simulation_vectorFields,
     plot_obstacles,
 )
 
@@ -62,7 +61,7 @@ def test_gamma_function(n_resolution=10, visualize=False):
             levels=levels,
         )
 
-        cbar = fig.colorbar(contour)
+        fig.colorbar(contour)
 
         ax.quiver(
             positions[0, :],
@@ -190,7 +189,7 @@ def test_surface_position():
     assert np.allclose(surf_point, [0.2, 0])
 
 
-def test_normal_direction():
+def test_cuboid_normal_and_gamma():
     position = np.array([-4.239800261245738, -2.5311849573737155])
     cube = CuboidXd(
         center_position=np.array([-4.906512403591768, -1.8412917602246444]),
@@ -262,7 +261,7 @@ def test_gamma(visualize=False):
         for ii in range(positions.shape[1]):
             gammas[ii] = obstacle.get_gamma(positions[:, ii], in_global_frame=True)
 
-        cont = ax.contourf(
+        ax.contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
             gammas.reshape(nx, ny),
@@ -300,7 +299,7 @@ def test_normal_with_margin(visualize=False):
         # Check all normal directions
         ax.plot(position[0], position[1], "ok")
         normal = obstacle.get_normal_direction(position, in_global_frame=True)
-        ax.arrow(position[0], position[1], normal[0], normal[1], color=colors[ii])
+        ax.arrow(position[0], position[1], normal[0], normal[1])
 
     normal = obstacle.get_normal_direction(position, in_global_frame=True)
     assert np.allclose(normal, [-1, 0], atol=1e-3)

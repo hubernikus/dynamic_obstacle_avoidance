@@ -6,25 +6,19 @@ Shapely Container finds the dynamic reference point through gradient descent.
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import warnings, sys
-import copy
-import time
 
 import numpy as np
 from numpy import linalg as LA
 
 from shapely.ops import nearest_points
 
-from dynamic_obstacle_avoidance.utils import get_reference_weight
 
-from dynamic_obstacle_avoidance.obstacles import CircularObstacle
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.avoidance.obs_common_section import (
     DistanceMatrix,
     IntersectionMatrix,
-    get_single_reference_point,
     get_intersection_cluster,
 )
 
@@ -205,7 +199,7 @@ class ShapelyContainer(ObstacleContainer):
                 intersecting_obstacles[jj] = True
 
         # TODO: the functiions bellow should be member-methods
-        intersecting_obs = get_intersection_cluster(intersection_matrix, self)
+        get_intersection_cluster(intersection_matrix, self)
         # intersecting_obs = np.array(intersecting_obs).flatten()
 
         return intersecting_obstacles

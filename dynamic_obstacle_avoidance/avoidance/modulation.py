@@ -1,6 +1,7 @@
 """
 Library for the Modulation of Linear Systems
 """
+
 # Author: Lukas Huber
 # Email: hubernikus@gmail.com
 # License: BSD (c) 2021
@@ -11,9 +12,9 @@ import numpy.linalg as LA
 
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.dynamical_systems import DynamicalSystem
+from vartools.linalg import get_orthogonal_basis
 
 from dynamic_obstacle_avoidance.utils import get_relative_obstacle_velocity
-from dynamic_obstacle_avoidance.utils import get_orthogonal_basis
 from dynamic_obstacle_avoidance.utils import compute_weights
 
 from .base_avoider import BaseAvoider
@@ -72,7 +73,7 @@ def get_sticky_surface_imiation(relative_velocity, Gamma, E_orth, obs):
         sticky_surface_power = 2
 
         # Treat inside obstacle as on the surface
-        Gamma_mag = max(Gamma[n], 1)
+        max(Gamma[n], 1)
         if abs(Gamma[n]) < 1:
             # if abs(Gamma_mag) < 1:
             eigenvalue_magnitude = 0

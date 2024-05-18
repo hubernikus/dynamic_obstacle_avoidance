@@ -6,10 +6,7 @@ Polygon Obstacle for Avoidance Calculations
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import sys
-import warnings
 import copy
-import time
 
 from math import pi
 
@@ -21,10 +18,6 @@ from shapely import affinity
 from shapely.geometry import Point, MultiPoint
 from shapely.geometry.polygon import LinearRing
 
-from vartools.directional_space import (
-    get_angle_space,
-    get_angle_space_of_array,
-)
 from vartools.directional_space import get_directional_weighted_sum
 from vartools.angle_math import (
     angle_is_in_between,
@@ -32,7 +25,6 @@ from vartools.angle_math import (
 )
 from vartools.angle_math import *
 
-from dynamic_obstacle_avoidance.utils import get_tangents2ellipse
 
 from ._base import Obstacle, GammaType
 

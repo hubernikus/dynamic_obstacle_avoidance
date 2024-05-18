@@ -6,7 +6,6 @@ s  #!/USSR/bin/python3
 # Email: lukas.huber@epfl.ch
 
 import numpy as np
-from numpy import linalg as LA
 from numpy import pi
 
 import matplotlib.pyplot as plt
@@ -229,7 +228,6 @@ def main(n_resol=20, *args, **kwargs):
     x_lim = [-5.4, 5.4]
     y_lim = [-5.1, 5.1]
 
-    pos_attractor = [-1.5, 1.0]
 
     obs = ObstacleContainer()
 
@@ -243,11 +241,9 @@ def main(n_resol=20, *args, **kwargs):
     # edge_points = np.array([[ 4, 4, 3, 1, -1, -3, -4, -4],
     # [-4, 4, 4, 2, 2, 4,  4, -4]])
 
-    case_list = {"lab": 0, "one_square": 1, "one_ellipse": 2}
 
     # case = "lab"
     # case = "one_square"
-    case = "one_ellipse"
 
     cases = [4]
 
@@ -328,8 +324,6 @@ def main(n_resol=20, *args, **kwargs):
         )
         obs[-1].is_static = True
 
-        pos_attractor = [0.3, -0.75]
-        pos_attractor = [-1.75, -0.97]
 
         # pos_attractor = obs['coworker'].get_reference_point(in_global_frame=True)
         n_resol = 3
@@ -507,15 +501,15 @@ def main(n_resol=20, *args, **kwargs):
     # pos = np.array([1.0, 0])
     # pos = np.array([-.0, -3.0])
     pos = np.array([-0.150, -2.7])
-    normal0 = obs[0].get_normal_direction(pos, in_global_frame=True)
-    gamma0 = obs[0].get_gamma(pos, in_global_frame=True)
+    obs[0].get_normal_direction(pos, in_global_frame=True)
+    obs[0].get_gamma(pos, in_global_frame=True)
 
     x_grid = np.linspace(x_lim[0], x_lim[1], n_resolution)
     y_grid = np.linspace(y_lim[0], y_lim[1], n_resolution)
 
     n_obs = len(obs)
     Gamma_vals = np.zeros((n_resolution, n_resolution, n_obs))
-    normals = np.zeros((obs[0].dim, n_resolution, n_resolution, n_obs))
+    np.zeros((obs[0].dim, n_resolution, n_resolution, n_obs))
     positions = np.zeros((obs[0].dim, n_resolution, n_resolution))
 
     local_rad = np.zeros((n_resolution, n_resolution, n_obs))
@@ -610,7 +604,7 @@ def main(n_resol=20, *args, **kwargs):
     print("Merge type {}".format(merge_type))
 
     max_val = None
-    if not max_val is None:
+    if max_val is not None:
         Gamma_vals[Gamma_vals > max_val] = max_val
 
     fig = plt.figure(figsize=(10, 8))
@@ -624,7 +618,7 @@ def main(n_resol=20, *args, **kwargs):
         zorder=-3,
     )
 
-    cbar = fig.colorbar(cs)
+    fig.colorbar(cs)
     for obstacle in obs:
         obstacle.draw_obstacle(numPoints=50)
         plt.plot(

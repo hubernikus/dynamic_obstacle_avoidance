@@ -4,14 +4,11 @@
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
 
-import os
 import warnings
 
 import numpy as np
 
-import matplotlib
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import axes3d
 
 # ! Miavy needed for 3D plotting
 # Turn on 3D plotting (!)
@@ -19,7 +16,6 @@ from mpl_toolkits.mplot3d import axes3d
 
 # import mayavi.mlab
 
-from vartools.dynamical_systems import LinearSystem
 
 plt.ion()  # Show plot without stopping code
 
@@ -104,7 +100,7 @@ def plot_obstacles_and_vector_levelz_3d(
     color_map = "cool"
     # color_map = 'hsv'
 
-    positions = np.zeros((dimension, n_grid, n_grid))
+    np.zeros((dimension, n_grid, n_grid))
     linear_velocities = np.zeros((dimension, n_grid, n_grid, n_grid_z))
     modulated_velocities = np.zeros((dimension, n_grid, n_grid, n_grid_z))
 

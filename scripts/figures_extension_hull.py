@@ -9,7 +9,6 @@ __date__ = "2020-02-15"
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -17,10 +16,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 
 # from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
-from dynamic_obstacle_avoidance.visualization.animated_simulation import (
-    run_animation,
-    samplePointsAtBorder,
-)
 
 ########################################################################
 options = [1]
@@ -69,7 +64,7 @@ def main(options=[], N_resol=100, saveFigures=False):
                 point_grid=N_resol,
             )
 
-            pos = obs[0].set_reference_point(np.array([1, 0.2]), in_global_frame=True)
+            obs[0].set_reference_point(np.array([1, 0.2]), in_global_frame=True)
             ref = obs[0].get_reference_point(in_global_frame=True)
             fig_mod, ax_mod = Simulation_vectorFields(
                 x_lim,
@@ -87,7 +82,7 @@ def main(options=[], N_resol=100, saveFigures=False):
                 point_grid=N_resol,
             )
 
-            pos = obs[0].set_reference_point(np.array([2.5, 0.2]), in_global_frame=True)
+            obs[0].set_reference_point(np.array([2.5, 0.2]), in_global_frame=True)
             ref = obs[0].get_reference_point(in_global_frame=True)
             fig_mod, ax_mod = Simulation_vectorFields(
                 x_lim,
@@ -140,7 +135,7 @@ def main(options=[], N_resol=100, saveFigures=False):
             point_grid=N_resol,
         )
 
-        pos = obs[0].set_reference_point(np.array([0.6, 1.0]), in_global_frame=True)
+        obs[0].set_reference_point(np.array([0.6, 1.0]), in_global_frame=True)
         ref = obs[0].get_reference_point(in_global_frame=True)
         fig_mod, ax_mod = Simulation_vectorFields(
             x_lim,
@@ -158,7 +153,7 @@ def main(options=[], N_resol=100, saveFigures=False):
             point_grid=N_resol,
         )
 
-        pos = obs[0].set_reference_point(np.array([2.5, 1.8]), in_global_frame=True)
+        obs[0].set_reference_point(np.array([2.5, 1.8]), in_global_frame=True)
         ref = obs[0].get_reference_point(in_global_frame=True)
         fig_mod, ax_mod = Simulation_vectorFields(
             x_lim,

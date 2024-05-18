@@ -5,14 +5,13 @@
 
 import warnings
 from typing import Optional
-import math
 
 import numpy as np
 from numpy import linalg as LA
 
 import shapely
 
-from vartools.math import get_intersection_with_circle, IntersectionType
+from vartools.math import IntersectionType
 from dynamic_obstacle_avoidance import obstacles
 
 

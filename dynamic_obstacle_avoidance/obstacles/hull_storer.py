@@ -2,7 +2,6 @@
 Store Hull for obstacles
 """
 import warnings
-from functools import lru_cache
 
 from math import pi
 
@@ -259,7 +258,7 @@ class ObstacleHullsStorer:
         if has_moved is None:
             has_moved = self.check_if_pose_has_updated()
 
-        hull_ = self.set(
+        self.set(
             value=value,
             in_global_frame=False,
             margin=True,
@@ -268,7 +267,7 @@ class ObstacleHullsStorer:
         )
 
         if reset_upper:
-            hull_ = self.set(
+            self.set(
                 value=value,
                 in_global_frame=False,
                 margin=True,
@@ -283,7 +282,7 @@ class ObstacleHullsStorer:
         if has_moved is None:
             has_moved = self.check_if_pose_has_updated()
 
-        hull_ = self.set(
+        self.set(
             value=value,
             in_global_frame=False,
             margin=False,
@@ -292,7 +291,7 @@ class ObstacleHullsStorer:
         )
 
         if reset_upper:
-            hull_ = self.set(
+            self.set(
                 value=value,
                 in_global_frame=False,
                 margin=True,
@@ -300,7 +299,7 @@ class ObstacleHullsStorer:
                 has_moved=has_moved,
             )
 
-            hull_ = self.set(
+            self.set(
                 value=value,
                 in_global_frame=False,
                 margin=True,

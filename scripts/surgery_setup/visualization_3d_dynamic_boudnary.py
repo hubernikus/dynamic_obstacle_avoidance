@@ -1,11 +1,9 @@
 #!/USSR/bin/python3
 
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
 import numpy as np
-import time
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.dynamic_boundaries_polygon import (
     DynamicBoundariesPolygon,

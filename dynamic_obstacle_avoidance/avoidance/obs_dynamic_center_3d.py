@@ -1,9 +1,7 @@
 import numpy as np
 
-from math import pi, floor
+from math import floor
 
-import matplotlib.pyplot as plt  # only for debugging
-import warnings
 
 # from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import compute_weights
 
@@ -81,7 +79,7 @@ def get_dynamic_center_obstacles(
             continue
         # x_obs1 = np.unique(obs[it1].x_obs, axis=0)
 
-        x_obs1 = np.zeros((0, 0, 0))
+        np.zeros((0, 0, 0))
 
         object_weights = np.zeros(n_obs)
         kernel_points = np.zeros((dimension, n_obs))

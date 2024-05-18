@@ -5,10 +5,8 @@ Reference Point Search
 # Author: Lukas Huber
 # Date:  2020-02-28
 # Email: lukas.huber@epfl.ch
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 import numpy as np
 from numpy import pi
@@ -18,7 +16,7 @@ from vartools.linalg import get_orthogonal_basis
 from vartools.directional_space import get_angle_space_inverse
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
-from dynamic_obstacle_avoidance.obstacles import Obstacle, Ellipse, Cuboid
+from dynamic_obstacle_avoidance.obstacles import Ellipse, Cuboid
 
 
 def main(save_figure=False, n_points=100, case=[1]):
@@ -141,7 +139,7 @@ def main(save_figure=False, n_points=100, case=[1]):
         norm_derivative1 = np.zeros((dim - 1, dim, n_points))
         norm_derivative2 = np.zeros((dim - 1, dim, n_points))
 
-        dist_norm = np.zeros((n_points, n_points))
+        np.zeros((n_points, n_points))
         d_dphi = np.zeros(((dim - 1) * 2, n_points, n_points))
 
         norm_dist_1 = np.zeros((dim, n_points))
@@ -215,7 +213,7 @@ def main(save_figure=False, n_points=100, case=[1]):
                     * surface_derivative2[:, :, jj].dot(dist_dir)
                 )
 
-                norm_sum = norm_dist_1[:, ii] - norm_dist_2[:, jj]
+                norm_dist_1[:, ii] - norm_dist_2[:, jj]
 
                 # d_dphi[0, ii, jj] = norm_derivative1[:, :, ii].dot(dist_dir) + surface_derivative1[:, :, ii].dot(norm_sum)
                 # d_dphi[1, ii, jj] = norm_derivative2[:, :, jj].dot(dist_dir) + surface_derivative2[:, :, jj].dot(norm_sum)
@@ -340,7 +338,7 @@ def main(save_figure=False, n_points=100, case=[1]):
             )
 
             freq_quiver = 3
-            ind_ = np.logical_not(np.mod(np.arange(n_points), freq_quiver))
+            np.logical_not(np.mod(np.arange(n_points), freq_quiver))
             # plt.quiver(angle_position[0, ind_, :][:, ind_], angle_position[1, ind_, :][:, ind_], np.zeros(np.sum(ind_)), d_dphi[0, ind_,  :][:, ind_], d_dphi[1, ind_,  :][:, ind_], np.zeros(np.sum(ind_)), color='k')
             plt.xlabel("$\phi_1$ [rad]")
             plt.ylabel("$\phi_2$ [rad]")
@@ -351,7 +349,7 @@ def main(save_figure=False, n_points=100, case=[1]):
         if show_stream_plot:
             fig = plt.figure(figsize=(4, 3))
             cs = plt.contourf(phi_1, phi_2, distance.T, zorder=-3, alpha=0.6)
-            cbar = fig.colorbar(cs)
+            fig.colorbar(cs)
             plt.streamplot(
                 phi_1, phi_2, d_dphi[0, :, :].T, d_dphi[1, :, :].T, zorder=-2, color="k"
             )
@@ -393,8 +391,8 @@ def main(save_figure=False, n_points=100, case=[1]):
 
         dist_dir = obs2.center_position - obs1.center_position
 
-        ang_1_0 = np.arctan2(dist_dir[1], dist_dir[0])
-        ang_2_0 = np.arctan2(-dist_dir[1], -dist_dir[0])
+        np.arctan2(dist_dir[1], dist_dir[0])
+        np.arctan2(-dist_dir[1], -dist_dir[0])
 
         ang_1 = 0
         ang_2 = 0
@@ -412,7 +410,6 @@ def main(save_figure=False, n_points=100, case=[1]):
         NullMatrix_1 = get_orthogonal_basis(dist_dir)
         NullMatrix_2 = get_orthogonal_basis(-dist_dir)
         while True:
-            dist_old = -1
 
             # surface_derivative1 = obs1.get_surface_derivative_angle(ang_1, in_global_frame=True)
             # surface_derivative2 = obs2.get_surface_derivative_angle(ang_2, in_global_frame=True)

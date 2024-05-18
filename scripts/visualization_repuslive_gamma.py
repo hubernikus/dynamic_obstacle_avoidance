@@ -8,7 +8,6 @@ with obstacle avoidance.
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
-import matplotlib.pyplot as plt
 
 # from dynamic_obstacle_avoidance.dynamical_system import linearAttractor
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (

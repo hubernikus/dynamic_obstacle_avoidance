@@ -1,6 +1,5 @@
 # Visual of 'weighting' function to help with debugging
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
 plt.ion()
@@ -17,7 +16,7 @@ def directional_deviation_weight(save_figure=False):
     n_grid = 20
     dist0 = np.linspace(1e-6, 1 - 1e-6, n_grid)
     weight = np.linspace(1e-6, 1 - 1e-6, n_grid)
-    gamma = 1.0 / weight
+    1.0 / weight
 
     val = np.zeros((n_grid, n_grid))
     for ii, d_weight in enumerate(dist0):
@@ -27,7 +26,7 @@ def directional_deviation_weight(save_figure=False):
     # val = weight ** (1.0/(pow_factor*dist0))
 
     weight_mesh, dist0_mesh = np.meshgrid(weight, dist0)
-    surf = ax.plot_surface(
+    ax.plot_surface(
         dist0_mesh, weight_mesh, val, cmap=cm.YlGnBu, linewidth=0.2, edgecolors="k"
     )
     # antialiased=False)

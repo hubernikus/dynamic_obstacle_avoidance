@@ -6,8 +6,7 @@
 import numpy as np
 from numpy import linalg as LA
 
-from math import ceil, sin, cos, sqrt
-import matplotlib.pyplot as plt  # for debugging
+from math import ceil
 
 import warnings
 
@@ -115,7 +114,7 @@ class IntersectionMatrix(DistanceMatrix):
         return self[row, col]
 
     def is_intersecting(self, row, col):
-        return bool(not (self[row, col] is None))
+        return bool(self[row, col] is not None)
 
     def get_intersection_matrix(self):
         # Maybe not necessary function
@@ -131,7 +130,7 @@ class IntersectionMatrix(DistanceMatrix):
                 if col == row:
                     continue
                 val = self.get(row, col)
-                if not val is None and not isinstance(self.get(row, col), bool):
+                if val is not None and not isinstance(self.get(row, col), bool):
                     matr[:, col, row] = matr[:, row, col] = self[row, col]
         return matr
 
@@ -185,7 +184,7 @@ def obs_common_section(obs):
     it_intersect = -1
 
     # Ext for more dimensions
-    dim = d = len(obs[0].center_position)
+    dim = len(obs[0].center_position)
 
     N_points = 30  # Choose number of points each iteration
     Gamma_steps = 5  # Increases computational cost
@@ -220,7 +219,6 @@ def obs_common_section(obs):
                 continue
 
             if intersection_with_obs1:  # Modify intersecition part
-                obsCloseBy = False
 
                 if True:
                     N_inter = intersection_sf[it_intersect].shape[
@@ -283,7 +281,7 @@ def obs_common_section(obs):
                                 it_obs2_ = it_obs1
 
                             for ii in range(1, Gamma_steps):
-                                N_points_interior = ceil(N_points / Gamma_steps * ii)
+                                ceil(N_points / Gamma_steps * ii)
 
                                 x_obs_sf_interior = obs[
                                     it_obs1_
@@ -374,14 +372,9 @@ def get_intersections_obstacles(
         return np.zeros((num_obstacles, num_obstacles))
 
     # Intersction surface
-    intersection_obs = []
-    intersection_sf = []
-    intersection_sf_temp = []
-    it_intersect = -1
 
     # Exit for more dimensions
-    dim = len(obs[0].center_position)
-    d = dim  # TODO remove!
+    len(obs[0].center_position)
 
     # Find Boundaries
     # ind_wall = obs.ind_wall
@@ -501,7 +494,7 @@ def get_intersection_cluster(Intersections, obs, representation_type="single_poi
         np.sum(intersection_matrix, axis=0) > 0
     ]
 
-    if not obs.index_wall is None:
+    if obs.index_wall is not None:
         # TODO solve more cleanly...
         intersecting_obstacles = np.delete(
             intersecting_obstacles,
@@ -538,7 +531,7 @@ def get_intersection_cluster(Intersections, obs, representation_type="single_poi
             intersecting_obstacles[intersection_cluster].tolist()
         )
 
-        if not obs.index_wall is None:  # Add wall connection
+        if obs.index_wall is not None:  # Add wall connection
             if np.sum(
                 intersection_matrix[intersection_cluster_list[-1], :][:, obs.index_wall]
             ):  # nonzero

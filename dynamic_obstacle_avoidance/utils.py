@@ -12,7 +12,6 @@ import numpy.linalg as LA
 import numpy.typing as npt
 
 from vartools.angle_math import *
-from vartools.linalg import get_orthogonal_basis
 
 
 def avoid_moving_obstacle_with_maximum(
@@ -337,7 +336,7 @@ def compute_weights(
 ) -> np.ndarray:
     """Compute weights based on a distance measure (with no upper limit)"""
     distMeas = np.array(distMeas)
-    n_points = distMeas.shape[0]
+    distMeas.shape[0]
 
     critical_points = distMeas <= distMeas_lowerLimit
 
@@ -410,7 +409,6 @@ def compute_R(d, th_r):
 def obs_check_collision_2d(obs_list, XX, YY):
     """Check if points (as a list in *args) are colliding with any of the obstacles.
     Function is implemented for 2D only."""
-    d = 2
 
     dim_points = XX.shape
     if len(dim_points) == 1:
@@ -424,7 +422,7 @@ def obs_check_collision_2d(obs_list, XX, YY):
 
     points = np.array(([np.reshape(XX, (N_points,)), np.reshape(YY, (N_points,))]))
     # At the moment only implemented for 2D
-    collision = np.zeros(dim_points)
+    np.zeros(dim_points)
 
     N_points = points.shape[1]
 
@@ -452,13 +450,13 @@ def obs_check_collision(obs_list, dim, *args):
     if len(*args) == dim:
         points = np.array([])
         for ii in range(dim):
-            input_shape = args[0].shape
+            args[0].shape
             points = np.vstack((points, np.arary(args[ii]).flatten()))
 
     N_points = points.shape[1]
 
     # At the moment only implemented for 2D
-    collision = np.zeros((N_points))
+    np.zeros((N_points))
 
     for ii in range(N_points):
         pass
@@ -503,7 +501,7 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
         # TODO cut ellipse along direction & apply 2D-problem
         raise TypeError("Not implemented for higher dimension")
 
-    if not center_point is None:
+    if center_point is not None:
         edge_point = edge_point - center_point
 
     # Intersection of (x_1/a_1)^2 +( x_2/a_2)^2 = 1 & x_2=m*x_1+c
@@ -554,7 +552,7 @@ def get_tangents2ellipse(edge_point, axes, center_point=None, dim=2):
         tangent_points = np.flip(tangent_points, axis=1)
         tangent_vectors = np.flip(tangent_vectors, axis=1)
 
-    if not center_point is None:
+    if center_point is not None:
         tangent_points = (
             tangent_points + np.tile(center_point, (tangent_points.shape[1], 1)).T
         )
@@ -594,7 +592,7 @@ def get_reference_weight(
     weights = weights / np.sum(weights)
 
     # Add amount of movement relative to distance
-    if not obs_reference_size is None:
+    if obs_reference_size is not None:
         distance_max = distance_max * obs_reference_size[ind_range]
 
     weight_ref_displacement = 1 / (dist_temp + 1 - distance_min) - 1 / (

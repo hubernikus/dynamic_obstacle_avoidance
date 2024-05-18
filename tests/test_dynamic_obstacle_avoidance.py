@@ -11,7 +11,7 @@ from math import pi
 import numpy as np
 from numpy import linalg as LA
 
-from vartools.dynamical_systems import LinearSystem, ConstantValue
+from vartools.dynamical_systems import ConstantValue
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer

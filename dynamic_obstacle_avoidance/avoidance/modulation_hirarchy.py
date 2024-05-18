@@ -8,7 +8,6 @@ Library for the Modulation of Linear Systems
 Copyright (c)2019 under GPU license
 """
 
-import matplotlib.pyplot as plt
 
 import numpy as np
 import numpy.linalg as LA
@@ -16,8 +15,6 @@ import numpy.linalg as LA
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import *
 
-import warnings
-import sys
 
 
 def obs_avoidance_interpolation_moving(
@@ -69,8 +66,8 @@ def obs_avoidance_interpolation_moving(
         N_attr = 1
 
     # Linear and angular roation of velocity
-    xd_dx_obs = np.zeros((dim, N_obs))
-    xd_w_obs = np.zeros((dim, N_obs))  # velocity due to the rotation of the obstacle
+    np.zeros((dim, N_obs))
+    np.zeros((dim, N_obs))  # velocity due to the rotation of the obstacle
 
     # Modulation matrices
     E = np.zeros((dim, dim, N_obs))
@@ -174,7 +171,7 @@ def obs_avoidance_interpolation_moving(
 
     if N_attr:
         # IMPLEMENT PROPERLY & TEST
-        k_ds = np.hstack((k_ds, np.zeros((d - 1, N_attr))))  # points at the origin
+        np.hstack((k_ds, np.zeros((d - 1, N_attr))))  # points at the origin
         xd_hat_magnitude = np.hstack(
             (xd_hat_magnitude, LA.norm((xd)) * np.ones(N_attr))
         )

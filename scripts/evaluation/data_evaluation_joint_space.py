@@ -10,7 +10,6 @@ Script which creates a variety of examples of local modulation of a vector field
 import numpy as np
 import matplotlib.pyplot as plt
 
-import copy
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -18,15 +17,10 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *
-from dynamic_obstacle_avoidance.visualization.animated_simulation import (
-    run_animation,
-    samplePointsAtBorder,
-)
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.learning_obstacle import *
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
-import json  # store/load data
 
 
 use_test_data = True
@@ -71,7 +65,7 @@ def get_boundary_values(
         plt.ylim(y_limit)
 
     cassifier_svm = svm.SVC(kernel="rbf", gamma=20, C=20.0)
-    model = cassifier_svm.fit(X, y)
+    cassifier_svm.fit(X, y)
     # model = model.fit
     xx, yy = np.meshgrid(np.arange(0, 1, 0.01), np.arange(0, 1, 0.01))
 

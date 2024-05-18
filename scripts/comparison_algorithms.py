@@ -18,7 +18,6 @@ from vartools.dynamical_systems import LinearSystem
 from dynamic_obstacle_avoidance.obstacles import Ellipse, Polygon, Cuboid
 from dynamic_obstacle_avoidance.containers import ShapelyContainer
 from dynamic_obstacle_avoidance.metric_evaluation import MetricEvaluator
-from dynamic_obstacle_avoidance.utils import obs_check_collision_2d
 from dynamic_obstacle_avoidance.avoidance import (
     obs_avoidance_potential_field,
     obs_avoidance_orthogonal_moving,
@@ -53,7 +52,6 @@ class DynamicEllipse(Ellipse):
         self.x_range = x_range
         self.y_range = y_range
 
-        freq_oscilation = None
 
         position = np.random.rand(self.dim)
         position[0] = position[0] * (x_range[1] - x_range[0]) + x_range[0]
@@ -336,7 +334,7 @@ def compare_algorithms_random(
     )
 
     # Two obstacles instead of one gives a better performance at the 'star-side'
-    center_point = copy.deepcopy(obs_list[-1].center_position)
+    copy.deepcopy(obs_list[-1].center_position)
 
     if True:
         attractor_position = np.array([7.5, 1.7])
@@ -390,7 +388,7 @@ def compare_algorithms_random(
         vel = attractor_position - pos
         vel = vel / np.linalg.norm(vel)
         # xd = obs_avoidance_orthogonal_moving(pos, vel, obs_list)
-        xd = obs_avoidance_potential_field(pos, vel, obs_list)
+        obs_avoidance_potential_field(pos, vel, obs_list)
         import pdb
 
         pdb.set_trace()
@@ -551,7 +549,7 @@ def compare_algorithms_random(
             plt.legend(loc="center right")
 
         if visualize_scene and not plt.fignum_exists(fig_num):
-            print(f"Simulation ended with closing of figure")
+            print("Simulation ended with closing of figure")
             plt.pause(0.01)
             plt.close("all")
             break
@@ -697,7 +695,7 @@ def evaluation_metrics(metrics):
                 if key_str == ["distance"] or key_str == ["duration"]:
                     data = np.array(data) / list_initial_distance
 
-                if not key_str in eval_dict:
+                if key_str not in eval_dict:
                     eval_dict[key_str] = []
 
                 eval_dict[key_str].append({})
@@ -708,7 +706,7 @@ def evaluation_metrics(metrics):
     end_of_line = " \\\\ \n   "
     separator_sum_var = " $\pm$ "
     ind_separator = int((-1) * len(separator_str))
-    ind_eol = int((-1) * len(end_of_line))
+    int((-1) * len(end_of_line))
 
     table_order_list = [
         "name",
@@ -882,7 +880,6 @@ def comparison_subplots(
 
     it_plot += 1
     np.random.seed(rand_seed_0)
-    stop_time = 10
     ax = plt.subplot(n_rows, n_cols, it_plot)
     compare_algorithms_random(
         max_it=50,
@@ -896,7 +893,6 @@ def comparison_subplots(
 
     it_plot += 1
     np.random.seed(rand_seed_0)
-    stop_time = 10
     ax = plt.subplot(n_rows, n_cols, it_plot)
     line_labels = compare_algorithms_random(
         max_it=100,

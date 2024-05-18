@@ -1,12 +1,6 @@
 """ Runge Kutta 4 algorithm for general obstacle avoidance"""
 import numpy as np
 
-from dynamic_obstacle_avoidance.avoidance import (
-    obs_avoidance_interpolation_moving,
-)
-from dynamic_obstacle_avoidance.avoidance import (
-    obs_avoidance_nonlinear_hirarchy,
-)
 
 
 def obs_avoidance_rk4(dt, x, obs, obs_avoidance, ds, x0=False):

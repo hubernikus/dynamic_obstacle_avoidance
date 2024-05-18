@@ -4,13 +4,11 @@ Multiple widget-utils to simplify the make the usage of Jupyter-Notebooks more u
 # Author: LukasHuber
 # Github: hubernikus
 # Created:  2019-06-01
-import time
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 
-from ipywidgets import interact, interactive, fixed, interact_manual
+from ipywidgets import interact, fixed, interact_manual
 from ipywidgets import FloatSlider, IntSlider
 import ipywidgets as widgets
 
@@ -74,7 +72,7 @@ def widget_ellipses_vectorfield(
     point_pos = np.array([point_posX, point_posY])
     ds_init = point_pos - pos_attractor
 
-    ds_mod = obs_avoidance_interpolation_moving(point_pos, ds_init, obs)
+    obs_avoidance_interpolation_moving(point_pos, ds_init, obs)
 
     fig, ax = Simulation_vectorFields(
         xlim,
@@ -254,7 +252,7 @@ class WidgetClass_intersection:
 
         it_obs -= 1
         # print('it obs', it_obs)
-        center_position = np.copy([center_position_1, center_position_2]) * 1
+        np.copy([center_position_1, center_position_2]) * 1
         orientation = np.copy(orientation)
 
         self.obs[it_obs] = Ellipse(
@@ -508,7 +506,6 @@ def example_dynamic_modulation():
     axes_length = [2, 5]
     curvature = [1, 1]
     orientation = 0 / 180 * pi
-    vel = [0, 0]
     obs.append(
         Ellipse(
             axes_length=axes_length,
@@ -523,7 +520,6 @@ def example_dynamic_modulation():
     axes_length = [3, 4]
     curvature = [1, 1]
     orientation = 0 / 180 * pi
-    vel = [0, 0]
     obs.append(
         Ellipse(
             axes_length=axes_length,

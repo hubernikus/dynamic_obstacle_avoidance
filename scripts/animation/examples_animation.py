@@ -91,7 +91,7 @@ def main(simulationNumber=0, saveFigures=False):
         x_end = 0
         # obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf, xd=xd, x_start=x_start, x_end=x_end, w=w))
 
-        ob2 = Ellipse(
+        Ellipse(
             a=[1, 1],
             p=[1, 1],
             x0=[10, -8],
@@ -119,7 +119,6 @@ def main(simulationNumber=0, saveFigures=False):
 
         x_range = [-1, 20]
         y_range = [-10, 10]
-        zRange = [-10, 10]
         # obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
 
         attractorPos = [0, 0]
@@ -141,7 +140,7 @@ def main(simulationNumber=0, saveFigures=False):
 
     if simulationNumber == 1:
         # Parallel ellipses; flow going through
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
 
         th_r0 = 38 / 180 * pi
         obs = []
@@ -194,7 +193,7 @@ def main(simulationNumber=0, saveFigures=False):
 
         x_init = np.vstack((np.linspace(-3, -1, num=N), np.ones(N) * 0))
 
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
 
         obs = []
 
@@ -230,7 +229,7 @@ def main(simulationNumber=0, saveFigures=False):
         N = 20
         x_init = np.vstack((np.linspace(-4.5, 4.5, num=N), np.ones(N) * 5.5))
 
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
 
         obs = []
         obs.append(
@@ -281,8 +280,6 @@ def main(simulationNumber=0, saveFigures=False):
         a = [2.5 * 1.3, 0.8 * 1.3]
         sf = 1
 
-        xd0 = [0, 0]
-        w0 = 0
 
         x01 = x0
         x_start = 0
@@ -338,8 +335,6 @@ def main(simulationNumber=0, saveFigures=False):
         sf = 1
         a = [2 * 1.3, 1.2 * 1.3]
 
-        xd0 = [0, 0]
-        w0 = 0
 
         x_start = 0
         x_end = 10
@@ -419,7 +414,7 @@ def main(simulationNumber=0, saveFigures=False):
         x_init = samplePointsAtBorder(N, x_range, y_range)
         print("axample at rorder")
 
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
 
         obs = []
         obs.append(
@@ -475,7 +470,6 @@ def main(simulationNumber=0, saveFigures=False):
             )
         )
 
-        xAttractor = [0, 0]
 
         obs = []
         a = [0.3, 2.5]
@@ -506,7 +500,7 @@ def main(simulationNumber=0, saveFigures=False):
         )
 
     if simulationNumber == 7:
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
         centr = [2, 2.5]
 
         obs = []
@@ -552,7 +546,7 @@ def main(simulationNumber=0, saveFigures=False):
         )
 
     if simulationNumber == 8:
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
         centr = [2, 2.5]
 
         obs = []
@@ -592,7 +586,7 @@ def main(simulationNumber=0, saveFigures=False):
         )
 
     if simulationNumber == 9:
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
         centr = [2, 2.5]
 
         obs = []
@@ -629,7 +623,7 @@ def main(simulationNumber=0, saveFigures=False):
         )
 
     if simulationNumber == 10:
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
         centr = [2, 2.5]
 
         obs = []
@@ -671,7 +665,7 @@ def main(simulationNumber=0, saveFigures=False):
     if simulationNumber == 11:
         dy = 2.5
 
-        xAttractor = np.array([0, 0])
+        np.array([0, 0])
         centr = [2.05, 2.55 - dy]
 
         obs = []
@@ -839,7 +833,6 @@ def main(simulationNumber=0, saveFigures=False):
         # obs[-1].orientation=30/180.*pi
 
         x_range, y_range = [-1.5, 20.5], [-10.5, 10.5]
-        zRange = [-10, 10]
         # obs.append(Ellipse(a=a, p=p, x0=x0,th_r=th_r, sf=sf))
 
         attractorPos = [0, 0]

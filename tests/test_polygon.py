@@ -10,15 +10,8 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon
-from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    Simulation_vectorFields,
-    plot_obstacles,
-)
 
-from vartools.dynamical_systems import plot_dynamical_system_streamplot
-from vartools.dynamical_systems import plot_dynamical_system_quiver
 
 
 def is_vector_in_array(vector: np.array, array: np.array) -> bool:
@@ -79,8 +72,6 @@ def test_simple_cube_creation_and_ref_point_displacement(visualize=False):
 
     if visualize:
         fig, axs = plt.subplots(1, 2)
-        x_lim = [-2, 6]
-        y_lim = [-2, 4]
 
         my_obstacle.plot2D(axs[0])
         axs[0].set_aspect("equal")
@@ -88,8 +79,6 @@ def test_simple_cube_creation_and_ref_point_displacement(visualize=False):
     my_obstacle.set_reference_point(np.array([2, 3]), in_global_frame=True)
 
     if visualize:
-        x_lim = [-2, 6]
-        y_lim = [-2, 4]
         my_obstacle.plot2D(axs[1])
         axs[1].set_aspect("equal")
 
@@ -204,7 +193,7 @@ def test_normal_of_cube_outside_reference_on_top(
     # What about around the edges
     pos = np.array([0, 3])
 
-    edge_points = my_obstacle.shapely.get_local_edge_points()
+    my_obstacle.shapely.get_local_edge_points()
     normal = my_obstacle.get_normal_direction(pos, in_global_frame=True)
 
     if visualize:

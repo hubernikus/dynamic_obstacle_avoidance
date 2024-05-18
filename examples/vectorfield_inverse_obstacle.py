@@ -5,13 +5,11 @@ Vector fields of different setups
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
-import time
-from math import pi
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
@@ -19,7 +17,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 )
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 
 
 def simple_vectorfield_inside():

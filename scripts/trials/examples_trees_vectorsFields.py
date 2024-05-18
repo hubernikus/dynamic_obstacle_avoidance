@@ -8,7 +8,6 @@ Script which creates a variety of examples of local modulation of a vector field
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Custom libraries
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
@@ -434,7 +433,7 @@ def main(options=[0], n_resolution=100, saveFigures=False):
         # x_init = samplePointsAtBorder(N, xRange, yRange)
 
         N = 10
-        x_init = np.vstack(
+        np.vstack(
             (xRange[1] * np.ones(N), np.linspace(yRange[0], yRange[1], N))
         )
 

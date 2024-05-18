@@ -86,7 +86,6 @@ def visualization_boundary_points_mixed_world():
 
     x_lim, y_lim = [-0.5, 6.5], [-0.5, 6.0]
 
-    xAttractor = [5.0, 5.0]
     robot_margin = 0.6
 
     obstacle_list = GradientContainer()  # create empty obstacle list

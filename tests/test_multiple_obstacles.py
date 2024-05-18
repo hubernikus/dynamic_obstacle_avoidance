@@ -5,13 +5,11 @@ Test script for obstacle avoidance algorithm
 Test normal formation
 """
 # TODO: TEST on: moving general creation, moving, gamma values, obstacle container
-import pytest
 
 import numpy as np
 from math import pi
 
 from dynamic_obstacle_avoidance.obstacles import Ellipse, CircularObstacle
-from dynamic_obstacle_avoidance.obstacles import Cuboid
 from dynamic_obstacle_avoidance.containers import GradientContainer
 
 from dynamic_obstacle_avoidance.visualization import Simulation_vectorFields

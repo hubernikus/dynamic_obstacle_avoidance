@@ -6,12 +6,11 @@ Test normal formation
 from math import pi
 
 import numpy as np
-from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.obstacles import Cuboid, Polygon
-from dynamic_obstacle_avoidance.containers import ObstacleContainer, GradientContainer
+from dynamic_obstacle_avoidance.containers import ObstacleContainer
 from dynamic_obstacle_avoidance.avoidance import ModulationAvoider
 
 from dynamic_obstacle_avoidance.visualization import plot_obstacles
@@ -84,7 +83,7 @@ class TestPolygon(unittest.TestCase):
                 zorder=-3,
             )
 
-            cbar = fig.colorbar(cs)
+            fig.colorbar(cs)
 
     def test_cuboids_multigamma(
         self,
@@ -178,7 +177,7 @@ class TestPolygon(unittest.TestCase):
                 zorder=-3,
             )
 
-            cbar = fig.colorbar(cs)
+            fig.colorbar(cs)
 
             # breakpoint()
             ax.streamplot(
@@ -204,7 +203,7 @@ class TestPolygon(unittest.TestCase):
                 plt.savefig("figures/" + figName + ".png", bbox_inches="tight")
 
             position = np.array([-0.39436336, 1.14369659])
-            gamma = dynamic_avoider.get_gamma_product(position)
+            dynamic_avoider.get_gamma_product(position)
 
             plt.plot(position[0], position[1], "ko")
 
@@ -303,7 +302,7 @@ class TestPolygon(unittest.TestCase):
                 zorder=-3,
             )
 
-            cbar = fig.colorbar(cs)
+            fig.colorbar(cs)
 
             # breakpoint()
             # ax.streamplot(positions[0, :, :].T, positions[1, :, :].T,
@@ -324,7 +323,7 @@ class TestPolygon(unittest.TestCase):
                 plt.savefig("figures/" + figName + ".png", bbox_inches="tight")
 
             position = np.array([-0.39436336, 1.14369659])
-            gamma = dynamic_avoider.get_gamma_product(position)
+            dynamic_avoider.get_gamma_product(position)
 
             plt.plot(position[0], position[1], "ko")
 

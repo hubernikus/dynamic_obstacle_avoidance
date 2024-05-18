@@ -408,8 +408,8 @@ def draw_gamma(obs, y_lim, x_lim, n_resolution=100):
     # pos = np.array([1.0, 0])
     # pos = np.array([-.0, -3.0])
     pos = np.array([-0.150, -2.7])
-    normal0 = obs[0].get_normal_direction(pos, in_global_frame=True)
-    gamma0 = obs[0].get_gamma(pos, in_global_frame=True)
+    obs[0].get_normal_direction(pos, in_global_frame=True)
+    obs[0].get_gamma(pos, in_global_frame=True)
 
     x_grid = np.linspace(x_lim[0], x_lim[1], n_resolution)
     y_grid = np.linspace(y_lim[0], y_lim[1], n_resolution)
@@ -474,7 +474,7 @@ def draw_gamma(obs, y_lim, x_lim, n_resolution=100):
         extent=[x_lim[0] - dx2, x_lim[1] + dx2, y_lim[0] - dy2, y_lim[1] + dy2],
     )
     ax = plt.gca()
-    cbar = ax.figure.colorbar(im, ax=ax)
+    ax.figure.colorbar(im, ax=ax)
     # cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
 
     if False:

@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import numpy.linalg as LA
-import copy
 import warnings
 
 from dynamic_obstacle_avoidance.obstacle_avoidance.obstacle import *

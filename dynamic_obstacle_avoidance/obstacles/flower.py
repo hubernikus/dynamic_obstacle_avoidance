@@ -10,10 +10,8 @@ from typing import Optional
 
 import numpy as np
 
-from vartools.angle_math import angle_modulo
 from vartools.angle_math import *
 
-from vartools.dynamical_systems import LinearSystem
 
 
 from dynamic_obstacle_avoidance.utils import *

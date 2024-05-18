@@ -2,7 +2,6 @@
 Base QP-class
 """
 import numpy as np
-from numpy import linalg as LA
 from vartools.dynamical_systems import LinearSystem
 
 from dynamic_obstacle_avoidance.obstacles import Obstacle

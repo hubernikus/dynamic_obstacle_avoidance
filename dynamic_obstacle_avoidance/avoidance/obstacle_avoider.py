@@ -5,18 +5,16 @@
 # License: BSD (c) 2021
 # from abc import ABC, abstractmethod
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import warnings
 
 import numpy as np
-from numpy import linalg as LA
 
 from vartools.dynamical_systems import DynamicalSystem
 
 from dynamic_obstacle_avoidance.containers import BaseContainer
 from dynamic_obstacle_avoidance.obstacles import GammaType
 
-from dynamic_obstacle_avoidance.avoidance import obs_avoidance_interpolation_moving
 
 
 class ObstacleAvoiderWithInitialDynamcis:
@@ -43,7 +41,7 @@ class ObstacleAvoiderWithInitialDynamcis:
                 position, in_global_frame=True, gamma_type=gamma_type
             )
 
-        n_obs = len(gamma_list)
+        len(gamma_list)
         # Total gamma [1, infinity]
         # Take root of order 'n_obs' to make up for the obstacle multiple
         if any(gamma_list < 1):

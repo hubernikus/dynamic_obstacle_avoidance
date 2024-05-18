@@ -5,7 +5,6 @@ Vector fields of different setups
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
-import time
 from math import pi
 
 import numpy as np
@@ -19,7 +18,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 )
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 
 
 def simple_vectorfield_around_circle_zoom():
@@ -46,7 +44,6 @@ def simple_vectorfield_around_circle_zoom():
     y_lim = [-1.0, 2.0]
 
     n_resolution = 100
-    dim = 2
 
     fig, ax = Simulation_vectorFields(
         x_lim,
@@ -88,7 +85,7 @@ def simple_vectorfield_around_circle_zoom():
         zorder=-3,
     )
 
-    cbar = fig.colorbar(cs, fraction=0.033, pad=0.05)
+    fig.colorbar(cs, fraction=0.033, pad=0.05)
     # plt.colorbar(im,
 
     plt.savefig("figures/simple_obstacle.png")
@@ -118,7 +115,6 @@ def vectorfield_single_obstacle():
     y_lim = [-3, 3.0]
 
     n_resolution = 100
-    dim = 2
 
     fig, ax = Simulation_vectorFields(
         x_lim,

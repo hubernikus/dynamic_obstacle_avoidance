@@ -5,16 +5,12 @@ __author__ = "LukasHuber"
 __email__ = "lukas.huber@epfl.ch"
 __date__ = "2020-08-13"
 
-import time
 
 import re
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import (
-    obs_avoidance_interpolation_moving,
-)
 
 from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation import *
 from dynamic_obstacle_avoidance.visualization.vector_field_visualization import *  #
@@ -22,8 +18,6 @@ from dynamic_obstacle_avoidance.obstacle_avoidance.ellipse_obstacles import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.gradient_container import *
 
 # from PIL import Image
-from scipy import ndimage
-from scipy import misc
 
 # qolo_img  = misc.imread("/home/crowdbot/qolo_ws/src/qolo_modulation/data/Qolo_T_CB_top_bumper.JPG")
 
@@ -260,7 +254,7 @@ class DynamicSimulator:
                 print("boundary", (self.obs[-1].is_boundary))
                 print("args", kwargs)
 
-                if not reference_point is None:
+                if reference_point is not None:
                     self.obs[-1].set_reference_point(
                         reference_point, in_global_frame=True
                     )

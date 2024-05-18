@@ -5,7 +5,6 @@ Vector fields of different setups
 # Author: LukasHuber
 # Email: lukas.huber@epfl.ch
 # Created:  2021-09-23
-import time
 from math import pi
 
 import numpy as np
@@ -20,7 +19,6 @@ from dynamic_obstacle_avoidance.visualization.vector_field_visualization import 
 )
 
 from vartools.dynamical_systems import LinearSystem
-from vartools.dynamical_systems import ConstVelocityDecreasingAtAttractor
 
 
 def simple_vectorfield():

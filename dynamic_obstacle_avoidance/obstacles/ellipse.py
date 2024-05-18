@@ -7,13 +7,12 @@ import sys
 import copy
 import warnings
 import time
-from math import sin, cos, pi, ceil
+from math import pi, ceil
 
 import numpy as np
 from shapely.geometry.point import Point
 from shapely import affinity
 
-import matplotlib.pyplot as plt  # TODO: remove for production
 
 from vartools.angle_math import *
 from vartools.angle_math import angle_modulo, angle_difference_directional_2pi
@@ -55,16 +54,16 @@ class Ellipse(Obstacle):
 
         self.expansion_speed_axes = expansion_speed_axes
 
-        if not axes_length is None:
+        if axes_length is not None:
             self.axes_length = np.array(axes_length)
         else:
             warnings.warn("No axis length given!")
             self.axes_length = np.ones((self.dim))
 
-        if not curvature is None:
+        if curvature is not None:
             self.curvature = curvature
 
-        elif not p is None:
+        elif p is not None:
             warnings.warn(f"Argument <<{p}>> is depreciated.")
             self.curvature = p  # TODO: depreciated, remove
 
@@ -177,9 +176,9 @@ class Ellipse(Obstacle):
         normalDistance2center = np.zeros(self.n_planes)
 
         if self.hull_with_respect_to_reference:
-            position = self.reference_point
+            pass
         else:
-            position = np.zeros(self.dim)
+            np.zeros(self.dim)
 
         for ii in range(self.n_planes):
             normal_vector[:, ii] = (
@@ -235,7 +234,7 @@ class Ellipse(Obstacle):
             position = self.transform_global2relative(position)
 
         mag_position = np.linalg.norm(position, axis=0)
-        position_dir = position / mag_position
+        position / mag_position
 
         angle_tangents = np.zeros(self.edge_reference_points.shape[2])
 
@@ -287,7 +286,7 @@ class Ellipse(Obstacle):
         ------
         Gamma: distance value gamma of float
         """
-        if not gamma_type is None:
+        if gamma_type is not None:
             # TODO: remove this before release (...)
             warnings.warn("Gammatype is not yet implemented for ellipse obstacle.")
 
@@ -594,7 +593,7 @@ class Ellipse(Obstacle):
         if self.dim > 2:
             raise NotImplementedError("Not yet implemented for D>2")
 
-        if not center_ellipse is None:
+        if center_ellipse is not None:
             edge_point = edge_point - center_ellipse
 
         # x_1^2 * a_2^2 + (m*x_1+c)^2*a_1^2 = a_1^2*a_2^2
@@ -643,7 +642,7 @@ class Ellipse(Obstacle):
                 intersections[1, :] = intersections[0, :] * m + c
                 # return intersections
 
-        if not center_ellipse is None:
+        if center_ellipse is not None:
             intersections = (
                 intersections + np.tile(center_ellipse, (intersections.shape[1], 1)).T
             )
@@ -734,7 +733,6 @@ class Ellipse(Obstacle):
         if relative_center is None:
             relative_center = np.zeros(self.dimension)
 
-        margin_absolut = self.margin_absolut
         n_points = position.shape[1]
         radius = np.zeros(position.shape[1])
 
@@ -1016,9 +1014,9 @@ class Sphere(Ellipse):
     """Ellipse obstacle with equal axes"""
 
     def __init__(self, radius=None, axes_length=None, *args, **kwargs):
-        if not radius is None:
+        if radius is not None:
             axes_length = np.array([radius, radius])
-        elif not radius is None:
+        elif radius is not None:
             if radius.shape[0] == 1:
                 axes_length = np.array([axes_length, axes_length])
         else:

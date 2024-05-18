@@ -4,7 +4,6 @@ Dynamic Simulation - Obstacle Avoidance Algorithm
 
 # Command to automatically reload libraries -- in ipython before exectureion
 import numpy as np
-from numpy import pi
 
 import time
 import warnings
@@ -16,7 +15,6 @@ __date__ = "2019-05-24"
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib._pylab_helpers
-from matplotlib import animation
 
 # 3D Animatcoion utils
 # from mpl_toolkits.mplot3d import Axes3D
@@ -69,7 +67,7 @@ class AnimatedMultibody:
             self.dim = x0.shape[0]
         self.print_count = False
 
-        if not dimension is None:
+        if dimension is not None:
             self.dim = dimension
 
         # Initialize class variables
@@ -618,7 +616,8 @@ def test_function():
     fig, ax = plt.subplots()
     (l,) = ax.plot([0, 2 * np.pi], [-1, 1])
 
-    animate = lambda i: l.set_data(t[:i], x[:i])
+    def animate(i):
+        return l.set_data(t[:i], x[:i])
     ani = matplotlib.animation.FuncAnimation(fig, animate, frames=len(t))
 
     return ani

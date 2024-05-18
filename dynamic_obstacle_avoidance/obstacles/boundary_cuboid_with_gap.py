@@ -6,14 +6,10 @@ Two dimensional boundary obstacles with gaps. Agent can exit and enter them.
 # Email:lukas.huber@epfl.ch
 
 import sys
-import os
-import warnings
 import copy
 
 import numpy as np
-from numpy import pi
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 
 from shapely.geometry import Point
 from shapely.geometry import LineString

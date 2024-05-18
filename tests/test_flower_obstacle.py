@@ -2,19 +2,12 @@
 # Author: Lukas Huber
 # Email: lukas.huber@epfl.ch
 
-import time
-import warnings
-import sys
-import copy
-from typing import Optional
 from math import pi
 
 import numpy as np
 
-from vartools.angle_math import angle_modulo
 from vartools.angle_math import *
 
-from vartools.dynamical_systems import LinearSystem
 
 
 # from dynamic_obstacle_avoidance.utils import *
@@ -71,7 +64,7 @@ def test_gamma_value(visualize=False):
             zorder=-2,
             # cmap="Blues",
         )
-        cbar = fig.colorbar(cs)
+        fig.colorbar(cs)
 
     # Test gamma a bit away from the center
     gamma_value = obstacle.get_gamma(center + 0.1, in_global_frame=True)
@@ -163,7 +156,7 @@ def test_normal_direction(visualize=False):
 
 
 def test_gamma_with_scaling(visualize=False):
-    attractor_position = np.array([0.0, 0.0])
+    np.array([0.0, 0.0])
 
     obstacle = StarshapedFlower(
         center_position=np.array([2.2, 0.0]),
@@ -204,7 +197,7 @@ def test_gamma_with_scaling(visualize=False):
             extend="max",
             zorder=-1,
         )
-        cbar = fig.colorbar(cs)
+        fig.colorbar(cs)
 
         plot_obstacles(
             ax=ax,

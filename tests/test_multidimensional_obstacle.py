@@ -6,10 +6,8 @@
 # License: BSD (c) 2021
 
 # import unittest
-from math import pi
 
 import numpy as np
-from numpy import linalg as LA
 
 import shapely
 

@@ -5,11 +5,9 @@
 # Email: lukas.huber@epfl.ch
 
 import numpy as np
-from numpy import linalg as LA
 
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import EllipseWithAxes as Ellipse
 from dynamic_obstacle_avoidance.obstacles import CuboidXd as Cuboid
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
@@ -17,10 +15,6 @@ from dynamic_obstacle_avoidance.avoidance import (
     obs_avoidance_interpolation_moving,
 )
 
-from dynamic_obstacle_avoidance.visualization.vector_field_visualization import (
-    Simulation_vectorFields,
-    plot_obstacles,
-)
 
 from vartools.dynamical_systems import LinearSystem
 
@@ -313,7 +307,7 @@ def plot_weights(n_resolution=100):
     for ii, ax in enumerate(axs):
         plot_multihulls(obstacle_environment, x_lim, y_lim, ax=ax)
 
-        cols = axs[ii].contourf(
+        axs[ii].contourf(
             positions[0, :].reshape(nx, ny),
             positions[1, :].reshape(nx, ny),
             weights[ii, :].reshape(nx, ny),

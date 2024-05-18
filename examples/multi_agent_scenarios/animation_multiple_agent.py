@@ -2,12 +2,11 @@
 # Email: federico.conzelmann@epfl.ch
 # Created: 2021-10-27
 
-from math import pi
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dynamic_obstacle_avoidance.obstacles import Polygon, Cuboid, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
 from dynamic_obstacle_avoidance.avoidance import DynamicCrowdAvoider
@@ -58,7 +57,7 @@ class DynamicalSystemAnimation:
         position_list[:, :, 0] = start_position
 
         fig, ax = plt.subplots(figsize=(10, 8))
-        cid = fig.canvas.mpl_connect("button_press_event", self.on_click)
+        fig.canvas.mpl_connect("button_press_event", self.on_click)
 
         ii = 0
         while ii < it_max:

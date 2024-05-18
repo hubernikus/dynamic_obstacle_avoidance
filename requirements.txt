@@ -1,6 +1,9 @@
-numpy
+numpyj
 scipy
 shapely
+
+# 3D Visualization 
+pyvista
 
 # Currently needed for all the plotting and visualization packages
 matplotlib
@@ -12,3 +15,7 @@ igraph      # faster
 
 # Learning Library
 scikit-learn
+
+# Development tools
+ruff
+precommit-hooks

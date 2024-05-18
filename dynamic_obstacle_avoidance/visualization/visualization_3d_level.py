@@ -8,9 +8,6 @@ Obstacle Avoidance Algorithm script with vecotr field
 
 # General classes
 import numpy as np
-from math import pi
-import copy
-import time
 
 import matplotlib.pyplot as plt
 
@@ -19,9 +16,6 @@ from dynamic_obstacle_avoidance.dynamical_system.dynamical_system_representation
 )
 
 # from dynamic_obstacle_avoidance.dynamical_system import *
-from dynamic_obstacle_avoidance.obstacle_avoidance.modulation import (
-    obs_check_collision,
-)
 from dynamic_obstacle_avoidance.obstacle_avoidance.linear_modulations import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_common_section import *
 from dynamic_obstacle_avoidance.obstacle_avoidance.obs_dynamic_center_3d import *
@@ -63,7 +57,7 @@ class Visualization3dLevel:
             pos_attractor = np.array([0.075, 0.075, 0.15])
 
         if z_value is None:
-            if not self.z_range is None:
+            if self.z_range is not None:
                 z_value = self.z_range
 
             else:
@@ -94,10 +88,10 @@ class Visualization3dLevel:
             # position = np.array([0.075, 0.075, 0.15])
             # position = np.array([-0.0167, -0.0501, 0.15])
             position = np.array([0.01669, -0.04997, 0.15])
-            normal = self.obs[0].get_normal_direction(position)
-            Gamma = self.obs[0].get_gamma(position, in_global_frame=True)
+            self.obs[0].get_normal_direction(position)
+            self.obs[0].get_gamma(position, in_global_frame=True)
             vel_init = linear_ds_max_vel(position, pos_attractor)
-            vel_modu = obs_avoidance_interpolation_moving(
+            obs_avoidance_interpolation_moving(
                 position, vel_init, obs=self.obs
             )
             import pdb
@@ -340,7 +334,7 @@ class Visualization3dLevel:
         )
         # positions[0, :, :].flatten(), positions[1, :, :].flatten(),
         # cs = ax.contourf(xx_r, yy_r, predict_class, cmap=plt.cm.coolwarm, alpha=0.8)
-        cbar = self.fig.colorbar(cs)
+        self.fig.colorbar(cs)
 
         plt.show()
 
