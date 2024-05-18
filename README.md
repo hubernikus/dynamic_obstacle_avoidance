@@ -98,16 +98,22 @@ You forgot to add the submodules, add them with:
 git submodule update --init --recursive
 ```
 
+## Citing Repository
+If you use this repository in a scientific publication, we would appreciate citations to the following paper:
 
+Huber, Lukas. _Exact Obstacle Avoidance for Robots in Complex and Dynamic Environments Using Local Modulation._ No. 10373., EPFL, 2024.
 
-**References**     
-> [1] Huber, Lukas, Aude Billard, and Jean-Jacques E. Slotine. "Avoidance of Convex and Concave Obstacles with Convergence ensured through Contraction." IEEE Robotics and Automation Letters (2019).  
-
-> [2] L. Huber, J. -J. Slotine and A. Billard, "Fast Obstacle Avoidance Based on Real-Time Sensing," in IEEE Robotics and Automation Letters, doi: 10.1109/LRA.2022.3232271.
-
-**Contact**: [Lukas Huber] (https://people.epfl.ch/lukas.huber?lang=en) (lukas.huber AT epfl dot ch)
-
-**Acknowledgments**
-This work was supported by EU ERC grant SAHR.
+Bibtex entry:
+``` bibtex
+@phdthesis{huber2024exact,
+  title={Exact Obstacle Avoidance for Robots in Complex and Dynamic Environments Using Local Modulation},
+  author={Huber, Lukas},
+  year={2024},
+  month={April},
+  address={Lausanne, Switzerland},
+  school={EPFL},
+  type={PhD thesis}
+}
+```
 
 (c) hubernikus
