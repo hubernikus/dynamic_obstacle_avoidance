@@ -1,12 +1,4 @@
-"""
-Test script for obstacle avoidance algorithm
-Test normal formation
-"""
-
-# Author: Lukas Huber
-# Created: 2022-05-19
-# Email: lukas.huber@epfl.ch
-
+import pyvista as pv
 import numpy as np
 
 
@@ -71,7 +63,9 @@ def test_triple_obstacles():
     init_vel = initial_dynamics.evaluate(eval_position)
     avoider.avoid(eval_position, velocity=init_vel)
 
-    print("Done")
+
+def _test_avoidance_with_visualization_3d(*, visualize: bool = False) -> None:
+    pass
 
 
 if (__name__) == "__main__":

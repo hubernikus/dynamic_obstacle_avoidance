@@ -1,4 +1,4 @@
-numpyj
+numpy
 scipy
 shapely
 
@@ -18,4 +18,4 @@ scikit-learn
 
 # Development tools
 ruff
-precommit-hooks
+pre-commit

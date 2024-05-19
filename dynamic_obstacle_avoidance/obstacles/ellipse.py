@@ -1,4 +1,5 @@
 """ Ellipse Obstacle for Obstacle Avoidance and Visualization Purposes. """
+
 # Author Lukas Huber
 # Email lukas.huber@epfl.ch
 # License BSD

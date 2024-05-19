@@ -1,6 +1,7 @@
 """
 Two dimensional boundary obstacles with gaps. Agent can exit and enter them.
 """
+
 # Author: Lukas Huber
 # Date: 2021-05-12
 # Email:lukas.huber@epfl.ch
@@ -20,7 +21,7 @@ from vartools.angle_math import (
     angle_difference_directional,
 )
 
-from dynamic_obstacle_avoidance.obstacles import Cuboid
+from dynamic_obstacle_avoidance.obstacles.cuboid import Cuboid
 
 
 class BoundaryCuboidWithGaps(Cuboid):

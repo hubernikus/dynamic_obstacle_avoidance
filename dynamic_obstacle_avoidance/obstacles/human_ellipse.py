@@ -1,6 +1,7 @@
 """
 Script to create human specific pedestrian obstacle descriptions.
 """
+
 __date__ = "2019-10-15"
 __author__ = "Lukas Huber"
 __mail__ = "lukas.huber@epfl.ch"
@@ -10,7 +11,7 @@ import sys
 import numpy as np
 
 from vartools.angle_math import *
-from dynamic_obstacle_avoidance.obstacles import Ellipse
+from dynamic_obstacle_avoidance.obstacles.ellipse import Ellipse
 
 
 class TrackedPedestrian(Ellipse):

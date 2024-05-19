@@ -2,6 +2,7 @@
 Container encapsulates all obstacles.
 Gradient container finds the dynamic reference point through gradient descent.
 """
+
 # Author: "LukasHuber"
 # Email: lukas.huber@epfl.ch
 # License: BSD (c) 2021
@@ -14,7 +15,7 @@ import time
 
 from dynamic_obstacle_avoidance.utils import get_reference_weight
 
-from dynamic_obstacle_avoidance.obstacles import CircularObstacle
+from dynamic_obstacle_avoidance.obstacles.ellipse import CircularObstacle
 
 from dynamic_obstacle_avoidance.containers import ObstacleContainer
 
@@ -387,12 +388,12 @@ class GradientContainer(ObstacleContainer):
                     # Get angles and do iteration
                     if not is_close_for_the_first_time:
                         for kk, obstacle in zip(range(2), (self[ii], self[jj])):
-                            angles[
-                                kk * (dim - 1) : (kk + 1) * (dim - 1)
-                            ] = get_angle_space(
-                                directions=surf_points[:, kk]
-                                - obstacle.center_position,
-                                OrthogonalBasisMatrix=NullMatrices[kk, :, :],
+                            angles[kk * (dim - 1) : (kk + 1) * (dim - 1)] = (
+                                get_angle_space(
+                                    directions=surf_points[:, kk]
+                                    - obstacle.center_position,
+                                    OrthogonalBasisMatrix=NullMatrices[kk, :, :],
+                                )
                             )
 
                             # Reset if too far out

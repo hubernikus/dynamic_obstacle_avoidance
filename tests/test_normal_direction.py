@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from dynamic_obstacle_avoidance.containers import GradientContainer
-from dynamic_obstacle_avoidance.obstacles import Cuboid, CircularObstacle, Ellipse
+from dynamic_obstacle_avoidance.obstacles import Cuboid, Ellipse
 from dynamic_obstacle_avoidance.obstacles import StarshapedFlower
 from dynamic_obstacle_avoidance.obstacles import BoundaryCuboidWithGaps
 
@@ -109,8 +109,8 @@ class TestRotational(unittest.TestCase):
 
     def test_normal_circle(self, n_testpoints=5):
         """Normal has to point alongside reference"""
-        obs = CircularObstacle(
-            radius=0.5,
+        obs = Ellipse(
+            axes_length=[1.0, 1.0],
             center_position=[0.0, 0.0],
             orientation=0.0 / 180 * pi,
         )
