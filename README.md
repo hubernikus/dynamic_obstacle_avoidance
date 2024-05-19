@@ -99,7 +99,7 @@ git submodule update --init --recursive
 ```
 
 ## Citing Repository
-If you use this repository in a scientific publication, we would appreciate citations to the following paper:
+If you use this repository in a scientific publication, please use following citation:
 
 Huber, Lukas. _Exact Obstacle Avoidance for Robots in Complex and Dynamic Environments Using Local Modulation._ No. 10373., EPFL, 2024.
 
