@@ -1,4 +1,5 @@
 """ """
+
 # Author: Lukas Huber
 # Email: lukas.huber@epfl.ch
 
@@ -11,7 +12,6 @@ from typing import Optional
 import numpy as np
 
 from vartools.angle_math import *
-
 
 
 from dynamic_obstacle_avoidance.utils import *
@@ -133,7 +133,7 @@ class StarshapedFlower(Obstacle):
     def draw_obstacle(self, include_margin=False, n_curve_points=100, numPoints=None):
         # warnings.warn("Remove numPoints from function argument.")
 
-        angular_coordinates = np.linspace(0, 2 * pi, n_curve_points)
+        angular_coordinates = np.linspace(0, 2 * np.pi, n_curve_points)
         radius_angle = self.get_radius_of_angle(angular_coordinates)
 
         if self.dim == 2:
